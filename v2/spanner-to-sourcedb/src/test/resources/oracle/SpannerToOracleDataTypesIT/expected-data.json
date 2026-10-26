@@ -1,0 +1,7636 @@
+{
+ "tables": [
+  {
+   "table": "varchar2_table",
+   "column": "varchar2_col",
+   "sourceType": "VARCHAR2(4000)",
+   "sourceDdlType": "VARCHAR2(4000)",
+   "spannerType": "STRING(MAX)",
+   "scenario": "A",
+   "pk": false,
+   "note": "CSV '' is stored as NULL by Oracle; CSV <32767 A> is capped at the column max (MAX_STRING_SIZE=STANDARD).",
+   "readExpr": "\"varchar2_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": " ",
+     "expected": " ",
+     "id": 2
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": "DROP TABLE",
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 4000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 4000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "Hello World",
+     "expected": "Hello World",
+     "id": 5
+    },
+    {
+     "spanner": "a",
+     "expected": "a",
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": "こんにちは世界 😀",
+     "id": 8
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": "O'Brien",
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "varchar2_to_str4000_table",
+   "column": "varchar2_to_str4000_col",
+   "sourceType": "VARCHAR2(4000)",
+   "sourceDdlType": "VARCHAR2(4000)",
+   "spannerType": "STRING(4000)",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"varchar2_to_str4000_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": " ",
+     "expected": " ",
+     "id": 2
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": "DROP TABLE",
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 4000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 4000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "Hello World",
+     "expected": "Hello World",
+     "id": 5
+    },
+    {
+     "spanner": "a",
+     "expected": "a",
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": "こんにちは世界 😀",
+     "id": 8
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": "O'Brien",
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "varchar2_to_bytes_table",
+   "column": "varchar2_to_bytes_col",
+   "sourceType": "VARCHAR2(4000)",
+   "sourceDdlType": "VARCHAR2(4000)",
+   "spannerType": "BYTES(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "Spanner BYTES hold the UTF-8 bytes of the text; expected Oracle value is the decoded text.",
+   "readExpr": "\"varchar2_to_bytes_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": "IA==",
+     "expected": " ",
+     "id": 2
+    },
+    {
+     "spanner": "RFJPUCBUQUJMRQ==",
+     "expected": "DROP TABLE",
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 4000,
+      "base64": true
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 4000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "SGVsbG8gV29ybGQ=",
+     "expected": "Hello World",
+     "id": 5
+    },
+    {
+     "spanner": "YQ==",
+     "expected": "a",
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "44GT44KT44Gr44Gh44Gv5LiW55WMIPCfmIA=",
+     "expected": "こんにちは世界 😀",
+     "id": 8
+    },
+    {
+     "spanner": "TydCcmllbg==",
+     "expected": "O'Brien",
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "varchar2_pk_table",
+   "column": "varchar2_pk_col",
+   "sourceType": "VARCHAR2(4000)",
+   "sourceDdlType": "VARCHAR2(4000)",
+   "spannerType": "STRING(MAX)",
+   "scenario": "C",
+   "pk": true,
+   "note": "",
+   "readExpr": "\"varchar2_pk_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": " ",
+     "expected": " "
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": "DROP TABLE"
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 4000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 4000,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "Hello World",
+     "expected": "Hello World"
+    },
+    {
+     "spanner": "a",
+     "expected": "a"
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": "こんにちは世界 😀"
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": "O'Brien"
+    }
+   ]
+  },
+  {
+   "table": "varchar_table",
+   "column": "varchar_col",
+   "sourceType": "VARCHAR(4000)",
+   "sourceDdlType": "VARCHAR(4000)",
+   "spannerType": "STRING(MAX)",
+   "scenario": "A",
+   "pk": false,
+   "note": "CSV '' is stored as NULL by Oracle; CSV <32767 A> is capped at the column max (MAX_STRING_SIZE=STANDARD).",
+   "readExpr": "\"varchar_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": " ",
+     "expected": " ",
+     "id": 2
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": "DROP TABLE",
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 4000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 4000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "Hello World",
+     "expected": "Hello World",
+     "id": 5
+    },
+    {
+     "spanner": "a",
+     "expected": "a",
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": "こんにちは世界 😀",
+     "id": 8
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": "O'Brien",
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "varchar_to_str4000_table",
+   "column": "varchar_to_str4000_col",
+   "sourceType": "VARCHAR(4000)",
+   "sourceDdlType": "VARCHAR(4000)",
+   "spannerType": "STRING(4000)",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"varchar_to_str4000_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": " ",
+     "expected": " ",
+     "id": 2
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": "DROP TABLE",
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 4000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 4000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "Hello World",
+     "expected": "Hello World",
+     "id": 5
+    },
+    {
+     "spanner": "a",
+     "expected": "a",
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": "こんにちは世界 😀",
+     "id": 8
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": "O'Brien",
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "varchar_to_bytes_table",
+   "column": "varchar_to_bytes_col",
+   "sourceType": "VARCHAR(4000)",
+   "sourceDdlType": "VARCHAR(4000)",
+   "spannerType": "BYTES(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "Spanner BYTES hold the UTF-8 bytes of the text; expected Oracle value is the decoded text.",
+   "readExpr": "\"varchar_to_bytes_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": "IA==",
+     "expected": " ",
+     "id": 2
+    },
+    {
+     "spanner": "RFJPUCBUQUJMRQ==",
+     "expected": "DROP TABLE",
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 4000,
+      "base64": true
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 4000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "SGVsbG8gV29ybGQ=",
+     "expected": "Hello World",
+     "id": 5
+    },
+    {
+     "spanner": "YQ==",
+     "expected": "a",
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "44GT44KT44Gr44Gh44Gv5LiW55WMIPCfmIA=",
+     "expected": "こんにちは世界 😀",
+     "id": 8
+    },
+    {
+     "spanner": "TydCcmllbg==",
+     "expected": "O'Brien",
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "varchar_pk_table",
+   "column": "varchar_pk_col",
+   "sourceType": "VARCHAR(4000)",
+   "sourceDdlType": "VARCHAR(4000)",
+   "spannerType": "STRING(MAX)",
+   "scenario": "C",
+   "pk": true,
+   "note": "",
+   "readExpr": "\"varchar_pk_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": " ",
+     "expected": " "
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": "DROP TABLE"
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 4000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 4000,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "Hello World",
+     "expected": "Hello World"
+    },
+    {
+     "spanner": "a",
+     "expected": "a"
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": "こんにちは世界 😀"
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": "O'Brien"
+    }
+   ]
+  },
+  {
+   "table": "char_table",
+   "column": "char_col",
+   "sourceType": "CHAR(2000)",
+   "sourceDdlType": "CHAR(2000)",
+   "spannerType": "STRING(MAX)",
+   "scenario": "A",
+   "pk": false,
+   "note": "CSV '' is stored as NULL by Oracle; CSV <32767 A> is capped at the column max (MAX_STRING_SIZE=STANDARD).",
+   "readExpr": "\"char_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": " ",
+     "expected": {
+      "prefix": "",
+      "repeat": " ",
+      "times": 2000,
+      "base64": false
+     },
+     "id": 2
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": {
+      "prefix": "DROP TABLE",
+      "repeat": " ",
+      "times": 1990,
+      "base64": false
+     },
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "Hello World",
+     "expected": {
+      "prefix": "Hello World",
+      "repeat": " ",
+      "times": 1989,
+      "base64": false
+     },
+     "id": 5
+    },
+    {
+     "spanner": "a",
+     "expected": {
+      "prefix": "a",
+      "repeat": " ",
+      "times": 1999,
+      "base64": false
+     },
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": {
+      "prefix": "こんにちは世界 😀",
+      "repeat": " ",
+      "times": 1974,
+      "base64": false
+     },
+     "id": 8
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": {
+      "prefix": "O'Brien",
+      "repeat": " ",
+      "times": 1993,
+      "base64": false
+     },
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "char_to_str2000_table",
+   "column": "char_to_str2000_col",
+   "sourceType": "CHAR(2000)",
+   "sourceDdlType": "CHAR(2000)",
+   "spannerType": "STRING(2000)",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"char_to_str2000_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": " ",
+     "expected": {
+      "prefix": "",
+      "repeat": " ",
+      "times": 2000,
+      "base64": false
+     },
+     "id": 2
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": {
+      "prefix": "DROP TABLE",
+      "repeat": " ",
+      "times": 1990,
+      "base64": false
+     },
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "Hello World",
+     "expected": {
+      "prefix": "Hello World",
+      "repeat": " ",
+      "times": 1989,
+      "base64": false
+     },
+     "id": 5
+    },
+    {
+     "spanner": "a",
+     "expected": {
+      "prefix": "a",
+      "repeat": " ",
+      "times": 1999,
+      "base64": false
+     },
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": {
+      "prefix": "こんにちは世界 😀",
+      "repeat": " ",
+      "times": 1974,
+      "base64": false
+     },
+     "id": 8
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": {
+      "prefix": "O'Brien",
+      "repeat": " ",
+      "times": 1993,
+      "base64": false
+     },
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "char_to_bytes_table",
+   "column": "char_to_bytes_col",
+   "sourceType": "CHAR(2000)",
+   "sourceDdlType": "CHAR(2000)",
+   "spannerType": "BYTES(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "Spanner BYTES hold the UTF-8 bytes of the text; expected Oracle value is the decoded text.",
+   "readExpr": "\"char_to_bytes_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": "IA==",
+     "expected": {
+      "prefix": "",
+      "repeat": " ",
+      "times": 2000,
+      "base64": false
+     },
+     "id": 2
+    },
+    {
+     "spanner": "RFJPUCBUQUJMRQ==",
+     "expected": {
+      "prefix": "DROP TABLE",
+      "repeat": " ",
+      "times": 1990,
+      "base64": false
+     },
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": true
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "SGVsbG8gV29ybGQ=",
+     "expected": {
+      "prefix": "Hello World",
+      "repeat": " ",
+      "times": 1989,
+      "base64": false
+     },
+     "id": 5
+    },
+    {
+     "spanner": "YQ==",
+     "expected": {
+      "prefix": "a",
+      "repeat": " ",
+      "times": 1999,
+      "base64": false
+     },
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "44GT44KT44Gr44Gh44Gv5LiW55WMIPCfmIA=",
+     "expected": {
+      "prefix": "こんにちは世界 😀",
+      "repeat": " ",
+      "times": 1974,
+      "base64": false
+     },
+     "id": 8
+    },
+    {
+     "spanner": "TydCcmllbg==",
+     "expected": {
+      "prefix": "O'Brien",
+      "repeat": " ",
+      "times": 1993,
+      "base64": false
+     },
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "char_pk_table",
+   "column": "char_pk_col",
+   "sourceType": "CHAR(2000)",
+   "sourceDdlType": "CHAR(2000)",
+   "spannerType": "STRING(MAX)",
+   "scenario": "C",
+   "pk": true,
+   "note": "",
+   "readExpr": "\"char_pk_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": " ",
+     "expected": {
+      "prefix": "",
+      "repeat": " ",
+      "times": 2000,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": {
+      "prefix": "DROP TABLE",
+      "repeat": " ",
+      "times": 1990,
+      "base64": false
+     }
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "Hello World",
+     "expected": {
+      "prefix": "Hello World",
+      "repeat": " ",
+      "times": 1989,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "a",
+     "expected": {
+      "prefix": "a",
+      "repeat": " ",
+      "times": 1999,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": {
+      "prefix": "こんにちは世界 😀",
+      "repeat": " ",
+      "times": 1974,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": {
+      "prefix": "O'Brien",
+      "repeat": " ",
+      "times": 1993,
+      "base64": false
+     }
+    }
+   ]
+  },
+  {
+   "table": "character_table",
+   "column": "character_col",
+   "sourceType": "CHARACTER(2000)",
+   "sourceDdlType": "CHARACTER(2000)",
+   "spannerType": "STRING(MAX)",
+   "scenario": "A",
+   "pk": false,
+   "note": "CSV '' is stored as NULL by Oracle; CSV <32767 A> is capped at the column max (MAX_STRING_SIZE=STANDARD).",
+   "readExpr": "\"character_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": " ",
+     "expected": {
+      "prefix": "",
+      "repeat": " ",
+      "times": 2000,
+      "base64": false
+     },
+     "id": 2
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": {
+      "prefix": "DROP TABLE",
+      "repeat": " ",
+      "times": 1990,
+      "base64": false
+     },
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "Hello World",
+     "expected": {
+      "prefix": "Hello World",
+      "repeat": " ",
+      "times": 1989,
+      "base64": false
+     },
+     "id": 5
+    },
+    {
+     "spanner": "a",
+     "expected": {
+      "prefix": "a",
+      "repeat": " ",
+      "times": 1999,
+      "base64": false
+     },
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": {
+      "prefix": "こんにちは世界 😀",
+      "repeat": " ",
+      "times": 1974,
+      "base64": false
+     },
+     "id": 8
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": {
+      "prefix": "O'Brien",
+      "repeat": " ",
+      "times": 1993,
+      "base64": false
+     },
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "character_to_str2000_table",
+   "column": "character_to_str2000_col",
+   "sourceType": "CHARACTER(2000)",
+   "sourceDdlType": "CHARACTER(2000)",
+   "spannerType": "STRING(2000)",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"character_to_str2000_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": " ",
+     "expected": {
+      "prefix": "",
+      "repeat": " ",
+      "times": 2000,
+      "base64": false
+     },
+     "id": 2
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": {
+      "prefix": "DROP TABLE",
+      "repeat": " ",
+      "times": 1990,
+      "base64": false
+     },
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "Hello World",
+     "expected": {
+      "prefix": "Hello World",
+      "repeat": " ",
+      "times": 1989,
+      "base64": false
+     },
+     "id": 5
+    },
+    {
+     "spanner": "a",
+     "expected": {
+      "prefix": "a",
+      "repeat": " ",
+      "times": 1999,
+      "base64": false
+     },
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": {
+      "prefix": "こんにちは世界 😀",
+      "repeat": " ",
+      "times": 1974,
+      "base64": false
+     },
+     "id": 8
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": {
+      "prefix": "O'Brien",
+      "repeat": " ",
+      "times": 1993,
+      "base64": false
+     },
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "character_to_bytes_table",
+   "column": "character_to_bytes_col",
+   "sourceType": "CHARACTER(2000)",
+   "sourceDdlType": "CHARACTER(2000)",
+   "spannerType": "BYTES(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "Spanner BYTES hold the UTF-8 bytes of the text; expected Oracle value is the decoded text.",
+   "readExpr": "\"character_to_bytes_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": "IA==",
+     "expected": {
+      "prefix": "",
+      "repeat": " ",
+      "times": 2000,
+      "base64": false
+     },
+     "id": 2
+    },
+    {
+     "spanner": "RFJPUCBUQUJMRQ==",
+     "expected": {
+      "prefix": "DROP TABLE",
+      "repeat": " ",
+      "times": 1990,
+      "base64": false
+     },
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": true
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "SGVsbG8gV29ybGQ=",
+     "expected": {
+      "prefix": "Hello World",
+      "repeat": " ",
+      "times": 1989,
+      "base64": false
+     },
+     "id": 5
+    },
+    {
+     "spanner": "YQ==",
+     "expected": {
+      "prefix": "a",
+      "repeat": " ",
+      "times": 1999,
+      "base64": false
+     },
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "44GT44KT44Gr44Gh44Gv5LiW55WMIPCfmIA=",
+     "expected": {
+      "prefix": "こんにちは世界 😀",
+      "repeat": " ",
+      "times": 1974,
+      "base64": false
+     },
+     "id": 8
+    },
+    {
+     "spanner": "TydCcmllbg==",
+     "expected": {
+      "prefix": "O'Brien",
+      "repeat": " ",
+      "times": 1993,
+      "base64": false
+     },
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "character_pk_table",
+   "column": "character_pk_col",
+   "sourceType": "CHARACTER(2000)",
+   "sourceDdlType": "CHARACTER(2000)",
+   "spannerType": "STRING(MAX)",
+   "scenario": "C",
+   "pk": true,
+   "note": "",
+   "readExpr": "\"character_pk_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": " ",
+     "expected": {
+      "prefix": "",
+      "repeat": " ",
+      "times": 2000,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": {
+      "prefix": "DROP TABLE",
+      "repeat": " ",
+      "times": 1990,
+      "base64": false
+     }
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "Hello World",
+     "expected": {
+      "prefix": "Hello World",
+      "repeat": " ",
+      "times": 1989,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "a",
+     "expected": {
+      "prefix": "a",
+      "repeat": " ",
+      "times": 1999,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": {
+      "prefix": "こんにちは世界 😀",
+      "repeat": " ",
+      "times": 1974,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": {
+      "prefix": "O'Brien",
+      "repeat": " ",
+      "times": 1993,
+      "base64": false
+     }
+    }
+   ]
+  },
+  {
+   "table": "nvarchar2_table",
+   "column": "nvarchar2_col",
+   "sourceType": "NVARCHAR2(2000)",
+   "sourceDdlType": "NVARCHAR2(2000)",
+   "spannerType": "STRING(MAX)",
+   "scenario": "A",
+   "pk": false,
+   "note": "CSV '' is stored as NULL by Oracle; CSV <32767 A> is capped at the column max (MAX_STRING_SIZE=STANDARD).",
+   "readExpr": "\"nvarchar2_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": " ",
+     "expected": " ",
+     "id": 2
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": "DROP TABLE",
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "Hello World",
+     "expected": "Hello World",
+     "id": 5
+    },
+    {
+     "spanner": "a",
+     "expected": "a",
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": "こんにちは世界 😀",
+     "id": 8
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": "O'Brien",
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "nvarchar2_to_str2000_table",
+   "column": "nvarchar2_to_str2000_col",
+   "sourceType": "NVARCHAR2(2000)",
+   "sourceDdlType": "NVARCHAR2(2000)",
+   "spannerType": "STRING(2000)",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"nvarchar2_to_str2000_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": " ",
+     "expected": " ",
+     "id": 2
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": "DROP TABLE",
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "Hello World",
+     "expected": "Hello World",
+     "id": 5
+    },
+    {
+     "spanner": "a",
+     "expected": "a",
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": "こんにちは世界 😀",
+     "id": 8
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": "O'Brien",
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "nvarchar2_to_bytes_table",
+   "column": "nvarchar2_to_bytes_col",
+   "sourceType": "NVARCHAR2(2000)",
+   "sourceDdlType": "NVARCHAR2(2000)",
+   "spannerType": "BYTES(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "Spanner BYTES hold the UTF-8 bytes of the text; expected Oracle value is the decoded text.",
+   "readExpr": "\"nvarchar2_to_bytes_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": "IA==",
+     "expected": " ",
+     "id": 2
+    },
+    {
+     "spanner": "RFJPUCBUQUJMRQ==",
+     "expected": "DROP TABLE",
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": true
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "SGVsbG8gV29ybGQ=",
+     "expected": "Hello World",
+     "id": 5
+    },
+    {
+     "spanner": "YQ==",
+     "expected": "a",
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "44GT44KT44Gr44Gh44Gv5LiW55WMIPCfmIA=",
+     "expected": "こんにちは世界 😀",
+     "id": 8
+    },
+    {
+     "spanner": "TydCcmllbg==",
+     "expected": "O'Brien",
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "nvarchar2_pk_table",
+   "column": "nvarchar2_pk_col",
+   "sourceType": "NVARCHAR2(2000)",
+   "sourceDdlType": "NVARCHAR2(2000)",
+   "spannerType": "STRING(MAX)",
+   "scenario": "C",
+   "pk": true,
+   "note": "",
+   "readExpr": "\"nvarchar2_pk_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": " ",
+     "expected": " "
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": "DROP TABLE"
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "Hello World",
+     "expected": "Hello World"
+    },
+    {
+     "spanner": "a",
+     "expected": "a"
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": "こんにちは世界 😀"
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": "O'Brien"
+    }
+   ]
+  },
+  {
+   "table": "nchar_table",
+   "column": "nchar_col",
+   "sourceType": "NCHAR(1000)",
+   "sourceDdlType": "NCHAR(1000)",
+   "spannerType": "STRING(MAX)",
+   "scenario": "A",
+   "pk": false,
+   "note": "CSV '' is stored as NULL by Oracle; CSV <32767 A> is capped at the column max (MAX_STRING_SIZE=STANDARD).",
+   "readExpr": "\"nchar_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": " ",
+     "expected": {
+      "prefix": "",
+      "repeat": " ",
+      "times": 1000,
+      "base64": false
+     },
+     "id": 2
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": {
+      "prefix": "DROP TABLE",
+      "repeat": " ",
+      "times": 990,
+      "base64": false
+     },
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 1000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 1000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "Hello World",
+     "expected": {
+      "prefix": "Hello World",
+      "repeat": " ",
+      "times": 989,
+      "base64": false
+     },
+     "id": 5
+    },
+    {
+     "spanner": "a",
+     "expected": {
+      "prefix": "a",
+      "repeat": " ",
+      "times": 999,
+      "base64": false
+     },
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": {
+      "prefix": "こんにちは世界 😀",
+      "repeat": " ",
+      "times": 990,
+      "base64": false
+     },
+     "id": 8
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": {
+      "prefix": "O'Brien",
+      "repeat": " ",
+      "times": 993,
+      "base64": false
+     },
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "nchar_to_str1000_table",
+   "column": "nchar_to_str1000_col",
+   "sourceType": "NCHAR(1000)",
+   "sourceDdlType": "NCHAR(1000)",
+   "spannerType": "STRING(1000)",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"nchar_to_str1000_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": " ",
+     "expected": {
+      "prefix": "",
+      "repeat": " ",
+      "times": 1000,
+      "base64": false
+     },
+     "id": 2
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": {
+      "prefix": "DROP TABLE",
+      "repeat": " ",
+      "times": 990,
+      "base64": false
+     },
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 1000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 1000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "Hello World",
+     "expected": {
+      "prefix": "Hello World",
+      "repeat": " ",
+      "times": 989,
+      "base64": false
+     },
+     "id": 5
+    },
+    {
+     "spanner": "a",
+     "expected": {
+      "prefix": "a",
+      "repeat": " ",
+      "times": 999,
+      "base64": false
+     },
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": {
+      "prefix": "こんにちは世界 😀",
+      "repeat": " ",
+      "times": 990,
+      "base64": false
+     },
+     "id": 8
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": {
+      "prefix": "O'Brien",
+      "repeat": " ",
+      "times": 993,
+      "base64": false
+     },
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "nchar_to_bytes_table",
+   "column": "nchar_to_bytes_col",
+   "sourceType": "NCHAR(1000)",
+   "sourceDdlType": "NCHAR(1000)",
+   "spannerType": "BYTES(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "Spanner BYTES hold the UTF-8 bytes of the text; expected Oracle value is the decoded text.",
+   "readExpr": "\"nchar_to_bytes_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": "IA==",
+     "expected": {
+      "prefix": "",
+      "repeat": " ",
+      "times": 1000,
+      "base64": false
+     },
+     "id": 2
+    },
+    {
+     "spanner": "RFJPUCBUQUJMRQ==",
+     "expected": {
+      "prefix": "DROP TABLE",
+      "repeat": " ",
+      "times": 990,
+      "base64": false
+     },
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 1000,
+      "base64": true
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 1000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "SGVsbG8gV29ybGQ=",
+     "expected": {
+      "prefix": "Hello World",
+      "repeat": " ",
+      "times": 989,
+      "base64": false
+     },
+     "id": 5
+    },
+    {
+     "spanner": "YQ==",
+     "expected": {
+      "prefix": "a",
+      "repeat": " ",
+      "times": 999,
+      "base64": false
+     },
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "44GT44KT44Gr44Gh44Gv5LiW55WMIPCfmIA=",
+     "expected": {
+      "prefix": "こんにちは世界 😀",
+      "repeat": " ",
+      "times": 990,
+      "base64": false
+     },
+     "id": 8
+    },
+    {
+     "spanner": "TydCcmllbg==",
+     "expected": {
+      "prefix": "O'Brien",
+      "repeat": " ",
+      "times": 993,
+      "base64": false
+     },
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "nchar_pk_table",
+   "column": "nchar_pk_col",
+   "sourceType": "NCHAR(1000)",
+   "sourceDdlType": "NCHAR(1000)",
+   "spannerType": "STRING(MAX)",
+   "scenario": "C",
+   "pk": true,
+   "note": "",
+   "readExpr": "\"nchar_pk_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": " ",
+     "expected": {
+      "prefix": "",
+      "repeat": " ",
+      "times": 1000,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": {
+      "prefix": "DROP TABLE",
+      "repeat": " ",
+      "times": 990,
+      "base64": false
+     }
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 1000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 1000,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "Hello World",
+     "expected": {
+      "prefix": "Hello World",
+      "repeat": " ",
+      "times": 989,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "a",
+     "expected": {
+      "prefix": "a",
+      "repeat": " ",
+      "times": 999,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": {
+      "prefix": "こんにちは世界 😀",
+      "repeat": " ",
+      "times": 990,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": {
+      "prefix": "O'Brien",
+      "repeat": " ",
+      "times": 993,
+      "base64": false
+     }
+    }
+   ]
+  },
+  {
+   "table": "nchar_varying_table",
+   "column": "nchar_varying_col",
+   "sourceType": "NCHAR VARYING(2000)",
+   "sourceDdlType": "NCHAR VARYING(2000)",
+   "spannerType": "STRING(MAX)",
+   "scenario": "A",
+   "pk": false,
+   "note": "CSV '' is stored as NULL by Oracle; CSV <32767 A> is capped at the column max (MAX_STRING_SIZE=STANDARD).",
+   "readExpr": "\"nchar_varying_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": " ",
+     "expected": " ",
+     "id": 2
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": "DROP TABLE",
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "Hello World",
+     "expected": "Hello World",
+     "id": 5
+    },
+    {
+     "spanner": "a",
+     "expected": "a",
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": "こんにちは世界 😀",
+     "id": 8
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": "O'Brien",
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "nchar_varying_to_str2000_table",
+   "column": "nchar_varying_to_str2000_col",
+   "sourceType": "NCHAR VARYING(2000)",
+   "sourceDdlType": "NCHAR VARYING(2000)",
+   "spannerType": "STRING(2000)",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"nchar_varying_to_str2000_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": " ",
+     "expected": " ",
+     "id": 2
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": "DROP TABLE",
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "Hello World",
+     "expected": "Hello World",
+     "id": 5
+    },
+    {
+     "spanner": "a",
+     "expected": "a",
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": "こんにちは世界 😀",
+     "id": 8
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": "O'Brien",
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "nchar_varying_to_bytes_table",
+   "column": "nchar_varying_to_bytes_col",
+   "sourceType": "NCHAR VARYING(2000)",
+   "sourceDdlType": "NCHAR VARYING(2000)",
+   "spannerType": "BYTES(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "Spanner BYTES hold the UTF-8 bytes of the text; expected Oracle value is the decoded text.",
+   "readExpr": "\"nchar_varying_to_bytes_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": "IA==",
+     "expected": " ",
+     "id": 2
+    },
+    {
+     "spanner": "RFJPUCBUQUJMRQ==",
+     "expected": "DROP TABLE",
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": true
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "SGVsbG8gV29ybGQ=",
+     "expected": "Hello World",
+     "id": 5
+    },
+    {
+     "spanner": "YQ==",
+     "expected": "a",
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "44GT44KT44Gr44Gh44Gv5LiW55WMIPCfmIA=",
+     "expected": "こんにちは世界 😀",
+     "id": 8
+    },
+    {
+     "spanner": "TydCcmllbg==",
+     "expected": "O'Brien",
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "nchar_varying_pk_table",
+   "column": "nchar_varying_pk_col",
+   "sourceType": "NCHAR VARYING(2000)",
+   "sourceDdlType": "NCHAR VARYING(2000)",
+   "spannerType": "STRING(MAX)",
+   "scenario": "C",
+   "pk": true,
+   "note": "",
+   "readExpr": "\"nchar_varying_pk_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": " ",
+     "expected": " "
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": "DROP TABLE"
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "Hello World",
+     "expected": "Hello World"
+    },
+    {
+     "spanner": "a",
+     "expected": "a"
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": "こんにちは世界 😀"
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": "O'Brien"
+    }
+   ]
+  },
+  {
+   "table": "nat_character_table",
+   "column": "nat_character_col",
+   "sourceType": "NATIONAL CHARACTER(1000)",
+   "sourceDdlType": "NATIONAL CHARACTER(1000)",
+   "spannerType": "STRING(MAX)",
+   "scenario": "A",
+   "pk": false,
+   "note": "CSV '' is stored as NULL by Oracle; CSV <32767 A> is capped at the column max (MAX_STRING_SIZE=STANDARD).",
+   "readExpr": "\"nat_character_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": " ",
+     "expected": {
+      "prefix": "",
+      "repeat": " ",
+      "times": 1000,
+      "base64": false
+     },
+     "id": 2
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": {
+      "prefix": "DROP TABLE",
+      "repeat": " ",
+      "times": 990,
+      "base64": false
+     },
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 1000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 1000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "Hello World",
+     "expected": {
+      "prefix": "Hello World",
+      "repeat": " ",
+      "times": 989,
+      "base64": false
+     },
+     "id": 5
+    },
+    {
+     "spanner": "a",
+     "expected": {
+      "prefix": "a",
+      "repeat": " ",
+      "times": 999,
+      "base64": false
+     },
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": {
+      "prefix": "こんにちは世界 😀",
+      "repeat": " ",
+      "times": 990,
+      "base64": false
+     },
+     "id": 8
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": {
+      "prefix": "O'Brien",
+      "repeat": " ",
+      "times": 993,
+      "base64": false
+     },
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "nat_character_to_str1000_table",
+   "column": "nat_character_to_str1000_col",
+   "sourceType": "NATIONAL CHARACTER(1000)",
+   "sourceDdlType": "NATIONAL CHARACTER(1000)",
+   "spannerType": "STRING(1000)",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"nat_character_to_str1000_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": " ",
+     "expected": {
+      "prefix": "",
+      "repeat": " ",
+      "times": 1000,
+      "base64": false
+     },
+     "id": 2
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": {
+      "prefix": "DROP TABLE",
+      "repeat": " ",
+      "times": 990,
+      "base64": false
+     },
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 1000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 1000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "Hello World",
+     "expected": {
+      "prefix": "Hello World",
+      "repeat": " ",
+      "times": 989,
+      "base64": false
+     },
+     "id": 5
+    },
+    {
+     "spanner": "a",
+     "expected": {
+      "prefix": "a",
+      "repeat": " ",
+      "times": 999,
+      "base64": false
+     },
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": {
+      "prefix": "こんにちは世界 😀",
+      "repeat": " ",
+      "times": 990,
+      "base64": false
+     },
+     "id": 8
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": {
+      "prefix": "O'Brien",
+      "repeat": " ",
+      "times": 993,
+      "base64": false
+     },
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "nat_character_to_bytes_table",
+   "column": "nat_character_to_bytes_col",
+   "sourceType": "NATIONAL CHARACTER(1000)",
+   "sourceDdlType": "NATIONAL CHARACTER(1000)",
+   "spannerType": "BYTES(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "Spanner BYTES hold the UTF-8 bytes of the text; expected Oracle value is the decoded text.",
+   "readExpr": "\"nat_character_to_bytes_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": "IA==",
+     "expected": {
+      "prefix": "",
+      "repeat": " ",
+      "times": 1000,
+      "base64": false
+     },
+     "id": 2
+    },
+    {
+     "spanner": "RFJPUCBUQUJMRQ==",
+     "expected": {
+      "prefix": "DROP TABLE",
+      "repeat": " ",
+      "times": 990,
+      "base64": false
+     },
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 1000,
+      "base64": true
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 1000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "SGVsbG8gV29ybGQ=",
+     "expected": {
+      "prefix": "Hello World",
+      "repeat": " ",
+      "times": 989,
+      "base64": false
+     },
+     "id": 5
+    },
+    {
+     "spanner": "YQ==",
+     "expected": {
+      "prefix": "a",
+      "repeat": " ",
+      "times": 999,
+      "base64": false
+     },
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "44GT44KT44Gr44Gh44Gv5LiW55WMIPCfmIA=",
+     "expected": {
+      "prefix": "こんにちは世界 😀",
+      "repeat": " ",
+      "times": 990,
+      "base64": false
+     },
+     "id": 8
+    },
+    {
+     "spanner": "TydCcmllbg==",
+     "expected": {
+      "prefix": "O'Brien",
+      "repeat": " ",
+      "times": 993,
+      "base64": false
+     },
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "nat_character_pk_table",
+   "column": "nat_character_pk_col",
+   "sourceType": "NATIONAL CHARACTER(1000)",
+   "sourceDdlType": "NATIONAL CHARACTER(1000)",
+   "spannerType": "STRING(MAX)",
+   "scenario": "C",
+   "pk": true,
+   "note": "",
+   "readExpr": "\"nat_character_pk_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": " ",
+     "expected": {
+      "prefix": "",
+      "repeat": " ",
+      "times": 1000,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": {
+      "prefix": "DROP TABLE",
+      "repeat": " ",
+      "times": 990,
+      "base64": false
+     }
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 1000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 1000,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "Hello World",
+     "expected": {
+      "prefix": "Hello World",
+      "repeat": " ",
+      "times": 989,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "a",
+     "expected": {
+      "prefix": "a",
+      "repeat": " ",
+      "times": 999,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": {
+      "prefix": "こんにちは世界 😀",
+      "repeat": " ",
+      "times": 990,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": {
+      "prefix": "O'Brien",
+      "repeat": " ",
+      "times": 993,
+      "base64": false
+     }
+    }
+   ]
+  },
+  {
+   "table": "nat_char_table",
+   "column": "nat_char_col",
+   "sourceType": "NATIONAL CHAR(1000)",
+   "sourceDdlType": "NATIONAL CHAR(1000)",
+   "spannerType": "STRING(MAX)",
+   "scenario": "A",
+   "pk": false,
+   "note": "CSV '' is stored as NULL by Oracle; CSV <32767 A> is capped at the column max (MAX_STRING_SIZE=STANDARD).",
+   "readExpr": "\"nat_char_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": " ",
+     "expected": {
+      "prefix": "",
+      "repeat": " ",
+      "times": 1000,
+      "base64": false
+     },
+     "id": 2
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": {
+      "prefix": "DROP TABLE",
+      "repeat": " ",
+      "times": 990,
+      "base64": false
+     },
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 1000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 1000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "Hello World",
+     "expected": {
+      "prefix": "Hello World",
+      "repeat": " ",
+      "times": 989,
+      "base64": false
+     },
+     "id": 5
+    },
+    {
+     "spanner": "a",
+     "expected": {
+      "prefix": "a",
+      "repeat": " ",
+      "times": 999,
+      "base64": false
+     },
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": {
+      "prefix": "こんにちは世界 😀",
+      "repeat": " ",
+      "times": 990,
+      "base64": false
+     },
+     "id": 8
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": {
+      "prefix": "O'Brien",
+      "repeat": " ",
+      "times": 993,
+      "base64": false
+     },
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "nat_char_to_str1000_table",
+   "column": "nat_char_to_str1000_col",
+   "sourceType": "NATIONAL CHAR(1000)",
+   "sourceDdlType": "NATIONAL CHAR(1000)",
+   "spannerType": "STRING(1000)",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"nat_char_to_str1000_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": " ",
+     "expected": {
+      "prefix": "",
+      "repeat": " ",
+      "times": 1000,
+      "base64": false
+     },
+     "id": 2
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": {
+      "prefix": "DROP TABLE",
+      "repeat": " ",
+      "times": 990,
+      "base64": false
+     },
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 1000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 1000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "Hello World",
+     "expected": {
+      "prefix": "Hello World",
+      "repeat": " ",
+      "times": 989,
+      "base64": false
+     },
+     "id": 5
+    },
+    {
+     "spanner": "a",
+     "expected": {
+      "prefix": "a",
+      "repeat": " ",
+      "times": 999,
+      "base64": false
+     },
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": {
+      "prefix": "こんにちは世界 😀",
+      "repeat": " ",
+      "times": 990,
+      "base64": false
+     },
+     "id": 8
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": {
+      "prefix": "O'Brien",
+      "repeat": " ",
+      "times": 993,
+      "base64": false
+     },
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "nat_char_to_bytes_table",
+   "column": "nat_char_to_bytes_col",
+   "sourceType": "NATIONAL CHAR(1000)",
+   "sourceDdlType": "NATIONAL CHAR(1000)",
+   "spannerType": "BYTES(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "Spanner BYTES hold the UTF-8 bytes of the text; expected Oracle value is the decoded text.",
+   "readExpr": "\"nat_char_to_bytes_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": "IA==",
+     "expected": {
+      "prefix": "",
+      "repeat": " ",
+      "times": 1000,
+      "base64": false
+     },
+     "id": 2
+    },
+    {
+     "spanner": "RFJPUCBUQUJMRQ==",
+     "expected": {
+      "prefix": "DROP TABLE",
+      "repeat": " ",
+      "times": 990,
+      "base64": false
+     },
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 1000,
+      "base64": true
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 1000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "SGVsbG8gV29ybGQ=",
+     "expected": {
+      "prefix": "Hello World",
+      "repeat": " ",
+      "times": 989,
+      "base64": false
+     },
+     "id": 5
+    },
+    {
+     "spanner": "YQ==",
+     "expected": {
+      "prefix": "a",
+      "repeat": " ",
+      "times": 999,
+      "base64": false
+     },
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "44GT44KT44Gr44Gh44Gv5LiW55WMIPCfmIA=",
+     "expected": {
+      "prefix": "こんにちは世界 😀",
+      "repeat": " ",
+      "times": 990,
+      "base64": false
+     },
+     "id": 8
+    },
+    {
+     "spanner": "TydCcmllbg==",
+     "expected": {
+      "prefix": "O'Brien",
+      "repeat": " ",
+      "times": 993,
+      "base64": false
+     },
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "nat_char_pk_table",
+   "column": "nat_char_pk_col",
+   "sourceType": "NATIONAL CHAR(1000)",
+   "sourceDdlType": "NATIONAL CHAR(1000)",
+   "spannerType": "STRING(MAX)",
+   "scenario": "C",
+   "pk": true,
+   "note": "",
+   "readExpr": "\"nat_char_pk_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": " ",
+     "expected": {
+      "prefix": "",
+      "repeat": " ",
+      "times": 1000,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": {
+      "prefix": "DROP TABLE",
+      "repeat": " ",
+      "times": 990,
+      "base64": false
+     }
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 1000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 1000,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "Hello World",
+     "expected": {
+      "prefix": "Hello World",
+      "repeat": " ",
+      "times": 989,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "a",
+     "expected": {
+      "prefix": "a",
+      "repeat": " ",
+      "times": 999,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": {
+      "prefix": "こんにちは世界 😀",
+      "repeat": " ",
+      "times": 990,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": {
+      "prefix": "O'Brien",
+      "repeat": " ",
+      "times": 993,
+      "base64": false
+     }
+    }
+   ]
+  },
+  {
+   "table": "nat_characvar_table",
+   "column": "nat_characvar_col",
+   "sourceType": "NATIONAL CHARACTER VARYING(2000)",
+   "sourceDdlType": "NATIONAL CHARACTER VARYING(2000)",
+   "spannerType": "STRING(MAX)",
+   "scenario": "A",
+   "pk": false,
+   "note": "CSV '' is stored as NULL by Oracle; CSV <32767 A> is capped at the column max (MAX_STRING_SIZE=STANDARD).",
+   "readExpr": "\"nat_characvar_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": " ",
+     "expected": " ",
+     "id": 2
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": "DROP TABLE",
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "Hello World",
+     "expected": "Hello World",
+     "id": 5
+    },
+    {
+     "spanner": "a",
+     "expected": "a",
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": "こんにちは世界 😀",
+     "id": 8
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": "O'Brien",
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "nat_characvar_to_str2000_table",
+   "column": "nat_characvar_to_str2000_col",
+   "sourceType": "NATIONAL CHARACTER VARYING(2000)",
+   "sourceDdlType": "NATIONAL CHARACTER VARYING(2000)",
+   "spannerType": "STRING(2000)",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"nat_characvar_to_str2000_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": " ",
+     "expected": " ",
+     "id": 2
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": "DROP TABLE",
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "Hello World",
+     "expected": "Hello World",
+     "id": 5
+    },
+    {
+     "spanner": "a",
+     "expected": "a",
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": "こんにちは世界 😀",
+     "id": 8
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": "O'Brien",
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "nat_characvar_to_bytes_table",
+   "column": "nat_characvar_to_bytes_col",
+   "sourceType": "NATIONAL CHARACTER VARYING(2000)",
+   "sourceDdlType": "NATIONAL CHARACTER VARYING(2000)",
+   "spannerType": "BYTES(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "Spanner BYTES hold the UTF-8 bytes of the text; expected Oracle value is the decoded text.",
+   "readExpr": "\"nat_characvar_to_bytes_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": "IA==",
+     "expected": " ",
+     "id": 2
+    },
+    {
+     "spanner": "RFJPUCBUQUJMRQ==",
+     "expected": "DROP TABLE",
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": true
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "SGVsbG8gV29ybGQ=",
+     "expected": "Hello World",
+     "id": 5
+    },
+    {
+     "spanner": "YQ==",
+     "expected": "a",
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "44GT44KT44Gr44Gh44Gv5LiW55WMIPCfmIA=",
+     "expected": "こんにちは世界 😀",
+     "id": 8
+    },
+    {
+     "spanner": "TydCcmllbg==",
+     "expected": "O'Brien",
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "nat_characvar_pk_table",
+   "column": "nat_characvar_pk_col",
+   "sourceType": "NATIONAL CHARACTER VARYING(2000)",
+   "sourceDdlType": "NATIONAL CHARACTER VARYING(2000)",
+   "spannerType": "STRING(MAX)",
+   "scenario": "C",
+   "pk": true,
+   "note": "",
+   "readExpr": "\"nat_characvar_pk_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": " ",
+     "expected": " "
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": "DROP TABLE"
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "Hello World",
+     "expected": "Hello World"
+    },
+    {
+     "spanner": "a",
+     "expected": "a"
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": "こんにちは世界 😀"
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": "O'Brien"
+    }
+   ]
+  },
+  {
+   "table": "nat_charvar_table",
+   "column": "nat_charvar_col",
+   "sourceType": "NATIONAL CHAR VARYING(2000)",
+   "sourceDdlType": "NATIONAL CHAR VARYING(2000)",
+   "spannerType": "STRING(MAX)",
+   "scenario": "A",
+   "pk": false,
+   "note": "CSV '' is stored as NULL by Oracle; CSV <32767 A> is capped at the column max (MAX_STRING_SIZE=STANDARD).",
+   "readExpr": "\"nat_charvar_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": " ",
+     "expected": " ",
+     "id": 2
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": "DROP TABLE",
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "Hello World",
+     "expected": "Hello World",
+     "id": 5
+    },
+    {
+     "spanner": "a",
+     "expected": "a",
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": "こんにちは世界 😀",
+     "id": 8
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": "O'Brien",
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "nat_charvar_to_str2000_table",
+   "column": "nat_charvar_to_str2000_col",
+   "sourceType": "NATIONAL CHAR VARYING(2000)",
+   "sourceDdlType": "NATIONAL CHAR VARYING(2000)",
+   "spannerType": "STRING(2000)",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"nat_charvar_to_str2000_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": " ",
+     "expected": " ",
+     "id": 2
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": "DROP TABLE",
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "Hello World",
+     "expected": "Hello World",
+     "id": 5
+    },
+    {
+     "spanner": "a",
+     "expected": "a",
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": "こんにちは世界 😀",
+     "id": 8
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": "O'Brien",
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "nat_charvar_to_bytes_table",
+   "column": "nat_charvar_to_bytes_col",
+   "sourceType": "NATIONAL CHAR VARYING(2000)",
+   "sourceDdlType": "NATIONAL CHAR VARYING(2000)",
+   "spannerType": "BYTES(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "Spanner BYTES hold the UTF-8 bytes of the text; expected Oracle value is the decoded text.",
+   "readExpr": "\"nat_charvar_to_bytes_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": "IA==",
+     "expected": " ",
+     "id": 2
+    },
+    {
+     "spanner": "RFJPUCBUQUJMRQ==",
+     "expected": "DROP TABLE",
+     "id": 3
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": true
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "id": 4
+    },
+    {
+     "spanner": "SGVsbG8gV29ybGQ=",
+     "expected": "Hello World",
+     "id": 5
+    },
+    {
+     "spanner": "YQ==",
+     "expected": "a",
+     "id": 6
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 7
+    },
+    {
+     "spanner": "44GT44KT44Gr44Gh44Gv5LiW55WMIPCfmIA=",
+     "expected": "こんにちは世界 😀",
+     "id": 8
+    },
+    {
+     "spanner": "TydCcmllbg==",
+     "expected": "O'Brien",
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "nat_charvar_pk_table",
+   "column": "nat_charvar_pk_col",
+   "sourceType": "NATIONAL CHAR VARYING(2000)",
+   "sourceDdlType": "NATIONAL CHAR VARYING(2000)",
+   "spannerType": "STRING(MAX)",
+   "scenario": "C",
+   "pk": true,
+   "note": "",
+   "readExpr": "\"nat_charvar_pk_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": " ",
+     "expected": " "
+    },
+    {
+     "spanner": "DROP TABLE",
+     "expected": "DROP TABLE"
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 2000,
+      "base64": false
+     }
+    },
+    {
+     "spanner": "Hello World",
+     "expected": "Hello World"
+    },
+    {
+     "spanner": "a",
+     "expected": "a"
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": "こんにちは世界 😀"
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": "O'Brien"
+    }
+   ]
+  },
+  {
+   "table": "number_table",
+   "column": "number_col",
+   "sourceType": "NUMBER",
+   "sourceDdlType": "NUMBER",
+   "spannerType": "NUMERIC",
+   "scenario": "A",
+   "pk": false,
+   "note": "CSV 1e38 and +/-(38 nines) exceed Spanner NUMERIC (29 integer digits); tested via FLOAT64/STRING.",
+   "readExpr": "\"number_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 1
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 2
+    },
+    {
+     "spanner": "123.456",
+     "expected": "123.456",
+     "id": 3
+    },
+    {
+     "spanner": "99999999999999999999999999999.999999999",
+     "expected": "99999999999999999999999999999.999999999",
+     "id": 4
+    },
+    {
+     "spanner": "-99999999999999999999999999999.999999999",
+     "expected": "-99999999999999999999999999999.999999999",
+     "id": 5
+    },
+    {
+     "spanner": "0.000000001",
+     "expected": "0.000000001",
+     "id": 6
+    },
+    {
+     "spanner": "-0.5",
+     "expected": "-0.5",
+     "id": 7
+    }
+   ]
+  },
+  {
+   "table": "number_to_float64_table",
+   "column": "number_to_float64_col",
+   "sourceType": "NUMBER",
+   "sourceDdlType": "NUMBER",
+   "spannerType": "FLOAT64",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"number_to_float64_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "1.0E38",
+     "expected": "1E38",
+     "id": 1
+    },
+    {
+     "spanner": "-1.0E38",
+     "expected": "-1E38",
+     "id": 2
+    },
+    {
+     "spanner": "0.0",
+     "expected": "0",
+     "id": 3
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 4
+    },
+    {
+     "spanner": "123.456",
+     "expected": "123.456",
+     "id": 5
+    },
+    {
+     "spanner": "1.0E-9",
+     "expected": "0.000000001",
+     "id": 6
+    },
+    {
+     "spanner": "-0.5",
+     "expected": "-0.5",
+     "id": 7
+    }
+   ]
+  },
+  {
+   "table": "number_to_str_table",
+   "column": "number_to_str_col",
+   "sourceType": "NUMBER",
+   "sourceDdlType": "NUMBER",
+   "spannerType": "STRING(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"number_to_str_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "1e38",
+     "expected": "1E38",
+     "id": 1
+    },
+    {
+     "spanner": "-1e38",
+     "expected": "-1E38",
+     "id": 2
+    },
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 3
+    },
+    {
+     "spanner": "99999999999999999999999999999999999999",
+     "expected": "99999999999999999999999999999999999999",
+     "id": 4
+    },
+    {
+     "spanner": "-99999999999999999999999999999999999999",
+     "expected": "-99999999999999999999999999999999999999",
+     "id": 5
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 6
+    },
+    {
+     "spanner": "123.456",
+     "expected": "123.456",
+     "id": 7
+    },
+    {
+     "spanner": "-0.5",
+     "expected": "-0.5",
+     "id": 8
+    }
+   ]
+  },
+  {
+   "table": "number_to_int64_table",
+   "column": "number_to_int64_col",
+   "sourceType": "NUMBER",
+   "sourceDdlType": "NUMBER",
+   "spannerType": "INT64",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"number_to_int64_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 1
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 2
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345",
+     "id": 3
+    },
+    {
+     "spanner": "-12345",
+     "expected": "-12345",
+     "id": 4
+    },
+    {
+     "spanner": "9223372036854775807",
+     "expected": "9223372036854775807",
+     "id": 5
+    },
+    {
+     "spanner": "-9223372036854775808",
+     "expected": "-9223372036854775808",
+     "id": 6
+    }
+   ]
+  },
+  {
+   "table": "numeric_table",
+   "column": "numeric_col",
+   "sourceType": "NUMERIC",
+   "sourceDdlType": "NUMERIC",
+   "spannerType": "NUMERIC",
+   "scenario": "A",
+   "pk": false,
+   "note": "Oracle NUMERIC/DECIMAL/DEC without precision = NUMBER(*,0): fractions are rounded by Oracle.",
+   "readExpr": "\"numeric_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 1
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 2
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345",
+     "id": 3
+    },
+    {
+     "spanner": "-12345",
+     "expected": "-12345",
+     "id": 4
+    },
+    {
+     "spanner": "123.456",
+     "expected": "123",
+     "id": 5
+    },
+    {
+     "spanner": "99999999999999999999999999999",
+     "expected": "99999999999999999999999999999",
+     "id": 6
+    },
+    {
+     "spanner": "-99999999999999999999999999999",
+     "expected": "-99999999999999999999999999999",
+     "id": 7
+    }
+   ]
+  },
+  {
+   "table": "numeric_to_float64_table",
+   "column": "numeric_to_float64_col",
+   "sourceType": "NUMERIC",
+   "sourceDdlType": "NUMERIC",
+   "spannerType": "FLOAT64",
+   "scenario": "B",
+   "pk": false,
+   "note": "Oracle NUMERIC/DECIMAL/DEC without precision = NUMBER(*,0): fractions are rounded by Oracle.",
+   "readExpr": "\"numeric_to_float64_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "1.0E38",
+     "expected": "1E38",
+     "id": 1
+    },
+    {
+     "spanner": "-1.0E38",
+     "expected": "-1E38",
+     "id": 2
+    },
+    {
+     "spanner": "0.0",
+     "expected": "0",
+     "id": 3
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 4
+    },
+    {
+     "spanner": "12345.0",
+     "expected": "12345",
+     "id": 5
+    },
+    {
+     "spanner": "123.456",
+     "expected": "123",
+     "id": 6
+    }
+   ]
+  },
+  {
+   "table": "numeric_to_str_table",
+   "column": "numeric_to_str_col",
+   "sourceType": "NUMERIC",
+   "sourceDdlType": "NUMERIC",
+   "spannerType": "STRING(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "Oracle NUMERIC/DECIMAL/DEC without precision = NUMBER(*,0): fractions are rounded by Oracle.",
+   "readExpr": "\"numeric_to_str_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "1e38",
+     "expected": "1E38",
+     "id": 1
+    },
+    {
+     "spanner": "-1e38",
+     "expected": "-1E38",
+     "id": 2
+    },
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 3
+    },
+    {
+     "spanner": "99999999999999999999999999999999999999",
+     "expected": "99999999999999999999999999999999999999",
+     "id": 4
+    },
+    {
+     "spanner": "-99999999999999999999999999999999999999",
+     "expected": "-99999999999999999999999999999999999999",
+     "id": 5
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 6
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345",
+     "id": 7
+    },
+    {
+     "spanner": "123.456",
+     "expected": "123",
+     "id": 8
+    }
+   ]
+  },
+  {
+   "table": "numeric_to_int64_table",
+   "column": "numeric_to_int64_col",
+   "sourceType": "NUMERIC",
+   "sourceDdlType": "NUMERIC",
+   "spannerType": "INT64",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"numeric_to_int64_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 1
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 2
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345",
+     "id": 3
+    },
+    {
+     "spanner": "-12345",
+     "expected": "-12345",
+     "id": 4
+    },
+    {
+     "spanner": "9223372036854775807",
+     "expected": "9223372036854775807",
+     "id": 5
+    },
+    {
+     "spanner": "-9223372036854775808",
+     "expected": "-9223372036854775808",
+     "id": 6
+    }
+   ]
+  },
+  {
+   "table": "decimal_table",
+   "column": "decimal_col",
+   "sourceType": "DECIMAL",
+   "sourceDdlType": "DECIMAL",
+   "spannerType": "NUMERIC",
+   "scenario": "A",
+   "pk": false,
+   "note": "Oracle NUMERIC/DECIMAL/DEC without precision = NUMBER(*,0): fractions are rounded by Oracle.",
+   "readExpr": "\"decimal_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 1
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 2
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345",
+     "id": 3
+    },
+    {
+     "spanner": "-12345",
+     "expected": "-12345",
+     "id": 4
+    },
+    {
+     "spanner": "123.456",
+     "expected": "123",
+     "id": 5
+    },
+    {
+     "spanner": "99999999999999999999999999999",
+     "expected": "99999999999999999999999999999",
+     "id": 6
+    },
+    {
+     "spanner": "-99999999999999999999999999999",
+     "expected": "-99999999999999999999999999999",
+     "id": 7
+    }
+   ]
+  },
+  {
+   "table": "decimal_to_float64_table",
+   "column": "decimal_to_float64_col",
+   "sourceType": "DECIMAL",
+   "sourceDdlType": "DECIMAL",
+   "spannerType": "FLOAT64",
+   "scenario": "B",
+   "pk": false,
+   "note": "Oracle NUMERIC/DECIMAL/DEC without precision = NUMBER(*,0): fractions are rounded by Oracle.",
+   "readExpr": "\"decimal_to_float64_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "1.0E38",
+     "expected": "1E38",
+     "id": 1
+    },
+    {
+     "spanner": "-1.0E38",
+     "expected": "-1E38",
+     "id": 2
+    },
+    {
+     "spanner": "0.0",
+     "expected": "0",
+     "id": 3
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 4
+    },
+    {
+     "spanner": "12345.0",
+     "expected": "12345",
+     "id": 5
+    },
+    {
+     "spanner": "123.456",
+     "expected": "123",
+     "id": 6
+    }
+   ]
+  },
+  {
+   "table": "decimal_to_str_table",
+   "column": "decimal_to_str_col",
+   "sourceType": "DECIMAL",
+   "sourceDdlType": "DECIMAL",
+   "spannerType": "STRING(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "Oracle NUMERIC/DECIMAL/DEC without precision = NUMBER(*,0): fractions are rounded by Oracle.",
+   "readExpr": "\"decimal_to_str_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "1e38",
+     "expected": "1E38",
+     "id": 1
+    },
+    {
+     "spanner": "-1e38",
+     "expected": "-1E38",
+     "id": 2
+    },
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 3
+    },
+    {
+     "spanner": "99999999999999999999999999999999999999",
+     "expected": "99999999999999999999999999999999999999",
+     "id": 4
+    },
+    {
+     "spanner": "-99999999999999999999999999999999999999",
+     "expected": "-99999999999999999999999999999999999999",
+     "id": 5
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 6
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345",
+     "id": 7
+    },
+    {
+     "spanner": "123.456",
+     "expected": "123",
+     "id": 8
+    }
+   ]
+  },
+  {
+   "table": "decimal_to_int64_table",
+   "column": "decimal_to_int64_col",
+   "sourceType": "DECIMAL",
+   "sourceDdlType": "DECIMAL",
+   "spannerType": "INT64",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"decimal_to_int64_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 1
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 2
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345",
+     "id": 3
+    },
+    {
+     "spanner": "-12345",
+     "expected": "-12345",
+     "id": 4
+    },
+    {
+     "spanner": "9223372036854775807",
+     "expected": "9223372036854775807",
+     "id": 5
+    },
+    {
+     "spanner": "-9223372036854775808",
+     "expected": "-9223372036854775808",
+     "id": 6
+    }
+   ]
+  },
+  {
+   "table": "dec_table",
+   "column": "dec_col",
+   "sourceType": "DEC",
+   "sourceDdlType": "DEC",
+   "spannerType": "NUMERIC",
+   "scenario": "A",
+   "pk": false,
+   "note": "Oracle NUMERIC/DECIMAL/DEC without precision = NUMBER(*,0): fractions are rounded by Oracle.",
+   "readExpr": "\"dec_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 1
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 2
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345",
+     "id": 3
+    },
+    {
+     "spanner": "-12345",
+     "expected": "-12345",
+     "id": 4
+    },
+    {
+     "spanner": "123.456",
+     "expected": "123",
+     "id": 5
+    },
+    {
+     "spanner": "99999999999999999999999999999",
+     "expected": "99999999999999999999999999999",
+     "id": 6
+    },
+    {
+     "spanner": "-99999999999999999999999999999",
+     "expected": "-99999999999999999999999999999",
+     "id": 7
+    }
+   ]
+  },
+  {
+   "table": "dec_to_float64_table",
+   "column": "dec_to_float64_col",
+   "sourceType": "DEC",
+   "sourceDdlType": "DEC",
+   "spannerType": "FLOAT64",
+   "scenario": "B",
+   "pk": false,
+   "note": "Oracle NUMERIC/DECIMAL/DEC without precision = NUMBER(*,0): fractions are rounded by Oracle.",
+   "readExpr": "\"dec_to_float64_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "1.0E38",
+     "expected": "1E38",
+     "id": 1
+    },
+    {
+     "spanner": "-1.0E38",
+     "expected": "-1E38",
+     "id": 2
+    },
+    {
+     "spanner": "0.0",
+     "expected": "0",
+     "id": 3
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 4
+    },
+    {
+     "spanner": "12345.0",
+     "expected": "12345",
+     "id": 5
+    },
+    {
+     "spanner": "123.456",
+     "expected": "123",
+     "id": 6
+    }
+   ]
+  },
+  {
+   "table": "dec_to_str_table",
+   "column": "dec_to_str_col",
+   "sourceType": "DEC",
+   "sourceDdlType": "DEC",
+   "spannerType": "STRING(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "Oracle NUMERIC/DECIMAL/DEC without precision = NUMBER(*,0): fractions are rounded by Oracle.",
+   "readExpr": "\"dec_to_str_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "1e38",
+     "expected": "1E38",
+     "id": 1
+    },
+    {
+     "spanner": "-1e38",
+     "expected": "-1E38",
+     "id": 2
+    },
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 3
+    },
+    {
+     "spanner": "99999999999999999999999999999999999999",
+     "expected": "99999999999999999999999999999999999999",
+     "id": 4
+    },
+    {
+     "spanner": "-99999999999999999999999999999999999999",
+     "expected": "-99999999999999999999999999999999999999",
+     "id": 5
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 6
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345",
+     "id": 7
+    },
+    {
+     "spanner": "123.456",
+     "expected": "123",
+     "id": 8
+    }
+   ]
+  },
+  {
+   "table": "dec_to_int64_table",
+   "column": "dec_to_int64_col",
+   "sourceType": "DEC",
+   "sourceDdlType": "DEC",
+   "spannerType": "INT64",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"dec_to_int64_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 1
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 2
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345",
+     "id": 3
+    },
+    {
+     "spanner": "-12345",
+     "expected": "-12345",
+     "id": 4
+    },
+    {
+     "spanner": "9223372036854775807",
+     "expected": "9223372036854775807",
+     "id": 5
+    },
+    {
+     "spanner": "-9223372036854775808",
+     "expected": "-9223372036854775808",
+     "id": 6
+    }
+   ]
+  },
+  {
+   "table": "float_table",
+   "column": "float_col",
+   "sourceType": "FLOAT",
+   "sourceDdlType": "FLOAT",
+   "spannerType": "NUMERIC",
+   "scenario": "A",
+   "pk": false,
+   "note": "CSV +/-1.79769313486231E308, NaN and Infinity are not representable in Oracle NUMBER-based FLOAT; boundaries use +/-1E125 and 1E-130.",
+   "readExpr": "\"float_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 1
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 2
+    },
+    {
+     "spanner": "3.14159",
+     "expected": "3.14159",
+     "id": 3
+    },
+    {
+     "spanner": "-123.456",
+     "expected": "-123.456",
+     "id": 4
+    },
+    {
+     "spanner": "0.1",
+     "expected": "0.1",
+     "id": 5
+    },
+    {
+     "spanner": "12345678.5",
+     "expected": "12345678.5",
+     "id": 6
+    }
+   ]
+  },
+  {
+   "table": "float_to_float64_table",
+   "column": "float_to_float64_col",
+   "sourceType": "FLOAT",
+   "sourceDdlType": "FLOAT",
+   "spannerType": "FLOAT64",
+   "scenario": "B",
+   "pk": false,
+   "note": "CSV +/-1.79769313486231E308, NaN and Infinity are not representable in Oracle NUMBER-based FLOAT; boundaries use +/-1E125 and 1E-130.",
+   "readExpr": "\"float_to_float64_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "1.0E38",
+     "expected": "1E38",
+     "id": 1
+    },
+    {
+     "spanner": "-1.0E38",
+     "expected": "-1E38",
+     "id": 2
+    },
+    {
+     "spanner": "0.0",
+     "expected": "0",
+     "id": 3
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 4
+    },
+    {
+     "spanner": "3.14159",
+     "expected": "3.14159",
+     "id": 5
+    },
+    {
+     "spanner": "1.0E125",
+     "expected": "1E125",
+     "id": 6
+    },
+    {
+     "spanner": "-1.0E125",
+     "expected": "-1E125",
+     "id": 7
+    },
+    {
+     "spanner": "1.0E-130",
+     "expected": "1E-130",
+     "id": 8
+    },
+    {
+     "spanner": "0.1",
+     "expected": "0.1",
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "float_to_str_table",
+   "column": "float_to_str_col",
+   "sourceType": "FLOAT",
+   "sourceDdlType": "FLOAT",
+   "spannerType": "STRING(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "CSV +/-1.79769313486231E308, NaN and Infinity are not representable in Oracle NUMBER-based FLOAT; boundaries use +/-1E125 and 1E-130.",
+   "readExpr": "\"float_to_str_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "1e38",
+     "expected": "1E38",
+     "id": 1
+    },
+    {
+     "spanner": "-1e38",
+     "expected": "-1E38",
+     "id": 2
+    },
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 3
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 4
+    },
+    {
+     "spanner": "3.14159",
+     "expected": "3.14159",
+     "id": 5
+    },
+    {
+     "spanner": "1E125",
+     "expected": "1E125",
+     "id": 6
+    },
+    {
+     "spanner": "-1E125",
+     "expected": "-1E125",
+     "id": 7
+    },
+    {
+     "spanner": "1E-130",
+     "expected": "1E-130",
+     "id": 8
+    },
+    {
+     "spanner": "0.1",
+     "expected": "0.1",
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "float_to_int64_table",
+   "column": "float_to_int64_col",
+   "sourceType": "FLOAT",
+   "sourceDdlType": "FLOAT",
+   "spannerType": "INT64",
+   "scenario": "B",
+   "pk": false,
+   "note": "CSV +/-1.79769313486231E308, NaN and Infinity are not representable in Oracle NUMBER-based FLOAT; boundaries use +/-1E125 and 1E-130.",
+   "readExpr": "\"float_to_int64_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 1
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 2
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345",
+     "id": 3
+    },
+    {
+     "spanner": "-12345",
+     "expected": "-12345",
+     "id": 4
+    }
+   ]
+  },
+  {
+   "table": "double_prec_table",
+   "column": "double_prec_col",
+   "sourceType": "DOUBLE PRECISION",
+   "sourceDdlType": "DOUBLE PRECISION",
+   "spannerType": "FLOAT64",
+   "scenario": "A",
+   "pk": false,
+   "note": "CSV +/-1.79769313486231E308, NaN and Infinity are not representable in Oracle NUMBER-based FLOAT; boundaries use +/-1E125 and 1E-130.",
+   "readExpr": "\"double_prec_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "1.0E38",
+     "expected": "1E38",
+     "id": 1
+    },
+    {
+     "spanner": "-1.0E38",
+     "expected": "-1E38",
+     "id": 2
+    },
+    {
+     "spanner": "0.0",
+     "expected": "0",
+     "id": 3
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 4
+    },
+    {
+     "spanner": "3.14159",
+     "expected": "3.14159",
+     "id": 5
+    },
+    {
+     "spanner": "1.0E125",
+     "expected": "1E125",
+     "id": 6
+    },
+    {
+     "spanner": "-1.0E125",
+     "expected": "-1E125",
+     "id": 7
+    },
+    {
+     "spanner": "1.0E-130",
+     "expected": "1E-130",
+     "id": 8
+    },
+    {
+     "spanner": "0.1",
+     "expected": "0.1",
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "double_prec_to_numeric_table",
+   "column": "double_prec_to_numeric_col",
+   "sourceType": "DOUBLE PRECISION",
+   "sourceDdlType": "DOUBLE PRECISION",
+   "spannerType": "NUMERIC",
+   "scenario": "B",
+   "pk": false,
+   "note": "CSV +/-1.79769313486231E308, NaN and Infinity are not representable in Oracle NUMBER-based FLOAT; boundaries use +/-1E125 and 1E-130.",
+   "readExpr": "\"double_prec_to_numeric_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 1
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 2
+    },
+    {
+     "spanner": "3.14159",
+     "expected": "3.14159",
+     "id": 3
+    },
+    {
+     "spanner": "-123.456",
+     "expected": "-123.456",
+     "id": 4
+    },
+    {
+     "spanner": "0.1",
+     "expected": "0.1",
+     "id": 5
+    },
+    {
+     "spanner": "12345678.5",
+     "expected": "12345678.5",
+     "id": 6
+    }
+   ]
+  },
+  {
+   "table": "double_prec_to_str_table",
+   "column": "double_prec_to_str_col",
+   "sourceType": "DOUBLE PRECISION",
+   "sourceDdlType": "DOUBLE PRECISION",
+   "spannerType": "STRING(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "CSV +/-1.79769313486231E308, NaN and Infinity are not representable in Oracle NUMBER-based FLOAT; boundaries use +/-1E125 and 1E-130.",
+   "readExpr": "\"double_prec_to_str_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "1e38",
+     "expected": "1E38",
+     "id": 1
+    },
+    {
+     "spanner": "-1e38",
+     "expected": "-1E38",
+     "id": 2
+    },
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 3
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 4
+    },
+    {
+     "spanner": "3.14159",
+     "expected": "3.14159",
+     "id": 5
+    },
+    {
+     "spanner": "1E125",
+     "expected": "1E125",
+     "id": 6
+    },
+    {
+     "spanner": "-1E125",
+     "expected": "-1E125",
+     "id": 7
+    },
+    {
+     "spanner": "1E-130",
+     "expected": "1E-130",
+     "id": 8
+    },
+    {
+     "spanner": "0.1",
+     "expected": "0.1",
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "double_prec_to_int64_table",
+   "column": "double_prec_to_int64_col",
+   "sourceType": "DOUBLE PRECISION",
+   "sourceDdlType": "DOUBLE PRECISION",
+   "spannerType": "INT64",
+   "scenario": "B",
+   "pk": false,
+   "note": "CSV +/-1.79769313486231E308, NaN and Infinity are not representable in Oracle NUMBER-based FLOAT; boundaries use +/-1E125 and 1E-130.",
+   "readExpr": "\"double_prec_to_int64_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 1
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 2
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345",
+     "id": 3
+    },
+    {
+     "spanner": "-12345",
+     "expected": "-12345",
+     "id": 4
+    }
+   ]
+  },
+  {
+   "table": "real_table",
+   "column": "real_col",
+   "sourceType": "REAL",
+   "sourceDdlType": "REAL",
+   "spannerType": "FLOAT64",
+   "scenario": "A",
+   "pk": false,
+   "note": "CSV +/-1.79769313486231E308, NaN and Infinity are not representable in Oracle NUMBER-based FLOAT; boundaries use +/-1E125 and 1E-130.",
+   "readExpr": "\"real_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "1.0E38",
+     "expected": "1E38",
+     "id": 1
+    },
+    {
+     "spanner": "-1.0E38",
+     "expected": "-1E38",
+     "id": 2
+    },
+    {
+     "spanner": "0.0",
+     "expected": "0",
+     "id": 3
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 4
+    },
+    {
+     "spanner": "3.14159",
+     "expected": "3.14159",
+     "id": 5
+    },
+    {
+     "spanner": "1.0E125",
+     "expected": "1E125",
+     "id": 6
+    },
+    {
+     "spanner": "-1.0E125",
+     "expected": "-1E125",
+     "id": 7
+    },
+    {
+     "spanner": "1.0E-130",
+     "expected": "1E-130",
+     "id": 8
+    },
+    {
+     "spanner": "0.1",
+     "expected": "0.1",
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "real_to_numeric_table",
+   "column": "real_to_numeric_col",
+   "sourceType": "REAL",
+   "sourceDdlType": "REAL",
+   "spannerType": "NUMERIC",
+   "scenario": "B",
+   "pk": false,
+   "note": "CSV +/-1.79769313486231E308, NaN and Infinity are not representable in Oracle NUMBER-based FLOAT; boundaries use +/-1E125 and 1E-130.",
+   "readExpr": "\"real_to_numeric_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 1
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 2
+    },
+    {
+     "spanner": "3.14159",
+     "expected": "3.14159",
+     "id": 3
+    },
+    {
+     "spanner": "-123.456",
+     "expected": "-123.456",
+     "id": 4
+    },
+    {
+     "spanner": "0.1",
+     "expected": "0.1",
+     "id": 5
+    },
+    {
+     "spanner": "12345678.5",
+     "expected": "12345678.5",
+     "id": 6
+    }
+   ]
+  },
+  {
+   "table": "real_to_str_table",
+   "column": "real_to_str_col",
+   "sourceType": "REAL",
+   "sourceDdlType": "REAL",
+   "spannerType": "STRING(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "CSV +/-1.79769313486231E308, NaN and Infinity are not representable in Oracle NUMBER-based FLOAT; boundaries use +/-1E125 and 1E-130.",
+   "readExpr": "\"real_to_str_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "1e38",
+     "expected": "1E38",
+     "id": 1
+    },
+    {
+     "spanner": "-1e38",
+     "expected": "-1E38",
+     "id": 2
+    },
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 3
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 4
+    },
+    {
+     "spanner": "3.14159",
+     "expected": "3.14159",
+     "id": 5
+    },
+    {
+     "spanner": "1E125",
+     "expected": "1E125",
+     "id": 6
+    },
+    {
+     "spanner": "-1E125",
+     "expected": "-1E125",
+     "id": 7
+    },
+    {
+     "spanner": "1E-130",
+     "expected": "1E-130",
+     "id": 8
+    },
+    {
+     "spanner": "0.1",
+     "expected": "0.1",
+     "id": 9
+    }
+   ]
+  },
+  {
+   "table": "real_to_int64_table",
+   "column": "real_to_int64_col",
+   "sourceType": "REAL",
+   "sourceDdlType": "REAL",
+   "spannerType": "INT64",
+   "scenario": "B",
+   "pk": false,
+   "note": "CSV +/-1.79769313486231E308, NaN and Infinity are not representable in Oracle NUMBER-based FLOAT; boundaries use +/-1E125 and 1E-130.",
+   "readExpr": "\"real_to_int64_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 1
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 2
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345",
+     "id": 3
+    },
+    {
+     "spanner": "-12345",
+     "expected": "-12345",
+     "id": 4
+    }
+   ]
+  },
+  {
+   "table": "binary_float_table",
+   "column": "binary_float_col",
+   "sourceType": "BINARY_FLOAT",
+   "sourceDdlType": "BINARY_FLOAT",
+   "spannerType": "FLOAT32",
+   "scenario": "A",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"binary_float_col\"",
+   "compare": "float",
+   "rows": [
+    {
+     "spanner": "1.0E38",
+     "expected": "1.0E38",
+     "id": 1
+    },
+    {
+     "spanner": "-1.0E38",
+     "expected": "-1.0E38",
+     "id": 2
+    },
+    {
+     "spanner": "0.0",
+     "expected": "0.0",
+     "id": 3
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 4
+    },
+    {
+     "spanner": "3.40282E38",
+     "expected": "3.40282E38",
+     "id": 5
+    },
+    {
+     "spanner": "-3.40282E38",
+     "expected": "-3.40282E38",
+     "id": 6
+    },
+    {
+     "spanner": "NaN",
+     "expected": "NaN",
+     "id": 7
+    },
+    {
+     "spanner": "Infinity",
+     "expected": "Infinity",
+     "id": 8
+    },
+    {
+     "spanner": "3.14",
+     "expected": "3.14",
+     "id": 9
+    },
+    {
+     "spanner": "-Infinity",
+     "expected": "-Infinity",
+     "id": 10
+    },
+    {
+     "spanner": "1.17549435E-38",
+     "expected": "1.17549435E-38",
+     "id": 11
+    }
+   ]
+  },
+  {
+   "table": "binary_float_to_float64_table",
+   "column": "binary_float_to_float64_col",
+   "sourceType": "BINARY_FLOAT",
+   "sourceDdlType": "BINARY_FLOAT",
+   "spannerType": "FLOAT64",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"binary_float_to_float64_col\"",
+   "compare": "float",
+   "rows": [
+    {
+     "spanner": "1.0E38",
+     "expected": "1.0E38",
+     "id": 1
+    },
+    {
+     "spanner": "-1.0E38",
+     "expected": "-1.0E38",
+     "id": 2
+    },
+    {
+     "spanner": "0.0",
+     "expected": "0.0",
+     "id": 3
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 4
+    },
+    {
+     "spanner": "3.40282E38",
+     "expected": "3.40282E38",
+     "id": 5
+    },
+    {
+     "spanner": "-3.40282E38",
+     "expected": "-3.40282E38",
+     "id": 6
+    },
+    {
+     "spanner": "NaN",
+     "expected": "NaN",
+     "id": 7
+    },
+    {
+     "spanner": "Infinity",
+     "expected": "Infinity",
+     "id": 8
+    },
+    {
+     "spanner": "3.14",
+     "expected": "3.14",
+     "id": 9
+    },
+    {
+     "spanner": "-Infinity",
+     "expected": "-Infinity",
+     "id": 10
+    },
+    {
+     "spanner": "1.17549435E-38",
+     "expected": "1.17549435E-38",
+     "id": 11
+    }
+   ]
+  },
+  {
+   "table": "binary_float_to_str_table",
+   "column": "binary_float_to_str_col",
+   "sourceType": "BINARY_FLOAT",
+   "sourceDdlType": "BINARY_FLOAT",
+   "spannerType": "STRING(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"binary_float_to_str_col\"",
+   "compare": "float",
+   "rows": [
+    {
+     "spanner": "1.0E38",
+     "expected": "1.0E38",
+     "id": 1
+    },
+    {
+     "spanner": "-1.0E38",
+     "expected": "-1.0E38",
+     "id": 2
+    },
+    {
+     "spanner": "0.0",
+     "expected": "0.0",
+     "id": 3
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 4
+    },
+    {
+     "spanner": "3.40282E38",
+     "expected": "3.40282E38",
+     "id": 5
+    },
+    {
+     "spanner": "-3.40282E38",
+     "expected": "-3.40282E38",
+     "id": 6
+    },
+    {
+     "spanner": "NaN",
+     "expected": "NaN",
+     "id": 7
+    },
+    {
+     "spanner": "Infinity",
+     "expected": "Infinity",
+     "id": 8
+    },
+    {
+     "spanner": "3.14",
+     "expected": "3.14",
+     "id": 9
+    },
+    {
+     "spanner": "-Infinity",
+     "expected": "-Infinity",
+     "id": 10
+    },
+    {
+     "spanner": "1.17549435E-38",
+     "expected": "1.17549435E-38",
+     "id": 11
+    }
+   ]
+  },
+  {
+   "table": "binary_float_to_numeric_table",
+   "column": "binary_float_to_numeric_col",
+   "sourceType": "BINARY_FLOAT",
+   "sourceDdlType": "BINARY_FLOAT",
+   "spannerType": "NUMERIC",
+   "scenario": "B",
+   "pk": false,
+   "note": "NaN/Infinity and values beyond 29 integer digits are not representable in Spanner NUMERIC.",
+   "readExpr": "\"binary_float_to_numeric_col\"",
+   "compare": "float",
+   "rows": [
+    {
+     "spanner": "0",
+     "expected": "0.0",
+     "id": 1
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 2
+    },
+    {
+     "spanner": "3.14",
+     "expected": "3.14",
+     "id": 3
+    },
+    {
+     "spanner": "-12.5",
+     "expected": "-12.5",
+     "id": 4
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345.0",
+     "id": 5
+    }
+   ]
+  },
+  {
+   "table": "binary_float_to_int64_table",
+   "column": "binary_float_to_int64_col",
+   "sourceType": "BINARY_FLOAT",
+   "sourceDdlType": "BINARY_FLOAT",
+   "spannerType": "INT64",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"binary_float_to_int64_col\"",
+   "compare": "float",
+   "rows": [
+    {
+     "spanner": "0",
+     "expected": "0.0",
+     "id": 1
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 2
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345.0",
+     "id": 3
+    },
+    {
+     "spanner": "-12345",
+     "expected": "-12345.0",
+     "id": 4
+    }
+   ]
+  },
+  {
+   "table": "binary_double_table",
+   "column": "binary_double_col",
+   "sourceType": "BINARY_DOUBLE",
+   "sourceDdlType": "BINARY_DOUBLE",
+   "spannerType": "FLOAT64",
+   "scenario": "A",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"binary_double_col\"",
+   "compare": "double",
+   "rows": [
+    {
+     "spanner": "1.0E38",
+     "expected": "1.0E38",
+     "id": 1
+    },
+    {
+     "spanner": "-1.0E38",
+     "expected": "-1.0E38",
+     "id": 2
+    },
+    {
+     "spanner": "0.0",
+     "expected": "0.0",
+     "id": 3
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 4
+    },
+    {
+     "spanner": "1.79769313486231E308",
+     "expected": "1.79769313486231E308",
+     "id": 5
+    },
+    {
+     "spanner": "-1.79769313486231E308",
+     "expected": "-1.79769313486231E308",
+     "id": 6
+    },
+    {
+     "spanner": "NaN",
+     "expected": "NaN",
+     "id": 7
+    },
+    {
+     "spanner": "Infinity",
+     "expected": "Infinity",
+     "id": 8
+    },
+    {
+     "spanner": "3.141592653589793",
+     "expected": "3.141592653589793",
+     "id": 9
+    },
+    {
+     "spanner": "-Infinity",
+     "expected": "-Infinity",
+     "id": 10
+    },
+    {
+     "spanner": "2.2250738585072014E-308",
+     "expected": "2.2250738585072014E-308",
+     "id": 11
+    }
+   ]
+  },
+  {
+   "table": "binary_double_to_str_table",
+   "column": "binary_double_to_str_col",
+   "sourceType": "BINARY_DOUBLE",
+   "sourceDdlType": "BINARY_DOUBLE",
+   "spannerType": "STRING(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"binary_double_to_str_col\"",
+   "compare": "double",
+   "rows": [
+    {
+     "spanner": "1.0E38",
+     "expected": "1.0E38",
+     "id": 1
+    },
+    {
+     "spanner": "-1.0E38",
+     "expected": "-1.0E38",
+     "id": 2
+    },
+    {
+     "spanner": "0.0",
+     "expected": "0.0",
+     "id": 3
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 4
+    },
+    {
+     "spanner": "1.79769313486231E308",
+     "expected": "1.79769313486231E308",
+     "id": 5
+    },
+    {
+     "spanner": "-1.79769313486231E308",
+     "expected": "-1.79769313486231E308",
+     "id": 6
+    },
+    {
+     "spanner": "NaN",
+     "expected": "NaN",
+     "id": 7
+    },
+    {
+     "spanner": "Infinity",
+     "expected": "Infinity",
+     "id": 8
+    },
+    {
+     "spanner": "3.141592653589793",
+     "expected": "3.141592653589793",
+     "id": 9
+    },
+    {
+     "spanner": "-Infinity",
+     "expected": "-Infinity",
+     "id": 10
+    },
+    {
+     "spanner": "2.2250738585072014E-308",
+     "expected": "2.2250738585072014E-308",
+     "id": 11
+    }
+   ]
+  },
+  {
+   "table": "binary_double_to_numeric_table",
+   "column": "binary_double_to_numeric_col",
+   "sourceType": "BINARY_DOUBLE",
+   "sourceDdlType": "BINARY_DOUBLE",
+   "spannerType": "NUMERIC",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"binary_double_to_numeric_col\"",
+   "compare": "double",
+   "rows": [
+    {
+     "spanner": "0",
+     "expected": "0.0",
+     "id": 1
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 2
+    },
+    {
+     "spanner": "3.141592654",
+     "expected": "3.141592654",
+     "id": 3
+    },
+    {
+     "spanner": "-12.5",
+     "expected": "-12.5",
+     "id": 4
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345.0",
+     "id": 5
+    }
+   ]
+  },
+  {
+   "table": "binary_double_to_int64_table",
+   "column": "binary_double_to_int64_col",
+   "sourceType": "BINARY_DOUBLE",
+   "sourceDdlType": "BINARY_DOUBLE",
+   "spannerType": "INT64",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"binary_double_to_int64_col\"",
+   "compare": "double",
+   "rows": [
+    {
+     "spanner": "0",
+     "expected": "0.0",
+     "id": 1
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 2
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345.0",
+     "id": 3
+    },
+    {
+     "spanner": "-12345",
+     "expected": "-12345.0",
+     "id": 4
+    }
+   ]
+  },
+  {
+   "table": "integer_table",
+   "column": "integer_col",
+   "sourceType": "INTEGER",
+   "sourceDdlType": "INTEGER",
+   "spannerType": "INT64",
+   "scenario": "A",
+   "pk": false,
+   "note": "CSV 1e38 and 38 nines exceed INT64; tested via STRING/FLOAT64.",
+   "readExpr": "\"integer_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 1
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 2
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345",
+     "id": 3
+    },
+    {
+     "spanner": "-12345",
+     "expected": "-12345",
+     "id": 4
+    },
+    {
+     "spanner": "9223372036854775807",
+     "expected": "9223372036854775807",
+     "id": 5
+    },
+    {
+     "spanner": "-9223372036854775808",
+     "expected": "-9223372036854775808",
+     "id": 6
+    }
+   ]
+  },
+  {
+   "table": "integer_to_numeric_table",
+   "column": "integer_to_numeric_col",
+   "sourceType": "INTEGER",
+   "sourceDdlType": "INTEGER",
+   "spannerType": "NUMERIC",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"integer_to_numeric_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 1
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 2
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345",
+     "id": 3
+    },
+    {
+     "spanner": "99999999999999999999999999999",
+     "expected": "99999999999999999999999999999",
+     "id": 4
+    },
+    {
+     "spanner": "-99999999999999999999999999999",
+     "expected": "-99999999999999999999999999999",
+     "id": 5
+    }
+   ]
+  },
+  {
+   "table": "integer_to_str_table",
+   "column": "integer_to_str_col",
+   "sourceType": "INTEGER",
+   "sourceDdlType": "INTEGER",
+   "spannerType": "STRING(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"integer_to_str_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "1e38",
+     "expected": "1E38",
+     "id": 1
+    },
+    {
+     "spanner": "-1e38",
+     "expected": "-1E38",
+     "id": 2
+    },
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 3
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 4
+    },
+    {
+     "spanner": "99999999999999999999999999999999999999",
+     "expected": "99999999999999999999999999999999999999",
+     "id": 5
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345",
+     "id": 6
+    }
+   ]
+  },
+  {
+   "table": "integer_to_float64_table",
+   "column": "integer_to_float64_col",
+   "sourceType": "INTEGER",
+   "sourceDdlType": "INTEGER",
+   "spannerType": "FLOAT64",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"integer_to_float64_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "1.0E38",
+     "expected": "1E38",
+     "id": 1
+    },
+    {
+     "spanner": "-1.0E38",
+     "expected": "-1E38",
+     "id": 2
+    },
+    {
+     "spanner": "0.0",
+     "expected": "0",
+     "id": 3
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 4
+    },
+    {
+     "spanner": "12345.0",
+     "expected": "12345",
+     "id": 5
+    }
+   ]
+  },
+  {
+   "table": "integer_pk_table",
+   "column": "integer_pk_col",
+   "sourceType": "INTEGER",
+   "sourceDdlType": "INTEGER",
+   "spannerType": "INT64",
+   "scenario": "C",
+   "pk": true,
+   "note": "",
+   "readExpr": "\"integer_pk_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "0",
+     "expected": "0"
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345"
+    },
+    {
+     "spanner": "-12345",
+     "expected": "-12345"
+    },
+    {
+     "spanner": "9223372036854775807",
+     "expected": "9223372036854775807"
+    },
+    {
+     "spanner": "-9223372036854775808",
+     "expected": "-9223372036854775808"
+    }
+   ]
+  },
+  {
+   "table": "int_table",
+   "column": "int_col",
+   "sourceType": "INT",
+   "sourceDdlType": "INT",
+   "spannerType": "INT64",
+   "scenario": "A",
+   "pk": false,
+   "note": "CSV 1e38 and 38 nines exceed INT64; tested via STRING/FLOAT64.",
+   "readExpr": "\"int_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 1
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 2
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345",
+     "id": 3
+    },
+    {
+     "spanner": "-12345",
+     "expected": "-12345",
+     "id": 4
+    },
+    {
+     "spanner": "9223372036854775807",
+     "expected": "9223372036854775807",
+     "id": 5
+    },
+    {
+     "spanner": "-9223372036854775808",
+     "expected": "-9223372036854775808",
+     "id": 6
+    }
+   ]
+  },
+  {
+   "table": "int_to_numeric_table",
+   "column": "int_to_numeric_col",
+   "sourceType": "INT",
+   "sourceDdlType": "INT",
+   "spannerType": "NUMERIC",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"int_to_numeric_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 1
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 2
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345",
+     "id": 3
+    },
+    {
+     "spanner": "99999999999999999999999999999",
+     "expected": "99999999999999999999999999999",
+     "id": 4
+    },
+    {
+     "spanner": "-99999999999999999999999999999",
+     "expected": "-99999999999999999999999999999",
+     "id": 5
+    }
+   ]
+  },
+  {
+   "table": "int_to_str_table",
+   "column": "int_to_str_col",
+   "sourceType": "INT",
+   "sourceDdlType": "INT",
+   "spannerType": "STRING(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"int_to_str_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "1e38",
+     "expected": "1E38",
+     "id": 1
+    },
+    {
+     "spanner": "-1e38",
+     "expected": "-1E38",
+     "id": 2
+    },
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 3
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 4
+    },
+    {
+     "spanner": "99999999999999999999999999999999999999",
+     "expected": "99999999999999999999999999999999999999",
+     "id": 5
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345",
+     "id": 6
+    }
+   ]
+  },
+  {
+   "table": "int_to_float64_table",
+   "column": "int_to_float64_col",
+   "sourceType": "INT",
+   "sourceDdlType": "INT",
+   "spannerType": "FLOAT64",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"int_to_float64_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "1.0E38",
+     "expected": "1E38",
+     "id": 1
+    },
+    {
+     "spanner": "-1.0E38",
+     "expected": "-1E38",
+     "id": 2
+    },
+    {
+     "spanner": "0.0",
+     "expected": "0",
+     "id": 3
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 4
+    },
+    {
+     "spanner": "12345.0",
+     "expected": "12345",
+     "id": 5
+    }
+   ]
+  },
+  {
+   "table": "int_pk_table",
+   "column": "int_pk_col",
+   "sourceType": "INT",
+   "sourceDdlType": "INT",
+   "spannerType": "INT64",
+   "scenario": "C",
+   "pk": true,
+   "note": "",
+   "readExpr": "\"int_pk_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "0",
+     "expected": "0"
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345"
+    },
+    {
+     "spanner": "-12345",
+     "expected": "-12345"
+    },
+    {
+     "spanner": "9223372036854775807",
+     "expected": "9223372036854775807"
+    },
+    {
+     "spanner": "-9223372036854775808",
+     "expected": "-9223372036854775808"
+    }
+   ]
+  },
+  {
+   "table": "smallint_table",
+   "column": "smallint_col",
+   "sourceType": "SMALLINT",
+   "sourceDdlType": "SMALLINT",
+   "spannerType": "INT64",
+   "scenario": "A",
+   "pk": false,
+   "note": "CSV 1e38 and 38 nines exceed INT64; tested via STRING/FLOAT64.",
+   "readExpr": "\"smallint_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 1
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 2
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345",
+     "id": 3
+    },
+    {
+     "spanner": "-12345",
+     "expected": "-12345",
+     "id": 4
+    },
+    {
+     "spanner": "9223372036854775807",
+     "expected": "9223372036854775807",
+     "id": 5
+    },
+    {
+     "spanner": "-9223372036854775808",
+     "expected": "-9223372036854775808",
+     "id": 6
+    }
+   ]
+  },
+  {
+   "table": "smallint_to_numeric_table",
+   "column": "smallint_to_numeric_col",
+   "sourceType": "SMALLINT",
+   "sourceDdlType": "SMALLINT",
+   "spannerType": "NUMERIC",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"smallint_to_numeric_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 1
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 2
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345",
+     "id": 3
+    },
+    {
+     "spanner": "99999999999999999999999999999",
+     "expected": "99999999999999999999999999999",
+     "id": 4
+    },
+    {
+     "spanner": "-99999999999999999999999999999",
+     "expected": "-99999999999999999999999999999",
+     "id": 5
+    }
+   ]
+  },
+  {
+   "table": "smallint_to_str_table",
+   "column": "smallint_to_str_col",
+   "sourceType": "SMALLINT",
+   "sourceDdlType": "SMALLINT",
+   "spannerType": "STRING(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"smallint_to_str_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "1e38",
+     "expected": "1E38",
+     "id": 1
+    },
+    {
+     "spanner": "-1e38",
+     "expected": "-1E38",
+     "id": 2
+    },
+    {
+     "spanner": "0",
+     "expected": "0",
+     "id": 3
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 4
+    },
+    {
+     "spanner": "99999999999999999999999999999999999999",
+     "expected": "99999999999999999999999999999999999999",
+     "id": 5
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345",
+     "id": 6
+    }
+   ]
+  },
+  {
+   "table": "smallint_to_float64_table",
+   "column": "smallint_to_float64_col",
+   "sourceType": "SMALLINT",
+   "sourceDdlType": "SMALLINT",
+   "spannerType": "FLOAT64",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"smallint_to_float64_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "1.0E38",
+     "expected": "1E38",
+     "id": 1
+    },
+    {
+     "spanner": "-1.0E38",
+     "expected": "-1E38",
+     "id": 2
+    },
+    {
+     "spanner": "0.0",
+     "expected": "0",
+     "id": 3
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 4
+    },
+    {
+     "spanner": "12345.0",
+     "expected": "12345",
+     "id": 5
+    }
+   ]
+  },
+  {
+   "table": "smallint_pk_table",
+   "column": "smallint_pk_col",
+   "sourceType": "SMALLINT",
+   "sourceDdlType": "SMALLINT",
+   "spannerType": "INT64",
+   "scenario": "C",
+   "pk": true,
+   "note": "",
+   "readExpr": "\"smallint_pk_col\"",
+   "compare": "number",
+   "rows": [
+    {
+     "spanner": "0",
+     "expected": "0"
+    },
+    {
+     "spanner": "12345",
+     "expected": "12345"
+    },
+    {
+     "spanner": "-12345",
+     "expected": "-12345"
+    },
+    {
+     "spanner": "9223372036854775807",
+     "expected": "9223372036854775807"
+    },
+    {
+     "spanner": "-9223372036854775808",
+     "expected": "-9223372036854775808"
+    }
+   ]
+  },
+  {
+   "table": "date_table",
+   "column": "date_col",
+   "sourceType": "DATE",
+   "sourceDdlType": "DATE",
+   "spannerType": "TIMESTAMP",
+   "scenario": "A",
+   "pk": false,
+   "note": "",
+   "readExpr": "TO_CHAR(\"date_col\", 'YYYY-MM-DD HH24:MI:SS')",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "0001-01-01T00:00:00Z",
+     "expected": "0001-01-01 00:00:00",
+     "id": 1
+    },
+    {
+     "spanner": "9999-12-31T23:59:59Z",
+     "expected": "9999-12-31 23:59:59",
+     "id": 2
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 3
+    },
+    {
+     "spanner": "2024-01-15T10:30:45Z",
+     "expected": "2024-01-15 10:30:45",
+     "id": 4
+    },
+    {
+     "spanner": "2024-02-29T23:59:59Z",
+     "expected": "2024-02-29 23:59:59",
+     "id": 5
+    },
+    {
+     "spanner": "1970-01-01T00:00:00Z",
+     "expected": "1970-01-01 00:00:00",
+     "id": 6
+    }
+   ]
+  },
+  {
+   "table": "date_to_date_table",
+   "column": "date_to_date_col",
+   "sourceType": "DATE",
+   "sourceDdlType": "DATE",
+   "spannerType": "DATE",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "TO_CHAR(\"date_to_date_col\", 'YYYY-MM-DD HH24:MI:SS')",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "0001-01-01",
+     "expected": "0001-01-01 00:00:00",
+     "id": 1
+    },
+    {
+     "spanner": "9999-12-31",
+     "expected": "9999-12-31 00:00:00",
+     "id": 2
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 3
+    },
+    {
+     "spanner": "2024-01-15",
+     "expected": "2024-01-15 00:00:00",
+     "id": 4
+    },
+    {
+     "spanner": "2024-02-29",
+     "expected": "2024-02-29 00:00:00",
+     "id": 5
+    },
+    {
+     "spanner": "1970-01-01",
+     "expected": "1970-01-01 00:00:00",
+     "id": 6
+    }
+   ]
+  },
+  {
+   "table": "date_to_str_table",
+   "column": "date_to_str_col",
+   "sourceType": "DATE",
+   "sourceDdlType": "DATE",
+   "spannerType": "STRING(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "Spanner strings hold RFC 3339 timestamps.",
+   "readExpr": "TO_CHAR(\"date_to_str_col\", 'YYYY-MM-DD HH24:MI:SS')",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "0001-01-01T00:00:00Z",
+     "expected": "0001-01-01 00:00:00",
+     "id": 1
+    },
+    {
+     "spanner": "9999-12-31T23:59:59Z",
+     "expected": "9999-12-31 23:59:59",
+     "id": 2
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 3
+    },
+    {
+     "spanner": "2024-01-15T10:30:45Z",
+     "expected": "2024-01-15 10:30:45",
+     "id": 4
+    },
+    {
+     "spanner": "2024-02-29T23:59:59Z",
+     "expected": "2024-02-29 23:59:59",
+     "id": 5
+    },
+    {
+     "spanner": "1970-01-01T00:00:00Z",
+     "expected": "1970-01-01 00:00:00",
+     "id": 6
+    }
+   ]
+  },
+  {
+   "table": "date_to_int64_table",
+   "column": "date_to_int64_col",
+   "sourceType": "DATE",
+   "sourceDdlType": "DATE",
+   "spannerType": "INT64",
+   "scenario": "B",
+   "pk": false,
+   "note": "Spanner INT64 holds epoch microseconds.",
+   "readExpr": "TO_CHAR(\"date_to_int64_col\", 'YYYY-MM-DD HH24:MI:SS')",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "-62135596800000000",
+     "expected": "0001-01-01 00:00:00",
+     "id": 1
+    },
+    {
+     "spanner": "253402300799000000",
+     "expected": "9999-12-31 23:59:59",
+     "id": 2
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 3
+    },
+    {
+     "spanner": "1705314645000000",
+     "expected": "2024-01-15 10:30:45",
+     "id": 4
+    },
+    {
+     "spanner": "1709251199000000",
+     "expected": "2024-02-29 23:59:59",
+     "id": 5
+    },
+    {
+     "spanner": "0",
+     "expected": "1970-01-01 00:00:00",
+     "id": 6
+    }
+   ]
+  },
+  {
+   "table": "date_pk_table",
+   "column": "date_pk_col",
+   "sourceType": "DATE",
+   "sourceDdlType": "DATE",
+   "spannerType": "TIMESTAMP",
+   "scenario": "C",
+   "pk": true,
+   "note": "",
+   "readExpr": "TO_CHAR(\"date_pk_col\", 'YYYY-MM-DD HH24:MI:SS')",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "0001-01-01T00:00:00Z",
+     "expected": "0001-01-01 00:00:00"
+    },
+    {
+     "spanner": "9999-12-31T23:59:59Z",
+     "expected": "9999-12-31 23:59:59"
+    },
+    {
+     "spanner": "2024-01-15T10:30:45Z",
+     "expected": "2024-01-15 10:30:45"
+    },
+    {
+     "spanner": "2024-02-29T23:59:59Z",
+     "expected": "2024-02-29 23:59:59"
+    },
+    {
+     "spanner": "1970-01-01T00:00:00Z",
+     "expected": "1970-01-01 00:00:00"
+    }
+   ]
+  },
+  {
+   "table": "timestamp_table",
+   "column": "timestamp_col",
+   "sourceType": "TIMESTAMP",
+   "sourceDdlType": "TIMESTAMP(6)",
+   "spannerType": "TIMESTAMP",
+   "scenario": "A",
+   "pk": false,
+   "note": "",
+   "readExpr": "TO_CHAR(\"timestamp_col\", 'YYYY-MM-DD HH24:MI:SS.FF6')",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "0001-01-01T00:00:00Z",
+     "expected": "0001-01-01 00:00:00.000000",
+     "id": 1
+    },
+    {
+     "spanner": "9999-12-31T23:59:59Z",
+     "expected": "9999-12-31 23:59:59.000000",
+     "id": 2
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 3
+    },
+    {
+     "spanner": "2024-01-15T10:30:45.123456Z",
+     "expected": "2024-01-15 10:30:45.123456",
+     "id": 4
+    },
+    {
+     "spanner": "2024-02-29T12:00:00Z",
+     "expected": "2024-02-29 12:00:00.000000",
+     "id": 5
+    },
+    {
+     "spanner": "9999-12-31T23:59:59.999999Z",
+     "expected": "9999-12-31 23:59:59.999999",
+     "id": 6
+    },
+    {
+     "spanner": "1970-01-01T00:00:00Z",
+     "expected": "1970-01-01 00:00:00.000000",
+     "id": 7
+    }
+   ]
+  },
+  {
+   "table": "timestamp_to_str_table",
+   "column": "timestamp_to_str_col",
+   "sourceType": "TIMESTAMP",
+   "sourceDdlType": "TIMESTAMP(6)",
+   "spannerType": "STRING(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "Spanner strings hold RFC 3339 timestamps.",
+   "readExpr": "TO_CHAR(\"timestamp_to_str_col\", 'YYYY-MM-DD HH24:MI:SS.FF6')",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "0001-01-01T00:00:00Z",
+     "expected": "0001-01-01 00:00:00.000000",
+     "id": 1
+    },
+    {
+     "spanner": "9999-12-31T23:59:59Z",
+     "expected": "9999-12-31 23:59:59.000000",
+     "id": 2
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 3
+    },
+    {
+     "spanner": "2024-01-15T10:30:45.123456Z",
+     "expected": "2024-01-15 10:30:45.123456",
+     "id": 4
+    },
+    {
+     "spanner": "2024-02-29T12:00:00Z",
+     "expected": "2024-02-29 12:00:00.000000",
+     "id": 5
+    },
+    {
+     "spanner": "9999-12-31T23:59:59.999999Z",
+     "expected": "9999-12-31 23:59:59.999999",
+     "id": 6
+    },
+    {
+     "spanner": "1970-01-01T00:00:00Z",
+     "expected": "1970-01-01 00:00:00.000000",
+     "id": 7
+    }
+   ]
+  },
+  {
+   "table": "timestamp_to_int64_table",
+   "column": "timestamp_to_int64_col",
+   "sourceType": "TIMESTAMP",
+   "sourceDdlType": "TIMESTAMP(6)",
+   "spannerType": "INT64",
+   "scenario": "B",
+   "pk": false,
+   "note": "Spanner INT64 holds epoch microseconds.",
+   "readExpr": "TO_CHAR(\"timestamp_to_int64_col\", 'YYYY-MM-DD HH24:MI:SS.FF6')",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "-62135596800000000",
+     "expected": "0001-01-01 00:00:00.000000",
+     "id": 1
+    },
+    {
+     "spanner": "253402300799000000",
+     "expected": "9999-12-31 23:59:59.000000",
+     "id": 2
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 3
+    },
+    {
+     "spanner": "1705314645123456",
+     "expected": "2024-01-15 10:30:45.123456",
+     "id": 4
+    },
+    {
+     "spanner": "1709208000000000",
+     "expected": "2024-02-29 12:00:00.000000",
+     "id": 5
+    },
+    {
+     "spanner": "253402300799999999",
+     "expected": "9999-12-31 23:59:59.999999",
+     "id": 6
+    },
+    {
+     "spanner": "0",
+     "expected": "1970-01-01 00:00:00.000000",
+     "id": 7
+    }
+   ]
+  },
+  {
+   "table": "timestamp_pk_table",
+   "column": "timestamp_pk_col",
+   "sourceType": "TIMESTAMP",
+   "sourceDdlType": "TIMESTAMP(6)",
+   "spannerType": "TIMESTAMP",
+   "scenario": "C",
+   "pk": true,
+   "note": "",
+   "readExpr": "TO_CHAR(\"timestamp_pk_col\", 'YYYY-MM-DD HH24:MI:SS.FF6')",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "0001-01-01T00:00:00Z",
+     "expected": "0001-01-01 00:00:00.000000"
+    },
+    {
+     "spanner": "9999-12-31T23:59:59Z",
+     "expected": "9999-12-31 23:59:59.000000"
+    },
+    {
+     "spanner": "2024-01-15T10:30:45.123456Z",
+     "expected": "2024-01-15 10:30:45.123456"
+    },
+    {
+     "spanner": "2024-02-29T12:00:00Z",
+     "expected": "2024-02-29 12:00:00.000000"
+    },
+    {
+     "spanner": "9999-12-31T23:59:59.999999Z",
+     "expected": "9999-12-31 23:59:59.999999"
+    },
+    {
+     "spanner": "1970-01-01T00:00:00Z",
+     "expected": "1970-01-01 00:00:00.000000"
+    }
+   ]
+  },
+  {
+   "table": "timestamp_tz_table",
+   "column": "timestamp_tz_col",
+   "sourceType": "TIMESTAMP WITH TIME ZONE",
+   "sourceDdlType": "TIMESTAMP(6) WITH TIME ZONE",
+   "spannerType": "TIMESTAMP",
+   "scenario": "A",
+   "pk": false,
+   "note": "",
+   "readExpr": "TO_CHAR(SYS_EXTRACT_UTC(\"timestamp_tz_col\"), 'YYYY-MM-DD HH24:MI:SS.FF6')",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "0001-01-01T00:00:00Z",
+     "expected": "0001-01-01 00:00:00.000000",
+     "id": 1
+    },
+    {
+     "spanner": "9999-12-31T23:59:59Z",
+     "expected": "9999-12-31 23:59:59.000000",
+     "id": 2
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 3
+    },
+    {
+     "spanner": "2024-01-15T10:30:45.123456Z",
+     "expected": "2024-01-15 10:30:45.123456",
+     "id": 4
+    },
+    {
+     "spanner": "2024-02-29T12:00:00Z",
+     "expected": "2024-02-29 12:00:00.000000",
+     "id": 5
+    },
+    {
+     "spanner": "9999-12-31T23:59:59.999999Z",
+     "expected": "9999-12-31 23:59:59.999999",
+     "id": 6
+    },
+    {
+     "spanner": "1970-01-01T00:00:00Z",
+     "expected": "1970-01-01 00:00:00.000000",
+     "id": 7
+    }
+   ]
+  },
+  {
+   "table": "timestamp_tz_to_str_table",
+   "column": "timestamp_tz_to_str_col",
+   "sourceType": "TIMESTAMP WITH TIME ZONE",
+   "sourceDdlType": "TIMESTAMP(6) WITH TIME ZONE",
+   "spannerType": "STRING(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "Spanner strings hold RFC 3339 timestamps.",
+   "readExpr": "TO_CHAR(SYS_EXTRACT_UTC(\"timestamp_tz_to_str_col\"), 'YYYY-MM-DD HH24:MI:SS.FF6')",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "0001-01-01T00:00:00Z",
+     "expected": "0001-01-01 00:00:00.000000",
+     "id": 1
+    },
+    {
+     "spanner": "9999-12-31T23:59:59Z",
+     "expected": "9999-12-31 23:59:59.000000",
+     "id": 2
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 3
+    },
+    {
+     "spanner": "2024-01-15T10:30:45.123456Z",
+     "expected": "2024-01-15 10:30:45.123456",
+     "id": 4
+    },
+    {
+     "spanner": "2024-02-29T12:00:00Z",
+     "expected": "2024-02-29 12:00:00.000000",
+     "id": 5
+    },
+    {
+     "spanner": "9999-12-31T23:59:59.999999Z",
+     "expected": "9999-12-31 23:59:59.999999",
+     "id": 6
+    },
+    {
+     "spanner": "1970-01-01T00:00:00Z",
+     "expected": "1970-01-01 00:00:00.000000",
+     "id": 7
+    }
+   ]
+  },
+  {
+   "table": "timestamp_tz_to_int64_table",
+   "column": "timestamp_tz_to_int64_col",
+   "sourceType": "TIMESTAMP WITH TIME ZONE",
+   "sourceDdlType": "TIMESTAMP(6) WITH TIME ZONE",
+   "spannerType": "INT64",
+   "scenario": "B",
+   "pk": false,
+   "note": "Spanner INT64 holds epoch microseconds.",
+   "readExpr": "TO_CHAR(SYS_EXTRACT_UTC(\"timestamp_tz_to_int64_col\"), 'YYYY-MM-DD HH24:MI:SS.FF6')",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "-62135596800000000",
+     "expected": "0001-01-01 00:00:00.000000",
+     "id": 1
+    },
+    {
+     "spanner": "253402300799000000",
+     "expected": "9999-12-31 23:59:59.000000",
+     "id": 2
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 3
+    },
+    {
+     "spanner": "1705314645123456",
+     "expected": "2024-01-15 10:30:45.123456",
+     "id": 4
+    },
+    {
+     "spanner": "1709208000000000",
+     "expected": "2024-02-29 12:00:00.000000",
+     "id": 5
+    },
+    {
+     "spanner": "253402300799999999",
+     "expected": "9999-12-31 23:59:59.999999",
+     "id": 6
+    },
+    {
+     "spanner": "0",
+     "expected": "1970-01-01 00:00:00.000000",
+     "id": 7
+    }
+   ]
+  },
+  {
+   "table": "timestamp_ltz_table",
+   "column": "timestamp_ltz_col",
+   "sourceType": "TIMESTAMP WITH LOCAL TIME ZONE",
+   "sourceDdlType": "TIMESTAMP(6) WITH LOCAL TIME ZONE",
+   "spannerType": "TIMESTAMP",
+   "scenario": "A",
+   "pk": false,
+   "note": "",
+   "readExpr": "TO_CHAR(SYS_EXTRACT_UTC(\"timestamp_ltz_col\"), 'YYYY-MM-DD HH24:MI:SS.FF6')",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "0001-01-01T00:00:00Z",
+     "expected": "0001-01-01 00:00:00.000000",
+     "id": 1
+    },
+    {
+     "spanner": "9999-12-31T23:59:59Z",
+     "expected": "9999-12-31 23:59:59.000000",
+     "id": 2
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 3
+    },
+    {
+     "spanner": "2024-01-15T10:30:45.123456Z",
+     "expected": "2024-01-15 10:30:45.123456",
+     "id": 4
+    },
+    {
+     "spanner": "2024-02-29T12:00:00Z",
+     "expected": "2024-02-29 12:00:00.000000",
+     "id": 5
+    },
+    {
+     "spanner": "9999-12-31T23:59:59.999999Z",
+     "expected": "9999-12-31 23:59:59.999999",
+     "id": 6
+    },
+    {
+     "spanner": "1970-01-01T00:00:00Z",
+     "expected": "1970-01-01 00:00:00.000000",
+     "id": 7
+    }
+   ]
+  },
+  {
+   "table": "timestamp_ltz_to_str_table",
+   "column": "timestamp_ltz_to_str_col",
+   "sourceType": "TIMESTAMP WITH LOCAL TIME ZONE",
+   "sourceDdlType": "TIMESTAMP(6) WITH LOCAL TIME ZONE",
+   "spannerType": "STRING(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "Spanner strings hold RFC 3339 timestamps.",
+   "readExpr": "TO_CHAR(SYS_EXTRACT_UTC(\"timestamp_ltz_to_str_col\"), 'YYYY-MM-DD HH24:MI:SS.FF6')",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "0001-01-01T00:00:00Z",
+     "expected": "0001-01-01 00:00:00.000000",
+     "id": 1
+    },
+    {
+     "spanner": "9999-12-31T23:59:59Z",
+     "expected": "9999-12-31 23:59:59.000000",
+     "id": 2
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 3
+    },
+    {
+     "spanner": "2024-01-15T10:30:45.123456Z",
+     "expected": "2024-01-15 10:30:45.123456",
+     "id": 4
+    },
+    {
+     "spanner": "2024-02-29T12:00:00Z",
+     "expected": "2024-02-29 12:00:00.000000",
+     "id": 5
+    },
+    {
+     "spanner": "9999-12-31T23:59:59.999999Z",
+     "expected": "9999-12-31 23:59:59.999999",
+     "id": 6
+    },
+    {
+     "spanner": "1970-01-01T00:00:00Z",
+     "expected": "1970-01-01 00:00:00.000000",
+     "id": 7
+    }
+   ]
+  },
+  {
+   "table": "timestamp_ltz_to_int64_table",
+   "column": "timestamp_ltz_to_int64_col",
+   "sourceType": "TIMESTAMP WITH LOCAL TIME ZONE",
+   "sourceDdlType": "TIMESTAMP(6) WITH LOCAL TIME ZONE",
+   "spannerType": "INT64",
+   "scenario": "B",
+   "pk": false,
+   "note": "Spanner INT64 holds epoch microseconds.",
+   "readExpr": "TO_CHAR(SYS_EXTRACT_UTC(\"timestamp_ltz_to_int64_col\"), 'YYYY-MM-DD HH24:MI:SS.FF6')",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "-62135596800000000",
+     "expected": "0001-01-01 00:00:00.000000",
+     "id": 1
+    },
+    {
+     "spanner": "253402300799000000",
+     "expected": "9999-12-31 23:59:59.000000",
+     "id": 2
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 3
+    },
+    {
+     "spanner": "1705314645123456",
+     "expected": "2024-01-15 10:30:45.123456",
+     "id": 4
+    },
+    {
+     "spanner": "1709208000000000",
+     "expected": "2024-02-29 12:00:00.000000",
+     "id": 5
+    },
+    {
+     "spanner": "253402300799999999",
+     "expected": "9999-12-31 23:59:59.999999",
+     "id": 6
+    },
+    {
+     "spanner": "0",
+     "expected": "1970-01-01 00:00:00.000000",
+     "id": 7
+    }
+   ]
+  },
+  {
+   "table": "timestamp_ltz_pk_table",
+   "column": "timestamp_ltz_pk_col",
+   "sourceType": "TIMESTAMP WITH LOCAL TIME ZONE",
+   "sourceDdlType": "TIMESTAMP(6) WITH LOCAL TIME ZONE",
+   "spannerType": "TIMESTAMP",
+   "scenario": "C",
+   "pk": true,
+   "note": "",
+   "readExpr": "TO_CHAR(SYS_EXTRACT_UTC(\"timestamp_ltz_pk_col\"), 'YYYY-MM-DD HH24:MI:SS.FF6')",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "0001-01-01T00:00:00Z",
+     "expected": "0001-01-01 00:00:00.000000"
+    },
+    {
+     "spanner": "9999-12-31T23:59:59Z",
+     "expected": "9999-12-31 23:59:59.000000"
+    },
+    {
+     "spanner": "2024-01-15T10:30:45.123456Z",
+     "expected": "2024-01-15 10:30:45.123456"
+    },
+    {
+     "spanner": "2024-02-29T12:00:00Z",
+     "expected": "2024-02-29 12:00:00.000000"
+    },
+    {
+     "spanner": "9999-12-31T23:59:59.999999Z",
+     "expected": "9999-12-31 23:59:59.999999"
+    },
+    {
+     "spanner": "1970-01-01T00:00:00Z",
+     "expected": "1970-01-01 00:00:00.000000"
+    }
+   ]
+  },
+  {
+   "table": "raw_table",
+   "column": "raw_col",
+   "sourceType": "RAW",
+   "sourceDdlType": "RAW(2000)",
+   "spannerType": "BYTES(MAX)",
+   "scenario": "A",
+   "pk": false,
+   "note": "CSV '' (empty bytes) is stored as NULL by Oracle RAW.",
+   "readExpr": "\"raw_col\"",
+   "compare": "bytes",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": "IA==",
+     "expected": "IA==",
+     "id": 2
+    },
+    {
+     "spanner": "QQ==",
+     "expected": "QQ==",
+     "id": 3
+    },
+    {
+     "spanner": "RFJPUCBUQUJMRQ==",
+     "expected": "RFJPUCBUQUJMRQ==",
+     "id": 4
+    },
+    {
+     "spanner": "3q2+7w==",
+     "expected": "3q2+7w==",
+     "id": 5
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "",
+      "times": 2000,
+      "base64": false,
+      "hexRepeat": "FF"
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "",
+      "times": 2000,
+      "base64": false,
+      "hexRepeat": "FF"
+     },
+     "id": 6
+    },
+    {
+     "spanner": "AA==",
+     "expected": "AA==",
+     "id": 7
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 8
+    }
+   ]
+  },
+  {
+   "table": "raw_to_bytes2000_table",
+   "column": "raw_to_bytes2000_col",
+   "sourceType": "RAW",
+   "sourceDdlType": "RAW(2000)",
+   "spannerType": "BYTES(2000)",
+   "scenario": "B",
+   "pk": false,
+   "note": "",
+   "readExpr": "\"raw_to_bytes2000_col\"",
+   "compare": "bytes",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": "IA==",
+     "expected": "IA==",
+     "id": 2
+    },
+    {
+     "spanner": "QQ==",
+     "expected": "QQ==",
+     "id": 3
+    },
+    {
+     "spanner": "RFJPUCBUQUJMRQ==",
+     "expected": "RFJPUCBUQUJMRQ==",
+     "id": 4
+    },
+    {
+     "spanner": "3q2+7w==",
+     "expected": "3q2+7w==",
+     "id": 5
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "",
+      "times": 2000,
+      "base64": false,
+      "hexRepeat": "FF"
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "",
+      "times": 2000,
+      "base64": false,
+      "hexRepeat": "FF"
+     },
+     "id": 6
+    },
+    {
+     "spanner": "AA==",
+     "expected": "AA==",
+     "id": 7
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 8
+    }
+   ]
+  },
+  {
+   "table": "raw_to_str_table",
+   "column": "raw_to_str_col",
+   "sourceType": "RAW",
+   "sourceDdlType": "RAW(2000)",
+   "spannerType": "STRING(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "Matrix alternative STRING (Base64): Spanner strings hold the base64 text of the bytes.",
+   "readExpr": "\"raw_to_str_col\"",
+   "compare": "bytes",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": "IA==",
+     "expected": "IA==",
+     "id": 2
+    },
+    {
+     "spanner": "QQ==",
+     "expected": "QQ==",
+     "id": 3
+    },
+    {
+     "spanner": "RFJPUCBUQUJMRQ==",
+     "expected": "RFJPUCBUQUJMRQ==",
+     "id": 4
+    },
+    {
+     "spanner": "3q2+7w==",
+     "expected": "3q2+7w==",
+     "id": 5
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "/",
+      "times": 2666,
+      "base64": false,
+      "suffix": "8="
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "",
+      "times": 2000,
+      "base64": false,
+      "hexRepeat": "FF"
+     },
+     "id": 6
+    },
+    {
+     "spanner": "AA==",
+     "expected": "AA==",
+     "id": 7
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 8
+    }
+   ]
+  },
+  {
+   "table": "raw_pk_table",
+   "column": "raw_pk_col",
+   "sourceType": "RAW",
+   "sourceDdlType": "RAW(2000)",
+   "spannerType": "BYTES(MAX)",
+   "scenario": "C",
+   "pk": true,
+   "note": "",
+   "readExpr": "\"raw_pk_col\"",
+   "compare": "bytes",
+   "rows": [
+    {
+     "spanner": "IA==",
+     "expected": "IA=="
+    },
+    {
+     "spanner": "QQ==",
+     "expected": "QQ=="
+    },
+    {
+     "spanner": "RFJPUCBUQUJMRQ==",
+     "expected": "RFJPUCBUQUJMRQ=="
+    },
+    {
+     "spanner": "3q2+7w==",
+     "expected": "3q2+7w=="
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "",
+      "times": 2000,
+      "base64": false,
+      "hexRepeat": "FF"
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "",
+      "times": 2000,
+      "base64": false,
+      "hexRepeat": "FF"
+     }
+    },
+    {
+     "spanner": "AA==",
+     "expected": "AA=="
+    }
+   ]
+  },
+  {
+   "table": "blob_table",
+   "column": "blob_col",
+   "sourceType": "BLOB",
+   "sourceDdlType": "BLOB",
+   "spannerType": "BYTES(MAX)",
+   "scenario": "A",
+   "pk": false,
+   "note": "Empty Spanner BYTES are written as '' which Oracle stores as NULL (same as RAW).",
+   "readExpr": "\"blob_col\"",
+   "compare": "bytes",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 100000,
+      "base64": true
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 100000,
+      "base64": true
+     },
+     "id": 2
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 3
+    },
+    {
+     "spanner": "3q2+7w==",
+     "expected": "3q2+7w==",
+     "id": 4
+    },
+    {
+     "spanner": "AA==",
+     "expected": "AA==",
+     "id": 5
+    }
+   ]
+  },
+  {
+   "table": "blob_to_str_table",
+   "column": "blob_to_str_col",
+   "sourceType": "BLOB",
+   "sourceDdlType": "BLOB",
+   "spannerType": "STRING(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "Matrix alternative STRING(MAX) (Base64): Spanner strings hold base64 text.",
+   "readExpr": "\"blob_to_str_col\"",
+   "compare": "bytes",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 100000,
+      "base64": true
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 100000,
+      "base64": true
+     },
+     "id": 2
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 3
+    },
+    {
+     "spanner": "3q2+7w==",
+     "expected": "3q2+7w==",
+     "id": 4
+    },
+    {
+     "spanner": "AA==",
+     "expected": "AA==",
+     "id": 5
+    }
+   ]
+  },
+  {
+   "table": "clob_table",
+   "column": "clob_col",
+   "sourceType": "CLOB",
+   "sourceDdlType": "CLOB",
+   "spannerType": "STRING(MAX)",
+   "scenario": "A",
+   "pk": false,
+   "note": "CSV '' is written as '' which Oracle stores as NULL.",
+   "readExpr": "\"clob_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 100000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 100000,
+      "base64": false
+     },
+     "id": 2
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 3
+    },
+    {
+     "spanner": "Hello CLOB",
+     "expected": "Hello CLOB",
+     "id": 4
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": "こんにちは世界 😀",
+     "id": 5
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": "O'Brien",
+     "id": 6
+    }
+   ]
+  },
+  {
+   "table": "clob_to_bytes_table",
+   "column": "clob_to_bytes_col",
+   "sourceType": "CLOB",
+   "sourceDdlType": "CLOB",
+   "spannerType": "BYTES(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "Spanner BYTES hold the UTF-8 bytes of the text.",
+   "readExpr": "\"clob_to_bytes_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 100000,
+      "base64": true
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 100000,
+      "base64": false
+     },
+     "id": 2
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 3
+    },
+    {
+     "spanner": "SGVsbG8gQ0xPQg==",
+     "expected": "Hello CLOB",
+     "id": 4
+    },
+    {
+     "spanner": "44GT44KT44Gr44Gh44Gv5LiW55WMIPCfmIA=",
+     "expected": "こんにちは世界 😀",
+     "id": 5
+    },
+    {
+     "spanner": "TydCcmllbg==",
+     "expected": "O'Brien",
+     "id": 6
+    }
+   ]
+  },
+  {
+   "table": "nclob_table",
+   "column": "nclob_col",
+   "sourceType": "NCLOB",
+   "sourceDdlType": "NCLOB",
+   "spannerType": "STRING(MAX)",
+   "scenario": "A",
+   "pk": false,
+   "note": "CSV '' is written as '' which Oracle stores as NULL.",
+   "readExpr": "\"nclob_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 100000,
+      "base64": false
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 100000,
+      "base64": false
+     },
+     "id": 2
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 3
+    },
+    {
+     "spanner": "Hello CLOB",
+     "expected": "Hello CLOB",
+     "id": 4
+    },
+    {
+     "spanner": "こんにちは世界 😀",
+     "expected": "こんにちは世界 😀",
+     "id": 5
+    },
+    {
+     "spanner": "O'Brien",
+     "expected": "O'Brien",
+     "id": 6
+    }
+   ]
+  },
+  {
+   "table": "nclob_to_bytes_table",
+   "column": "nclob_to_bytes_col",
+   "sourceType": "NCLOB",
+   "sourceDdlType": "NCLOB",
+   "spannerType": "BYTES(MAX)",
+   "scenario": "B",
+   "pk": false,
+   "note": "Spanner BYTES hold the UTF-8 bytes of the text.",
+   "readExpr": "\"nclob_to_bytes_col\"",
+   "compare": "string",
+   "rows": [
+    {
+     "spanner": "",
+     "expected": null,
+     "id": 1
+    },
+    {
+     "spanner": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 100000,
+      "base64": true
+     },
+     "expected": {
+      "prefix": "",
+      "repeat": "A",
+      "times": 100000,
+      "base64": false
+     },
+     "id": 2
+    },
+    {
+     "spanner": null,
+     "expected": null,
+     "id": 3
+    },
+    {
+     "spanner": "SGVsbG8gQ0xPQg==",
+     "expected": "Hello CLOB",
+     "id": 4
+    },
+    {
+     "spanner": "44GT44KT44Gr44Gh44Gv5LiW55WMIPCfmIA=",
+     "expected": "こんにちは世界 😀",
+     "id": 5
+    },
+    {
+     "spanner": "TydCcmllbg==",
+     "expected": "O'Brien",
+     "id": 6
+    }
+   ]
+  }
+ ],
+ "unsupportedTables": [
+  {
+   "table": "interval_year_to_month_table",
+   "column": "interval_year_to_month_col",
+   "sourceType": "INTERVAL YEAR TO MONTH",
+   "spannerType": "STRING(MAX)",
+   "rows": [
+    {
+     "id": 1,
+     "spanner": "+999999999-11"
+    },
+    {
+     "id": 2,
+     "spanner": "-999999999-11"
+    },
+    {
+     "id": 3,
+     "spanner": null
+    }
+   ],
+   "expectedRowCount": 3,
+   "note": ""
+  },
+  {
+   "table": "interval_day_to_second_table",
+   "column": "interval_day_to_second_col",
+   "sourceType": "INTERVAL DAY TO SECOND",
+   "spannerType": "STRING(MAX)",
+   "rows": [
+    {
+     "id": 1,
+     "spanner": "+999999999 23:59:59.999999999"
+    },
+    {
+     "id": 2,
+     "spanner": "-999999999 23:59:59.999999999"
+    },
+    {
+     "id": 3,
+     "spanner": null
+    }
+   ],
+   "expectedRowCount": 3,
+   "note": ""
+  },
+  {
+   "table": "long_raw_table",
+   "column": "long_raw_col",
+   "sourceType": "LONG RAW",
+   "spannerType": "BYTES(MAX)",
+   "rows": [
+    {
+     "id": 1,
+     "spanner": ""
+    },
+    {
+     "id": 2,
+     "spanner": "QQ=="
+    },
+    {
+     "id": 3,
+     "spanner": null
+    }
+   ],
+   "expectedRowCount": 3,
+   "note": ""
+  },
+  {
+   "table": "bfile_table",
+   "column": "bfile_col",
+   "sourceType": "BFILE",
+   "spannerType": "STRING(MAX)",
+   "rows": [
+    {
+     "id": 1,
+     "spanner": "bfile('DIR', 'file.txt')"
+    },
+    {
+     "id": 2,
+     "spanner": null
+    }
+   ],
+   "expectedRowCount": 2,
+   "note": ""
+  },
+  {
+   "table": "long_table",
+   "column": "long_col",
+   "sourceType": "LONG",
+   "spannerType": "STRING(MAX)",
+   "rows": [
+    {
+     "id": 1,
+     "spanner": ""
+    },
+    {
+     "id": 2,
+     "spanner": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    {
+     "id": 3,
+     "spanner": null
+    }
+   ],
+   "expectedRowCount": 3,
+   "note": ""
+  },
+  {
+   "table": "rowid_table",
+   "column": "rowid_col",
+   "sourceType": "ROWID",
+   "spannerType": "STRING(MAX)",
+   "rows": [
+    {
+     "id": 1,
+     "spanner": "AAAB12AADAAAAwPAAA"
+    },
+    {
+     "id": 2,
+     "spanner": null
+    }
+   ],
+   "expectedRowCount": 2,
+   "note": ""
+  },
+  {
+   "table": "urowid_table",
+   "column": "urowid_col",
+   "sourceType": "UROWID",
+   "spannerType": "STRING(MAX)",
+   "rows": [
+    {
+     "id": 1,
+     "spanner": "AAAB12AADAAAAwPAAA"
+    },
+    {
+     "id": 2,
+     "spanner": null
+    }
+   ],
+   "expectedRowCount": 2,
+   "note": ""
+  },
+  {
+   "table": "xmltype_table",
+   "column": "xmltype_col",
+   "sourceType": "XMLType",
+   "spannerType": "STRING(MAX)",
+   "rows": [
+    {
+     "id": 1,
+     "spanner": "<xml></xml>"
+    },
+    {
+     "id": 2,
+     "spanner": "<bad_xml"
+    },
+    {
+     "id": 3,
+     "spanner": null
+    }
+   ],
+   "expectedRowCount": 3,
+   "note": ""
+  },
+  {
+   "table": "anydata_table",
+   "column": "anydata_col",
+   "sourceType": "ANYDATA",
+   "spannerType": "BYTES(MAX)",
+   "rows": [
+    {
+     "id": 1,
+     "spanner": "BQ=="
+    },
+    {
+     "id": 2,
+     "spanner": null
+    }
+   ],
+   "expectedRowCount": 2,
+   "note": ""
+  },
+  {
+   "table": "anytype_table",
+   "column": "anytype_col",
+   "sourceType": "ANYTYPE",
+   "spannerType": "BYTES(MAX)",
+   "rows": [
+    {
+     "id": 1,
+     "spanner": "BQ=="
+    },
+    {
+     "id": 2,
+     "spanner": null
+    }
+   ],
+   "expectedRowCount": 2,
+   "note": ""
+  },
+  {
+   "table": "anydataset_table",
+   "column": "anydataset_col",
+   "sourceType": "ANYDATASET",
+   "spannerType": "BYTES(MAX)",
+   "rows": [
+    {
+     "id": 1,
+     "spanner": "BQ=="
+    },
+    {
+     "id": 2,
+     "spanner": null
+    }
+   ],
+   "expectedRowCount": 2,
+   "note": ""
+  },
+  {
+   "table": "uritype_table",
+   "column": "uritype_col",
+   "sourceType": "URIType",
+   "spannerType": "STRING(MAX)",
+   "rows": [
+    {
+     "id": 1,
+     "spanner": "http://test.com"
+    },
+    {
+     "id": 2,
+     "spanner": null
+    }
+   ],
+   "expectedRowCount": 2,
+   "note": ""
+  },
+  {
+   "table": "dburitype_table",
+   "column": "dburitype_col",
+   "sourceType": "DBUriType",
+   "spannerType": "STRING(MAX)",
+   "rows": [
+    {
+     "id": 1,
+     "spanner": "/PUBLIC/DUAL"
+    },
+    {
+     "id": 2,
+     "spanner": null
+    }
+   ],
+   "expectedRowCount": 2,
+   "note": ""
+  },
+  {
+   "table": "xdburitype_table",
+   "column": "xdburitype_col",
+   "sourceType": "XDBUriType",
+   "spannerType": "STRING(MAX)",
+   "rows": [
+    {
+     "id": 1,
+     "spanner": "/public"
+    },
+    {
+     "id": 2,
+     "spanner": null
+    }
+   ],
+   "expectedRowCount": 2,
+   "note": ""
+  },
+  {
+   "table": "httpuritype_table",
+   "column": "httpuritype_col",
+   "sourceType": "HttpUriType",
+   "spannerType": "STRING(MAX)",
+   "rows": [
+    {
+     "id": 1,
+     "spanner": "http://test.com"
+    },
+    {
+     "id": 2,
+     "spanner": null
+    }
+   ],
+   "expectedRowCount": 2,
+   "note": ""
+  },
+  {
+   "table": "mlslabel_table",
+   "column": "mlslabel_col",
+   "sourceType": "MLSLABEL",
+   "spannerType": "STRING(MAX)",
+   "rows": [
+    {
+     "id": 1,
+     "spanner": "SENSITIVE"
+    },
+    {
+     "id": 2,
+     "spanner": null
+    }
+   ],
+   "expectedRowCount": 2,
+   "note": ""
+  },
+  {
+   "table": "ref_table",
+   "column": "ref_col",
+   "sourceType": "REF",
+   "spannerType": "STRING(MAX)",
+   "rows": [
+    {
+     "id": 1,
+     "spanner": "REF(obj)"
+    },
+    {
+     "id": 2,
+     "spanner": null
+    }
+   ],
+   "expectedRowCount": 2,
+   "note": ""
+  },
+  {
+   "table": "varray_table",
+   "column": "varray_col",
+   "sourceType": "VARRAY",
+   "spannerType": "ARRAY<STRING(MAX)>",
+   "rows": [
+    {
+     "id": 1,
+     "spanner": "[]"
+    },
+    {
+     "id": 2,
+     "spanner": "[\"A\",\"B\"]"
+    },
+    {
+     "id": 3,
+     "spanner": null
+    }
+   ],
+   "expectedRowCount": 3,
+   "note": ""
+  },
+  {
+   "table": "nested_table_table",
+   "column": "nested_table_col",
+   "sourceType": "NESTED TABLE",
+   "spannerType": "JSON",
+   "rows": [
+    {
+     "id": 1,
+     "spanner": "{}"
+    },
+    {
+     "id": 2,
+     "spanner": "{\"id\":1}"
+    },
+    {
+     "id": 3,
+     "spanner": null
+    }
+   ],
+   "expectedRowCount": 3,
+   "note": ""
+  },
+  {
+   "table": "object_type_table",
+   "column": "object_type_col",
+   "sourceType": "OBJECT TYPE",
+   "spannerType": "JSON",
+   "rows": [
+    {
+     "id": 1,
+     "spanner": "{\"attr1\":\"val\"}"
+    },
+    {
+     "id": 2,
+     "spanner": null
+    }
+   ],
+   "expectedRowCount": 2,
+   "note": ""
+  }
+ ],
+ "skippedTypes": [
+  {
+   "type": "TIMESTAMP WITH TIME ZONE",
+   "scenario": "C",
+   "reason": "Oracle ORA-02329: TIMESTAMP WITH TIME ZONE cannot be a primary key."
+  },
+  {
+   "type": "BOOLEAN",
+   "scenario": "A/B/C",
+   "reason": "Native BOOLEAN column type requires Oracle 23ai; the test container is Oracle XE 21c (ORA-00902)."
+  },
+  {
+   "type": "(all)",
+   "scenario": "E",
+   "reason": "Oracle has no scalar array column types; VARRAY/NESTED TABLE are covered in scenario D."
+  },
+  {
+   "type": "SDO_GEOMETRY / SDO_TOPO_GEOMETRY / SDO_GEORASTER",
+   "scenario": "D",
+   "reason": "Oracle Spatial/Locator types are not installed in gvenzl/oracle-xe:21-slim (ORA-00902)."
+  },
+  {
+   "type": "VECTOR",
+   "scenario": "D",
+   "reason": "Requires Oracle 23ai (ORA-00902 on 21c)."
+  },
+  {
+   "type": "ORDAUDIO / ORDIMAGE / ORDVIDEO / ORDDOC",
+   "scenario": "D",
+   "reason": "Oracle Multimedia (ORDSYS) was removed in Oracle 21c (ORA-00902)."
+  },
+  {
+   "type": "SI_STILLIMAGE / SI_COLOR / SI_AVERAGECOLOR / SI_COLORHISTOGRAM / SI_POSITIONALCOLOR / SI_TEXTURE / SI_FEATURELIST",
+   "scenario": "D",
+   "reason": "SQL/MM Still Image (Oracle Multimedia) was removed in Oracle 21c (ORA-00902)."
+  },
+  {
+   "type": "Expression",
+   "scenario": "D",
+   "reason": "Oracle Expression Filter (EXF$) is not available (ORA-00902)."
+  },
+  {
+   "type": "REF CURSOR",
+   "scenario": "D",
+   "reason": "PL/SQL-only type; cannot be a table column."
+  },
+  {
+   "type": "ASSOCIATIVE ARRAY",
+   "scenario": "D",
+   "reason": "PL/SQL-only type; cannot be a table column."
+  },
+  {
+   "type": "JSON",
+   "reason": "Native JSON column type requires Oracle 21c+; the shared test database is Oracle 19c (ORA-00902)."
+  }
+ ]
+}
