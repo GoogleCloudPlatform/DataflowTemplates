@@ -43,7 +43,8 @@ public interface CommonTemplateOptions extends PipelineOptions {
       description = "Extra files to stage in the workers",
       helpText =
           "Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. "
-              + "These files are saved in the /extra_files directory in each worker.",
+              + "the `/extra_files` directory in each worker. Cloud Storage files retain their original filename (`/extra_files/file.txt`), "
+              + "while Secret Manager secrets are saved with the `<SECRET_ID>` as the filename (`/extra_files/<SECRET_ID>`). ",
       example =
           "gs://<BUCKET_NAME>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>")
   String getExtraFilesToStage();
