@@ -57,6 +57,7 @@ import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MSSQLResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
+import org.apache.beam.it.jdbc.PostgresResourceManager;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
@@ -147,6 +148,14 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
    */
   protected MySQLResourceManager setUpDedicatedMySQLResourceManager(String testId) {
     return SharedContainerDatabases.dedicatedMySql(testId);
+  }
+
+  /**
+   * Returns a PostgreSQL resource manager for the test: its own database on a PostgreSQL container
+   * shared by all tests in the JVM, or its own container with sharing turned off.
+   */
+  protected PostgresResourceManager setUpPostgreSQLResourceManager(String testId) {
+    return SharedContainerDatabases.postgres(getClass(), testId);
   }
 
   protected MSSQLResourceManager setUpMSSQLResourceManager(String testId) {

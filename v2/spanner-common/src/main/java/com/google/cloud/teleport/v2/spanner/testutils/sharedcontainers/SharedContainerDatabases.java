@@ -21,6 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.apache.beam.it.jdbc.AbstractJDBCResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
+import org.apache.beam.it.jdbc.PostgresResourceManager;
 import org.junit.rules.TestRule;
 import org.junit.runners.model.Statement;
 
@@ -78,6 +79,25 @@ public final class SharedContainerDatabases {
    */
   public static MySQLResourceManager dedicatedMySql(String testId) {
     return MySQLResourceManager.builder(testId).build();
+  }
+
+  /**
+   * Returns a PostgreSQL resource manager for a test of {@code testClass}. By default it points at
+   * a new database on the shared PostgreSQL container; with sharing turned off it gets a container
+   * of its own.
+   */
+  public static PostgresResourceManager postgres(Class<?> testClass, String testId) {
+    if (!SharedDatabaseServer.isEnabled()) {
+      return dedicatedPostgres(testId);
+    }
+    PostgresResourceManager.Builder builder = PostgresResourceManager.builder(testId);
+    pointAtSharedDatabase(builder, PostgresEngine.INSTANCE, testClass, testId);
+    return builder.build();
+  }
+
+  /** Returns a PostgreSQL resource manager backed by a container of its own. */
+  public static PostgresResourceManager dedicatedPostgres(String testId) {
+    return PostgresResourceManager.builder(testId).build();
   }
 
   /**
