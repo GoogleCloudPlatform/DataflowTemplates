@@ -22,6 +22,7 @@ import com.google.cloud.datastream.v1.SourceConfig;
 import com.google.cloud.datastream.v1.Stream;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.cloud.teleport.v2.spanner.sqlserverutils.SQLServerITContainer;
 import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -92,8 +93,15 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
         .build();
   }
 
+  private static SQLServerITContainer sharedSqlServerContainer;
+
   public CloudSqlServerResourceManager setUpSqlServerResourceManager() {
-    return CloudSqlServerResourceManager.builder(testName).build();
+    synchronized (DataStreamToSpannerITBase.class) {
+      if (sharedSqlServerContainer == null) {
+        sharedSqlServerContainer = SQLServerITContainer.start(/* enableCdc= */ true);
+      }
+      return sharedSqlServerContainer.createResourceManager(testName);
+    }
   }
 
   public DatastreamResourceManager setUpDatastreamResourceManager() throws IOException {

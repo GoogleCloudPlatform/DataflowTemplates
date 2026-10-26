@@ -72,7 +72,11 @@ public class CloudSqlServerResourceManager extends CloudSqlResourceManager {
       LOG.warn(
           "gcloudsql_cdc_enable_db failed ({}), falling back to sys.sp_cdc_enable_db...",
           e.getMessage());
-      runSQLUpdate(String.format("USE [%s]; EXEC sys.sp_cdc_enable_db;", databaseName));
+      runSQLUpdate(
+          String.format(
+              "ALTER DATABASE [%s] SET ALLOW_SNAPSHOT_ISOLATION ON; "
+                  + "USE [%s]; EXEC sys.sp_cdc_enable_db;",
+              databaseName, databaseName));
     }
     LOG.info("Successfully enabled CDC on database {}", databaseName);
   }
