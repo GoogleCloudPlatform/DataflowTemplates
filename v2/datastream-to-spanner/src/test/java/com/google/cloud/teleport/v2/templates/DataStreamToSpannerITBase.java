@@ -96,19 +96,11 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
   private static SQLServerITContainer sharedSqlServerContainer;
 
   public CloudSqlServerResourceManager setUpSqlServerResourceManager() {
-    return setUpSqlServerResourceManager(testName);
-  }
-
-  /**
-   * Creates a {@link CloudSqlServerResourceManager} with a dedicated database on the shared SQL
-   * Server container, e.g. for sharded tests that need multiple source databases per test.
-   */
-  public CloudSqlServerResourceManager setUpSqlServerResourceManager(String testId) {
     synchronized (DataStreamToSpannerITBase.class) {
       if (sharedSqlServerContainer == null) {
         sharedSqlServerContainer = SQLServerITContainer.start(/* enableCdc= */ true);
       }
-      return sharedSqlServerContainer.createResourceManager(testId);
+      return sharedSqlServerContainer.createResourceManager(testName);
     }
   }
 

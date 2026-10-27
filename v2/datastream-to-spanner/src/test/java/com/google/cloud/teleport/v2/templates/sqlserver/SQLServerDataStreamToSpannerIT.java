@@ -85,13 +85,7 @@ public class SQLServerDataStreamToSpannerIT extends DataStreamToSpannerITBase {
     sqlServerResourceManager = setUpSqlServerResourceManager();
     spannerResourceManager = setUpSpannerResourceManager();
     pubsubResourceManager = setUpPubSubResourceManager();
-    DatastreamResourceManager.Builder datastreamBuilder =
-        DatastreamResourceManager.builder(testName, PROJECT, REGION)
-            .setCredentialsProvider(credentialsProvider);
-    if (System.getProperty("privateConnectivity") != null) {
-      datastreamBuilder.setPrivateConnectivity(System.getProperty("privateConnectivity"));
-    }
-    datastreamResourceManager = datastreamBuilder.build();
+    datastreamResourceManager = setUpDatastreamResourceManager();
     gcsResourceManager = setUpSpannerITGcsResourceManager();
   }
 
@@ -131,16 +125,6 @@ public class SQLServerDataStreamToSpannerIT extends DataStreamToSpannerITBase {
                 sqlServerResourceManager.getDatabaseName())
             .setAllowedTables(Map.of("dbo", List.of("source_table1", "source_table2")))
             .build();
-    LOG.info(
-        "SQL Server details: host={}, resolvedHost={}, port={}, db={}, user={}, passLength={}",
-        sqlServerResourceManager.getHost(),
-        sqlServerSource.hostname(),
-        sqlServerSource.port(),
-        sqlServerSource.database(),
-        sqlServerResourceManager.getUsername(),
-        sqlServerResourceManager.getPassword() != null
-            ? sqlServerResourceManager.getPassword().length()
-            : 0);
 
     PipelineLauncher.LaunchInfo jobInfo =
         launchDataflowJob(
