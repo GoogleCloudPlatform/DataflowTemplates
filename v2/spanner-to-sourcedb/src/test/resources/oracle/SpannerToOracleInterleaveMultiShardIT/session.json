@@ -1,0 +1,128 @@
+{
+  "SpSchema": {
+    "t1": {
+      "Name": "child21",
+      "ColIds": ["c6", "c7", "c8", "c9", "c23"],
+      "ShardIdColumn": "c23",
+      "ColDefs": {
+        "c23": {"Name": "migration_shard_id", "T": {"Name": "STRING", "IsArray": false}},
+        "c6": {"Name": "child_id", "T": {"Name": "INT64", "IsArray": false}},
+        "c7": {"Name": "id", "T": {"Name": "INT64", "IsArray": false}},
+        "c8": {"Name": "update_ts", "T": {"Name": "TIMESTAMP", "IsArray": false}},
+        "c9": {"Name": "in_ts", "T": {"Name": "TIMESTAMP", "IsArray": false}}
+      },
+      "PrimaryKeys": [{"ColId": "c6", "Order": 2}, {"ColId": "c7", "Order": 1}]
+    },
+    "t2": {
+      "Name": "parent1",
+      "ColIds": ["c16", "c17", "c18", "c24"],
+      "ShardIdColumn": "c24",
+      "ColDefs": {
+        "c16": {"Name": "id", "T": {"Name": "INT64", "IsArray": false}},
+        "c17": {"Name": "update_ts", "T": {"Name": "TIMESTAMP", "IsArray": false}},
+        "c18": {"Name": "in_ts", "T": {"Name": "TIMESTAMP", "IsArray": false}},
+        "c24": {"Name": "migration_shard_id", "T": {"Name": "STRING", "IsArray": false}}
+      },
+      "PrimaryKeys": [{"ColId": "c16", "Order": 1}]
+    },
+    "t3": {
+      "Name": "child11",
+      "ColIds": ["c12", "c13", "c14", "c15", "c26"],
+      "ShardIdColumn": "c26",
+      "ColDefs": {
+        "c12": {"Name": "child_id", "T": {"Name": "INT64", "IsArray": false}},
+        "c13": {"Name": "parent_id", "T": {"Name": "INT64", "IsArray": false}},
+        "c14": {"Name": "update_ts", "T": {"Name": "TIMESTAMP", "IsArray": false}},
+        "c15": {"Name": "in_ts", "T": {"Name": "TIMESTAMP", "IsArray": false}},
+        "c26": {"Name": "migration_shard_id", "T": {"Name": "STRING", "IsArray": false}}
+      },
+      "PrimaryKeys": [{"ColId": "c12", "Order": 1}]
+    },
+    "t4": {
+      "Name": "parent2",
+      "ColIds": ["c19", "c20", "c21", "c25"],
+      "ShardIdColumn": "c25",
+      "ColDefs": {
+        "c19": {"Name": "id", "T": {"Name": "INT64", "IsArray": false}},
+        "c20": {"Name": "update_ts", "T": {"Name": "TIMESTAMP", "IsArray": false}},
+        "c21": {"Name": "in_ts", "T": {"Name": "TIMESTAMP", "IsArray": false}},
+        "c25": {"Name": "migration_shard_id", "T": {"Name": "STRING", "IsArray": false}}
+      },
+      "PrimaryKeys": [{"ColId": "c19", "Order": 1}]
+    },
+    "t5": {
+      "Name": "child31",
+      "ColIds": ["c27", "c28", "c29", "c30", "c31"],
+      "ShardIdColumn": "c31",
+      "ColDefs": {
+        "c31": {"Name": "migration_shard_id", "T": {"Name": "STRING", "IsArray": false}},
+        "c27": {"Name": "child_id", "T": {"Name": "INT64", "IsArray": false}},
+        "c28": {"Name": "id", "T": {"Name": "INT64", "IsArray": false}},
+        "c29": {"Name": "update_ts", "T": {"Name": "TIMESTAMP", "IsArray": false}},
+        "c30": {"Name": "in_ts", "T": {"Name": "TIMESTAMP", "IsArray": false}}
+      },
+      "PrimaryKeys": [{"ColId": "c27", "Order": 2}, {"ColId": "c28", "Order": 1}]
+    }
+  },
+  "SyntheticPKeys": {},
+  "SrcSchema": {
+    "t1": {
+      "Name": "child21",
+      "Schema": "",
+      "ColIds": ["c6", "c7", "c8", "c9"],
+      "ColDefs": {
+        "c6": {"Name": "child_id", "Type": {"Name": "int", "Mods": [10], "ArrayBounds": null}},
+        "c7": {"Name": "parent_id", "Type": {"Name": "int", "Mods": [10], "ArrayBounds": null}},
+        "c8": {"Name": "update_ts", "Type": {"Name": "timestamp", "Mods": null, "ArrayBounds": null}},
+        "c9": {"Name": "in_ts", "Type": {"Name": "timestamp", "Mods": null, "ArrayBounds": null}}
+      },
+      "PrimaryKeys": [{"ColId": "c6", "Order": 1}]
+    },
+    "t2": {
+      "Name": "parent1",
+      "Schema": "",
+      "ColIds": ["c16", "c17", "c18"],
+      "ColDefs": {
+        "c16": {"Name": "id", "Type": {"Name": "int", "Mods": [10], "ArrayBounds": null}},
+        "c17": {"Name": "update_ts", "Type": {"Name": "timestamp", "Mods": null, "ArrayBounds": null}},
+        "c18": {"Name": "in_ts", "Type": {"Name": "timestamp", "Mods": null, "ArrayBounds": null}}
+      },
+      "PrimaryKeys": [{"ColId": "c16", "Order": 1}]
+    },
+    "t3": {
+      "Name": "child11",
+      "Schema": "",
+      "ColIds": ["c12", "c13", "c14", "c15"],
+      "ColDefs": {
+        "c12": {"Name": "child_id", "Type": {"Name": "int", "Mods": [10], "ArrayBounds": null}},
+        "c13": {"Name": "parent_id", "Type": {"Name": "int", "Mods": [10], "ArrayBounds": null}},
+        "c14": {"Name": "update_ts", "Type": {"Name": "timestamp", "Mods": null, "ArrayBounds": null}},
+        "c15": {"Name": "in_ts", "Type": {"Name": "timestamp", "Mods": null, "ArrayBounds": null}}
+      },
+      "PrimaryKeys": [{"ColId": "c12", "Order": 1}]
+    },
+    "t4": {
+      "Name": "parent2",
+      "Schema": "",
+      "ColIds": ["c19", "c20", "c21"],
+      "ColDefs": {
+        "c19": {"Name": "id", "Type": {"Name": "int", "Mods": [10], "ArrayBounds": null}},
+        "c20": {"Name": "update_ts", "Type": {"Name": "timestamp", "Mods": null, "ArrayBounds": null}},
+        "c21": {"Name": "in_ts", "Type": {"Name": "timestamp", "Mods": null, "ArrayBounds": null}}
+      },
+      "PrimaryKeys": [{"ColId": "c19", "Order": 1}]
+    },
+    "t5": {
+      "Name": "child31",
+      "Schema": "",
+      "ColIds": ["c27", "c28", "c29", "c30"],
+      "ColDefs": {
+        "c27": {"Name": "child_id", "Type": {"Name": "int", "Mods": [10], "ArrayBounds": null}},
+        "c28": {"Name": "parent_id", "Type": {"Name": "int", "Mods": [10], "ArrayBounds": null}},
+        "c29": {"Name": "update_ts", "Type": {"Name": "timestamp", "Mods": null, "ArrayBounds": null}},
+        "c30": {"Name": "in_ts", "Type": {"Name": "timestamp", "Mods": null, "ArrayBounds": null}}
+      },
+      "PrimaryKeys": [{"ColId": "c27", "Order": 1}]
+    }
+  }
+}
