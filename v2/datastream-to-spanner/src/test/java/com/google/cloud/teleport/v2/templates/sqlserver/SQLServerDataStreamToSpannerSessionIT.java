@@ -77,12 +77,11 @@ import org.slf4j.LoggerFactory;
  *       uploaded as-is (no placeholder substitution), exactly like the static MySQL reference.
  *   <li>The dropped {@code last_update} column is {@code datetimeoffset} instead of {@code
  *       timestamp} because SQL Server {@code datetime*} values are not yet handled by the pipeline.
- *   <li>{@code CloudSqlServerResourceManager#enableCdcOnAllTables()} enables CDC with {@code
- *       @supports_net_changes = 1} and no {@code @index_name}, which SQL Server rejects for tables
- *       without a primary key. {@code Books} therefore gets a UNIQUE INDEX on {@code id} (not a
- *       PK, so the synthetic-PK scenario is preserved) and CDC is enabled on it explicitly via
- *       {@code CloudSqlServerResourceManager#enableCdcOnTable(String, String, String)} with that
- *       index. The helper then skips {@code Books} because it is already tracked by CDC.
+ *   <li>SQL Server CDC with {@code @supports_net_changes = 1} requires a primary key or a unique
+ *       index. {@code Books} therefore gets a UNIQUE INDEX on {@code id} (not a PK, so the
+ *       synthetic-PK scenario is preserved); {@code
+ *       CloudSqlServerResourceManager#enableCdcOnAllTables()} uses that index as {@code
+ *       @index_name} for tables without a primary key.
  *   <li>Instead of uploading pre-generated Avro files, the backfill rows are inserted into SQL
  *       Server before the stream is started and the CDC wave is applied with DML afterwards.
  *   <li>A {@code Genre} row is streamed as well to verify that events for a table dropped in the
@@ -153,7 +152,6 @@ public class SQLServerDataStreamToSpannerSessionIT extends DataStreamToSpannerIT
 
         LOG.info("Executing SQL Server DDL script...");
         executeSqlScript(msSqlResourceManager, SQLSERVER_DDL_RESOURCE);
-        msSqlResourceManager.enableCdcOnTable("dbo", "Books", "ux_Books_id");
         msSqlResourceManager.enableCdcOnAllTables();
 
         LOG.info("Inserting backfill rows into SQL Server...");

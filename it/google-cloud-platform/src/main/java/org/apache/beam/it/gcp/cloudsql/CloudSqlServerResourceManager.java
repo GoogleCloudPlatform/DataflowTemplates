@@ -93,80 +93,56 @@ public class CloudSqlServerResourceManager extends CloudSqlResourceManager {
    * Enables CDC on every user table in the current database that is not yet tracked by CDC, and
    * ensures the CDC capture job is running.
    *
-   * <p>Note: {@code @supports_net_changes = 1} requires the table to have a primary key or a unique
-   * index. Tables without one will make {@code sp_cdc_enable_table} fail and abort the remaining
-   * tables in the batch; use {@link #enableCdcOnTable(String, String, String)} for those.
+   * <p>{@code @supports_net_changes = 1} requires a primary key or a unique index: tables with a
+   * primary key use it, tables without one use their first unique index as {@code @index_name}.
+   * Tables with neither will make {@code sp_cdc_enable_table} fail and abort the remaining tables
+   * in the batch.
    */
   public void enableCdcOnAllTables() {
     String enableCdcQuery =
         "DECLARE @schema_name SYSNAME; "
             + "DECLARE @table_name SYSNAME; "
+            + "DECLARE @index_name SYSNAME; "
             + "DECLARE table_cursor CURSOR FOR "
-            + "SELECT SCHEMA_NAME(schema_id), name FROM sys.tables"
-            + " WHERE is_ms_shipped = 0 AND is_tracked_by_cdc = 0; "
+            + "SELECT SCHEMA_NAME(t.schema_id), t.name, "
+            + "  CASE WHEN OBJECTPROPERTY(t.object_id, 'TableHasPrimaryKey') = 1 THEN NULL "
+            + "       ELSE (SELECT TOP 1 i.name FROM sys.indexes i WHERE i.object_id = t.object_id"
+            + "             AND i.is_unique = 1 ORDER BY i.index_id) END "
+            + "FROM sys.tables t WHERE t.is_ms_shipped = 0 AND t.is_tracked_by_cdc = 0; "
             + "OPEN table_cursor; "
-            + "FETCH NEXT FROM table_cursor INTO @schema_name, @table_name; "
+            + "FETCH NEXT FROM table_cursor INTO @schema_name, @table_name, @index_name; "
             + "WHILE @@FETCH_STATUS = 0 "
             + "BEGIN "
             + "    EXEC sys.sp_cdc_enable_table @source_schema = @schema_name,"
-            + " @source_name = @table_name, @role_name = NULL, @supports_net_changes = 1; "
-            + "    FETCH NEXT FROM table_cursor INTO @schema_name, @table_name; "
+            + " @source_name = @table_name, @role_name = NULL, @supports_net_changes = 1,"
+            + " @index_name = @index_name; "
+            + "    FETCH NEXT FROM table_cursor INTO @schema_name, @table_name, @index_name; "
             + "END; "
             + "CLOSE table_cursor; "
             + "DEALLOCATE table_cursor;";
+    String startJobQuery =
+        "DECLARE @job_id UNIQUEIDENTIFIER; "
+            + "SELECT @job_id = job_id FROM msdb.dbo.cdc_jobs"
+            + " WHERE database_id = DB_ID() AND job_type = N'capture'; "
+            + "IF @job_id IS NOT NULL AND NOT EXISTS ( "
+            + "    SELECT 1 FROM msdb.dbo.sysjobactivity "
+            + "    WHERE job_id = @job_id "
+            + "      AND session_id = (SELECT MAX(session_id) FROM msdb.dbo.syssessions) "
+            + "      AND start_execution_date IS NOT NULL "
+            + "      AND stop_execution_date IS NULL "
+            + ") "
+            + "BEGIN "
+            + "    EXEC sys.sp_cdc_start_job @job_type = N'capture'; "
+            + "END;";
     synchronized (CDC_ENABLE_LOCK) {
       runSQLUpdate(enableCdcQuery);
-      ensureCaptureJobRunning();
-    }
-  }
-
-  /**
-   * Enables CDC on a single table with net-changes support, optionally naming the unique index to
-   * use as the net-changes key for tables without a primary key.
-   *
-   * @param schemaName SQL Server schema of the table, e.g. {@code dbo}.
-   * @param tableName name of the table.
-   * @param uniqueIndexName unique index to use as the net-changes key, or {@code null} to use the
-   *     primary key.
-   */
-  public void enableCdcOnTable(
-      @NonNull String schemaName, @NonNull String tableName, String uniqueIndexName) {
-    String indexClause =
-        uniqueIndexName == null ? "" : String.format(", @index_name = N'%s'", uniqueIndexName);
-    synchronized (CDC_ENABLE_LOCK) {
-      runSQLUpdate(
-          String.format(
-              "IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = N'%s'"
-                  + " AND SCHEMA_NAME(schema_id) = N'%s' AND is_tracked_by_cdc = 1) "
-                  + "EXEC sys.sp_cdc_enable_table @source_schema = N'%s', @source_name = N'%s',"
-                  + " @role_name = NULL, @supports_net_changes = 1%s;",
-              tableName, schemaName, schemaName, tableName, indexClause));
-      ensureCaptureJobRunning();
-    }
-  }
-
-  /** Starts the CDC capture job of the current database if it exists and is not running. */
-  private void ensureCaptureJobRunning() {
-    try {
-      String startJobQuery =
-          "DECLARE @job_id UNIQUEIDENTIFIER; "
-              + "SELECT @job_id = job_id FROM msdb.dbo.cdc_jobs"
-              + " WHERE database_id = DB_ID() AND job_type = N'capture'; "
-              + "IF @job_id IS NOT NULL AND NOT EXISTS ( "
-              + "    SELECT 1 FROM msdb.dbo.sysjobactivity "
-              + "    WHERE job_id = @job_id "
-              + "      AND session_id = (SELECT MAX(session_id) FROM msdb.dbo.syssessions) "
-              + "      AND start_execution_date IS NOT NULL "
-              + "      AND stop_execution_date IS NULL "
-              + ") "
-              + "BEGIN "
-              + "    EXEC sys.sp_cdc_start_job @job_type = N'capture'; "
-              + "END;";
-      runSQLUpdate(startJobQuery);
-    } catch (Exception e) {
-      LOG.info(
-          "Capture job start check encountered an issue (job is likely already running): {}",
-          e.getMessage());
+      try {
+        runSQLUpdate(startJobQuery);
+      } catch (Exception e) {
+        LOG.info(
+            "Capture job start check encountered an issue (job is likely already running): {}",
+            e.getMessage());
+      }
     }
   }
 
