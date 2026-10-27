@@ -5,12 +5,10 @@ CREATE TABLE Category (
 );
 
 CREATE TABLE Books (
-  id INT NOT NULL,
+  id INT NOT NULL PRIMARY KEY,
   title VARCHAR(200),
   author_id INT
 );
-
-CREATE UNIQUE INDEX ux_Books_id ON Books (id);
 
 CREATE TABLE Genre (
   genre_id NUMERIC(10, 0) NOT NULL PRIMARY KEY,
