@@ -200,9 +200,6 @@ public class ShadowTableCreator {
    * Returns the list of data table names that don't have a corresponding shadow table.
    */
   public List<String> getDataTablesWithNoShadowTables() {
-    // Get the list of shadow tables in the information schema based on the prefix.
-    Set<String> existingShadowTables = getShadowTablesInDdl(informationSchemaOfPrimaryDb);
-
     List<String> allTables =
         informationSchemaOfPrimaryDb.allTables().stream()
             .map(t -> t.name())
@@ -214,11 +211,10 @@ public class ShadowTableCreator {
      * Filter out the following from the list of all table names to get the list of
      * data tables which do not have corresponding shadow tables:
      * (1) Existing shadow tables
-     * (2) Data tables which have corresponding shadow tables.
+     * (2) Data tables which have corresponding shadow tables in the metadata database.
      */
     return allTables.stream()
-        .filter(f -> !f.startsWith(shadowTablePrefix))
-        .filter(f -> !existingShadowTables.contains(shadowTablePrefix + f))
+        .filter(f -> shadowTablePrefix.isEmpty() || !f.startsWith(shadowTablePrefix))
         .filter(f -> !existingShadowTablesInMetadataDb.contains(shadowTablePrefix + f))
         .collect(Collectors.toList());
   }
