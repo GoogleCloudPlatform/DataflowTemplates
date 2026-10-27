@@ -34,6 +34,9 @@ public class CloudSqlServerResourceManager extends CloudSqlResourceManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(CloudSqlServerResourceManager.class);
 
+  private static final int CDC_ENABLE_ATTEMPTS = 5;
+  private static final long CDC_ENABLE_BASE_BACKOFF_MILLIS = 2000L;
+
   private CloudSqlServerResourceManager(Builder builder) {
     super(builder);
   }
@@ -87,7 +90,7 @@ public class CloudSqlServerResourceManager extends CloudSqlResourceManager {
    *
    * <p>Note: {@code @supports_net_changes = 1} requires the table to have a primary key or a unique
    * index. Tables without one will make {@code sp_cdc_enable_table} fail and abort the remaining
-   * tables in the batch.
+   * tables in the batch; use {@link #enableCdcOnTable(String, String, String)} for those.
    */
   public void enableCdcOnAllTables() {
     String enableCdcQuery =
@@ -106,7 +109,81 @@ public class CloudSqlServerResourceManager extends CloudSqlResourceManager {
             + "END; "
             + "CLOSE table_cursor; "
             + "DEALLOCATE table_cursor;";
-    runSQLUpdate(enableCdcQuery);
+    // The cursor only visits tables that are not yet tracked, so re-running the batch after a
+    // deadlock resumes with the tables that were not enabled yet.
+    runCdcUpdateWithDeadlockRetry(enableCdcQuery);
+    ensureCaptureJobRunning();
+  }
+
+  /**
+   * Enables CDC on a single table with net-changes support, optionally naming the unique index to
+   * use as the net-changes key for tables without a primary key.
+   *
+   * @param schemaName SQL Server schema of the table, e.g. {@code dbo}.
+   * @param tableName name of the table.
+   * @param uniqueIndexName unique index to use as the net-changes key, or {@code null} to use the
+   *     primary key.
+   */
+  public void enableCdcOnTable(
+      @NonNull String schemaName, @NonNull String tableName, String uniqueIndexName) {
+    String indexClause =
+        uniqueIndexName == null ? "" : String.format(", @index_name = N'%s'", uniqueIndexName);
+    runCdcUpdateWithDeadlockRetry(
+        String.format(
+            "IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = N'%s'"
+                + " AND SCHEMA_NAME(schema_id) = N'%s' AND is_tracked_by_cdc = 1) "
+                + "EXEC sys.sp_cdc_enable_table @source_schema = N'%s', @source_name = N'%s',"
+                + " @role_name = NULL, @supports_net_changes = 1%s;",
+            tableName, schemaName, schemaName, tableName, indexClause));
+    ensureCaptureJobRunning();
+  }
+
+  /**
+   * Runs a CDC-enabling statement, retrying when SQL Server picks it as a deadlock victim (error
+   * 1205). The first {@code sp_cdc_enable_table} in a database creates the capture/cleanup jobs in
+   * {@code msdb}; when several test databases on the same instance enable CDC concurrently, these
+   * {@code sp_add_job} calls deadlock with each other and SQL Server asks to rerun the transaction.
+   */
+  private void runCdcUpdateWithDeadlockRetry(String sql) {
+    RuntimeException lastFailure = null;
+    for (int attempt = 1; attempt <= CDC_ENABLE_ATTEMPTS; attempt++) {
+      try {
+        runSQLUpdate(sql);
+        return;
+      } catch (RuntimeException e) {
+        if (!isDeadlock(e)) {
+          throw e;
+        }
+        lastFailure = e;
+        long backoffMillis = CDC_ENABLE_BASE_BACKOFF_MILLIS * attempt;
+        LOG.warn(
+            "Enabling CDC was chosen as a deadlock victim (attempt {}/{}), retrying in {} ms.",
+            attempt,
+            CDC_ENABLE_ATTEMPTS,
+            backoffMillis);
+        try {
+          Thread.sleep(backoffMillis);
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+          throw e;
+        }
+      }
+    }
+    throw lastFailure;
+  }
+
+  private static boolean isDeadlock(Throwable t) {
+    for (Throwable cause = t; cause != null; cause = cause.getCause()) {
+      String message = cause.getMessage();
+      if (message != null && (message.contains("1205") || message.contains("deadlock"))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** Starts the CDC capture job of the current database if it exists and is not running. */
+  private void ensureCaptureJobRunning() {
     try {
       String startJobQuery =
           "DECLARE @job_id UNIQUEIDENTIFIER; "
