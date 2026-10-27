@@ -80,9 +80,9 @@ import org.slf4j.LoggerFactory;
  *   <li>{@code CloudSqlServerResourceManager#enableCdcOnAllTables()} enables CDC with {@code
  *       @supports_net_changes = 1} and no {@code @index_name}, which SQL Server rejects for tables
  *       without a primary key. {@code Books} therefore gets a UNIQUE INDEX on {@code id} (not a
- *       PK, so the synthetic-PK scenario is preserved) and CDC is enabled on it explicitly in the
- *       DDL script via {@code sp_cdc_enable_table ... @index_name}. The helper then skips {@code
- *       Books} because it is already tracked by CDC.
+ *       PK, so the synthetic-PK scenario is preserved) and CDC is enabled on it explicitly via
+ *       {@code CloudSqlServerResourceManager#enableCdcOnTable(String, String, String)} with that
+ *       index. The helper then skips {@code Books} because it is already tracked by CDC.
  *   <li>Instead of uploading pre-generated Avro files, the backfill rows are inserted into SQL
  *       Server before the stream is started and the CDC wave is applied with DML afterwards.
  *   <li>A {@code Genre} row is streamed as well to verify that events for a table dropped in the
@@ -153,6 +153,7 @@ public class SQLServerDataStreamToSpannerSessionIT extends DataStreamToSpannerIT
 
         LOG.info("Executing SQL Server DDL script...");
         executeSqlScript(msSqlResourceManager, SQLSERVER_DDL_RESOURCE);
+        msSqlResourceManager.enableCdcOnTable("dbo", "Books", "ux_Books_id");
         msSqlResourceManager.enableCdcOnAllTables();
 
         LOG.info("Inserting backfill rows into SQL Server...");
