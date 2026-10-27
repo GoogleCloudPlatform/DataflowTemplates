@@ -27,9 +27,10 @@ import com.google.common.io.Resources;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -66,8 +67,8 @@ public class DataStreamToSpannerSqlServerRetryDLQIT extends DataStreamToSpannerI
       "sqlserver/DataStreamToSpannerSqlServerRetryDLQIT/overrides.json";
   private static final String GCS_PATH_PREFIX = "sqlserver-datastream-to-spanner-retrydlq-test";
 
-  private static final HashSet<DataStreamToSpannerSqlServerRetryDLQIT> testInstances =
-      new HashSet<>();
+  private static final Set<DataStreamToSpannerSqlServerRetryDLQIT> testInstances =
+      ConcurrentHashMap.newKeySet();
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static SpannerResourceManager spannerResourceManager;
   public static CloudSqlServerResourceManager jdbcResourceManager;
@@ -113,7 +114,6 @@ public class DataStreamToSpannerSqlServerRetryDLQIT extends DataStreamToSpannerI
         jobParameters.put("transformationClassName", "com.custom.CustomTransformationForDLQIT");
         jobParameters.put("transformationCustomParameters", "mode=bad");
         jobParameters.put("dlqMaxRetryCount", "1000");
-        jobParameters.put("datastreamSourceType", "sqlserver");
 
         SqlServerSource sqlServerSource =
             SqlServerSource.builder(
@@ -147,8 +147,14 @@ public class DataStreamToSpannerSqlServerRetryDLQIT extends DataStreamToSpannerI
 
   @AfterClass
   public static void cleanUp() throws IOException {
+    // A failing teardown of one instance must not prevent the other instances' Dataflow jobs and
+    // the shared resource managers below from being cleaned up.
     for (DataStreamToSpannerSqlServerRetryDLQIT instance : testInstances) {
-      instance.tearDownBase();
+      try {
+        instance.tearDownBase();
+      } catch (Exception e) {
+        LOG.error("Failed to tear down test instance {}", instance.testName, e);
+      }
     }
     ResourceManagerUtils.cleanResources(
         spannerResourceManager,

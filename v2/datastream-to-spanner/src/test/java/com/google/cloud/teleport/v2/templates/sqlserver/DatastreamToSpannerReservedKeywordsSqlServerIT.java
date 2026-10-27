@@ -124,7 +124,6 @@ public class DatastreamToSpannerReservedKeywordsSqlServerIT extends DataStreamTo
 
     Map<String, String> jobParams = new HashMap<>();
     jobParams.put("dlqMaxRetryCount", "1");
-    jobParams.put("datastreamSourceType", "sqlserver");
 
     SqlServerSource sqlServerSource =
         SqlServerSource.builder(

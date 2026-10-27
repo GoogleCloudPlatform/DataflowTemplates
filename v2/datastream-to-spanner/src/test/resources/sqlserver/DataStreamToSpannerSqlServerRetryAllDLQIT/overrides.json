@@ -1,8 +1,0 @@
-{
-  "renamedTables": {},
-  "renamedColumns": {
-    "Customers": {
-      "LegacyRegion": "LoyaltyTier"
-    }
-  }
-}
