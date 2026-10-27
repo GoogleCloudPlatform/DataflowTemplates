@@ -1764,21 +1764,32 @@ public class DdlTest {
     ForeignKey fkWithDeleteNoAction = fkWithDeleteNoActionBuilder.build();
     assertTrue(fkWithDeleteNoAction.equals(fkWithDeleteNoAction));
     assertFalse(fkWithDeleteCascade1.equals(fkWithDeleteNoAction));
+
+    ForeignKey.Builder fkWithDeleteSetNullBuilder =
+        ForeignKey.builder().name("fk_odsn").table("Users").referencedTable("AllowedNames");
+    fkWithDeleteSetNullBuilder.columnsBuilder().add("first_name", "last_name");
+    fkWithDeleteSetNullBuilder.referencedColumnsBuilder().add("first_name", "last_name");
+    fkWithDeleteSetNullBuilder.referentialAction(
+        Optional.of(ReferentialAction.ON_DELETE_SET_NULL));
+    ForeignKey fkWithDeleteSetNull = fkWithDeleteSetNullBuilder.build();
+    assertTrue(fkWithDeleteSetNull.equals(fkWithDeleteSetNull));
+    assertFalse(fkWithDeleteCascade1.equals(fkWithDeleteSetNull));
+    assertFalse(fkWithDeleteNoAction.equals(fkWithDeleteSetNull));
   }
 
   @Test
   public void testUnsupportedForeignKeyBuilderActionThrowsError() {
     ForeignKey.Builder fkWithUnsupportedActionBuilder =
-        ForeignKey.builder().name("fk_odsn").table("Users").referencedTable("AllowedNames");
+        ForeignKey.builder().name("fk_odr").table("Users").referencedTable("AllowedNames");
     fkWithUnsupportedActionBuilder.columnsBuilder().add("first_name", "last_name");
     fkWithUnsupportedActionBuilder.referencedColumnsBuilder().add("first_name", "last_name");
     fkWithUnsupportedActionBuilder.referentialAction(
-        Optional.of(ReferentialAction.ON_DELETE_SET_NULL));
+        Optional.of(ReferentialAction.ON_DELETE_RESTRICT));
     ForeignKey fkWithUnsupportedAction = fkWithUnsupportedActionBuilder.build();
     Throwable exception =
         assertThrows(IllegalArgumentException.class, () -> fkWithUnsupportedAction.prettyPrint());
     assertThat(exception.getMessage())
-        .matches("Foreign Key action not supported: ON DELETE SET NULL");
+        .matches("Foreign Key action not supported: ON DELETE RESTRICT");
   }
 
   @Test
