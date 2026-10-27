@@ -206,13 +206,25 @@ public class ValueTransformerRegistryTest {
   }
 
   @Test
-  public void parseRejectsDoubleCommaProducingEmptyEntry() {
-    // Current implementation skips empty entries gracefully — assert that behavior.
+  public void parseSkipsEmptyEntriesFromDoubleComma() {
     ValueTransformerRegistry registry =
         ValueTransformerRegistry.parse(
             "cf:a:PROTO_DECODE(test.M),,cf:b:PROTO_DECODE(test.M)", "gs://bucket/schema.pb", false);
     assertNotNull(registry.getTransformer("cf", "a"));
     assertNotNull(registry.getTransformer("cf", "b"));
+  }
+
+  @Test
+  public void parseRejectsExtraColonsWhenTrailingSegmentIsNotATransformType() {
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                ValueTransformerRegistry.parse(
+                    "family:qualifier:PROTO_DECODE(test.M):extra", "gs://bucket/schema.pb", false));
+    assertTrue(
+        "Expected error to mention the trailing segment; got: " + ex.getMessage(),
+        ex.getMessage().contains("'extra'"));
   }
 
   @Test

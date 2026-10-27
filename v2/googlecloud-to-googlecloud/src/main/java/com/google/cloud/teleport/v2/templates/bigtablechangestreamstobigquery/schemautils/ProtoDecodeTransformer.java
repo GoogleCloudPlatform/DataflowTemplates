@@ -115,7 +115,8 @@ public class ProtoDecodeTransformer implements ValueTransformer {
    *   <li>A cheap pre-check rejects payloads whose raw protobuf wire size already exceeds the
    *       decoded-value budget. This preserves the original protection for very large inputs
    *       without incorrectly rejecting mid-sized string-heavy messages that still fit once
-   *       rendered as JSON.
+   *       rendered as JSON. Unknown fields count toward the raw size but are dropped from the JSON,
+   *       so a payload dominated by unknown fields can be rejected even though its JSON would fit.
    *   <li>Otherwise the printer writes into a {@link Utf8BoundedAppendable} that aborts
    *       mid-serialization once the UTF-8 byte budget is exceeded.
    *   <li>Malformed proto input yields {@link TransformResult.Status#DECODE_ERROR}.

@@ -201,7 +201,9 @@ public interface BigtableChangeStreamToBigQueryOptions
       helpText =
           "Maximum allowed UTF-8 byte size of a PROTO_DECODE() result written to the BigQuery "
               + "`value` column. Larger decoded values are routed to the severe DLQ instead of "
-              + "being written. Defaults to a conservative value below Dataflow Streaming "
+              + "being written. Values whose raw protobuf size already exceeds the limit are "
+              + "rejected before decoding, even if dropping unknown fields would make the JSON "
+              + "fit. Defaults to a conservative value below Dataflow Streaming "
               + "Engine's per-element commit limit and cannot be set above that default.")
   @Default.Long(DEFAULT_MAX_DECODED_VALUE_BYTES)
   Long getMaxDecodedValueBytes();
