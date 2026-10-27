@@ -22,6 +22,7 @@ import com.google.cloud.datastream.v1.SourceConfig;
 import com.google.cloud.datastream.v1.Stream;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.cloud.teleport.v2.spanner.sqlserverutils.SQLServerITContainer;
 import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -41,11 +42,13 @@ import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
+import org.apache.beam.it.gcp.cloudsql.CloudSqlServerResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager.DestinationOutputFormat;
 import org.apache.beam.it.gcp.datastream.JDBCSource;
 import org.apache.beam.it.gcp.datastream.OracleSource;
 import org.apache.beam.it.gcp.datastream.PostgresqlSource;
+import org.apache.beam.it.gcp.datastream.SqlServerSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
@@ -88,6 +91,27 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     return SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
         .maybeUseStaticInstance()
         .build();
+  }
+
+  private static SQLServerITContainer sharedSqlServerContainer;
+
+  public CloudSqlServerResourceManager setUpSqlServerResourceManager() {
+    synchronized (DataStreamToSpannerITBase.class) {
+      if (sharedSqlServerContainer == null) {
+        sharedSqlServerContainer = SQLServerITContainer.start(/* enableCdc= */ true);
+      }
+      return sharedSqlServerContainer.createResourceManager(testName);
+    }
+  }
+
+  public DatastreamResourceManager setUpDatastreamResourceManager() throws IOException {
+    DatastreamResourceManager.Builder datastreamBuilder =
+        DatastreamResourceManager.builder(testName, PROJECT, REGION)
+            .setCredentialsProvider(credentialsProvider);
+    if (System.getProperty("privateConnectivity") != null) {
+      datastreamBuilder.setPrivateConnectivity(System.getProperty("privateConnectivity"));
+    }
+    return datastreamBuilder.build();
   }
 
   public String generateSessionFile(
@@ -360,6 +384,8 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
         params.put("datastreamSourceType", "postgresql");
       } else if (jdbcSource instanceof OracleSource) {
         params.put("datastreamSourceType", "oracle");
+      } else if (jdbcSource instanceof SqlServerSource) {
+        params.put("datastreamSourceType", "sqlserver");
       } else {
         params.put("datastreamSourceType", "mysql");
       }
