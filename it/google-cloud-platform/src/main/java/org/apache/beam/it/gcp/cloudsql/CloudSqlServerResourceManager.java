@@ -34,9 +34,6 @@ public class CloudSqlServerResourceManager extends CloudSqlResourceManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(CloudSqlServerResourceManager.class);
 
-  private static final int CDC_ENABLE_ATTEMPTS = 5;
-  private static final long CDC_ENABLE_BASE_BACKOFF_MILLIS = 2000L;
-
   /**
    * Serializes CDC enablement across all resource managers in the JVM. The first {@code
    * sp_cdc_enable_table} in a database creates the capture/cleanup jobs in {@code msdb}; when
@@ -117,10 +114,10 @@ public class CloudSqlServerResourceManager extends CloudSqlResourceManager {
             + "END; "
             + "CLOSE table_cursor; "
             + "DEALLOCATE table_cursor;";
-    // The cursor only visits tables that are not yet tracked, so re-running the batch after a
-    // deadlock resumes with the tables that were not enabled yet.
-    runCdcUpdateWithDeadlockRetry(enableCdcQuery);
-    ensureCaptureJobRunning();
+    synchronized (CDC_ENABLE_LOCK) {
+      runSQLUpdate(enableCdcQuery);
+      ensureCaptureJobRunning();
+    }
   }
 
   /**
@@ -136,59 +133,16 @@ public class CloudSqlServerResourceManager extends CloudSqlResourceManager {
       @NonNull String schemaName, @NonNull String tableName, String uniqueIndexName) {
     String indexClause =
         uniqueIndexName == null ? "" : String.format(", @index_name = N'%s'", uniqueIndexName);
-    runCdcUpdateWithDeadlockRetry(
-        String.format(
-            "IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = N'%s'"
-                + " AND SCHEMA_NAME(schema_id) = N'%s' AND is_tracked_by_cdc = 1) "
-                + "EXEC sys.sp_cdc_enable_table @source_schema = N'%s', @source_name = N'%s',"
-                + " @role_name = NULL, @supports_net_changes = 1%s;",
-            tableName, schemaName, schemaName, tableName, indexClause));
-    ensureCaptureJobRunning();
-  }
-
-  /**
-   * Runs a CDC-enabling statement while holding {@link #CDC_ENABLE_LOCK}, and retries when SQL
-   * Server still picks it as a deadlock victim (error 1205), e.g. because another JVM is enabling
-   * CDC on the same instance.
-   */
-  private void runCdcUpdateWithDeadlockRetry(String sql) {
     synchronized (CDC_ENABLE_LOCK) {
-      RuntimeException lastFailure = null;
-      for (int attempt = 1; attempt <= CDC_ENABLE_ATTEMPTS; attempt++) {
-        try {
-          runSQLUpdate(sql);
-          return;
-        } catch (RuntimeException e) {
-          if (!isDeadlock(e)) {
-            throw e;
-          }
-          lastFailure = e;
-          long backoffMillis = CDC_ENABLE_BASE_BACKOFF_MILLIS * attempt;
-          LOG.warn(
-              "Enabling CDC was chosen as a deadlock victim (attempt {}/{}), retrying in {} ms.",
-              attempt,
-              CDC_ENABLE_ATTEMPTS,
-              backoffMillis);
-          try {
-            Thread.sleep(backoffMillis);
-          } catch (InterruptedException ie) {
-            Thread.currentThread().interrupt();
-            throw e;
-          }
-        }
-      }
-      throw lastFailure;
+      runSQLUpdate(
+          String.format(
+              "IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = N'%s'"
+                  + " AND SCHEMA_NAME(schema_id) = N'%s' AND is_tracked_by_cdc = 1) "
+                  + "EXEC sys.sp_cdc_enable_table @source_schema = N'%s', @source_name = N'%s',"
+                  + " @role_name = NULL, @supports_net_changes = 1%s;",
+              tableName, schemaName, schemaName, tableName, indexClause));
+      ensureCaptureJobRunning();
     }
-  }
-
-  private static boolean isDeadlock(Throwable t) {
-    for (Throwable cause = t; cause != null; cause = cause.getCause()) {
-      String message = cause.getMessage();
-      if (message != null && (message.contains("1205") || message.contains("deadlock"))) {
-        return true;
-      }
-    }
-    return false;
   }
 
   /** Starts the CDC capture job of the current database if it exists and is not running. */
