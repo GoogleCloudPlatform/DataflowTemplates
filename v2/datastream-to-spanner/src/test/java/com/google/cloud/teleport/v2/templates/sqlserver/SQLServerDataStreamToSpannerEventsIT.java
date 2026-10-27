@@ -233,12 +233,19 @@ public class SQLServerDataStreamToSpannerEventsIT extends DataStreamToSpannerITB
     LOG.info("Applying Users CDC wave (inserts, updates, delete) on SQL Server...");
     insertUsersCdcRows();
 
-    // 4. Wait on Spanner to merge the second wave of events.
+    // 4. Wait on Spanner to merge the second wave of events. A row count alone is also satisfied
+    // by transient states (e.g. before the UPDATE of id 3 or the DELETE of id 2 is applied), so
+    // additionally wait for the updated row to be visible.
     ConditionCheck cdcCondition =
         SpannerRowsCheck.builder(spannerResourceManager, USERS_TABLE)
             .setMinRows(3)
             .setMaxRows(3)
-            .build();
+            .build()
+            .and(
+                rowPresentCheck(
+                    "Users id 3 updated",
+                    "SELECT id FROM Users WHERE id = 3 AND age = 50 AND plan = 'Z'"
+                        + " AND subscribed = false"));
     result =
         pipelineOperator()
             .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(10)), cdcCondition);
@@ -379,6 +386,23 @@ public class SQLServerDataStreamToSpannerEventsIT extends DataStreamToSpannerITB
     msSqlResourceManager.runSQLUpdate(
         "INSERT INTO Articles (id, name, published_date, author_id) "
             + "VALUES (4, 'Article005', '2024-01-01', 3)");
+  }
+
+  /** A condition that passes once the given query returns at least one row from Spanner. */
+  private static ConditionCheck rowPresentCheck(String description, String query) {
+    return new ConditionCheck() {
+      @Override
+      protected String getDescription() {
+        return description;
+      }
+
+      @Override
+      protected CheckResult check() {
+        int found = spannerResourceManager.runQuery(query).size();
+        return new CheckResult(
+            found > 0, String.format("%s: query returned %d row(s)", description, found));
+      }
+    };
   }
 
   private void assertUsersTableContents() {
