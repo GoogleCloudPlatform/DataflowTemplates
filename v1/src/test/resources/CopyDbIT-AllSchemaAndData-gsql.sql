@@ -200,6 +200,8 @@ REMOTE OPTIONS (endpoint='//aiplatform.googleapis.com/projects/%PROJECT_ID%/loca
 
 -- Functions (UDFs)
 CREATE FUNCTION `my_schema`.`MyCustomFunction`(`input_val` INT64) RETURNS INT64 AS (`input_val` * 2);
+-- STRUCT parameter types are reported with spaces in INFORMATION_SCHEMA.PARAMETERS.DATA_TYPE.
+CREATE FUNCTION `my_schema`.`MyStructFunction`(`s` STRUCT<x INT64, y STRING>, `a` ARRAY<STRUCT<x INT64, y STRING>>) RETURNS INT64 AS (s.x + ARRAY_LENGTH(a));
 
 -- Tables w/o PKs
 CREATE TABLE `MyTable_NoPks` (
