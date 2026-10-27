@@ -61,6 +61,7 @@ import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Filter;
 import org.apache.beam.sdk.transforms.GroupIntoBatches;
@@ -92,6 +93,34 @@ public class MongoDbTransforms {
 
   private static final ConcurrentHashMap<String, MongoClient> CLIENT_CACHE =
       new ConcurrentHashMap<>();
+
+  private static final ConcurrentHashMap<Integer, SharedWritePool> WRITE_POOL_CACHE =
+      new ConcurrentHashMap<>();
+
+  private static class SharedWritePool {
+    final ExecutorService executor;
+    final Semaphore semaphore;
+
+    SharedWritePool(int concurrency) {
+      this.executor =
+          Executors.newFixedThreadPool(
+              concurrency,
+              r -> {
+                Thread t = new Thread(r, "mongodb-async-writer");
+                t.setDaemon(true);
+                return t;
+              });
+      this.semaphore = new Semaphore(concurrency);
+    }
+  }
+
+  private static SharedWritePool getOrCreateWritePool(Integer maxConcurrentAsyncWrites) {
+    int concurrency =
+        (maxConcurrentAsyncWrites != null && maxConcurrentAsyncWrites > 0)
+            ? maxConcurrentAsyncWrites
+            : 10;
+    return WRITE_POOL_CACHE.computeIfAbsent(concurrency, SharedWritePool::new);
+  }
 
   /** Returns a cached JVM-wide MongoClient for the given URI, or creates a new one if absent. */
   public static MongoClient getOrCreateMongoClient(String uri) {
@@ -166,7 +195,7 @@ public class MongoDbTransforms {
     private Integer writeRateRampUpSteps = 5;
     private Integer maxWriteRatePerWorker = 25000;
     private SerializableFunction<String, MongoClient> clientFactory =
-        MongoDbTransforms::createMongoClient;
+        MongoDbTransforms::getOrCreateMongoClient;
 
     private Integer numWriteShards = 64;
     private Integer maxBufferingDurationMs = 200;
@@ -358,7 +387,11 @@ public class MongoDbTransforms {
       PCollection<DocumentWithMetadata> permanent =
           input.apply("FilterPermanent", Filter.by(item -> item.getErrorType() == PERMANENT));
 
-      boolean isUnbounded = input.isBounded() == PCollection.IsBounded.UNBOUNDED;
+      // Dataflow Streaming Engine requires windowed writes with explicit sharding even when the
+      // upstream PCollection is bounded (e.g., BACKFILL mode forced onto Streaming Engine).
+      boolean isUnbounded =
+          input.isBounded() == PCollection.IsBounded.UNBOUNDED
+              || input.getPipeline().getOptions().as(StreamingOptions.class).isStreaming();
 
       String filePrefix =
           (getName() != null && !getName().isEmpty())
@@ -651,7 +684,7 @@ public class MongoDbTransforms {
       backoffSpec =
           FluentBackoff.DEFAULT
               .withMaxRetries(maxWriteRetries)
-              .withInitialBackoff(Duration.standardSeconds(2))
+              .withInitialBackoff(Duration.millis(200))
               .withExponent(2.0);
       if (initialWriteRatePerWorker != null && initialWriteRatePerWorker > 0) {
         rateLimiter = RateLimiter.create(initialWriteRatePerWorker);
@@ -720,12 +753,7 @@ public class MongoDbTransforms {
       if (executor != null) {
         executor.shutdown();
       }
-      if (mongoClient != null) {
-        try {
-          mongoClient.close();
-        } catch (Exception ignored) {
-        }
-      }
+      MongoDbTransforms.closeIfNotShared(mongoClient);
     }
 
     @StartBundle
@@ -1132,6 +1160,7 @@ public class MongoDbTransforms {
 
     private final String uri;
     private final String database;
+    private final Integer maxConcurrentAsyncWrites;
     private final Integer maxWriteRetries;
     private final Integer dlqMaxRetries;
     private final Integer initialWriteRatePerWorker;
@@ -1165,6 +1194,9 @@ public class MongoDbTransforms {
         Metrics.distribution(WriteWithDlq.class, "bulkWriteLatencyMs");
 
     private transient MongoClient mongoClient;
+    private transient SharedWritePool writePool;
+    private transient ConcurrentLinkedQueue<CompletableFuture<Void>> futures;
+    private transient Map<String, CompletableFuture<Void>> inFlightByKey;
     private transient ConcurrentLinkedQueue<DocumentWithMetadata> failures;
     private transient AtomicLong successfulCount;
     private transient ConcurrentHashMap<String, AtomicLong> dynamicCounters;
@@ -1195,6 +1227,7 @@ public class MongoDbTransforms {
         TupleTag<DocumentWithMetadata> failureTag) {
       this.uri = uri;
       this.database = database;
+      this.maxConcurrentAsyncWrites = maxConcurrentAsyncWrites;
       this.maxWriteRetries = maxWriteRetries;
       this.dlqMaxRetries = dlqMaxRetries;
       this.initialWriteRatePerWorker = initialWriteRatePerWorker;
@@ -1324,13 +1357,14 @@ public class MongoDbTransforms {
 
     @Setup
     public void setup() {
+      writePool = getOrCreateWritePool(maxConcurrentAsyncWrites);
       if (clientFactory != null && uri != null) {
         mongoClient = clientFactory.apply(uri);
       }
       backoffSpec =
           FluentBackoff.DEFAULT
               .withMaxRetries(maxWriteRetries)
-              .withInitialBackoff(Duration.standardSeconds(2))
+              .withInitialBackoff(Duration.millis(200))
               .withExponent(2.0);
       if (initialWriteRatePerWorker != null && initialWriteRatePerWorker > 0) {
         rateLimiter = RateLimiter.create(initialWriteRatePerWorker);
@@ -1349,8 +1383,10 @@ public class MongoDbTransforms {
             "Write rate limiting is disabled for WriteBatchesFn (initialWriteRatePerWorker <= 0)");
       }
       LOG.info(
-          "Initialized MongoDB WriteBatchesFn worker thread for database '{}' (maxWriteRetries={})",
+          "Initialized MongoDB WriteBatchesFn worker thread for database '{}'"
+              + " (maxConcurrentAsyncWrites={}, maxWriteRetries={})",
           database,
+          maxConcurrentAsyncWrites,
           maxWriteRetries);
     }
 
@@ -1394,19 +1430,19 @@ public class MongoDbTransforms {
 
     @Teardown
     public void teardown() {
-      if (mongoClient != null) {
-        try {
-          mongoClient.close();
-        } catch (Exception ignored) {
-        }
-      }
+      MongoDbTransforms.closeIfNotShared(mongoClient);
     }
 
     @StartBundle
     public void startBundle() {
+      if (writePool == null) {
+        writePool = getOrCreateWritePool(maxConcurrentAsyncWrites);
+      }
       if (mongoClient == null && clientFactory != null && uri != null) {
         mongoClient = clientFactory.apply(uri);
       }
+      futures = new ConcurrentLinkedQueue<>();
+      inFlightByKey = new HashMap<>();
       failures = new ConcurrentLinkedQueue<>();
       successfulCount = new AtomicLong(0);
       dynamicCounters = new ConcurrentHashMap<>();
@@ -1583,7 +1619,40 @@ public class MongoDbTransforms {
 
           MongoCollection<Document> col = mongoClient.getDatabase(database).getCollection(colName);
 
-          writeBatchWithRetry(colName, col, currentUpdates, currentItemList);
+          List<CompletableFuture<Void>> priorFutures = null;
+          if (inFlightByKey != null) {
+            for (Object coalesceKey : colMap.keySet()) {
+              String scopedKey = colName + "#" + coalesceKey;
+              CompletableFuture<Void> prior = inFlightByKey.get(scopedKey);
+              if (prior != null && !prior.isDone()) {
+                if (priorFutures == null) {
+                  priorFutures = new ArrayList<>(4);
+                }
+                priorFutures.add(prior);
+              }
+            }
+          }
+          if (priorFutures != null) {
+            CompletableFuture.allOf(priorFutures.toArray(new CompletableFuture[0])).join();
+          }
+
+          writePool.semaphore.acquire();
+          CompletableFuture<Void> future =
+              CompletableFuture.runAsync(
+                  () -> {
+                    try {
+                      writeBatchWithRetry(colName, col, currentUpdates, currentItemList);
+                    } finally {
+                      writePool.semaphore.release();
+                    }
+                  },
+                  writePool.executor);
+          futures.add(future);
+          if (inFlightByKey != null) {
+            for (Object coalesceKey : colMap.keySet()) {
+              inFlightByKey.put(colName + "#" + coalesceKey, future);
+            }
+          }
         }
       }
     }
@@ -1803,6 +1872,12 @@ public class MongoDbTransforms {
 
     @FinishBundle
     public void finishBundle(FinishBundleContext c) {
+      if (futures != null && !futures.isEmpty()) {
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+      }
+      if (inFlightByKey != null) {
+        inFlightByKey.clear();
+      }
       successfulWrites.inc(successfulCount.get());
       if (inMemoryRetriesCount != null) {
         inMemoryRetries.inc(inMemoryRetriesCount.get());

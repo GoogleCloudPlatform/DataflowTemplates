@@ -477,6 +477,19 @@ public class MongoDbToMongoDb {
     if (migrationMode == null || migrationMode.isEmpty()) {
       migrationMode = "BACKFILL";
     }
+    // ProcessBackfillSlotFn is annotated with @DoFn.BoundedPerElement so DirectRunner integration
+    // and unit tests can execute BACKFILL pipelines in bounded mode and terminate cleanly.
+    // On DataflowRunner, however, a purely bounded PCollection graph defaults to Legacy Batch
+    // execution (ignoring enableStreamingEngine=true), which replaces GroupIntoBatches with a
+    // full-dataset disk-shuffle barrier (BatchGroupIntoBatches) and skews shard keys across a
+    // subset of workers. Explicitly enabling streaming mode on DataflowRunner forces execution
+    // onto Dataflow Streaming Engine (Windmill) so reads and batched writes pipeline concurrently
+    // across all workers while still auto-terminating in JOB_STATE_DONE once bounded backfill
+    // restrictions complete.
+    if (options.getRunner() != null && options.getRunner().getSimpleName().contains("Dataflow")) {
+      options.setStreaming(true);
+      options.as(DataflowPipelineOptions.class).setEnableStreamingEngine(true);
+    }
 
     Pipeline pipeline = Pipeline.create(options);
 
