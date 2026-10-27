@@ -22,6 +22,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -31,6 +32,7 @@ import java.time.LocalTime;
 import java.time.OffsetTime;
 import java.util.Calendar;
 import java.util.TimeZone;
+import java.util.UUID;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
@@ -238,8 +240,21 @@ public class BoundaryExtractorFactory {
     resultSet.next();
     boolean isUuid =
         partitionColumn != null && "uuid".equalsIgnoreCase(partitionColumn.columnTypeName());
-    byte[] start = isUuid ? extractUuidBytes(resultSet, 1) : resultSet.getBytes(1);
-    byte[] end = isUuid ? extractUuidBytes(resultSet, 2) : resultSet.getBytes(2);
+    boolean isSqlServerUniqueIdentifier =
+        partitionColumn != null
+            && "uniqueidentifier".equalsIgnoreCase(partitionColumn.columnTypeName());
+    byte[] start =
+        isUuid
+            ? extractUuidBytes(resultSet, 1)
+            : (isSqlServerUniqueIdentifier
+                ? extractSqlServerUniqueIdentifierBytes(resultSet, 1)
+                : resultSet.getBytes(1));
+    byte[] end =
+        isUuid
+            ? extractUuidBytes(resultSet, 2)
+            : (isSqlServerUniqueIdentifier
+                ? extractSqlServerUniqueIdentifierBytes(resultSet, 2)
+                : resultSet.getBytes(2));
     return Boundary.<byte[]>builder()
         .setTableIdentifier(tableIdentifier)
         .setPartitionColumn(partitionColumn)
@@ -251,17 +266,57 @@ public class BoundaryExtractorFactory {
   }
 
   /**
+   * Extracts a SQL Server `UNIQUEIDENTIFIER` column (`g0-g1-g2-g3-g4`) into a 16-byte array ordered
+   * by SQL Server's `UNIQUEIDENTIFIER` comparison precedence: `g4` (bytes 10..15), `g3` (bytes
+   * 8..9), `g2` (bytes 6..7), `g1` (bytes 4..5), `g0` (bytes 0..3).
+   */
+  private static byte[] extractSqlServerUniqueIdentifierBytes(ResultSet rs, int colIndex)
+      throws SQLException {
+    String uuidStr = rs.getString(colIndex);
+    if (uuidStr == null) {
+      return null;
+    }
+    UUID uuid = UUID.fromString(uuidStr);
+    ByteBuffer bb = ByteBuffer.wrap(new byte[16]);
+    bb.putLong(uuid.getMostSignificantBits()).putLong(uuid.getLeastSignificantBits());
+    byte[] raw = bb.array();
+    byte[] sorted = new byte[16];
+    System.arraycopy(raw, 10, sorted, 0, 6); // g4
+    System.arraycopy(raw, 8, sorted, 6, 2); // g3
+    System.arraycopy(raw, 6, sorted, 8, 2); // g2
+    System.arraycopy(raw, 4, sorted, 10, 2); // g1
+    System.arraycopy(raw, 0, sorted, 12, 4); // g0
+    return sorted;
+  }
+
+  /**
+   * Converts a 16-byte array in SQL Server's `UNIQUEIDENTIFIER` comparison order (`g4, g3, g2, g1,
+   * g0`) back to a canonical UUID string.
+   */
+  static String sqlServerSortableBytesToUuidString(byte[] sorted) {
+    Preconditions.checkArgument(sorted != null && sorted.length == 16);
+    byte[] raw = new byte[16];
+    System.arraycopy(sorted, 0, raw, 10, 6); // g4
+    System.arraycopy(sorted, 6, raw, 8, 2); // g3
+    System.arraycopy(sorted, 8, raw, 6, 2); // g2
+    System.arraycopy(sorted, 10, raw, 4, 2); // g1
+    System.arraycopy(sorted, 12, raw, 0, 4); // g0
+    ByteBuffer bb = ByteBuffer.wrap(raw);
+    return new UUID(bb.getLong(), bb.getLong()).toString();
+  }
+
+  /**
    * Extracts exactly 16 raw binary bytes from a PostgreSQL UUID column.
    *
    * <p>{@code rs.getBytes()} returns 36 ASCII string bytes instead of 16 raw binary bytes, which
    * corrupts range calculations.
    */
   private static byte[] extractUuidBytes(ResultSet rs, int colIndex) throws SQLException {
-    java.util.UUID uuid = rs.getObject(colIndex, java.util.UUID.class);
+    UUID uuid = rs.getObject(colIndex, UUID.class);
     if (uuid == null) {
       return null;
     }
-    java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(new byte[16]);
+    ByteBuffer bb = ByteBuffer.wrap(new byte[16]);
     bb.putLong(uuid.getMostSignificantBits()).putLong(uuid.getLeastSignificantBits());
     return bb.array();
   }

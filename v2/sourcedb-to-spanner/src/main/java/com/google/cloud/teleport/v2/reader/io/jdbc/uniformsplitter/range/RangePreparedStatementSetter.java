@@ -19,10 +19,12 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcCommonConstants;
 import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import java.nio.ByteBuffer;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.LocalTime;
 import java.time.OffsetTime;
+import java.util.UUID;
 import org.apache.beam.sdk.io.jdbc.JdbcIO.PreparedStatementSetter;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -66,8 +68,12 @@ public class RangePreparedStatementSetter implements PreparedStatementSetter<Ran
   private static Object convertSpecialTypes(Object val, PartitionColumn pc) {
     if (val instanceof byte[] bytes
         && JdbcCommonConstants.UUID_TYPE.equalsIgnoreCase(pc.columnTypeName())) {
-      java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(bytes);
-      return new java.util.UUID(bb.getLong(), bb.getLong());
+      ByteBuffer bb = ByteBuffer.wrap(bytes);
+      return new UUID(bb.getLong(), bb.getLong());
+    }
+
+    if (val instanceof byte[] bytes && "uniqueidentifier".equalsIgnoreCase(pc.columnTypeName())) {
+      return BoundaryExtractorFactory.sqlServerSortableBytesToUuidString(bytes);
     }
 
     if (val instanceof String bitStr

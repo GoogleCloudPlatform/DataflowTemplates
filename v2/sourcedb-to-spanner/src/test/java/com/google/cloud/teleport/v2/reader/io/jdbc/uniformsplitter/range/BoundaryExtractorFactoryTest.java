@@ -37,6 +37,7 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.LocalTime;
 import java.time.OffsetTime;
+import java.util.Arrays;
 import java.util.Map;
 import org.apache.beam.sdk.io.jdbc.JdbcIO.PoolableDataSourceProvider;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
@@ -542,6 +543,74 @@ public class BoundaryExtractorFactoryTest {
         extractor.getBoundary(partitionColumn, mockResultSet, null, tableId);
     assertThat(java.util.Arrays.equals(boundaryNative.start(), expectedZero)).isTrue();
     assertThat(java.util.Arrays.equals(boundaryNative.end(), expectedMax)).isTrue();
+  }
+
+  @Test
+  public void testFromSqlServerUniqueIdentifierBinary() throws SQLException {
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnTypeName("uniqueidentifier")
+            .setColumnName("Id")
+            .setColumnClass(BYTE_ARRAY_CLASS)
+            .build();
+    BoundaryExtractor<byte[]> extractor = BoundaryExtractorFactory.create(BYTE_ARRAY_CLASS);
+    TableIdentifier tableId =
+        TableIdentifier.builder()
+            .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
+            .setTableName("testTable")
+            .build();
+
+    when(mockResultSet.next()).thenReturn(true);
+    String minStr = "00000000-0000-0000-0000-000000000000";
+    String maxStr = "FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF";
+    when(mockResultSet.getString(1)).thenReturn(minStr);
+    when(mockResultSet.getString(2)).thenReturn(maxStr);
+
+    Boundary<byte[]> boundary =
+        extractor.getBoundary(partitionColumn, mockResultSet, null, tableId);
+    byte[] expectedZero = new byte[16];
+    byte[] expectedMax = new byte[16];
+    Arrays.fill(expectedMax, (byte) 0xFF);
+    assertThat(boundary.start()).isEqualTo(expectedZero);
+    assertThat(boundary.end()).isEqualTo(expectedMax);
+
+    // Verify sort order and round-trip conversion
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getString(1)).thenReturn("00000000-0000-0000-0000-000000000001");
+    when(mockResultSet.getString(2)).thenReturn("00000000-0000-0000-0000-000000000002");
+    Boundary<byte[]> boundaryOrder =
+        extractor.getBoundary(partitionColumn, mockResultSet, null, tableId);
+    assertThat(BoundaryExtractorFactory.sqlServerSortableBytesToUuidString(boundaryOrder.start()))
+        .isEqualTo("00000000-0000-0000-0000-000000000001");
+
+    // Verify SQL Server comparison precedence: g4 is most significant
+    // uHighG4 has lower g0 but higher g4 than uHighG0
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getString(1)).thenReturn("00000002-0000-0000-0000-000000000000"); // uHighG0
+    when(mockResultSet.getString(2)).thenReturn("00000000-0000-0000-0000-000000000002"); // uHighG4
+    Boundary<byte[]> boundaryPrecedence =
+        extractor.getBoundary(partitionColumn, mockResultSet, null, tableId);
+    BigInteger biG0 = new BigInteger(1, boundaryPrecedence.start());
+    BigInteger biG4 = new BigInteger(1, boundaryPrecedence.end());
+    // In SQL Server, g4 (bytes 10..15) is compared first, so uHighG4 > uHighG0
+    assertThat(biG4).isGreaterThan(biG0);
+
+    // Verify null handling
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getString(1)).thenReturn(null);
+    when(mockResultSet.getString(2)).thenReturn(null);
+    Boundary<byte[]> nullBoundary =
+        extractor.getBoundary(partitionColumn, mockResultSet, null, tableId);
+    assertThat(nullBoundary.start()).isNull();
+    assertThat(nullBoundary.end()).isNull();
+
+    // Verify invalid byte array length handling
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> BoundaryExtractorFactory.sqlServerSortableBytesToUuidString(new byte[15]));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> BoundaryExtractorFactory.sqlServerSortableBytesToUuidString(new byte[17]));
   }
 
   @Test
