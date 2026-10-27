@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
+import com.google.api.gax.rpc.FailedPreconditionException;
 import com.google.cloud.datastream.v1.DestinationConfig;
 import com.google.cloud.datastream.v1.SourceConfig;
 import com.google.cloud.datastream.v1.Stream;
@@ -29,6 +30,7 @@ import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -76,6 +78,11 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
   // latency in the first condition check after the job start. The subsequent condition check
   // waits don't need to account for this latency.
   public static final int JOB_START_PROCESSING_WAIT_MINUTES = 15;
+
+  /** Attempts to create the source connection profile when Datastream fails to validate it. */
+  private static final int CREATE_PROFILE_MAX_ATTEMPTS = 3;
+
+  private static final Duration CREATE_PROFILE_RETRY_DELAY = Duration.ofSeconds(30);
 
   public PubsubResourceManager setUpPubSubResourceManager() throws IOException {
     return PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
@@ -589,7 +596,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       DatastreamResourceManager.DestinationOutputFormat destinationOutputFormat) {
     try {
       SourceConfig sourceConfig =
-          datastreamResourceManager.buildJDBCSourceConfig("jdbc-profile", jdbcSource);
+          buildJdbcSourceConfig(datastreamResourceManager, "jdbc-profile", jdbcSource);
 
       DestinationConfig destinationConfig =
           datastreamResourceManager.buildGCSDestinationConfig(
@@ -603,6 +610,54 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       LOG.error("Error while creating datastream", e);
       throw e;
     }
+  }
+
+  /**
+   * Creates the source connection profile, retrying when Datastream fails to validate it. The
+   * validation of a connection profile only checks that Datastream can connect and log in to the
+   * source database, which can fail transiently (e.g. {@code ORA-12541: TNS:no listener}), e.g.
+   * right after a source database container is started.
+   *
+   * @param datastreamResourceManager the resource manager creating the connection profile.
+   * @param connectionProfileId the ID of the connection profile.
+   * @param jdbcSource the source database.
+   */
+  protected static SourceConfig buildJdbcSourceConfig(
+      DatastreamResourceManager datastreamResourceManager,
+      String connectionProfileId,
+      JDBCSource jdbcSource) {
+    for (int attempt = 1; ; attempt++) {
+      try {
+        return datastreamResourceManager.buildJDBCSourceConfig(connectionProfileId, jdbcSource);
+      } catch (RuntimeException e) {
+        if (attempt >= CREATE_PROFILE_MAX_ATTEMPTS
+            || !hasCause(e, FailedPreconditionException.class)) {
+          throw e;
+        }
+        LOG.warn(
+            "Datastream failed to validate the source connection profile (attempt {}/{}),"
+                + " retrying in {} s.",
+            attempt,
+            CREATE_PROFILE_MAX_ATTEMPTS,
+            CREATE_PROFILE_RETRY_DELAY.toSeconds(),
+            e);
+        try {
+          Thread.sleep(CREATE_PROFILE_RETRY_DELAY.toMillis());
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+          throw e;
+        }
+      }
+    }
+  }
+
+  private static boolean hasCause(Throwable e, Class<? extends Throwable> causeClass) {
+    for (Throwable t = e; t != null; t = t.getCause()) {
+      if (causeClass.isInstance(t)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   protected void executeSqlScript(JDBCResourceManager resourceManager, String resourceName)
