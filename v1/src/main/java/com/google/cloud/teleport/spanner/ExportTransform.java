@@ -531,8 +531,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                     new SchemaBasedDynamicDestinations(
                         avroSchemas, outputDirectoryName, dialectView, resource))
                 .withTempDirectory(tempResource)
-                .withEvictWritersWhenFull()
-                .withMaxNumWritersPerBundle(50));
+                .withEvictWritersWhenFull());
 
     // Generate the manifest file.
     PCollection<KV<String, Iterable<String>>> tableFiles =
