@@ -25,9 +25,13 @@ import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Objects;
+import java.util.regex.Pattern;
 import org.apache.beam.sdk.coders.DefaultCoder;
+import org.bson.BsonRegularExpression;
+import org.bson.BsonUndefined;
 import org.bson.Document;
 import org.bson.types.ObjectId;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,6 +68,7 @@ public class MongoDbChangeEventContext implements Serializable {
   private final Document timestampDoc;
   private final boolean isDlqReconsumed;
   private final int retryCount;
+  private transient Instant beamTimestamp;
 
   /** Gets the change type from the event metadata. */
   private String getChangeType(JsonNode changeEvent) {
@@ -195,6 +200,8 @@ public class MongoDbChangeEventContext implements Serializable {
         this.documentId = docIdVal.asLong();
       } else if (docIdVal.isFloatingPointNumber()) {
         this.documentId = docIdVal.asDouble();
+      } else if (docIdVal.isBoolean()) {
+        this.documentId = docIdVal.asBoolean();
       } else if (docIdVal.isTextual()) {
         this.documentId = docIdVal.asText();
       } else if (docIdVal.isObject() || docIdVal.isArray()) {
@@ -205,7 +212,15 @@ public class MongoDbChangeEventContext implements Serializable {
         } else {
           // Support for generic Document (Map), Array (List), Binary, and composite BSON _id types
           Document wrapper = Document.parse("{ \"val\": " + docIdVal.toString() + " }");
-          this.documentId = wrapper.get("val");
+          Object parsedId = wrapper.get("val");
+          if (parsedId == null
+              || parsedId instanceof Pattern
+              || parsedId instanceof BsonRegularExpression
+              || parsedId instanceof BsonUndefined) {
+            LOG.error("Unsupported _id type of _id {}.", docIdVal);
+            throw new IllegalArgumentException("Unsupported _id type.");
+          }
+          this.documentId = parsedId;
         }
       } else {
         LOG.error("Unsupported _id type of _id {}.", docIdVal);
@@ -390,6 +405,14 @@ public class MongoDbChangeEventContext implements Serializable {
 
   public int getRetryCount() {
     return retryCount;
+  }
+
+  public Instant getBeamTimestamp() {
+    return beamTimestamp;
+  }
+
+  public void setBeamTimestamp(Instant beamTimestamp) {
+    this.beamTimestamp = beamTimestamp;
   }
 
   /**

@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.transforms;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -25,12 +26,22 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
+import java.math.BigDecimal;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
+import org.bson.BsonTimestamp;
 import org.bson.Document;
 import org.bson.types.Binary;
+import org.bson.types.Code;
+import org.bson.types.CodeWithScope;
+import org.bson.types.Decimal128;
+import org.bson.types.MaxKey;
+import org.bson.types.MinKey;
 import org.bson.types.ObjectId;
+import org.bson.types.Symbol;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -230,6 +241,45 @@ public class UtilsTest {
     assertEquals(
         "list_{\"arr\": [{\"$numberInt\": \"1\"}, \"partA\", {\"$numberInt\": \"2\"}]}",
         Utils.documentIdToString(list));
+
+    // Additional BSON _id types
+    assertEquals("bin_0_AQID", Utils.documentIdToString(new byte[] {1, 2, 3}));
+    UUID uuid = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
+    assertEquals("uuid_123e4567-e89b-12d3-a456-426614174000", Utils.documentIdToString(uuid));
+    assertEquals("dec_123.45", Utils.documentIdToString(new Decimal128(new BigDecimal("123.45"))));
+    assertEquals("date_1700000000000", Utils.documentIdToString(new Date(1700000000000L)));
+    assertEquals("ts_1700000000_5", Utils.documentIdToString(new BsonTimestamp(1700000000, 5)));
+    assertEquals("sym_my_sym", Utils.documentIdToString(new Symbol("my_sym")));
+    assertEquals("minkey", Utils.documentIdToString(new MinKey()));
+    assertEquals("maxkey", Utils.documentIdToString(new MaxKey()));
+    assertEquals("code_function() {}", Utils.documentIdToString(new Code("function() {}")));
+    assertEquals(
+        "codewscope_13:function() {}_{\"x\": {\"$numberInt\": \"1\"}}",
+        Utils.documentIdToString(new CodeWithScope("function() {}", new Document("x", 1))));
+
+    // Composite Document containing UUID does not throw CodecConfigurationException
+    Document docWithUuid = new Document("tenant", uuid).append("seq", 1);
+    assertTrue(Utils.documentIdToString(docWithUuid).startsWith("doc_"));
+
+    // Composite Document field order is preserved and distinct
+    Document order1 = new Document("a", 1).append("b", 2);
+    Document order2 = new Document("b", 2).append("a", 1);
+    assertNotEquals(Utils.documentIdToString(order1), Utils.documentIdToString(order2));
+  }
+
+  @Test
+  public void testSanitizeConnectionUri() {
+    assertEquals(
+        "mongodb://admin:****@cluster0.example.com:27017/mydb",
+        Utils.sanitizeConnectionUri("mongodb://admin:s3cr3tP@ss@cluster0.example.com:27017/mydb"));
+    assertEquals(
+        "mongodb+srv://user:****@cluster0.example.com/?authMechanism=PLAIN",
+        Utils.sanitizeConnectionUri(
+            "mongodb+srv://user:myPassword123@cluster0.example.com/?authMechanism=PLAIN"));
+    assertEquals(
+        "mongodb://localhost:27017/?authMechanism=MONGODB-OIDC&authMechanismProperties=TOKEN_RESOURCE:FIRESTORE,access_token:****",
+        Utils.sanitizeConnectionUri(
+            "mongodb://localhost:27017/?authMechanism=MONGODB-OIDC&authMechanismProperties=TOKEN_RESOURCE:FIRESTORE,access_token:myOidcTokenValue"));
   }
 
   @Test

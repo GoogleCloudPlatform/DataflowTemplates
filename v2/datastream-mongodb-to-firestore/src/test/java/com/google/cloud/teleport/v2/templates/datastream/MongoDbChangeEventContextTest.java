@@ -131,7 +131,7 @@ public class MongoDbChangeEventContextTest {
               "_metadata_source": {
                 "collection": "test_collection"
               },
-              "_id": true,
+              "_id": "{\\\"$regularExpression\\\": {\\\"pattern\\\": \\\"^foo\\\", \\\"options\\\": \\\"i\\\"}}",
               "_metadata_timestamp_seconds": 1683782270,
               "_metadata_timestamp_nanos": 123456789
             }\
@@ -439,6 +439,30 @@ public class MongoDbChangeEventContextTest {
     assertEquals(1, list.get(0));
     assertEquals(2, list.get(1));
     assertEquals(3, list.get(2));
+  }
+
+  @Test
+  public void testConstructorBooleanId() throws JsonProcessingException {
+    JsonNode eventWithBooleanId =
+        OBJECT_MAPPER.readTree(
+            """
+            {
+              "_metadata_source": {
+                "collection": "test_collection"
+              },
+              "_id": "true",
+              "data": {
+                "field1": "updated_value"
+              },
+              "_metadata_timestamp_seconds": 1683782270,
+              "_metadata_timestamp_nanos": 123456789
+            }\
+            """);
+    MongoDbChangeEventContext context =
+        new MongoDbChangeEventContext(eventWithBooleanId, SHADOW_PREFIX);
+    assertNotNull(context.getDocumentId());
+    assertTrue(context.getDocumentId() instanceof Boolean);
+    assertEquals(Boolean.TRUE, context.getDocumentId());
   }
 
   @Test(expected = IllegalArgumentException.class)

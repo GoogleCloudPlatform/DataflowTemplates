@@ -53,7 +53,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
-import org.apache.beam.sdk.coders.SerializableCoder;
+import java.util.function.BiConsumer;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -120,6 +120,22 @@ public class MongoDbBulkTransforms {
           new TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>(
               "severeFailedWrite") {};
 
+  private static final ConcurrentHashMap<String, MongoClient> CLIENT_CACHE =
+      new ConcurrentHashMap<>();
+
+  public static MongoClient getOrCreateClient(String uri) {
+    if (uri == null) {
+      return createMongoClient(uri);
+    }
+    return CLIENT_CACHE.computeIfAbsent(uri, MongoDbBulkTransforms::createMongoClient);
+  }
+
+  public static void closeIfNotShared(MongoClient client) {
+    if (client != null && !CLIENT_CACHE.containsValue(client)) {
+      client.close();
+    }
+  }
+
   public static MongoClient createMongoClient(String uri) {
     ConnectionString connectionString = new ConnectionString(uri);
     MongoClientSettings.Builder builder =
@@ -155,6 +171,17 @@ public class MongoDbBulkTransforms {
     return new BulkWriteWithDlq();
   }
 
+  @VisibleForTesting
+  static void registerCachedClientForTesting(String uri, MongoClient client) {
+    CLIENT_CACHE.put(uri, client);
+  }
+
+  @VisibleForTesting
+  static void clearCachesForTesting() {
+    CLIENT_CACHE.clear();
+    BulkWriteFn.WORKER_RATE_LIMITERS.clear();
+  }
+
   /** PTransform encapsulating asynchronous bulk writing with retry and severe DLQ routing. */
   public static class BulkWriteWithDlq
       extends PTransform<PCollection<MongoDbChangeEventContext>, PCollectionTuple> {
@@ -178,7 +205,7 @@ public class MongoDbBulkTransforms {
     private int maxWriteRetries = 3;
     private int dlqMaxRetries = 3;
     private SerializableFunction<String, MongoClient> clientFactory =
-        MongoDbBulkTransforms::createMongoClient;
+        MongoDbBulkTransforms::getOrCreateClient;
 
     public BulkWriteWithDlq withConnectionString(String connectionString) {
       this.connectionString = connectionString;
@@ -282,19 +309,17 @@ public class MongoDbBulkTransforms {
                           SEVERE_FAILED_TAG))
                   .withOutputTags(SUCCESS_TAG, TupleTagList.of(FAILED_TAG).and(SEVERE_FAILED_TAG)));
 
-      result.get(SUCCESS_TAG).setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
+      result.get(SUCCESS_TAG).setCoder(MongoDbChangeEventContextCoder.of());
       result
           .get(FAILED_TAG)
           .setCoder(
               FailsafeElementCoder.of(
-                  SerializableCoder.of(MongoDbChangeEventContext.class),
-                  SerializableCoder.of(MongoDbChangeEventContext.class)));
+                  MongoDbChangeEventContextCoder.of(), MongoDbChangeEventContextCoder.of()));
       result
           .get(SEVERE_FAILED_TAG)
           .setCoder(
               FailsafeElementCoder.of(
-                  SerializableCoder.of(MongoDbChangeEventContext.class),
-                  SerializableCoder.of(MongoDbChangeEventContext.class)));
+                  MongoDbChangeEventContextCoder.of(), MongoDbChangeEventContextCoder.of()));
 
       return result;
     }
@@ -305,6 +330,21 @@ public class MongoDbBulkTransforms {
       extends DoFn<MongoDbChangeEventContext, MongoDbChangeEventContext> {
 
     private static final Logger LOG = LoggerFactory.getLogger(BulkWriteFn.class);
+    private static final Instant MAX_SAFE_BEAM_TIMESTAMP =
+        GlobalWindow.TIMESTAMP_MAX_VALUE.minus(Duration.millis(1));
+    static final ConcurrentHashMap<String, WorkerRateLimiterState> WORKER_RATE_LIMITERS =
+        new ConcurrentHashMap<>();
+
+    @VisibleForTesting
+    static final class WorkerRateLimiterState {
+      final RateLimiter rateLimiter;
+      final long warmupStartTimeMs;
+
+      WorkerRateLimiterState(double initialRate) {
+        this.rateLimiter = RateLimiter.create(Math.max(1.0, initialRate));
+        this.warmupStartTimeMs = System.currentTimeMillis();
+      }
+    }
 
     private final String connectionString;
     private final String database;
@@ -326,8 +366,7 @@ public class MongoDbBulkTransforms {
     private transient MongoClient mongoClient;
     private transient ExecutorService executorService;
     private transient Semaphore semaphore;
-    private transient RateLimiter rateLimiter;
-    private transient long setupStartTimeMs;
+    private transient WorkerRateLimiterState workerRateLimiterState;
     private transient Map<String, List<MongoDbChangeEventContext>> currentBatches;
     private transient List<CompletableFuture<Void>> inFlightFutures;
     private transient ConcurrentLinkedQueue<MongoDbChangeEventContext> successQueue;
@@ -394,7 +433,7 @@ public class MongoDbBulkTransforms {
       private int maxWriteRetries = 3;
       private int dlqMaxRetries = 3;
       private SerializableFunction<String, MongoClient> clientFactory =
-          MongoDbBulkTransforms::createMongoClient;
+          MongoDbBulkTransforms::getOrCreateClient;
       private TupleTag<MongoDbChangeEventContext> successTag = SUCCESSFUL_WRITE_TAG;
       private TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>
           failureTag = FAILED_WRITE_TAG;
@@ -517,13 +556,18 @@ public class MongoDbBulkTransforms {
       }
     }
 
+    @Override
+    public Duration getAllowedTimestampSkew() {
+      return Duration.millis(Long.MAX_VALUE);
+    }
+
     @Setup
     public void setup() {
       if (mongoClient == null) {
         if (clientFactory != null) {
           mongoClient = clientFactory.apply(connectionString);
         } else {
-          mongoClient = createMongoClient(connectionString);
+          mongoClient = getOrCreateClient(connectionString);
         }
       }
 
@@ -536,12 +580,25 @@ public class MongoDbBulkTransforms {
               ? initialWriteRatePerWorker
               : Math.max(1.0, maxWriteRatePerWorker);
       if (initialWriteRatePerWorker > 0 || maxWriteRatePerWorker > 0) {
-        this.rateLimiter = RateLimiter.create(Math.max(1.0, initialRate));
+        String limiterKey =
+            (connectionString != null ? connectionString : "")
+                + "|"
+                + (database != null ? database : "")
+                + "|"
+                + initialWriteRatePerWorker
+                + "|"
+                + maxWriteRatePerWorker
+                + "|"
+                + writeRateRampUpMinutes
+                + "|"
+                + writeRateRampUpSteps;
+        this.workerRateLimiterState =
+            WORKER_RATE_LIMITERS.computeIfAbsent(
+                limiterKey, k -> new WorkerRateLimiterState(initialRate));
       } else {
-        this.rateLimiter = null;
+        this.workerRateLimiterState = null;
       }
 
-      this.setupStartTimeMs = System.currentTimeMillis();
       this.currentBatches = new ConcurrentHashMap<>();
       this.inFlightFutures = new ArrayList<>();
       this.successQueue = new ConcurrentLinkedQueue<>();
@@ -576,6 +633,7 @@ public class MongoDbBulkTransforms {
       if (event == null) {
         return;
       }
+      event.setBeamTimestamp(sanitizeBeamTimestamp(context.timestamp()));
       String collectionName = event.getDataCollection();
       List<MongoDbChangeEventContext> batch =
           currentBatches.computeIfAbsent(collectionName, k -> new ArrayList<>());
@@ -624,7 +682,7 @@ public class MongoDbBulkTransforms {
         }
       }
       if (mongoClient != null) {
-        mongoClient.close();
+        closeIfNotShared(mongoClient);
         mongoClient = null;
       }
     }
@@ -664,11 +722,12 @@ public class MongoDbBulkTransforms {
     }
 
     private void applyRateLimiter(int permits) {
-      if (rateLimiter == null || permits <= 0) {
+      WorkerRateLimiterState state = this.workerRateLimiterState;
+      if (state == null || permits <= 0) {
         return;
       }
       if (initialWriteRatePerWorker > 0 && maxWriteRatePerWorker > 0) {
-        long elapsedMs = System.currentTimeMillis() - setupStartTimeMs;
+        long elapsedMs = System.currentTimeMillis() - state.warmupStartTimeMs;
         long rampUpMs = writeRateRampUpMinutes * 60 * 1000L;
         double currentRate;
         if (rampUpMs <= 0 || elapsedMs >= rampUpMs) {
@@ -683,11 +742,13 @@ public class MongoDbBulkTransforms {
                   + (maxWriteRatePerWorker - initialWriteRatePerWorker) * fraction;
         }
         double targetRate = Math.max(1.0, currentRate);
-        if (Math.abs(rateLimiter.getRate() - targetRate) > 1e-3) {
-          rateLimiter.setRate(targetRate);
+        synchronized (state) {
+          if (Math.abs(state.rateLimiter.getRate() - targetRate) > 1e-3) {
+            state.rateLimiter.setRate(targetRate);
+          }
         }
       }
-      rateLimiter.acquire(permits);
+      state.rateLimiter.acquire(permits);
     }
 
     private void executeBatch(String collectionName, List<MongoDbChangeEventContext> batch) {
@@ -696,23 +757,23 @@ public class MongoDbBulkTransforms {
       }
 
       List<MongoDbChangeEventContext> activeBatch = new ArrayList<>();
-      Map<Object, List<MongoDbChangeEventContext>> supersededPerDoc = new LinkedHashMap<>();
+      Map<String, List<MongoDbChangeEventContext>> supersededPerDoc = new LinkedHashMap<>();
 
       try {
         applyRateLimiter(batch.size());
 
-        // Intra-batch coalescing: coalesce operations per document ID within the batch to ensure
-        // only
-        // the latest state is written
-        Map<Object, MongoDbChangeEventContext> latestPerDoc = new LinkedHashMap<>();
+        // Intra-batch coalescing: coalesce operations per canonical type-prefixed document ID key
+        // within the batch to ensure only the latest state is written without colliding on
+        // field-order-sensitive composite BSON Document _ids or byte[] _ids.
+        Map<String, MongoDbChangeEventContext> latestPerDoc = new LinkedHashMap<>();
         for (MongoDbChangeEventContext event : batch) {
           if (event == null) {
             continue;
           }
-          Object docId = event.getDocumentId();
-          MongoDbChangeEventContext existing = latestPerDoc.get(docId);
+          String docKey = Utils.documentIdToString(event.getDocumentId());
+          MongoDbChangeEventContext existing = latestPerDoc.get(docKey);
           if (existing == null) {
-            latestPerDoc.put(docId, event);
+            latestPerDoc.put(docKey, event);
           } else {
             TimestampSortKey eventKey = TimestampSortKey.of(event);
             TimestampSortKey existingKey = TimestampSortKey.of(existing);
@@ -721,10 +782,10 @@ public class MongoDbBulkTransforms {
                     ? 1
                     : (eventKey == null ? -1 : eventKey.compareTo(existingKey));
             if (cmp > 0 || (cmp == 0 && event.getIsDlqReconsumed())) {
-              supersededPerDoc.computeIfAbsent(docId, k -> new ArrayList<>()).add(existing);
-              latestPerDoc.put(docId, event);
+              supersededPerDoc.computeIfAbsent(docKey, k -> new ArrayList<>()).add(existing);
+              latestPerDoc.put(docKey, event);
             } else {
-              supersededPerDoc.computeIfAbsent(docId, k -> new ArrayList<>()).add(event);
+              supersededPerDoc.computeIfAbsent(docKey, k -> new ArrayList<>()).add(event);
             }
           }
         }
@@ -734,6 +795,7 @@ public class MongoDbBulkTransforms {
 
         for (MongoDbChangeEventContext event : latestPerDoc.values()) {
           Object docId = event.getDocumentId();
+          String docKey = Utils.documentIdToString(docId);
           Bson lookupById = eq("_id", docId);
           if (event.isDeleteEvent()) {
             operations.add(new DeleteOneModel<>(lookupById));
@@ -748,7 +810,7 @@ public class MongoDbBulkTransforms {
                     docId);
                 successQueue.add(event);
                 successfulWrites.inc();
-                List<MongoDbChangeEventContext> superseded = supersededPerDoc.remove(docId);
+                List<MongoDbChangeEventContext> superseded = supersededPerDoc.remove(docKey);
                 if (superseded != null && !superseded.isEmpty()) {
                   successQueue.addAll(superseded);
                   successfulWrites.inc(superseded.size());
@@ -760,7 +822,7 @@ public class MongoDbBulkTransforms {
                 severeElement.setErrorMessage("Missing or null document data for docId: " + docId);
                 severeFailureQueue.add(severeElement);
                 severeFailedWrites.inc();
-                supersededPerDoc.remove(docId);
+                supersededPerDoc.remove(docKey);
               }
             } else {
               operations.add(
@@ -780,7 +842,7 @@ public class MongoDbBulkTransforms {
           successQueue.add(event);
           successfulWrites.inc();
           List<MongoDbChangeEventContext> superseded =
-              supersededPerDoc.remove(event.getDocumentId());
+              supersededPerDoc.remove(Utils.documentIdToString(event.getDocumentId()));
           if (superseded != null && !superseded.isEmpty()) {
             successQueue.addAll(superseded);
             successfulWrites.inc(superseded.size());
@@ -798,7 +860,7 @@ public class MongoDbBulkTransforms {
     private void handleBulkWriteException(
         String collectionName,
         List<MongoDbChangeEventContext> batch,
-        Map<Object, List<MongoDbChangeEventContext>> supersededPerDoc,
+        Map<String, List<MongoDbChangeEventContext>> supersededPerDoc,
         MongoBulkWriteException mbwe) {
       Set<Integer> failedIndices = new HashSet<>();
       List<MongoDbChangeEventContext> transientEvents = new ArrayList<>();
@@ -819,7 +881,7 @@ public class MongoDbBulkTransforms {
             severeFailureQueue.add(severeElement);
             severeFailedWrites.inc();
             if (supersededPerDoc != null) {
-              supersededPerDoc.remove(event.getDocumentId());
+              supersededPerDoc.remove(Utils.documentIdToString(event.getDocumentId()));
             }
           } else {
             transientEvents.add(event);
@@ -848,7 +910,8 @@ public class MongoDbBulkTransforms {
             successfulWrites.inc();
             if (supersededPerDoc != null) {
               List<MongoDbChangeEventContext> superseded =
-                  supersededPerDoc.remove(successfulEvent.getDocumentId());
+                  supersededPerDoc.remove(
+                      Utils.documentIdToString(successfulEvent.getDocumentId()));
               if (superseded != null && !superseded.isEmpty()) {
                 successQueue.addAll(superseded);
                 successfulWrites.inc(superseded.size());
@@ -867,7 +930,7 @@ public class MongoDbBulkTransforms {
     private void handleGeneralBatchException(
         String collectionName,
         List<MongoDbChangeEventContext> batch,
-        Map<Object, List<MongoDbChangeEventContext>> supersededPerDoc,
+        Map<String, List<MongoDbChangeEventContext>> supersededPerDoc,
         Exception e) {
       int code = 0;
       if (e instanceof MongoException me) {
@@ -889,7 +952,7 @@ public class MongoDbBulkTransforms {
           severeFailureQueue.add(severeElement);
           severeFailedWrites.inc();
           if (supersededPerDoc != null) {
-            supersededPerDoc.remove(event.getDocumentId());
+            supersededPerDoc.remove(Utils.documentIdToString(event.getDocumentId()));
           }
         }
         return;
@@ -907,7 +970,7 @@ public class MongoDbBulkTransforms {
     private void retryTransientEvents(
         String collectionName,
         List<MongoDbChangeEventContext> events,
-        Map<Object, List<MongoDbChangeEventContext>> supersededPerDoc) {
+        Map<String, List<MongoDbChangeEventContext>> supersededPerDoc) {
       FluentBackoff backoff =
           FluentBackoff.DEFAULT
               .withInitialBackoff(Duration.standardSeconds(2))
@@ -924,6 +987,7 @@ public class MongoDbBulkTransforms {
           List<WriteModel<Document>> operations = new ArrayList<>(currentRemaining.size());
           for (MongoDbChangeEventContext event : currentRemaining) {
             Object docId = event.getDocumentId();
+            String docKey = Utils.documentIdToString(docId);
             Bson lookupById = eq("_id", docId);
             if (event.isDeleteEvent()) {
               operations.add(new DeleteOneModel<>(lookupById));
@@ -935,7 +999,7 @@ public class MongoDbBulkTransforms {
                   successQueue.add(event);
                   successfulWrites.inc();
                   if (supersededPerDoc != null) {
-                    List<MongoDbChangeEventContext> superseded = supersededPerDoc.remove(docId);
+                    List<MongoDbChangeEventContext> superseded = supersededPerDoc.remove(docKey);
                     if (superseded != null && !superseded.isEmpty()) {
                       successQueue.addAll(superseded);
                       successfulWrites.inc(superseded.size());
@@ -949,7 +1013,7 @@ public class MongoDbBulkTransforms {
                   severeFailureQueue.add(severeElement);
                   severeFailedWrites.inc();
                   if (supersededPerDoc != null) {
-                    supersededPerDoc.remove(docId);
+                    supersededPerDoc.remove(docKey);
                   }
                 }
               } else {
@@ -971,7 +1035,7 @@ public class MongoDbBulkTransforms {
             successfulWrites.inc();
             if (supersededPerDoc != null) {
               List<MongoDbChangeEventContext> superseded =
-                  supersededPerDoc.remove(event.getDocumentId());
+                  supersededPerDoc.remove(Utils.documentIdToString(event.getDocumentId()));
               if (superseded != null && !superseded.isEmpty()) {
                 successQueue.addAll(superseded);
                 successfulWrites.inc(superseded.size());
@@ -1000,7 +1064,7 @@ public class MongoDbBulkTransforms {
                 severeFailureQueue.add(severeElement);
                 severeFailedWrites.inc();
                 if (supersededPerDoc != null) {
-                  supersededPerDoc.remove(ev.getDocumentId());
+                  supersededPerDoc.remove(Utils.documentIdToString(ev.getDocumentId()));
                 }
               } else {
                 nextRetry.add(ev);
@@ -1014,7 +1078,8 @@ public class MongoDbBulkTransforms {
               successfulWrites.inc();
               if (supersededPerDoc != null) {
                 List<MongoDbChangeEventContext> superseded =
-                    supersededPerDoc.remove(successfulEvent.getDocumentId());
+                    supersededPerDoc.remove(
+                        Utils.documentIdToString(successfulEvent.getDocumentId()));
                 if (superseded != null && !superseded.isEmpty()) {
                   successQueue.addAll(superseded);
                   successfulWrites.inc(superseded.size());
@@ -1046,7 +1111,7 @@ public class MongoDbBulkTransforms {
                 failureQueue.add(failedElement);
                 retriableFailedWrites.inc();
                 if (supersededPerDoc != null) {
-                  supersededPerDoc.remove(ev.getDocumentId());
+                  supersededPerDoc.remove(Utils.documentIdToString(ev.getDocumentId()));
                 }
               }
               break;
@@ -1060,7 +1125,7 @@ public class MongoDbBulkTransforms {
               failureQueue.add(failedElement);
               retriableFailedWrites.inc();
               if (supersededPerDoc != null) {
-                supersededPerDoc.remove(ev.getDocumentId());
+                supersededPerDoc.remove(Utils.documentIdToString(ev.getDocumentId()));
               }
             }
             break;
@@ -1076,28 +1141,31 @@ public class MongoDbBulkTransforms {
 
     private void drainQueues(ProcessContext context) {
       drainToOutput(
-          (tag, value) -> context.output((TupleTag<MongoDbChangeEventContext>) tag, value),
-          (tag, value) ->
-              context.output(
-                  (TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>)
-                      tag,
-                  value));
+          (tag, value) -> {
+            Instant timestamp = resolveOutputTimestamp(value, context.timestamp());
+            context.outputWithTimestamp(
+                (TupleTag<MongoDbChangeEventContext>) tag, value, timestamp);
+          },
+          (tag, value) -> {
+            Instant timestamp =
+                resolveOutputTimestamp(value.getOriginalPayload(), context.timestamp());
+            context.outputWithTimestamp(
+                (TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>)
+                    tag,
+                value,
+                timestamp);
+          });
     }
 
     private void drainQueuesFinishBundle(FinishBundleContext context) {
       drainToOutput(
           (tag, value) -> {
-            long tsSeconds = value.getTimestampSeconds();
-            Instant timestamp =
-                tsSeconds > 0 ? Instant.ofEpochMilli(tsSeconds * 1000L) : Instant.now();
+            Instant timestamp = resolveOutputTimestamp(value, null);
             context.output(
                 (TupleTag<MongoDbChangeEventContext>) tag, value, timestamp, GlobalWindow.INSTANCE);
           },
           (tag, value) -> {
-            MongoDbChangeEventContext orig = value.getOriginalPayload();
-            long tsSeconds = (orig != null) ? orig.getTimestampSeconds() : 0;
-            Instant timestamp =
-                tsSeconds > 0 ? Instant.ofEpochMilli(tsSeconds * 1000L) : Instant.now();
+            Instant timestamp = resolveOutputTimestamp(value.getOriginalPayload(), null);
             context.output(
                 (TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>)
                     tag,
@@ -1108,8 +1176,8 @@ public class MongoDbBulkTransforms {
     }
 
     private void drainToOutput(
-        java.util.function.BiConsumer<TupleTag<?>, MongoDbChangeEventContext> successConsumer,
-        java.util.function.BiConsumer<
+        BiConsumer<TupleTag<?>, MongoDbChangeEventContext> successConsumer,
+        BiConsumer<
                 TupleTag<?>, FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>
             failureConsumer) {
       MongoDbChangeEventContext success;
@@ -1126,6 +1194,35 @@ public class MongoDbBulkTransforms {
       while ((severe = severeFailureQueue.poll()) != null) {
         failureConsumer.accept(severeFailureTag, severe);
       }
+    }
+
+    @VisibleForTesting
+    static Instant sanitizeBeamTimestamp(Instant ts) {
+      if (ts == null) {
+        return Instant.EPOCH;
+      }
+      if (ts.isAfter(MAX_SAFE_BEAM_TIMESTAMP)) {
+        return MAX_SAFE_BEAM_TIMESTAMP;
+      }
+      return ts;
+    }
+
+    private static Instant resolveOutputTimestamp(
+        MongoDbChangeEventContext event, Instant fallback) {
+      if (event != null && event.getBeamTimestamp() != null) {
+        return sanitizeBeamTimestamp(event.getBeamTimestamp());
+      }
+      if (fallback != null) {
+        return sanitizeBeamTimestamp(fallback);
+      }
+      long tsSeconds = (event != null) ? event.getTimestampSeconds() : 0;
+      Instant derived = tsSeconds > 0 ? Instant.ofEpochMilli(tsSeconds * 1000L) : Instant.now();
+      return sanitizeBeamTimestamp(derived);
+    }
+
+    @VisibleForTesting
+    WorkerRateLimiterState getWorkerRateLimiterState() {
+      return workerRateLimiterState;
     }
 
     @VisibleForTesting

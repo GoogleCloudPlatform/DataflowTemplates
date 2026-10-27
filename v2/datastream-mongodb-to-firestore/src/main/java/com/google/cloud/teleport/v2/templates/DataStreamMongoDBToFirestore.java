@@ -66,7 +66,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.Pipeline;
@@ -466,7 +465,7 @@ public class DataStreamMongoDBToFirestore {
     if (!connectionUri.startsWith("mongodb://") && !connectionUri.startsWith("mongodb+srv://")) {
       throw new IllegalArgumentException(
           "Invalid connectionUri: "
-              + connectionUri
+              + Utils.sanitizeConnectionUri(connectionUri)
               + ". Must start with 'mongodb://' or 'mongodb+srv://'");
     }
 
@@ -1409,19 +1408,7 @@ public class DataStreamMongoDBToFirestore {
     public void setup() {
       LOG.info("Setting up MongoDB client for backfill processing with batch size: {}", batchSize);
       if (client == null) {
-        com.mongodb.MongoClientSettings settings =
-            com.mongodb.MongoClientSettings.builder()
-                .applyConnectionString(new com.mongodb.ConnectionString(connectionString))
-                .applyToSocketSettings(
-                    builder -> {
-                      builder.connectTimeout(60, TimeUnit.SECONDS);
-                      builder.readTimeout(60, TimeUnit.SECONDS);
-                    })
-                .applyToClusterSettings(
-                    builder -> builder.serverSelectionTimeout(10, TimeUnit.MINUTES))
-                .uuidRepresentation(org.bson.UuidRepresentation.STANDARD)
-                .build();
-        client = com.mongodb.client.MongoClients.create(settings);
+        client = MongoDbBulkTransforms.getOrCreateClient(connectionString);
       }
       bufferedEvents = new HashMap<>();
       collectionMap = new HashMap<>();
@@ -1650,7 +1637,7 @@ public class DataStreamMongoDBToFirestore {
     public void teardown() {
       if (client != null) {
         LOG.info("Closing MongoDB client for backfill processing");
-        client.close();
+        MongoDbBulkTransforms.closeIfNotShared(client);
         client = null;
       }
     }

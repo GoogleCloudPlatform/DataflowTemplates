@@ -21,12 +21,10 @@ import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventConte
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Throwables;
-import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoException;
 import com.mongodb.MongoWriteException;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.ReplaceOptions;
@@ -36,7 +34,6 @@ import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.TupleTag;
 import org.bson.Document;
-import org.bson.UuidRepresentation;
 import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -312,32 +309,19 @@ public class ProcessChangeEventFn
   @Setup
   public void setup() {
     if (client == null) {
-      // Log the projectId before creating the client
       LOG.info(
           "Creating MongoDB client in ProcessChangeEventFn with connection string: {}",
-          connectionString);
-      MongoClientSettings settings =
-          MongoClientSettings.builder()
-              .applyConnectionString(new com.mongodb.ConnectionString(connectionString))
-              .applyToSocketSettings(
-                  builder -> {
-                    // How long the driver will wait to establish a connection
-                    builder.connectTimeout(60, TimeUnit.SECONDS);
-                    builder.readTimeout(60, TimeUnit.SECONDS); // Example: 60 seconds
-                  })
-              .applyToClusterSettings(
-                  builder -> builder.serverSelectionTimeout(10, TimeUnit.MINUTES))
-              .uuidRepresentation(UuidRepresentation.STANDARD)
-              .build();
-      client = MongoClients.create(settings);
+          Utils.sanitizeConnectionUri(connectionString));
+      client = MongoDbBulkTransforms.getOrCreateClient(connectionString);
     }
   }
 
   @Teardown
   public void teardown() {
-    // Close the MongoClient when the pipeline finishes
+    // Close the MongoClient when the pipeline finishes if not shared across the worker
     if (client != null) {
-      client.close();
+      MongoDbBulkTransforms.closeIfNotShared(client);
+      client = null;
     }
   }
 

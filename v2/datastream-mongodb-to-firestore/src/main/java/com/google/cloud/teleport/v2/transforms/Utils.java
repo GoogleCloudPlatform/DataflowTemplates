@@ -20,14 +20,29 @@ import static com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEve
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
+import com.mongodb.MongoClientSettings;
 import java.util.Base64;
+import java.util.Date;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.bson.BsonTimestamp;
 import org.bson.Document;
+import org.bson.UuidRepresentation;
+import org.bson.codecs.Codec;
+import org.bson.codecs.configuration.CodecRegistries;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
 import org.bson.types.Binary;
+import org.bson.types.Code;
+import org.bson.types.CodeWithScope;
+import org.bson.types.Decimal128;
+import org.bson.types.MaxKey;
+import org.bson.types.MinKey;
 import org.bson.types.ObjectId;
+import org.bson.types.Symbol;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +53,39 @@ public final class Utils {
   private static final JsonWriterSettings CANONICAL_JSON_SETTINGS =
       JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
 
+  private static final Codec<Document> STANDARD_DOCUMENT_CODEC =
+      CodecRegistries.withUuidRepresentation(
+              MongoClientSettings.getDefaultCodecRegistry(), UuidRepresentation.STANDARD)
+          .get(Document.class);
+
+  private static final Pattern URI_USERINFO_PASSWORD_PATTERN =
+      Pattern.compile("(?i)([a-z][a-z0-9+.-]*://[^:@/]+:)([^/?#]+)(@.*)");
+
+  private static final Pattern URI_SENSITIVE_PARAM_PATTERN =
+      Pattern.compile(
+          "(?i)((?:[?&;,:]|\\b)(?:access_token|password|token|secret|client_secret)[=:])([^&;,\\s]+)");
+
   private Utils() {}
+
+  /**
+   * Sanitizes a MongoDB connection URI by masking userinfo passwords and sensitive token/secret
+   * parameters before logging or including in error messages.
+   */
+  public static String sanitizeConnectionUri(String uri) {
+    if (uri == null || uri.isEmpty()) {
+      return uri;
+    }
+    String sanitized = uri;
+    Matcher userInfoMatcher = URI_USERINFO_PASSWORD_PATTERN.matcher(sanitized);
+    if (userInfoMatcher.find()) {
+      sanitized = userInfoMatcher.replaceFirst("$1****$3");
+    }
+    Matcher paramMatcher = URI_SENSITIVE_PARAM_PATTERN.matcher(sanitized);
+    if (paramMatcher.find()) {
+      sanitized = paramMatcher.replaceAll("$1****");
+    }
+    return sanitized;
+  }
 
   public static void removeTableRowFields(Document doc, Set<String> ignoreFields) {
     for (String ignoreField : ignoreFields) {
@@ -165,12 +212,19 @@ public final class Utils {
       Binary binary = (Binary) documentId;
       return "bin_" + binary.getType() + "_" + Base64.getEncoder().encodeToString(binary.getData());
     }
+    if (documentId instanceof byte[]) {
+      return "bin_0_" + Base64.getEncoder().encodeToString((byte[]) documentId);
+    }
+    if (documentId instanceof UUID) {
+      return "uuid_" + documentId;
+    }
     if (documentId instanceof Document) {
-      return "doc_" + ((Document) documentId).toJson(CANONICAL_JSON_SETTINGS);
+      return "doc_"
+          + ((Document) documentId).toJson(CANONICAL_JSON_SETTINGS, STANDARD_DOCUMENT_CODEC);
     }
     if (documentId instanceof List) {
       Document wrapper = new Document("arr", documentId);
-      return "list_" + wrapper.toJson(CANONICAL_JSON_SETTINGS);
+      return "list_" + wrapper.toJson(CANONICAL_JSON_SETTINGS, STANDARD_DOCUMENT_CODEC);
     }
     if (documentId instanceof ObjectId) {
       return "oid_" + ((ObjectId) documentId).toHexString();
@@ -184,8 +238,38 @@ public final class Utils {
     if (documentId instanceof Double) {
       return "f64_" + documentId;
     }
+    if (documentId instanceof Decimal128) {
+      return "dec_" + documentId;
+    }
     if (documentId instanceof Boolean) {
       return "bool_" + documentId;
+    }
+    if (documentId instanceof Date) {
+      return "date_" + ((Date) documentId).getTime();
+    }
+    if (documentId instanceof BsonTimestamp) {
+      BsonTimestamp ts = (BsonTimestamp) documentId;
+      return "ts_" + ts.getTime() + "_" + ts.getInc();
+    }
+    if (documentId instanceof Symbol) {
+      return "sym_" + ((Symbol) documentId).getSymbol();
+    }
+    if (documentId instanceof MinKey) {
+      return "minkey";
+    }
+    if (documentId instanceof MaxKey) {
+      return "maxkey";
+    }
+    if (documentId instanceof CodeWithScope) {
+      CodeWithScope cws = (CodeWithScope) documentId;
+      String scopeJson =
+          cws.getScope() != null
+              ? cws.getScope().toJson(CANONICAL_JSON_SETTINGS, STANDARD_DOCUMENT_CODEC)
+              : "{}";
+      return "codewscope_" + cws.getCode().length() + ":" + cws.getCode() + "_" + scopeJson;
+    }
+    if (documentId instanceof Code) {
+      return "code_" + ((Code) documentId).getCode();
     }
     return "str_" + documentId.toString();
   }
@@ -196,10 +280,10 @@ public final class Utils {
       return null;
     }
     if (dataVal instanceof Document) {
-      return ((Document) dataVal).toJson(CANONICAL_JSON_SETTINGS);
+      return ((Document) dataVal).toJson(CANONICAL_JSON_SETTINGS, STANDARD_DOCUMENT_CODEC);
     } else if (dataVal instanceof String) {
       Document dataDoc = Document.parse((String) dataVal);
-      return dataDoc.toJson(CANONICAL_JSON_SETTINGS);
+      return dataDoc.toJson(CANONICAL_JSON_SETTINGS, STANDARD_DOCUMENT_CODEC);
     }
     throw new IllegalArgumentException("Unsupported data field type: " + dataVal.getClass());
   }

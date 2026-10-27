@@ -17,12 +17,17 @@ package com.google.cloud.teleport.v2.transforms;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -39,16 +44,23 @@ import com.mongodb.client.model.BulkWriteOptions;
 import com.mongodb.client.model.WriteModel;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TimestampedValue;
 import org.bson.BsonDocument;
 import org.bson.Document;
+import org.joda.time.Duration;
+import org.joda.time.Instant;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -552,5 +564,202 @@ public class MongoDbBulkTransformsTest {
     PAssert.that(result.get(MongoDbBulkTransforms.SEVERE_FAILED_WRITE_TAG)).empty();
 
     pipeline.run();
+  }
+
+  @Test
+  public void testCoalescedBatch_compositeDocumentIdsWithPermutedKeyOrder_areNotCoalesced()
+      throws Exception {
+    String payloadOrder1V1 =
+        "{"
+            + "\"_metadata_source\": {\"collection\": \"users\"},"
+            + "\"_id\": \"{\\\"a\\\": 1, \\\"b\\\": 2}\","
+            + "\"_metadata_timestamp_seconds\": 1000,"
+            + "\"_metadata_timestamp_nanos\": 0,"
+            + "\"_metadata_change_type\": \"INSERT\","
+            + "\"_metadata_read_method\": \"cdc\","
+            + "\"data\": \"{\\\"val\\\": \\\"order1_v1\\\"}\""
+            + "}";
+    String payloadOrder1V2 =
+        "{"
+            + "\"_metadata_source\": {\"collection\": \"users\"},"
+            + "\"_id\": \"{\\\"a\\\": 1, \\\"b\\\": 2}\","
+            + "\"_metadata_timestamp_seconds\": 1001,"
+            + "\"_metadata_timestamp_nanos\": 0,"
+            + "\"_metadata_change_type\": \"UPDATE\","
+            + "\"_metadata_read_method\": \"cdc\","
+            + "\"data\": \"{\\\"val\\\": \\\"order1_v2\\\"}\""
+            + "}";
+    String payloadOrder2 =
+        "{"
+            + "\"_metadata_source\": {\"collection\": \"users\"},"
+            + "\"_id\": \"{\\\"b\\\": 2, \\\"a\\\": 1}\","
+            + "\"_metadata_timestamp_seconds\": 1002,"
+            + "\"_metadata_timestamp_nanos\": 0,"
+            + "\"_metadata_change_type\": \"INSERT\","
+            + "\"_metadata_read_method\": \"cdc\","
+            + "\"data\": \"{\\\"val\\\": \\\"order2\\\"}\""
+            + "}";
+
+    MongoDbChangeEventContext e1 =
+        new MongoDbChangeEventContext(OBJECT_MAPPER.readTree(payloadOrder1V1), "shadow_");
+    MongoDbChangeEventContext e2 =
+        new MongoDbChangeEventContext(OBJECT_MAPPER.readTree(payloadOrder1V2), "shadow_");
+    MongoDbChangeEventContext e3 =
+        new MongoDbChangeEventContext(OBJECT_MAPPER.readTree(payloadOrder2), "shadow_");
+
+    List<Integer> capturedOpCounts = Collections.synchronizedList(new ArrayList<>());
+    when(mockCollection.bulkWrite(anyList(), any(BulkWriteOptions.class)))
+        .thenAnswer(
+            invocation -> {
+              List<WriteModel<Document>> ops = invocation.getArgument(0);
+              capturedOpCounts.add(ops.size());
+              return mock(BulkWriteResult.class);
+            });
+
+    MongoDbBulkTransforms.BulkWriteFn fn =
+        MongoDbBulkTransforms.BulkWriteFn.builder()
+            .withConnectionString("mongodb://localhost:27017")
+            .withDatabase("test_db")
+            .withBatchSize(3)
+            .withClientFactory(new MockClientFactory())
+            .build();
+
+    fn.setup();
+    try {
+      fn.startBundle();
+      for (MongoDbChangeEventContext event : Arrays.asList(e1, e2, e3)) {
+        DoFn<MongoDbChangeEventContext, MongoDbChangeEventContext>.ProcessContext processCtx =
+            mock(DoFn.ProcessContext.class, RETURNS_DEEP_STUBS);
+        when(processCtx.element()).thenReturn(event);
+        when(processCtx.timestamp()).thenReturn(Instant.ofEpochMilli(1000L));
+        fn.processElement(processCtx);
+      }
+      DoFn<MongoDbChangeEventContext, MongoDbChangeEventContext>.FinishBundleContext finishCtx =
+          mock(DoFn.FinishBundleContext.class);
+      fn.finishBundle(finishCtx);
+    } finally {
+      fn.teardown();
+    }
+
+    // e1 and e2 share {"a": 1, "b": 2} and coalesce into 1 op, while e3 has {"b": 2, "a": 1}
+    // and must remain a separate op (total = 2 ops in the single batch).
+    assertEquals(Collections.singletonList(2), capturedOpCounts);
+  }
+
+  @Test
+  public void testBulkWriteWithDlq_usesCustomBinaryCoder() throws Exception {
+    MongoDbChangeEventContext event = createEventContext("doc1", "INSERT", false);
+    when(mockCollection.bulkWrite(anyList(), any(BulkWriteOptions.class)))
+        .thenReturn(mock(BulkWriteResult.class));
+
+    PCollectionTuple result =
+        pipeline
+            .apply(Create.of(event).withCoder(MongoDbChangeEventContextCoder.of()))
+            .apply(
+                MongoDbBulkTransforms.bulkWriteWithDlq()
+                    .withConnectionString("mongodb://localhost:27017")
+                    .withDatabase("test_db")
+                    .withBatchSize(1)
+                    .withClientFactory(new MockClientFactory()));
+
+    assertEquals(
+        MongoDbChangeEventContextCoder.of(),
+        result.get(MongoDbBulkTransforms.SUCCESSFUL_WRITE_TAG).getCoder());
+
+    pipeline.run();
+  }
+
+  @Test
+  public void testBulkWriteFn_sharesWorkerRateLimiterAcrossDoFnInstances() {
+    MongoDbBulkTransforms.clearCachesForTesting();
+    MongoDbBulkTransforms.BulkWriteFn fn1 =
+        MongoDbBulkTransforms.BulkWriteFn.builder()
+            .withConnectionString("mongodb://localhost:27017")
+            .withDatabase("test_db")
+            .withInitialWriteRatePerWorker(500)
+            .withMaxWriteRatePerWorker(2500)
+            .withClientFactory(new MockClientFactory())
+            .build();
+    MongoDbBulkTransforms.BulkWriteFn fn2 =
+        MongoDbBulkTransforms.BulkWriteFn.builder()
+            .withConnectionString("mongodb://localhost:27017")
+            .withDatabase("test_db")
+            .withInitialWriteRatePerWorker(500)
+            .withMaxWriteRatePerWorker(2500)
+            .withClientFactory(new MockClientFactory())
+            .build();
+
+    fn1.setup();
+    fn2.setup();
+    try {
+      assertNotNull(fn1.getWorkerRateLimiterState());
+      assertSame(fn1.getWorkerRateLimiterState(), fn2.getWorkerRateLimiterState());
+    } finally {
+      fn1.teardown();
+      fn2.teardown();
+    }
+  }
+
+  @Test
+  public void testCloseIfNotShared_preservesCachedClientAndClosesUncachedClient() {
+    MongoDbBulkTransforms.clearCachesForTesting();
+    MongoClient cachedClient = mock(MongoClient.class);
+    MongoClient uncachedClient = mock(MongoClient.class);
+
+    MongoDbBulkTransforms.registerCachedClientForTesting(
+        "mongodb://cached-host:27017", cachedClient);
+
+    MongoDbBulkTransforms.closeIfNotShared(cachedClient);
+    verify(cachedClient, never()).close();
+
+    MongoDbBulkTransforms.closeIfNotShared(uncachedClient);
+    verify(uncachedClient, times(1)).close();
+
+    MongoDbBulkTransforms.clearCachesForTesting();
+  }
+
+  @Test
+  public void testBulkWriteFn_preservesIncomingBeamTimestampsAndClampsMaxTimestamp()
+      throws Exception {
+    MongoDbChangeEventContext event1 = createEventContext("doc1", "INSERT", false);
+    MongoDbChangeEventContext event2 = createEventContext("doc2", "INSERT", false);
+
+    when(mockCollection.bulkWrite(anyList(), any(BulkWriteOptions.class)))
+        .thenReturn(mock(BulkWriteResult.class));
+
+    Instant t1 = Instant.ofEpochMilli(123456789L);
+    Instant t2 = Instant.ofEpochMilli(987654321L);
+
+    assertEquals(
+        GlobalWindow.TIMESTAMP_MAX_VALUE.minus(Duration.millis(1)),
+        MongoDbBulkTransforms.BulkWriteFn.sanitizeBeamTimestamp(GlobalWindow.TIMESTAMP_MAX_VALUE));
+
+    PCollectionTuple result =
+        pipeline
+            .apply(
+                Create.timestamped(TimestampedValue.of(event1, t1), TimestampedValue.of(event2, t2))
+                    .withCoder(MongoDbChangeEventContextCoder.of()))
+            .apply(
+                MongoDbBulkTransforms.bulkWriteWithDlq()
+                    .withConnectionString("mongodb://localhost:27017")
+                    .withDatabase("test_db")
+                    .withBatchSize(10)
+                    .withClientFactory(new MockClientFactory()));
+
+    PCollection<Instant> emittedTimestamps =
+        result
+            .get(MongoDbBulkTransforms.SUCCESSFUL_WRITE_TAG)
+            .apply("ExtractTimestamps", ParDo.of(new ExtractTimestampFn()));
+
+    PAssert.that(emittedTimestamps).containsInAnyOrder(t1, t2);
+
+    pipeline.run();
+  }
+
+  private static class ExtractTimestampFn extends DoFn<MongoDbChangeEventContext, Instant> {
+    @ProcessElement
+    public void processElement(ProcessContext c) {
+      c.output(c.timestamp());
+    }
   }
 }

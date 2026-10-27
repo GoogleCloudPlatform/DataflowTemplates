@@ -19,6 +19,7 @@ import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventConte
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Objects;
 import org.apache.beam.sdk.coders.AtomicCoder;
 import org.apache.beam.sdk.coders.BooleanCoder;
 import org.apache.beam.sdk.coders.NullableCoder;
@@ -53,8 +54,16 @@ public class MongoDbChangeEventContextCoder extends AtomicCoder<MongoDbChangeEve
       return;
     }
     BOOLEAN_CODER.encode(true, outStream);
-    STRING_CODER.encode(value.getChangeEventJsonString(), outStream);
-    STRING_CODER.encode(value.getOriginalChangeEventJsonString(), outStream);
+    String changeEventJson = value.getChangeEventJsonString();
+    String originalChangeEventJson =
+        (value.getOriginalChangeEvent() == value.getChangeEvent())
+            ? null
+            : value.getOriginalChangeEventJsonString();
+    if (Objects.equals(changeEventJson, originalChangeEventJson)) {
+      originalChangeEventJson = null;
+    }
+    STRING_CODER.encode(changeEventJson, outStream);
+    STRING_CODER.encode(originalChangeEventJson, outStream);
     STRING_CODER.encode(value.getShadowCollectionPrefix(), outStream);
     BOOLEAN_CODER.encode(value.getIsDlqReconsumed(), outStream);
     VARINT_CODER.encode(value.getRetryCount(), outStream);
