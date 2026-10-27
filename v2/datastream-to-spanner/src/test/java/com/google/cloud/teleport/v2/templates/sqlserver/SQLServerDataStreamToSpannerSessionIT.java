@@ -77,11 +77,9 @@ import org.slf4j.LoggerFactory;
  *       uploaded as-is (no placeholder substitution), exactly like the static MySQL reference.
  *   <li>The dropped {@code last_update} column is {@code datetimeoffset} instead of {@code
  *       timestamp} because SQL Server {@code datetime*} values are not yet handled by the pipeline.
- *   <li>SQL Server CDC with {@code @supports_net_changes = 1} requires a primary key or a unique
- *       index. {@code Books} therefore gets a UNIQUE INDEX on {@code id} (not a PK, so the
- *       synthetic-PK scenario is preserved); {@code
- *       CloudSqlServerResourceManager#enableCdcOnAllTables()} uses that index as {@code
- *       @index_name} for tables without a primary key.
+ *   <li>SQL Server CDC with {@code @supports_net_changes = 1} requires a primary key, so {@code
+ *       Books} has a PRIMARY KEY on {@code id} on the source side; the session file still maps it
+ *       to the synthetic {@code synth_id} key on Spanner, which is what this scenario exercises.
  *   <li>Instead of uploading pre-generated Avro files, the backfill rows are inserted into SQL
  *       Server before the stream is started and the CDC wave is applied with DML afterwards.
  *   <li>A {@code Genre} row is streamed as well to verify that events for a table dropped in the
