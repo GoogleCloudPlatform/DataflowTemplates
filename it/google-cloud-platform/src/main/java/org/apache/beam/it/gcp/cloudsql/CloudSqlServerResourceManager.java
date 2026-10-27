@@ -37,6 +37,14 @@ public class CloudSqlServerResourceManager extends CloudSqlResourceManager {
   private static final int CDC_ENABLE_ATTEMPTS = 5;
   private static final long CDC_ENABLE_BASE_BACKOFF_MILLIS = 2000L;
 
+  /**
+   * Serializes CDC enablement across all resource managers in the JVM. The first {@code
+   * sp_cdc_enable_table} in a database creates the capture/cleanup jobs in {@code msdb}; when
+   * several test databases on the same instance do this concurrently, the {@code sp_add_job} calls
+   * deadlock with each other (SQL Server error 1205).
+   */
+  private static final Object CDC_ENABLE_LOCK = new Object();
+
   private CloudSqlServerResourceManager(Builder builder) {
     super(builder);
   }
@@ -139,37 +147,38 @@ public class CloudSqlServerResourceManager extends CloudSqlResourceManager {
   }
 
   /**
-   * Runs a CDC-enabling statement, retrying when SQL Server picks it as a deadlock victim (error
-   * 1205). The first {@code sp_cdc_enable_table} in a database creates the capture/cleanup jobs in
-   * {@code msdb}; when several test databases on the same instance enable CDC concurrently, these
-   * {@code sp_add_job} calls deadlock with each other and SQL Server asks to rerun the transaction.
+   * Runs a CDC-enabling statement while holding {@link #CDC_ENABLE_LOCK}, and retries when SQL
+   * Server still picks it as a deadlock victim (error 1205), e.g. because another JVM is enabling
+   * CDC on the same instance.
    */
   private void runCdcUpdateWithDeadlockRetry(String sql) {
-    RuntimeException lastFailure = null;
-    for (int attempt = 1; attempt <= CDC_ENABLE_ATTEMPTS; attempt++) {
-      try {
-        runSQLUpdate(sql);
-        return;
-      } catch (RuntimeException e) {
-        if (!isDeadlock(e)) {
-          throw e;
-        }
-        lastFailure = e;
-        long backoffMillis = CDC_ENABLE_BASE_BACKOFF_MILLIS * attempt;
-        LOG.warn(
-            "Enabling CDC was chosen as a deadlock victim (attempt {}/{}), retrying in {} ms.",
-            attempt,
-            CDC_ENABLE_ATTEMPTS,
-            backoffMillis);
+    synchronized (CDC_ENABLE_LOCK) {
+      RuntimeException lastFailure = null;
+      for (int attempt = 1; attempt <= CDC_ENABLE_ATTEMPTS; attempt++) {
         try {
-          Thread.sleep(backoffMillis);
-        } catch (InterruptedException ie) {
-          Thread.currentThread().interrupt();
-          throw e;
+          runSQLUpdate(sql);
+          return;
+        } catch (RuntimeException e) {
+          if (!isDeadlock(e)) {
+            throw e;
+          }
+          lastFailure = e;
+          long backoffMillis = CDC_ENABLE_BASE_BACKOFF_MILLIS * attempt;
+          LOG.warn(
+              "Enabling CDC was chosen as a deadlock victim (attempt {}/{}), retrying in {} ms.",
+              attempt,
+              CDC_ENABLE_ATTEMPTS,
+              backoffMillis);
+          try {
+            Thread.sleep(backoffMillis);
+          } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw e;
+          }
         }
       }
+      throw lastFailure;
     }
-    throw lastFailure;
   }
 
   private static boolean isDeadlock(Throwable t) {
