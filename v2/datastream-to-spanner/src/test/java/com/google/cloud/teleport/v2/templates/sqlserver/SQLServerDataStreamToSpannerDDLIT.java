@@ -34,6 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlServerResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.SqlServerSource;
@@ -308,6 +309,8 @@ public class SQLServerDataStreamToSpannerDDLIT extends DataStreamToSpannerITBase
     msSqlResourceManager.runSQLUpdate(
         "DELETE FROM AllDatatypeTransformation WHERE varchar_column = 'example4'");
 
+    // A row count alone is also satisfied before the UPDATEs are applied (as soon as the DELETE
+    // lands), so additionally wait for the transformed updates to be visible.
     LOG.info("Waiting for the CDC rows of {}...", TRANSFORMATION_TABLE);
     result =
         pipelineOperator()
@@ -316,7 +319,17 @@ public class SQLServerDataStreamToSpannerDDLIT extends DataStreamToSpannerITBase
                 SpannerRowsCheck.builder(spannerResourceManager, TRANSFORMATION_TABLE)
                     .setMinRows(2)
                     .setMaxRows(2)
-                    .build());
+                    .build()
+                    .and(
+                        rowPresentCheck(
+                            "example2 updated",
+                            "SELECT varchar_column FROM AllDatatypeTransformation"
+                                + " WHERE varchar_column = 'example2' AND tinyint_column = 25"))
+                    .and(
+                        rowPresentCheck(
+                            "example3 updated",
+                            "SELECT varchar_column FROM AllDatatypeTransformation"
+                                + " WHERE varchar_column = 'example3' AND tinyint_column = 35")));
     assertThatResult(result).meetsConditions();
 
     // Sleep for cutover time to wait till all CDCs propagate.
@@ -598,5 +611,22 @@ public class SQLServerDataStreamToSpannerDDLIT extends DataStreamToSpannerITBase
     SpannerAsserts.assertThatStructs(
             spannerResourceManager.runQuery("SELECT id, title FROM " + IDENTITY_TABLE))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
+  }
+
+  /** A condition that passes once the given query returns at least one row from Spanner. */
+  private static ConditionCheck rowPresentCheck(String description, String query) {
+    return new ConditionCheck() {
+      @Override
+      protected String getDescription() {
+        return description;
+      }
+
+      @Override
+      protected CheckResult check() {
+        int found = spannerResourceManager.runQuery(query).size();
+        return new CheckResult(
+            found > 0, String.format("%s: query returned %d row(s)", description, found));
+      }
+    };
   }
 }
