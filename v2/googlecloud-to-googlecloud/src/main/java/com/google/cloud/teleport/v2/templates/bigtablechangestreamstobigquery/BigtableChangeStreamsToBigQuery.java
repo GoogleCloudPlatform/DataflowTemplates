@@ -43,6 +43,8 @@ import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.sc
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.utils.BigtableSource;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.protobuf.ByteString;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -454,7 +456,7 @@ public final class BigtableChangeStreamsToBigQuery {
               LOG.warn(
                   "Decode error for {}/{}: raw_bytes={}",
                   setCell.getFamilyName(),
-                  setCell.getQualifier().toStringUtf8(),
+                  decodeBigtableBytes(setCell.getQualifier()),
                   result.rawBytesLength());
             }
             mod = buildResult.mod();
@@ -484,11 +486,11 @@ public final class BigtableChangeStreamsToBigQuery {
     private OversizedValue toOversizedValue(
         ChangeStreamMutation mutation, SetCell setCell, TransformResult result) {
       return new OversizedValue(
-          mutation.getRowKey().toStringUtf8(),
+          decodeBigtableBytes(mutation.getRowKey()),
           Base64.getEncoder().encodeToString(mutation.getRowKey().toByteArray()),
           mutation.getCommitTimestamp(),
           setCell.getFamilyName(),
-          setCell.getQualifier().toStringUtf8(),
+          decodeBigtableBytes(setCell.getQualifier()),
           Base64.getEncoder().encodeToString(setCell.getQualifier().toByteArray()),
           result.rawBytesLength(),
           result.decodedBytes(),
@@ -496,6 +498,10 @@ public final class BigtableChangeStreamsToBigQuery {
           sourceInfo.getInstanceId(),
           mutation.getSourceClusterId(),
           sourceInfo.getTableId());
+    }
+
+    private String decodeBigtableBytes(ByteString bytes) {
+      return bytes.toString(Charset.forName(sourceInfo.getCharset()));
     }
 
     private ModType getModType(Entry entry) {

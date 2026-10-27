@@ -31,6 +31,7 @@ import com.google.common.collect.Maps;
 import com.google.protobuf.ByteString;
 import java.io.IOException;
 import java.io.Serializable;
+import java.nio.charset.Charset;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
@@ -125,7 +126,7 @@ public final class Mod implements Serializable {
       long maxDecodedValueBytes) {
     TransformResult result = TransformResult.noTransformer();
     if (transformerRegistry != null) {
-      String qualifierStr = setCell.getQualifier().toStringUtf8();
+      String qualifierStr = setCell.getQualifier().toString(Charset.forName(source.getCharset()));
       ValueTransformer transformer =
           transformerRegistry.getTransformer(setCell.getFamilyName(), qualifierStr);
       if (transformer != null) {
@@ -331,7 +332,10 @@ public final class Mod implements Serializable {
       this.transformResult = transformResult;
     }
 
-    /** The built {@link Mod}, or {@code null} when the decoded value was {@link OVERSIZED}. */
+    /**
+     * The built {@link Mod}, or {@code null} when the decoded value was {@link
+     * TransformResult.Status#OVERSIZED}.
+     */
     @Nullable
     public Mod mod() {
       return mod;

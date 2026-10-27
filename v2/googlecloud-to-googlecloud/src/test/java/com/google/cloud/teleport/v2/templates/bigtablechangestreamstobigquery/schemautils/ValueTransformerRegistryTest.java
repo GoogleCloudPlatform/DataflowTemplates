@@ -22,6 +22,13 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import com.google.cloud.bigtable.data.v2.models.ChangeStreamMutation.MutationType;
+import com.google.cloud.bigtable.data.v2.models.SetCell;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.TestUtil;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstobigquery.model.Mod;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.TestChangeStreamMutation;
+import com.google.cloud.teleport.v2.utils.BigtableSource;
+import com.google.protobuf.ByteString;
 import com.google.protobuf.DescriptorProtos.DescriptorProto;
 import com.google.protobuf.DescriptorProtos.FieldDescriptorProto;
 import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
@@ -135,6 +142,55 @@ public class ValueTransformerRegistryTest {
     assertNotNull(registry.getTransformer("cf2", "event"));
     assertNull(registry.getTransformer("cf", "profile"));
     assertNull(registry.getTransformer("cf2", "missing"));
+  }
+
+  @Test
+  public void buildSetCellUsesSourceCharsetForQualifierLookup() throws Exception {
+    Descriptor descriptor = buildSimpleMessageDescriptor();
+    ValueTransformerRegistry registry =
+        ValueTransformerRegistry.of(
+            Map.of(
+                TestUtil.TEST_GOOD_COLUMN_FAMILY + ":Б",
+                new ProtoDecodeTransformer(descriptor, false)));
+
+    byte[] protoBytes =
+        DynamicMessage.newBuilder(descriptor)
+            .setField(descriptor.findFieldByName("user_name"), "charset_user")
+            .setField(descriptor.findFieldByName("id"), 5)
+            .build()
+            .toByteArray();
+    SetCell setCell =
+        SetCell.create(
+            TestUtil.TEST_GOOD_COLUMN_FAMILY,
+            TestUtil.TEST_NON_UTF_COLUMN,
+            TestUtil.TEST_TIMESTAMP,
+            ByteString.copyFrom(protoBytes));
+    TestChangeStreamMutation mutation =
+        new TestChangeStreamMutation(
+            TestUtil.TEST_ROWKEY,
+            MutationType.USER,
+            TestUtil.TEST_CBT_CLUSTER,
+            java.time.Instant.ofEpochMilli(TestUtil.TEST_COMMIT_TIMESTAMP),
+            TestUtil.TEST_TIEBREAKER,
+            "token",
+            java.time.Instant.EPOCH,
+            setCell);
+    BigtableSource source =
+        new BigtableSource(
+            TestUtil.TEST_CBT_INSTANCE,
+            TestUtil.TEST_CBT_TABLE,
+            "KOI8-R",
+            null,
+            null,
+            org.joda.time.Instant.now());
+
+    Mod.SetCellBuildResult buildResult =
+        Mod.buildSetCell(source, mutation, setCell, registry, 10_000);
+
+    assertEquals(TransformResult.Status.SUCCESS, buildResult.transformResult().status());
+    assertNotNull(buildResult.mod());
+    assertNotNull(buildResult.transformResult().value());
+    assertTrue(buildResult.transformResult().value().contains("charset_user"));
   }
 
   @Test
