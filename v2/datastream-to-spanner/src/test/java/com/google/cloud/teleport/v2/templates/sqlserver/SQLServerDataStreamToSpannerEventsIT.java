@@ -320,22 +320,22 @@ public class SQLServerDataStreamToSpannerEventsIT extends DataStreamToSpannerITB
 
   private void insertUsersBackfillRows() {
     msSqlResourceManager.runSQLUpdate(
-        "INSERT INTO Users (id, name, age, subscribed, plan, startDate) "
+        "INSERT INTO Users (id, name, age, subscribed, [plan], startDate) "
             + "VALUES (1, 'Tester Kumar', 30, 0, 'A', '2023-01-01')");
     msSqlResourceManager.runSQLUpdate(
-        "INSERT INTO Users (id, name, age, subscribed, plan, startDate) "
+        "INSERT INTO Users (id, name, age, subscribed, [plan], startDate) "
             + "VALUES (2, 'Tester Singh', 25, 1, 'B', '2023-02-02')");
   }
 
   private void insertUsersCdcRows() {
     msSqlResourceManager.runSQLUpdate(
-        "INSERT INTO Users (id, name, age, subscribed, plan, startDate) "
+        "INSERT INTO Users (id, name, age, subscribed, [plan], startDate) "
             + "VALUES (3, 'Tester Gupta', 45, 1, 'C', '2023-06-07')");
     msSqlResourceManager.runSQLUpdate(
-        "INSERT INTO Users (id, name, age, subscribed, plan, startDate) "
+        "INSERT INTO Users (id, name, age, subscribed, [plan], startDate) "
             + "VALUES (4, 'Tester', 38, 1, 'D', '2023-09-10')");
     msSqlResourceManager.runSQLUpdate(
-        "UPDATE Users SET age = 50, subscribed = 0, plan = 'Z' WHERE id = 3");
+        "UPDATE Users SET age = 50, subscribed = 0, [plan] = 'Z' WHERE id = 3");
     msSqlResourceManager.runSQLUpdate("DELETE FROM Users WHERE id = 2");
   }
 

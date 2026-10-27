@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates.sqlserver;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
@@ -95,6 +96,9 @@ public class SQLServerSeparateShadowTableDatabasePKFocusedIT extends DataStreamT
   private static final String ALLTYPES_TABLE = "alltypes";
 
   private static final String STRING_VALUE = "This is a test string for SQL Server.";
+  // The record matcher compares Spanner Value.toString(), which elides strings longer than 36
+  // characters, so the expected value must be rendered the same way.
+  private static final String EXPECTED_STRING_VALUE = Value.string(STRING_VALUE).toString();
   // TODO: bytes_field is excluded from the PK and from the asserts until the convertor
   // base64-decodes SQL Server binary values instead of hex-decoding them.
   private static final List<String> ALLTYPES_ASSERTED_COLUMNS =
@@ -414,7 +418,7 @@ public class SQLServerSeparateShadowTableDatabasePKFocusedIT extends DataStreamT
     record1.put("bool_field", true);
     record1.put("int64_field", 2L);
     record1.put("float64_field", 3.14159265359);
-    record1.put("string_field", STRING_VALUE);
+    record1.put("string_field", EXPECTED_STRING_VALUE);
     record1.put("timestamp_field", "2024-12-20T10:30:00Z");
     record1.put("date_field", "2024-12-20");
     record1.put("numeric_field", "12345.1234");
@@ -425,7 +429,7 @@ public class SQLServerSeparateShadowTableDatabasePKFocusedIT extends DataStreamT
     record2.put("bool_field", true);
     record2.put("int64_field", 10L);
     record2.put("float64_field", 3.14159265359);
-    record2.put("string_field", STRING_VALUE);
+    record2.put("string_field", EXPECTED_STRING_VALUE);
     record2.put("timestamp_field", "2024-12-20T10:30:00Z");
     record2.put("date_field", "2024-12-20");
     record2.put("numeric_field", "12345.1234");

@@ -3,7 +3,7 @@ CREATE TABLE Users (
     name VARCHAR(200),
     age INT,
     subscribed BIT,
-    plan CHAR(1),
+    [plan] CHAR(1),
     startDate DATE
 );
 

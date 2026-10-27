@@ -23,7 +23,7 @@ CREATE TABLE AllDataTypes (
     bigint_col BIGINT DEFAULT NULL,
     float_col FLOAT(53) DEFAULT NULL,
     decimal_col DECIMAL(38,9) DEFAULT NULL,
-    datetime_col DATETIME DEFAULT NULL,
+    datetime_col DATETIMEOFFSET DEFAULT NULL,
     time_col TIME DEFAULT NULL,
     char_col CHAR(255) DEFAULT NULL,
     binary_col BINARY(255) DEFAULT NULL,

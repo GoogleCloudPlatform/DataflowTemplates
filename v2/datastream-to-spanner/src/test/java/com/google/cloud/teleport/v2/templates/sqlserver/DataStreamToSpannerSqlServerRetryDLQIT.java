@@ -314,7 +314,7 @@ public class DataStreamToSpannerSqlServerRetryDLQIT extends DataStreamToSpannerI
         "INSERT INTO AllDataTypes (id, varchar_col) VALUES (1, 'test1')");
     jdbcResourceManager.runSQLUpdate(
         "INSERT INTO AllDataTypes (id, varchar_col, tinyint_col, text_col, date_col, smallint_col, bigint_col, float_col, decimal_col, datetime_col, time_col, char_col, binary_col, varbinary_col, bit_col, int_col) "
-            + "VALUES (999, 'test999', 1, 'text999', '2023-01-01', 11, 1001, 2.5, 11.5, '2023-01-01 12:00:00', '12:00:01', 'c1', 0x1234, 0x5678, 1, 1001)");
+            + "VALUES (999, 'test999', 1, 'text999', '2023-01-01', 11, 1001, 2.5, 11.5, '2023-01-01 12:00:00 +00:00', '12:00:01', 'c1', 0x1234, 0x5678, 1, 1001)");
   }
 
   private String getCustomShardJarPath() {
