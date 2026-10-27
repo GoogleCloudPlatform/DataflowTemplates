@@ -156,12 +156,10 @@ public class DataStreamToSpannerSqlServerRetryDLQIT extends DataStreamToSpannerI
         LOG.error("Failed to tear down test instance {}", instance.testName, e);
       }
     }
+    // Datastream streams must be deleted before the CDC-enabled source database is dropped.
+    ResourceManagerUtils.cleanResources(datastreamResourceManager);
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        jdbcResourceManager,
-        gcsResourceManager,
-        datastreamResourceManager,
-        pubsubResourceManager);
+        spannerResourceManager, jdbcResourceManager, gcsResourceManager, pubsubResourceManager);
   }
 
   @Test
@@ -278,6 +276,22 @@ public class DataStreamToSpannerSqlServerRetryDLQIT extends DataStreamToSpannerI
             .setMaxEvents(1)
             .build()
             .get());
+
+    // Wait for fixed rows to appear in Spanner (Orders 101 via regular pipeline, AllDataTypes 999
+    // via retry job)
+    LOG.info("Waiting for fixed rows to appear in Spanner");
+    PipelineOperator.Result finalWaitResult =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(10)),
+                SpannerRowsCheck.builder(spannerResourceManager, "Orders")
+                    .setMinRows(2) // id = 102 and 101
+                    .build()
+                    .and(
+                        SpannerRowsCheck.builder(spannerResourceManager, "AllDataTypes")
+                            .setMinRows(2) // id = 1 and 999
+                            .build()));
+    assertThatResult(finalWaitResult).meetsConditions();
 
     // 7. Verify Spanner state
     assertTrue(

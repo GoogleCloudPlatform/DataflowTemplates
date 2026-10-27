@@ -35,6 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlServerResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.SqlServerSource;
@@ -247,6 +248,8 @@ public class SQLServerDataStreamToSpannerSessionIT extends DataStreamToSpannerIT
     msSqlResourceManager.runSQLUpdate(
         "INSERT INTO Category (category_id, name, last_update) VALUES (4, 'ghi', NULL)");
 
+    // A row count alone is also satisfied before the UPDATE of category 2 is applied, so
+    // additionally wait for the renamed value to be visible.
     LOG.info("Waiting for Category CDC rows...");
     result =
         pipelineOperator()
@@ -255,7 +258,12 @@ public class SQLServerDataStreamToSpannerSessionIT extends DataStreamToSpannerIT
                 SpannerRowsCheck.builder(spannerResourceManager, TABLE1)
                     .setMinRows(3)
                     .setMaxRows(3)
-                    .build());
+                    .build()
+                    .and(
+                        rowPresentCheck(
+                            "Category 2 updated",
+                            "SELECT category_id FROM Category"
+                                + " WHERE category_id = 2 AND full_name = 'abc1'")));
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();
@@ -379,5 +387,22 @@ public class SQLServerDataStreamToSpannerSessionIT extends DataStreamToSpannerIT
     SpannerAsserts.assertThatStructs(
             spannerResourceManager.runQuery("select id, title, author_id from Books"))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
+  }
+
+  /** A condition that passes once the given query returns at least one row from Spanner. */
+  private static ConditionCheck rowPresentCheck(String description, String query) {
+    return new ConditionCheck() {
+      @Override
+      protected String getDescription() {
+        return description;
+      }
+
+      @Override
+      protected CheckResult check() {
+        int found = spannerResourceManager.runQuery(query).size();
+        return new CheckResult(
+            found > 0, String.format("%s: query returned %d row(s)", description, found));
+      }
+    };
   }
 }

@@ -91,10 +91,11 @@ public class SQLServerDataStreamToSpannerIT extends DataStreamToSpannerITBase {
 
   @After
   public void cleanUp() {
+    // Datastream streams must be deleted before the CDC-enabled source database is dropped.
+    ResourceManagerUtils.cleanResources(datastreamResourceManager);
     ResourceManagerUtils.cleanResources(
         sqlServerResourceManager,
         spannerResourceManager,
-        datastreamResourceManager,
         pubsubResourceManager,
         gcsResourceManager);
   }
@@ -129,7 +130,7 @@ public class SQLServerDataStreamToSpannerIT extends DataStreamToSpannerITBase {
     PipelineLauncher.LaunchInfo jobInfo =
         launchDataflowJob(
             testName,
-            SESSION_RESOURCE,
+            null,
             null,
             testName,
             spannerResourceManager,
