@@ -36,10 +36,12 @@ import org.bson.BsonDocument;
 import org.bson.BsonDouble;
 import org.bson.BsonInt32;
 import org.bson.BsonInt64;
+import org.bson.BsonObjectId;
 import org.bson.BsonString;
 import org.bson.BsonType;
 import org.bson.BsonValue;
 import org.bson.types.Decimal128;
+import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -469,7 +471,7 @@ public final class ReadSplitGenerator {
     List<BsonValue> sampledKeys = sampleCollectionKeys(col, effectiveSplits);
 
     if (activeTypes.size() == 1) {
-      return generateSplitsForTypeBounds(activeTypes.get(0), effectiveSplits, sampledKeys);
+      return generateSplitsForTypeBounds(col, activeTypes.get(0), effectiveSplits, sampledKeys);
     }
 
     // Mixed collection: single-key types (minKey == maxKey) and booleans only need 1 split,
@@ -506,7 +508,7 @@ public final class ReadSplitGenerator {
       } else {
         typeSplits = Math.max(1, remainingSplits / multiDocTypes.size());
       }
-      combinedFilters.addAll(generateSplitsForTypeBounds(bounds, typeSplits, sampledKeys));
+      combinedFilters.addAll(generateSplitsForTypeBounds(col, bounds, typeSplits, sampledKeys));
     }
     return combinedFilters;
   }
@@ -528,7 +530,7 @@ public final class ReadSplitGenerator {
 
   private static List<BsonValue> sampleCollectionKeys(
       MongoCollection<BsonDocument> col, int splits) {
-    int sampleSize = Math.min(5000, Math.max(500, splits * 20));
+    int sampleSize = Math.min(50000, Math.max(1000, splits * 10));
     List<BsonDocument> samplePipeline =
         Arrays.asList(
             new BsonDocument("$sample", new BsonDocument("size", new BsonInt32(sampleSize))),
@@ -554,6 +556,14 @@ public final class ReadSplitGenerator {
 
   private static List<BsonDocument> generateSplitsForTypeBounds(
       ProbedTypeBounds bounds, int splits, List<BsonValue> sampledKeys) {
+    return generateSplitsForTypeBounds(null, bounds, splits, sampledKeys);
+  }
+
+  private static List<BsonDocument> generateSplitsForTypeBounds(
+      MongoCollection<BsonDocument> col,
+      ProbedTypeBounds bounds,
+      int splits,
+      List<BsonValue> sampledKeys) {
     if (splits <= 1 || Objects.equals(bounds.getMinKey(), bounds.getMaxKey())) {
       BsonDocument idDoc = new BsonDocument("$type", bounds.getBucket().getTypeValue());
       return Collections.singletonList(new BsonDocument("_id", idDoc));
@@ -576,16 +586,33 @@ public final class ReadSplitGenerator {
     }
 
     if (typeKeys.size() >= 2) {
-      int targetSplits = Math.min(splits, typeKeys.size());
-      List<BsonValue> boundaries = new ArrayList<>();
-      for (int i = 1; i < targetSplits; i++) {
-        int index = (int) Math.round(((double) i * typeKeys.size()) / targetSplits);
-        if (index >= typeKeys.size()) {
-          index = typeKeys.size() - 1;
-        }
-        BsonValue b = typeKeys.get(index);
-        if (boundaries.isEmpty() || !b.equals(boundaries.get(boundaries.size() - 1))) {
-          boundaries.add(b);
+      List<BsonValue> boundaries = null;
+      if ("objectId".equals(bounds.getBucket().getName())
+          && bounds.getMinKey() != null
+          && bounds.getMaxKey() != null
+          && bounds.getMinKey().isObjectId()
+          && bounds.getMaxKey().isObjectId()) {
+        boundaries =
+            generateCounterWeightedObjectIdBoundaries(
+                col,
+                bounds.getMinKey().asObjectId().getValue().toHexString(),
+                bounds.getMaxKey().asObjectId().getValue().toHexString(),
+                splits,
+                typeKeys);
+      }
+
+      if (boundaries == null || boundaries.isEmpty()) {
+        int targetSplits = Math.min(splits, typeKeys.size());
+        boundaries = new ArrayList<>();
+        for (int i = 1; i < targetSplits; i++) {
+          int index = (int) Math.round(((double) i * typeKeys.size()) / targetSplits);
+          if (index >= typeKeys.size()) {
+            index = typeKeys.size() - 1;
+          }
+          BsonValue b = typeKeys.get(index);
+          if (boundaries.isEmpty() || !b.equals(boundaries.get(boundaries.size() - 1))) {
+            boundaries.add(b);
+          }
         }
       }
 
@@ -636,6 +663,167 @@ public final class ReadSplitGenerator {
 
     BsonDocument fallbackId = new BsonDocument("$type", bounds.getBucket().getTypeValue());
     return Collections.singletonList(new BsonDocument("_id", fallbackId));
+  }
+
+  /**
+   * Eliminates WiredTiger {@code $sample} B-tree depth skew on {@link ObjectId} collections by
+   * weighting adjacent sampled intervals {@code [k_i, k_{i+1}]} using the 24-bit monotonic {@link
+   * ObjectId} counter delta {@code (ctr(k_{i+1}) - ctr(k_i)) & 0xFFFFFF} and interpolating within
+   * wide intervals while preserving the 5-byte {@code processUnique} identifier.
+   */
+  static List<BsonValue> generateCounterWeightedObjectIdBoundaries(
+      MongoCollection<BsonDocument> col,
+      String minHex,
+      String maxHex,
+      int splits,
+      List<BsonValue> typeKeys) {
+    if (minHex == null
+        || maxHex == null
+        || minHex.length() != 24
+        || maxHex.length() != 24
+        || minHex.compareToIgnoreCase(maxHex) >= 0) {
+      return Collections.emptyList();
+    }
+    String lowerMin = minHex.toLowerCase();
+    String lowerMax = maxHex.toLowerCase();
+    String procHex = lowerMin.substring(8, 18);
+    if (!procHex.equals(lowerMax.substring(8, 18))) {
+      return Collections.emptyList();
+    }
+
+    List<String> hexKeys = new ArrayList<>(typeKeys.size() + 2);
+    hexKeys.add(lowerMin);
+    int matchingProcCount = 0;
+    int totalOidSamples = 0;
+    for (BsonValue val : typeKeys) {
+      if (val != null && val.isObjectId()) {
+        totalOidSamples++;
+        String h = val.asObjectId().getValue().toHexString().toLowerCase();
+        if (procHex.equals(h.substring(8, 18))) {
+          matchingProcCount++;
+          if (h.compareTo(hexKeys.get(hexKeys.size() - 1)) > 0 && h.compareTo(lowerMax) < 0) {
+            hexKeys.add(h);
+          }
+        }
+      }
+    }
+    hexKeys.add(lowerMax);
+
+    if (totalOidSamples > 0 && matchingProcCount * 5 < totalOidSamples * 4) {
+      return Collections.emptyList();
+    }
+
+    // Refine any wide multi-second gaps (such as the top B-tree tail missed by $sample) using
+    // lightweight O(1) index seeks at 1-second timestamp boundaries (capped at 64 seeks).
+    if (col != null) {
+      long initialSpan = 0L;
+      for (int i = 0; i < hexKeys.size() - 1; i++) {
+        initialSpan +=
+            Math.max(
+                1L,
+                (parseOidCounter(hexKeys.get(i + 1)) - parseOidCounter(hexKeys.get(i)))
+                    & 0xFFFFFFL);
+      }
+      long gapThreshold = Math.max(1000L, initialSpan / Math.max(2L, splits * 2L));
+      int remainingProbes = 64;
+      List<String> refined = new ArrayList<>(hexKeys.size() + 16);
+      for (int i = 0; i < hexKeys.size() - 1; i++) {
+        String cur = hexKeys.get(i);
+        String next = hexKeys.get(i + 1);
+        refined.add(cur);
+        long curTs = parseOidTimestamp(cur);
+        long nextTs = parseOidTimestamp(next);
+        long delta = (parseOidCounter(next) - parseOidCounter(cur)) & 0xFFFFFFL;
+        if (nextTs > curTs && delta > gapThreshold && remainingProbes > 0) {
+          long secSpan = nextTs - curTs;
+          long stepSec = Math.max(1L, (secSpan + remainingProbes - 1L) / remainingProbes);
+          String prevInserted = cur;
+          for (long ts = curTs; ts < nextTs && remainingProbes > 0; ts += stepSec) {
+            remainingProbes--;
+            String probed = probeMaxObjectIdInSecond(col, ts);
+            if (probed != null
+                && procHex.equals(probed.substring(8, 18))
+                && probed.compareTo(prevInserted) > 0
+                && probed.compareTo(next) < 0) {
+              refined.add(probed);
+              prevInserted = probed;
+            }
+          }
+        }
+      }
+      refined.add(lowerMax);
+      hexKeys = refined;
+    }
+
+    int n = hexKeys.size();
+    long[] cumulativeWeight = new long[n];
+    for (int i = 0; i < n - 1; i++) {
+      long delta =
+          (parseOidCounter(hexKeys.get(i + 1)) - parseOidCounter(hexKeys.get(i))) & 0xFFFFFFL;
+      cumulativeWeight[i + 1] = cumulativeWeight[i] + Math.max(1L, delta);
+    }
+    long totalWeight = cumulativeWeight[n - 1];
+    if (totalWeight < splits) {
+      return Collections.emptyList();
+    }
+
+    List<BsonValue> boundaries = new ArrayList<>(splits - 1);
+    String prevBoundaryHex = lowerMin;
+    int intervalIdx = 0;
+    for (int s = 1; s < splits; s++) {
+      long targetW = Math.round(((double) s * totalWeight) / splits);
+      while (intervalIdx < n - 2 && cumulativeWeight[intervalIdx + 1] < targetW) {
+        intervalIdx++;
+      }
+      String lowHex = hexKeys.get(intervalIdx);
+      String highHex = hexKeys.get(intervalIdx + 1);
+      long offset = Math.max(0L, targetW - cumulativeWeight[intervalIdx]);
+      long span = Math.max(1L, cumulativeWeight[intervalIdx + 1] - cumulativeWeight[intervalIdx]);
+
+      long lowTs = parseOidTimestamp(lowHex);
+      long highTs = parseOidTimestamp(highHex);
+      long lowCtr = parseOidCounter(lowHex);
+      long interpCtr = (lowCtr + offset) & 0xFFFFFFL;
+      long interpTs =
+          (lowTs == highTs)
+              ? lowTs
+              : lowTs + Math.round(((double) offset / span) * (highTs - lowTs));
+
+      String candHex = String.format("%08x%s%06x", interpTs, procHex, interpCtr);
+      if (candHex.compareTo(lowHex) < 0 || candHex.compareTo(highHex) > 0) {
+        candHex = (offset * 2 < span) ? lowHex : highHex;
+      }
+      if (candHex.compareTo(prevBoundaryHex) > 0 && candHex.compareTo(lowerMax) < 0) {
+        boundaries.add(new BsonObjectId(new ObjectId(candHex)));
+        prevBoundaryHex = candHex;
+      }
+    }
+    return boundaries;
+  }
+
+  private static long parseOidTimestamp(String hex24) {
+    return Long.parseLong(hex24.substring(0, 8), 16);
+  }
+
+  private static long parseOidCounter(String hex24) {
+    return Long.parseLong(hex24.substring(18, 24), 16);
+  }
+
+  private static String probeMaxObjectIdInSecond(MongoCollection<BsonDocument> col, long epochSec) {
+    try {
+      String tsHex = String.format("%08x", epochSec);
+      BsonDocument range =
+          new BsonDocument(
+              "_id",
+              new BsonDocument("$gte", new BsonObjectId(new ObjectId(tsHex + "0000000000000000")))
+                  .append("$lte", new BsonObjectId(new ObjectId(tsHex + "ffffffffffffffff"))));
+      BsonValue val = firstIdFromFind(col.find(range), /* direction= */ -1);
+      if (val != null && val.isObjectId()) {
+        return val.asObjectId().getValue().toHexString().toLowerCase();
+      }
+    } catch (Exception ignored) {
+    }
+    return null;
   }
 
   private static boolean matchesType(BsonValue k, TypeBucket bucket) {

@@ -728,6 +728,37 @@ public class ReadSplitGeneratorTest {
     assertFalse(splits.get(0).toJson().contains("$gt"));
   }
 
+  @Test
+  public void
+      generateCounterWeightedObjectIdBoundaries_eliminatesSampleSkewAndPreservesProcessUnique() {
+    String proc = "9e6b535a76";
+    String minHex = "6ae24591" + proc + "000000";
+    String maxHex = "6ae24591" + proc + "0003e8"; // counter = 1000
+
+    // Simulate heavily skewed WiredTiger $sample where all samples cluster in counter [10..50]
+    // and completely miss [51..1000].
+    List<BsonValue> skewedSample =
+        Arrays.asList(
+            new BsonObjectId(new ObjectId("6ae24591" + proc + "00000a")),
+            new BsonObjectId(new ObjectId("6ae24591" + proc + "000014")),
+            new BsonObjectId(new ObjectId("6ae24591" + proc + "00001e")),
+            new BsonObjectId(new ObjectId("6ae24591" + proc + "000032")));
+
+    List<BsonValue> boundaries =
+        ReadSplitGenerator.generateCounterWeightedObjectIdBoundaries(
+            null, minHex, maxHex, 4, skewedSample);
+
+    assertEquals(3, boundaries.size());
+    // Ideal boundaries for counter [0..1000] split into 4 parts are at 250 (0xfa), 500 (0x1f4), 750
+    // (0x2ee)
+    assertEquals(
+        "6ae24591" + proc + "0000fa", boundaries.get(0).asObjectId().getValue().toHexString());
+    assertEquals(
+        "6ae24591" + proc + "0001f4", boundaries.get(1).asObjectId().getValue().toHexString());
+    assertEquals(
+        "6ae24591" + proc + "0002ee", boundaries.get(2).asObjectId().getValue().toHexString());
+  }
+
   @SuppressWarnings("unchecked")
   private static FindIterable<BsonDocument> mockChainedFind() {
     FindIterable<BsonDocument> mockFind = mock(FindIterable.class);

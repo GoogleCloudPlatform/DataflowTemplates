@@ -65,6 +65,8 @@ public class MongoDbToMongoDbTest {
     assertEquals(Integer.valueOf(200000), options.getTargetBackfillChunkSize());
     assertEquals(Integer.valueOf(256), options.getMaxBackfillSplits());
     assertEquals(Integer.valueOf(128), options.getMaxConcurrentBackfillReads());
+    assertEquals(Integer.valueOf(5000), options.getBackfillCursorBatchSize());
+    assertEquals(Integer.valueOf(25000), options.getBackfillMaxDocsPerSlice());
     assertEquals(Integer.valueOf(64), options.getNumWriteShards());
     assertEquals(Integer.valueOf(200), options.getMaxBufferingDurationMs());
     assertEquals(Boolean.FALSE, options.getReadFromDlq());
@@ -86,6 +88,8 @@ public class MongoDbToMongoDbTest {
       "--targetBackfillChunkSize=100000",
       "--maxBackfillSplits=128",
       "--maxConcurrentBackfillReads=64",
+      "--backfillCursorBatchSize=10000",
+      "--backfillMaxDocsPerSlice=50000",
       "--numWriteShards=128",
       "--maxBufferingDurationMs=100",
       "--writeBatchSize=1000",
@@ -108,6 +112,8 @@ public class MongoDbToMongoDbTest {
     assertEquals(Integer.valueOf(100000), options.getTargetBackfillChunkSize());
     assertEquals(Integer.valueOf(128), options.getMaxBackfillSplits());
     assertEquals(Integer.valueOf(64), options.getMaxConcurrentBackfillReads());
+    assertEquals(Integer.valueOf(10000), options.getBackfillCursorBatchSize());
+    assertEquals(Integer.valueOf(50000), options.getBackfillMaxDocsPerSlice());
     assertEquals(Integer.valueOf(128), options.getNumWriteShards());
     assertEquals(Integer.valueOf(100), options.getMaxBufferingDurationMs());
     assertEquals(Integer.valueOf(1000), options.getWriteBatchSize());

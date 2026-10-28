@@ -44,6 +44,8 @@ graph TD
 | `targetBackfillChunkSize` | Integer | Target document count per backfill read split. | No | 200000 |
 | `maxBackfillSplits` | Integer | Maximum backfill read splits allowed per collection. | No | 256 |
 | `maxConcurrentBackfillReads` | Integer | Maximum concurrent backfill cursors allowed across the cluster. | No | 128 |
+| `backfillCursorBatchSize` | Integer | Number of documents fetched per MongoDB cursor `getMore` round-trip during backfill. | No | 5000 |
+| `backfillMaxDocsPerSlice` | Integer | Maximum documents emitted per Splittable DoFn continuation slice before checkpointing. | No | 25000 |
 | `numChangeStreamSplits` | Integer | Number of parallel change stream cursors per collection for CDC. | No | 1 |
 | `changeStreamFullDocument` | String | Change stream full document strategy (updateLookup or whenAvailable). | No | updateLookup |
 | `startAtOperationTime` | String | Optional starting clusterTime (epoch seconds or ISO-8601). | No | |
@@ -162,5 +164,7 @@ To optimize performance, consider the following parameters:
 - **`targetBackfillChunkSize`**: Target document count per backfill read split for adaptive volume-based splitting. Default is 200000.
 - **`maxBackfillSplits`**: Maximum backfill read splits allowed per collection. Default is 256.
 - **`maxConcurrentBackfillReads`**: Maximum concurrent backfill cursors allowed across the cluster, bounding source database connections. Default is 128.
+- **`backfillCursorBatchSize`**: Number of documents fetched per MongoDB cursor `getMore` round-trip during backfill. Tune based on average document size (e.g., 5000 for 1–10 KiB docs, 500 for 250 KiB docs). Default is 5000.
+- **`backfillMaxDocsPerSlice`**: Maximum documents emitted per Splittable DoFn continuation slice before checkpointing progress to Windmill. Default is 25000.
 - **`numChangeStreamSplits`**: Number of parallel change stream cursors per collection for high-throughput CDC streaming. Default is 1.
 - **`numberOfWorkerHarnessThreads`**: This is a standard Dataflow flag (set via `--numberOfWorkerHarnessThreads`) that controls the number of threads per worker. Increasing this allows the worker to process more bundles in parallel, which can increase throughput but also increases memory and resource contention. It complements `maxConcurrentAsyncWrites` by allowing more concurrent work on the worker level before hitting the write throttle.

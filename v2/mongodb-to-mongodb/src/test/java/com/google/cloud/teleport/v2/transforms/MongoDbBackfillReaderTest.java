@@ -346,6 +346,25 @@ public class MongoDbBackfillReaderTest {
   }
 
   @Test
+  public void backfillSlotRestrictionTracker_trySplit_splitsRemainingWholePartitions() {
+    MongoDbBackfillReader.BackfillSlotRestriction restriction =
+        new MongoDbBackfillReader.BackfillSlotRestriction(0, 5, 50L, "{\"_id\": 100}", false);
+    MongoDbBackfillReader.BackfillSlotRestrictionTracker tracker =
+        new MongoDbBackfillReader.BackfillSlotRestrictionTracker(restriction);
+
+    org.apache.beam.sdk.transforms.splittabledofn.SplitResult<
+            MongoDbBackfillReader.BackfillSlotRestriction>
+        split = tracker.trySplit(0.5);
+    assertNotNull(split);
+    assertEquals(0, split.getPrimary().getPartitionIndexInSlot());
+    assertEquals(2, split.getPrimary().getEndPartitionIndexInSlot());
+    assertEquals(2, split.getResidual().getPartitionIndexInSlot());
+    assertEquals(5, split.getResidual().getEndPartitionIndexInSlot());
+    assertEquals(0L, split.getResidual().getOffsetInCurrentPartition());
+    assertNull(split.getResidual().getLastSeenIdJson());
+  }
+
+  @Test
   @SuppressWarnings("unchecked")
   public void processBackfillSlotFn_readsMultiplePartitionsInSlot() {
     MongoClient mockClient = mock(MongoClient.class);

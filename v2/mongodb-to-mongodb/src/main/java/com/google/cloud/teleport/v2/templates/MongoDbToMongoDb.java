@@ -428,6 +428,35 @@ public class MongoDbToMongoDb {
     Integer getDedupStateRetentionHours();
 
     void setDedupStateRetentionHours(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 28,
+        groupName = "Source",
+        optional = true,
+        description = "Backfill Cursor Batch Size",
+        helpText =
+            "Number of documents fetched per MongoDB cursor getMore network round-trip during"
+                + " historical backfill. Tune based on average document size (e.g. 5000 for 1-10"
+                + " KiB docs, 500 for 250 KiB docs). Default is 5000.")
+    @Default.Integer(5000)
+    Integer getBackfillCursorBatchSize();
+
+    void setBackfillCursorBatchSize(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 29,
+        groupName = "Source",
+        optional = true,
+        description = "Backfill Max Documents Per Slice",
+        helpText =
+            "Maximum number of documents emitted per Splittable DoFn continuation slice before"
+                + " checkpointing progress to Windmill. Tune based on document size and target"
+                + " chunk size (e.g. 25000-50000 for 1 KiB docs, 1000-2000 for 250 KiB docs)."
+                + " Default is 25000.")
+    @Default.Integer(25000)
+    Integer getBackfillMaxDocsPerSlice();
+
+    void setBackfillMaxDocsPerSlice(Integer value);
   }
 
   /**
@@ -570,6 +599,8 @@ public class MongoDbToMongoDb {
       LOG.info("  Backfill Chunk Size:     {}", options.getTargetBackfillChunkSize());
       LOG.info("  Max Backfill Splits:     {}", options.getMaxBackfillSplits());
       LOG.info("  Max Concurrent Reads:    {}", options.getMaxConcurrentBackfillReads());
+      LOG.info("  Cursor Batch Size:       {}", options.getBackfillCursorBatchSize());
+      LOG.info("  Max Docs Per Slice:      {}", options.getBackfillMaxDocsPerSlice());
     }
     LOG.info("  DLQ Base Directory:      {}", baseDlqPath + timestampPath);
     LOG.info("  DLQ Retryable Directory: {}", retryableDlqPath);
@@ -751,12 +782,20 @@ public class MongoDbToMongoDb {
             options.getMaxConcurrentBackfillReads() != null
                 ? options.getMaxConcurrentBackfillReads()
                 : MongoDbBackfillReader.ReadPartitions.DEFAULT_MAX_CONCURRENT_READS;
+        int cursorBatchSize =
+            options.getBackfillCursorBatchSize() != null
+                ? options.getBackfillCursorBatchSize()
+                : MongoDbBackfillReader.DEFAULT_CURSOR_BATCH_SIZE;
+        int maxDocsPerSlice =
+            options.getBackfillMaxDocsPerSlice() != null
+                ? options.getBackfillMaxDocsPerSlice()
+                : MongoDbBackfillReader.ProcessBackfillSlotFn.MAX_DOCS_PER_SLICE;
         PCollection<DocumentWithMetadata> backfillDocs =
             pipeline
                 .apply(
                     "ReadBackfill",
                     new MongoDbBackfillReader.ReadPartitions(
-                        backfillPartitions, maxConcurrentReads))
+                        backfillPartitions, maxConcurrentReads, cursorBatchSize, maxDocsPerSlice))
                 .setCoder(DocumentWithMetadataCoder.of());
         allStreams.add(backfillDocs);
       }
