@@ -45,4 +45,7 @@ public class SourceConstants {
 
   /* The value for SqlServer databases in the source type key */
   public static final String SQLSERVER_SOURCE_TYPE = "sqlserver";
+
+  /* The value for DynamoDB databases in the source type key */
+  public static final String DYNAMODB_SOURCE_TYPE = "dynamodb";
 }

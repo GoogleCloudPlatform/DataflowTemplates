@@ -944,4 +944,17 @@ public class AvroToValueMapperTest {
     ByteBuffer buf = ByteBuffer.wrap(new byte[] {0x01, 0x0A, (byte) 0xFF});
     assertEquals("010aff", AvroToValueMapper.avroFieldToString(buf, schema));
   }
+
+  @Test
+  public void testAvroFieldToString_Array() {
+    Schema schema = SchemaBuilder.array().items(SchemaBuilder.builder().stringType());
+    Object[] strArr = new Object[] {"a", "b"};
+    assertEquals("[\"a\",\"b\"]", AvroToValueMapper.avroFieldToString(strArr, schema));
+
+    Object[] byteArr =
+        new Object[] {
+          ByteBuffer.wrap(new byte[] {0x01, 0x02}), ByteBuffer.wrap(new byte[] {0x0A, 0x0B})
+        };
+    assertEquals("[\"0102\",\"0a0b\"]", AvroToValueMapper.avroFieldToString(byteArr, schema));
+  }
 }

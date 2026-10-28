@@ -36,6 +36,9 @@ public class Constants {
   /* The value for Spanner databases in the source type key */
   public static final String SPANNER_SOURCE_TYPE = "spanner";
 
+  /* The source type value for DynamoDB databases */
+  public static final String DYNAMODB_SOURCE_TYPE = "dynamodb";
+
   /* The run mode for retryDLQ */
   public static final String RUN_MODE_RETRY_DLQ = "retryDLQ";
 
