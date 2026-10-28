@@ -34,7 +34,8 @@ import org.apache.beam.sdk.options.Validation;
       "main.py",
       "requirements.txt",
       "options/pubsub_options.yaml",
-      "options/spanner_options.yaml"
+      "options/spanner_options.yaml",
+      "options/windowing_options.yaml"
     },
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/pubsub-to-spanner",

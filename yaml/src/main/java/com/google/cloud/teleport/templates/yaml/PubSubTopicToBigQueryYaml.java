@@ -30,7 +30,13 @@ import org.apache.beam.sdk.options.Validation;
         "The Pub/Sub topic to BigQuery template is a streaming pipeline that reads JSON-formatted data from a Pub/Sub topic and writes the resulting records to BigQuery.",
     flexContainerName = "pipeline-yaml",
     yamlTemplateFile = "PubSubTopicToBigQuery.yaml",
-    filesToCopy = {"main.py", "requirements.txt"},
+    filesToCopy = {
+      "main.py",
+      "requirements.txt",
+      "options/bigquery_options.yaml",
+      "options/pubsub_options.yaml",
+      "options/windowing_options.yaml"
+    },
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/pubsub-to-bigquery",
     contactInformation = "https://cloud.google.com/support",

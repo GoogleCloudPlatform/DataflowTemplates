@@ -30,7 +30,12 @@ import org.apache.beam.sdk.options.Validation;
         "The Pub/Sub subscription to Pub/Sub topic template is a streaming pipeline that reads messages from a Pub/Sub subscription and writes them to another Pub/Sub topic.",
     flexContainerName = "pipeline-yaml",
     yamlTemplateFile = "PubSubSubscriptionToPubSubTopic.yaml",
-    filesToCopy = {"main.py", "requirements.txt", "options/pubsub_options.yaml"},
+    filesToCopy = {
+      "main.py",
+      "requirements.txt",
+      "options/pubsub_options.yaml",
+      "options/windowing_options.yaml"
+    },
     documentation = "",
     contactInformation = "https://cloud.google.com/support",
     requirements = {
