@@ -97,10 +97,13 @@ public class DatastreamToSpannerReservedKeywordsSqlServerIT extends DataStreamTo
   @After
   public void cleanUp() {
     LOG.info("Cleaning up resources...");
-    // Datastream streams must be deleted before the CDC-enabled source database is dropped.
-    ResourceManagerUtils.cleanResources(datastreamResourceManager);
+    // Datastream streams are deleted first, before the CDC-enabled source database is dropped.
     ResourceManagerUtils.cleanResources(
-        msSqlResourceManager, spannerResourceManager, gcsResourceManager, pubsubResourceManager);
+        datastreamResourceManager,
+        msSqlResourceManager,
+        spannerResourceManager,
+        gcsResourceManager,
+        pubsubResourceManager);
   }
 
   @Test

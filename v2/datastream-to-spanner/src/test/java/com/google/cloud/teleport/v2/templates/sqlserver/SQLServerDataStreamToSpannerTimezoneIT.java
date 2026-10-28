@@ -118,9 +118,9 @@ public class SQLServerDataStreamToSpannerTimezoneIT extends DataStreamToSpannerI
   @After
   public void cleanUp() {
     LOG.info("Cleaning up resources...");
-    // Datastream streams must be deleted before the CDC-enabled source database is dropped.
-    ResourceManagerUtils.cleanResources(datastreamResourceManager);
+    // Datastream streams are deleted first, before the CDC-enabled source database is dropped.
     ResourceManagerUtils.cleanResources(
+        datastreamResourceManager,
         sqlServerResourceManager,
         spannerResourceManager,
         pubsubResourceManager,

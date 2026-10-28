@@ -156,10 +156,13 @@ public class DataStreamToSpannerSqlServerRetryDLQIT extends DataStreamToSpannerI
         LOG.error("Failed to tear down test instance {}", instance.testName, e);
       }
     }
-    // Datastream streams must be deleted before the CDC-enabled source database is dropped.
-    ResourceManagerUtils.cleanResources(datastreamResourceManager);
+    // Datastream streams are deleted first, before the CDC-enabled source database is dropped.
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager, jdbcResourceManager, gcsResourceManager, pubsubResourceManager);
+        datastreamResourceManager,
+        spannerResourceManager,
+        jdbcResourceManager,
+        gcsResourceManager,
+        pubsubResourceManager);
   }
 
   @Test
