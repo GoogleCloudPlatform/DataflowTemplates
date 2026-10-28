@@ -15,18 +15,23 @@
  */
 package com.google.cloud.teleport.v2.templates.datastream;
 
-import static com.google.cloud.teleport.v2.templates.DataStreamMongoDBToFirestore.MAPPER_IGNORE_FIELDS;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.cloud.teleport.v2.transforms.MongoDbChangeEventContextCoder;
 import com.google.cloud.teleport.v2.transforms.Utils;
 import com.google.common.collect.ImmutableMap;
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.Objects;
+import java.util.regex.Pattern;
+import org.apache.beam.sdk.coders.DefaultCoder;
+import org.bson.BsonRegularExpression;
+import org.bson.BsonUndefined;
 import org.bson.Document;
 import org.bson.types.ObjectId;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,6 +39,7 @@ import org.slf4j.LoggerFactory;
  * MongoDB's implementation of ChangeEventContext that provides implementation for handling MongoDB
  * change events.
  */
+@DefaultCoder(MongoDbChangeEventContextCoder.class)
 public class MongoDbChangeEventContext implements Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(MongoDbChangeEventContext.class);
@@ -51,6 +57,7 @@ public class MongoDbChangeEventContext implements Serializable {
 
   private final JsonNode changeEvent;
   private final JsonNode originalChangeEvent;
+  private final String shadowCollectionPrefix;
   private final String dataCollection;
   private final String shadowCollection;
   private final Object documentId;
@@ -59,8 +66,9 @@ public class MongoDbChangeEventContext implements Serializable {
   private final boolean isDeleteEvent;
   private final boolean isUpdateEvent;
   private final Document timestampDoc;
-  private boolean isDlqReconsumed;
-  private int retryCount;
+  private final boolean isDlqReconsumed;
+  private final int retryCount;
+  private transient Instant beamTimestamp;
 
   /** Gets the change type from the event metadata. */
   private String getChangeType(JsonNode changeEvent) {
@@ -72,6 +80,46 @@ public class MongoDbChangeEventContext implements Serializable {
 
   public String getChangeType() {
     return getChangeType(this.changeEvent);
+  }
+
+  /** Determines if the event is a backfill snapshot event. */
+  public boolean isBackfillEvent() {
+    if (changeEvent.has(DatastreamConstants.EVENT_READ_METHOD_KEY)) {
+      String readMethod = changeEvent.get(DatastreamConstants.EVENT_READ_METHOD_KEY).asText();
+      if (DatastreamConstants.READ_METHOD_BACKFILL.equalsIgnoreCase(readMethod)) {
+        return true;
+      }
+    }
+    String changeType = getChangeType();
+    return DatastreamConstants.READ_EVENT.equalsIgnoreCase(changeType)
+        || "BACKFILL".equalsIgnoreCase(changeType);
+  }
+
+  /** Determines if the event is a live CDC event. */
+  public boolean isCdcEvent() {
+    return !isBackfillEvent();
+  }
+
+  /** Gets epoch timestamp seconds. */
+  public long getTimestampSeconds() {
+    if (timestampDoc != null && timestampDoc.containsKey(TIMESTAMP_SECONDS_COL)) {
+      Object val = timestampDoc.get(TIMESTAMP_SECONDS_COL);
+      if (val instanceof Number) {
+        return ((Number) val).longValue();
+      }
+    }
+    return 0L;
+  }
+
+  /** Gets sub-second timestamp (wall nanoseconds for backfill, oplog increment for CDC). */
+  public long getTimestampSubSeconds() {
+    if (timestampDoc != null && timestampDoc.containsKey(TIMESTAMP_NANOS_COL)) {
+      Object val = timestampDoc.get(TIMESTAMP_NANOS_COL);
+      if (val instanceof Number) {
+        return ((Number) val).longValue();
+      }
+    }
+    return 0L;
   }
 
   /** Determines if the event is a delete event based on metadata. */
@@ -105,17 +153,28 @@ public class MongoDbChangeEventContext implements Serializable {
   public MongoDbChangeEventContext(
       JsonNode payload, JsonNode originalPayload, String shadowCollectionPrefix)
       throws JsonProcessingException {
+    this(
+        payload,
+        originalPayload,
+        shadowCollectionPrefix,
+        extractIsDlqReconsumed(payload),
+        extractRetryCount(payload));
+  }
+
+  private MongoDbChangeEventContext(
+      JsonNode payload,
+      JsonNode originalPayload,
+      String shadowCollectionPrefix,
+      boolean isDlqReconsumed,
+      int retryCount)
+      throws JsonProcessingException {
     // Extracts the actual change event. If wrapped in a DLQ structure like {"changeEvent": {...}},
     // it extracts the inner object.
     this.changeEvent = Utils.extractInnerEvent(payload);
     this.originalChangeEvent = Utils.extractInnerEvent(originalPayload);
-
-    this.retryCount =
-        changeEvent.has(DatastreamConstants.RETRY_COUNT)
-            ? changeEvent.get(DatastreamConstants.RETRY_COUNT).asInt()
-            : payload.has(DatastreamConstants.RETRY_COUNT)
-                ? payload.get(DatastreamConstants.RETRY_COUNT).asInt()
-                : 0;
+    this.shadowCollectionPrefix = shadowCollectionPrefix != null ? shadowCollectionPrefix : "";
+    this.isDlqReconsumed = isDlqReconsumed;
+    this.retryCount = retryCount;
 
     // Extract collection name from the event
     if (changeEvent.has(DatastreamConstants.EVENT_SOURCE_METADATA)) {
@@ -129,7 +188,7 @@ public class MongoDbChangeEventContext implements Serializable {
       throw new IllegalStateException("Invalid event record without _metadata_source.");
     }
 
-    this.shadowCollection = shadowCollectionPrefix + this.dataCollection;
+    this.shadowCollection = this.shadowCollectionPrefix + this.dataCollection;
 
     // Extract document id
     if (changeEvent.has(DatastreamConstants.MONGODB_DOCUMENT_ID)) {
@@ -141,15 +200,27 @@ public class MongoDbChangeEventContext implements Serializable {
         this.documentId = docIdVal.asLong();
       } else if (docIdVal.isFloatingPointNumber()) {
         this.documentId = docIdVal.asDouble();
+      } else if (docIdVal.isBoolean()) {
+        this.documentId = docIdVal.asBoolean();
       } else if (docIdVal.isTextual()) {
         this.documentId = docIdVal.asText();
-      } else if (docIdVal.isObject()) {
-        if (docIdVal.has(OID_FIELD_NAME) && docIdVal.get(OID_FIELD_NAME).isTextual()) {
+      } else if (docIdVal.isObject() || docIdVal.isArray()) {
+        if (docIdVal.isObject()
+            && docIdVal.has(OID_FIELD_NAME)
+            && docIdVal.get(OID_FIELD_NAME).isTextual()) {
           this.documentId = new ObjectId(docIdVal.get(OID_FIELD_NAME).asText());
         } else {
-          // Support for generic Object-typed IDs or other complex BSON types (e.g., Binary)
+          // Support for generic Document (Map), Array (List), Binary, and composite BSON _id types
           Document wrapper = Document.parse("{ \"val\": " + docIdVal.toString() + " }");
-          this.documentId = wrapper.get("val");
+          Object parsedId = wrapper.get("val");
+          if (parsedId == null
+              || parsedId instanceof Pattern
+              || parsedId instanceof BsonRegularExpression
+              || parsedId instanceof BsonUndefined) {
+            LOG.error("Unsupported _id type of _id {}.", docIdVal);
+            throw new IllegalArgumentException("Unsupported _id type.");
+          }
+          this.documentId = parsedId;
         }
       } else {
         LOG.error("Unsupported _id type of _id {}.", docIdVal);
@@ -182,8 +253,61 @@ public class MongoDbChangeEventContext implements Serializable {
     this.isUpdateEvent = isUpdateEvent(changeEvent);
 
     this.jsonStringData = dataAsJsonString();
-    this.shadowDocument = generateShadowDocument();
-    this.isDlqReconsumed = isDlqReconsumed(changeEvent);
+    this.shadowDocument = null;
+  }
+
+  private static boolean extractIsDlqReconsumed(JsonNode payload) {
+    if (payload == null) {
+      return false;
+    }
+    JsonNode changeEvent = Utils.extractInnerEvent(payload);
+    if (changeEvent.has(DatastreamConstants.IS_DLQ_RECONSUMED)) {
+      return changeEvent
+          .get(DatastreamConstants.IS_DLQ_RECONSUMED)
+          .asText()
+          .equalsIgnoreCase("true");
+    }
+    if (payload.has(DatastreamConstants.IS_DLQ_RECONSUMED)) {
+      return payload.get(DatastreamConstants.IS_DLQ_RECONSUMED).asText().equalsIgnoreCase("true");
+    }
+    return false;
+  }
+
+  private static int extractRetryCount(JsonNode payload) {
+    if (payload == null) {
+      return 0;
+    }
+    JsonNode changeEvent = Utils.extractInnerEvent(payload);
+    if (changeEvent.has(DatastreamConstants.RETRY_COUNT)) {
+      return changeEvent.get(DatastreamConstants.RETRY_COUNT).asInt();
+    }
+    if (payload.has(DatastreamConstants.RETRY_COUNT)) {
+      return payload.get(DatastreamConstants.RETRY_COUNT).asInt();
+    }
+    return 0;
+  }
+
+  /**
+   * Reconstitutes a {@link MongoDbChangeEventContext} from its serialized components without Java
+   * reflection serialization.
+   */
+  public static MongoDbChangeEventContext reconstitute(
+      String changeEventJson,
+      String originalChangeEventJson,
+      String shadowPrefix,
+      boolean isDlq,
+      int retryCount)
+      throws IOException {
+    if (changeEventJson == null) {
+      return null;
+    }
+    JsonNode changeEventNode = OBJECT_MAPPER.readTree(changeEventJson);
+    JsonNode originalChangeEventNode =
+        originalChangeEventJson != null
+            ? OBJECT_MAPPER.readTree(originalChangeEventJson)
+            : changeEventNode;
+    return new MongoDbChangeEventContext(
+        changeEventNode, originalChangeEventNode, shadowPrefix, isDlq, retryCount);
   }
 
   /** Creates a shadow document for tracking event ordering. */
@@ -203,7 +327,7 @@ public class MongoDbChangeEventContext implements Serializable {
     shadowDoc.put("processed_at", System.currentTimeMillis());
     shadowDoc.put("is_from_dlq", isDlqReconsumed);
 
-    Utils.removeTableRowFields(shadowDoc, MAPPER_IGNORE_FIELDS);
+    Utils.removeTableRowFields(shadowDoc, DatastreamConstants.SHADOW_DOC_IGNORE_FIELDS);
 
     return shadowDoc;
   }
@@ -222,6 +346,18 @@ public class MongoDbChangeEventContext implements Serializable {
 
   public JsonNode getOriginalChangeEvent() {
     return originalChangeEvent;
+  }
+
+  public String getChangeEventJsonString() {
+    return changeEvent != null ? changeEvent.toString() : null;
+  }
+
+  public String getOriginalChangeEventJsonString() {
+    return originalChangeEvent != null ? originalChangeEvent.toString() : null;
+  }
+
+  public String getShadowCollectionPrefix() {
+    return shadowCollectionPrefix;
   }
 
   public String getDataCollection() {
@@ -245,6 +381,13 @@ public class MongoDbChangeEventContext implements Serializable {
   }
 
   public Document getShadowDocument() {
+    if (this.shadowDocument == null && this.shadowCollection != null) {
+      try {
+        return generateShadowDocument();
+      } catch (JsonProcessingException e) {
+        LOG.warn("Failed to generate shadow document: {}", e.getMessage());
+      }
+    }
     return shadowDocument;
   }
 
@@ -262,6 +405,14 @@ public class MongoDbChangeEventContext implements Serializable {
 
   public int getRetryCount() {
     return retryCount;
+  }
+
+  public Instant getBeamTimestamp() {
+    return beamTimestamp;
+  }
+
+  public void setBeamTimestamp(Instant beamTimestamp) {
+    this.beamTimestamp = beamTimestamp;
   }
 
   /**
@@ -291,8 +442,8 @@ public class MongoDbChangeEventContext implements Serializable {
       // Convert timestamp document to JSON
       if (this.timestampDoc != null) {
         ObjectNode timestampNode = OBJECT_MAPPER.createObjectNode();
-        timestampNode.put(TIMESTAMP_SECONDS_COL, this.timestampDoc.getLong(TIMESTAMP_SECONDS_COL));
-        timestampNode.put(TIMESTAMP_NANOS_COL, this.timestampDoc.getInteger(TIMESTAMP_NANOS_COL));
+        timestampNode.put(TIMESTAMP_SECONDS_COL, getTimestampSeconds());
+        timestampNode.put(TIMESTAMP_NANOS_COL, getTimestampSubSeconds());
         jsonNode.set(TIMESTAMP_COL, timestampNode);
       }
 
@@ -317,10 +468,39 @@ public class MongoDbChangeEventContext implements Serializable {
     }
   }
 
+  @Override
   public boolean equals(Object other) {
+    if (this == other) {
+      return true;
+    }
     if (other instanceof MongoDbChangeEventContext) {
-      return Objects.equals(this.toString(), other.toString());
+      MongoDbChangeEventContext o = (MongoDbChangeEventContext) other;
+      return Objects.equals(this.dataCollection, o.dataCollection)
+          && Objects.equals(this.shadowCollectionPrefix, o.shadowCollectionPrefix)
+          && Objects.equals(this.documentId, o.documentId)
+          && Objects.equals(this.timestampDoc, o.timestampDoc)
+          && this.isDeleteEvent == o.isDeleteEvent
+          && this.isUpdateEvent == o.isUpdateEvent
+          && this.isDlqReconsumed == o.isDlqReconsumed
+          && this.retryCount == o.retryCount
+          && Objects.equals(this.changeEvent, o.changeEvent)
+          && Objects.equals(this.originalChangeEvent, o.originalChangeEvent);
     }
     return false;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(
+        dataCollection,
+        shadowCollectionPrefix,
+        documentId,
+        timestampDoc,
+        isDeleteEvent,
+        isUpdateEvent,
+        isDlqReconsumed,
+        retryCount,
+        changeEvent,
+        originalChangeEvent);
   }
 }

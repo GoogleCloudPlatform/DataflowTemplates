@@ -20,21 +20,72 @@ import static com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEve
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
+import com.mongodb.MongoClientSettings;
 import java.util.Base64;
+import java.util.Date;
+import java.util.List;
 import java.util.Set;
+import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.bson.BsonTimestamp;
 import org.bson.Document;
+import org.bson.UuidRepresentation;
+import org.bson.codecs.Codec;
+import org.bson.codecs.configuration.CodecRegistries;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
 import org.bson.types.Binary;
+import org.bson.types.Code;
+import org.bson.types.CodeWithScope;
+import org.bson.types.Decimal128;
+import org.bson.types.MaxKey;
+import org.bson.types.MinKey;
+import org.bson.types.ObjectId;
+import org.bson.types.Symbol;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Utils used by the Datastream-mongodb-to-mongodb pipeline. */
+/** Utils used by the Datastream-mongodb-to-firestore pipeline. */
 public final class Utils {
   private static final Logger LOG = LoggerFactory.getLogger(Utils.class);
 
   private static final JsonWriterSettings CANONICAL_JSON_SETTINGS =
       JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
+
+  private static final Codec<Document> STANDARD_DOCUMENT_CODEC =
+      CodecRegistries.withUuidRepresentation(
+              MongoClientSettings.getDefaultCodecRegistry(), UuidRepresentation.STANDARD)
+          .get(Document.class);
+
+  private static final Pattern URI_USERINFO_PASSWORD_PATTERN =
+      Pattern.compile("(?i)([a-z][a-z0-9+.-]*://[^:@/]+:)([^/?#]+)(@.*)");
+
+  private static final Pattern URI_SENSITIVE_PARAM_PATTERN =
+      Pattern.compile(
+          "(?i)((?:[?&;,:]|\\b)(?:access_token|password|token|secret|client_secret)[=:])([^&;,\\s]+)");
+
+  private Utils() {}
+
+  /**
+   * Sanitizes a MongoDB connection URI by masking userinfo passwords and sensitive token/secret
+   * parameters before logging or including in error messages.
+   */
+  public static String sanitizeConnectionUri(String uri) {
+    if (uri == null || uri.isEmpty()) {
+      return uri;
+    }
+    String sanitized = uri;
+    Matcher userInfoMatcher = URI_USERINFO_PASSWORD_PATTERN.matcher(sanitized);
+    if (userInfoMatcher.find()) {
+      sanitized = userInfoMatcher.replaceFirst("$1****$3");
+    }
+    Matcher paramMatcher = URI_SENSITIVE_PARAM_PATTERN.matcher(sanitized);
+    if (paramMatcher.find()) {
+      sanitized = paramMatcher.replaceAll("$1****");
+    }
+    return sanitized;
+  }
 
   public static void removeTableRowFields(Document doc, Set<String> ignoreFields) {
     for (String ignoreField : ignoreFields) {
@@ -44,41 +95,183 @@ public final class Utils {
 
   /* Whether the first timestamp is later than the second timestamp. */
   public static boolean isNewerTimestamp(Document ts1, Document ts2) {
-    long s1 = ts1.getLong(MongoDbChangeEventContext.TIMESTAMP_SECONDS_COL);
-    int n1 = ts1.getInteger(MongoDbChangeEventContext.TIMESTAMP_NANOS_COL);
-    long s2 = ts2.getLong(MongoDbChangeEventContext.TIMESTAMP_SECONDS_COL);
-    int n2 = ts2.getInteger(MongoDbChangeEventContext.TIMESTAMP_NANOS_COL);
+    if (ts1 == null) {
+      return false;
+    }
+    if (ts2 == null) {
+      return true;
+    }
+    long s1 = 0L;
+    int n1 = 0;
+    if (ts1.containsKey(MongoDbChangeEventContext.TIMESTAMP_SECONDS_COL)) {
+      Object s = ts1.get(MongoDbChangeEventContext.TIMESTAMP_SECONDS_COL);
+      if (s instanceof Number) {
+        s1 = ((Number) s).longValue();
+      }
+    }
+    if (ts1.containsKey(MongoDbChangeEventContext.TIMESTAMP_NANOS_COL)) {
+      Object n = ts1.get(MongoDbChangeEventContext.TIMESTAMP_NANOS_COL);
+      if (n instanceof Number) {
+        n1 = ((Number) n).intValue();
+      }
+    }
+    long s2 = 0L;
+    int n2 = 0;
+    if (ts2.containsKey(MongoDbChangeEventContext.TIMESTAMP_SECONDS_COL)) {
+      Object s = ts2.get(MongoDbChangeEventContext.TIMESTAMP_SECONDS_COL);
+      if (s instanceof Number) {
+        s2 = ((Number) s).longValue();
+      }
+    }
+    if (ts2.containsKey(MongoDbChangeEventContext.TIMESTAMP_NANOS_COL)) {
+      Object n = ts2.get(MongoDbChangeEventContext.TIMESTAMP_NANOS_COL);
+      if (n instanceof Number) {
+        n2 = ((Number) n).intValue();
+      }
+    }
     return s1 > s2 || (s1 == s2 && n1 > n2);
   }
 
+  public static long getTimestampNanos(Document timestampDoc) {
+    if (timestampDoc == null) {
+      return 0L;
+    }
+    long seconds = 0L;
+    if (timestampDoc.containsKey(MongoDbChangeEventContext.TIMESTAMP_SECONDS_COL)) {
+      Object s = timestampDoc.get(MongoDbChangeEventContext.TIMESTAMP_SECONDS_COL);
+      if (s instanceof Number) {
+        seconds = ((Number) s).longValue();
+      }
+    }
+    long nanos = 0L;
+    if (timestampDoc.containsKey(MongoDbChangeEventContext.TIMESTAMP_NANOS_COL)) {
+      Object n = timestampDoc.get(MongoDbChangeEventContext.TIMESTAMP_NANOS_COL);
+      if (n instanceof Number) {
+        nanos = ((Number) n).longValue();
+      }
+    }
+    return (seconds * 1_000_000_000L) + nanos;
+  }
+
   public static Document jsonToDocument(String jsonString, Object documentId) {
-    Document rawDoc;
+    if (jsonString == null) {
+      return null;
+    }
+    Document rawDoc = null;
     try {
-      rawDoc = Document.parse(Document.parse(jsonString).get(DATA_COL).toString());
+      Document parsed = Document.parse(jsonString);
+      if (parsed.containsKey(DATA_COL)) {
+        Object dataObj = parsed.get(DATA_COL);
+        if (dataObj instanceof Document) {
+          rawDoc = (Document) dataObj;
+        } else if (dataObj instanceof String) {
+          rawDoc = Document.parse((String) dataObj);
+        } else if (dataObj != null) {
+          rawDoc = Document.parse(dataObj.toString());
+        }
+      } else {
+        // No 'data' wrapper field; the parsed document itself is the payload
+        rawDoc = parsed;
+      }
     } catch (Exception ex) {
-      LOG.info(
-          "Document parsing for {} failed due to {}, try casting.", jsonString, ex.getMessage());
-      rawDoc = (Document) Document.parse(jsonString).get(DATA_COL);
+      LOG.debug("Document parsing for {} failed due to {}.", jsonString, ex.getMessage());
     }
     if (rawDoc == null) {
       return null;
     }
+    removeTableRowFields(
+        rawDoc,
+        com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants
+            .DATASTREAM_METADATA_FIELDS);
     rawDoc.put(MongoDbChangeEventContext.DOC_ID_COL, documentId);
     return rawDoc;
   }
 
+  /**
+   * Converts a MongoDB document ID into a type-tagged, collision-free string representation.
+   *
+   * <p><b>NOTE:</b> This method does NOT generate a semantically equivalent string for database
+   * writes, and must NEVER be used as the destination document's {@code _id} value (which should
+   * retain native BSON types such as {@link org.bson.types.ObjectId}, {@link Document}, or {@link
+   * org.bson.types.Binary}).
+   *
+   * <p><b>Use Case:</b> This method is strictly intended for generating internal Apache Beam
+   * grouping and shuffling keys (e.g. {@code collection + "#" + documentIdToString(docId)}) and
+   * diagnostic string logs. The type prefix (e.g. {@code str_}, {@code i64_}, {@code bin_<type>_})
+   * ensures distinct BSON types with identical string forms (such as string {@code "123"} vs Long
+   * {@code 123L}) never collide in Beam's stateful deduplication and windowing operations.
+   *
+   * @param documentId the raw BSON document ID object
+   * @return a type-tagged string representation suitable for pipeline routing keys
+   */
   public static String documentIdToString(Object documentId) {
     if (documentId == null) {
       return "null";
     }
     if (documentId instanceof Binary) {
       Binary binary = (Binary) documentId;
-      return Base64.getEncoder().encodeToString(binary.getData());
+      return "bin_" + binary.getType() + "_" + Base64.getEncoder().encodeToString(binary.getData());
+    }
+    if (documentId instanceof byte[]) {
+      return "bin_0_" + Base64.getEncoder().encodeToString((byte[]) documentId);
+    }
+    if (documentId instanceof UUID) {
+      return "uuid_" + documentId;
     }
     if (documentId instanceof Document) {
-      return ((Document) documentId).toJson();
+      return "doc_"
+          + ((Document) documentId).toJson(CANONICAL_JSON_SETTINGS, STANDARD_DOCUMENT_CODEC);
     }
-    return documentId.toString();
+    if (documentId instanceof List) {
+      Document wrapper = new Document("arr", documentId);
+      return "list_" + wrapper.toJson(CANONICAL_JSON_SETTINGS, STANDARD_DOCUMENT_CODEC);
+    }
+    if (documentId instanceof ObjectId) {
+      return "oid_" + ((ObjectId) documentId).toHexString();
+    }
+    if (documentId instanceof Long) {
+      return "i64_" + documentId;
+    }
+    if (documentId instanceof Integer) {
+      return "i32_" + documentId;
+    }
+    if (documentId instanceof Double) {
+      return "f64_" + documentId;
+    }
+    if (documentId instanceof Decimal128) {
+      return "dec_" + documentId;
+    }
+    if (documentId instanceof Boolean) {
+      return "bool_" + documentId;
+    }
+    if (documentId instanceof Date) {
+      return "date_" + ((Date) documentId).getTime();
+    }
+    if (documentId instanceof BsonTimestamp) {
+      BsonTimestamp ts = (BsonTimestamp) documentId;
+      return "ts_" + ts.getTime() + "_" + ts.getInc();
+    }
+    if (documentId instanceof Symbol) {
+      return "sym_" + ((Symbol) documentId).getSymbol();
+    }
+    if (documentId instanceof MinKey) {
+      return "minkey";
+    }
+    if (documentId instanceof MaxKey) {
+      return "maxkey";
+    }
+    if (documentId instanceof CodeWithScope) {
+      CodeWithScope cws = (CodeWithScope) documentId;
+      String scopeJson =
+          cws.getScope() != null
+              ? cws.getScope().toJson(CANONICAL_JSON_SETTINGS, STANDARD_DOCUMENT_CODEC)
+              : "{}";
+      return "codewscope_" + cws.getCode().length() + ":" + cws.getCode() + "_" + scopeJson;
+    }
+    if (documentId instanceof Code) {
+      return "code_" + ((Code) documentId).getCode();
+    }
+    return "str_" + documentId.toString();
   }
 
   public static String getCanonicalJsonOfDataField(Document fullEvent) {
@@ -87,10 +280,10 @@ public final class Utils {
       return null;
     }
     if (dataVal instanceof Document) {
-      return ((Document) dataVal).toJson(CANONICAL_JSON_SETTINGS);
+      return ((Document) dataVal).toJson(CANONICAL_JSON_SETTINGS, STANDARD_DOCUMENT_CODEC);
     } else if (dataVal instanceof String) {
       Document dataDoc = Document.parse((String) dataVal);
-      return dataDoc.toJson(CANONICAL_JSON_SETTINGS);
+      return dataDoc.toJson(CANONICAL_JSON_SETTINGS, STANDARD_DOCUMENT_CODEC);
     }
     throw new IllegalArgumentException("Unsupported data field type: " + dataVal.getClass());
   }
@@ -100,12 +293,18 @@ public final class Utils {
   }
 
   public static Document extractInnerEvent(Document doc) {
+    if (doc == null) {
+      return null;
+    }
     return doc.containsKey(DatastreamConstants.CHANGE_EVENT)
         ? (Document) doc.get(DatastreamConstants.CHANGE_EVENT)
         : doc;
   }
 
   public static JsonNode extractInnerEvent(JsonNode payload) {
+    if (payload == null) {
+      return null;
+    }
     return payload.has(DatastreamConstants.CHANGE_EVENT)
         ? payload.get(DatastreamConstants.CHANGE_EVENT)
         : payload;
