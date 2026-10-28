@@ -228,10 +228,9 @@ public class SQLServerSeparateShadowTableDatabasePKFocusedIT extends DataStreamT
       }
     }
 
-    // Datastream streams must be deleted before the CDC-enabled source database is dropped.
-    ResourceManagerUtils.cleanResources(datastreamResourceManager);
-
+    // Datastream streams are deleted first, before the CDC-enabled source database is dropped.
     ResourceManagerUtils.cleanResources(
+        datastreamResourceManager,
         msSqlResourceManager,
         spannerResourceManager,
         shadowSpannerResourceManager,
