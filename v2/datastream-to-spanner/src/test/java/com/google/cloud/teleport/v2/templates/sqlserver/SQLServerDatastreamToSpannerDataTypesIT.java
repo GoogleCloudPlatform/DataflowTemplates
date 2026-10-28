@@ -65,10 +65,10 @@ import org.slf4j.LoggerFactory;
  * <ul>
  *   <li>Datastream maps SQL Server {@code datetime}, {@code datetime2} and {@code smalldatetime} to
  *       a {@code DatetimeUnifiedType}, serialised as an Avro RECORD named {@code datetime} with
- *       fields {@code {date, time}}. {@code FormatDatastreamRecordToJson} does not handle this
- *       record yet and emits a nested JSON object, so {@code ChangeEventTypeConvertor} fails to
- *       parse it: non-null values are routed to the DLQ for TIMESTAMP targets and become {@code ""}
- *       for STRING targets. Only the NULL rows are asserted for those tables.
+ *       fields {@code {date, time}} (epoch days and microseconds of day). {@code
+ *       ChangeEventTypeConvertor} converts that record as a UTC wall-clock value, so these columns
+ *       are asserted as TIMESTAMP, STRING (ISO-8601) and primary keys; {@code datetime2} values are
+ *       truncated to microsecond precision by Datastream.
  *   <li>{@code FormatDatastreamRecordToJson} converts {@code datetimeoffset} via {@code micros *
  *       1000} into a nanosecond {@code long}, which overflows outside ~1677..2262, and ignores the
  *       record's offset (Datastream encodes the local wall-clock plus the offset), so non-UTC
@@ -583,26 +583,30 @@ public class SQLServerDatastreamToSpannerDataTypesIT extends DataStreamToSpanner
     expectedData.put("time", createRows("time", "PT15H50M", "PT0S", "PT23H59M59.999999S", "NULL"));
     expectedData.put("time_pk", createRows("time_pk", "PT15H50M", "PT0S", "PT23H59M59.999999S"));
 
-    // TODO: datetime2 is delivered as an unhandled Datastream "datetime" Avro RECORD (see class
-    // javadoc). Non-null values are routed to the DLQ, so only the NULL row can be asserted and the
-    // PK variant (which cannot be NULL) is skipped entirely.
+    // datetime2 has 100ns precision; Datastream delivers microseconds.
     expectedData.put(
         "datetime2",
         createRows(
             "datetime2",
-            // "2022-08-05T08:23:11.123456000Z",
-            // "0001-01-01T00:00:00Z",
-            // "9999-12-31T23:59:59.999999000Z",
+            "2022-08-05T08:23:11.123456000Z",
+            "0001-01-01T00:00:00Z",
+            "9999-12-31T23:59:59.999999000Z",
             "NULL"));
     expectedData.put(
-        "datetime2_to_string", createPkRows("datetime2_to_string", new Pair<>(4, "NULL")));
-    // expectedData.put(
-    //     "datetime2_pk",
-    //     createRows(
-    //         "datetime2_pk",
-    //         "2022-08-05T08:23:11.123456000Z",
-    //         "0001-01-01T00:00:00Z",
-    //         "9999-12-31T23:59:59.999999000Z"));
+        "datetime2_to_string",
+        createRows(
+            "datetime2_to_string",
+            "2022-08-05T08:23:11.123456Z",
+            "0001-01-01T00:00:00Z",
+            "9999-12-31T23:59:59.999999Z",
+            "NULL"));
+    expectedData.put(
+        "datetime2_pk",
+        createRows(
+            "datetime2_pk",
+            "2022-08-05T08:23:11.123456000Z",
+            "0001-01-01T00:00:00Z",
+            "9999-12-31T23:59:59.999999000Z"));
 
     // TODO: Out-of-range datetimeoffset values (0001-01-01 / 9999-12-31) overflow in
     // FormatDatastreamRecordToJson (see class javadoc); only in-range boundaries are asserted.
@@ -626,45 +630,53 @@ public class SQLServerDatastreamToSpannerDataTypesIT extends DataStreamToSpanner
         "datetimeoffset_pk",
         createRows("datetimeoffset_pk", "2022-08-05T08:23:11.123456000Z", "1900-01-01T00:00:00Z"));
 
-    // TODO: datetime is delivered as an unhandled Datastream "datetime" Avro RECORD (see class
-    // javadoc). Only the NULL row can be asserted; the PK variant is skipped entirely.
     expectedData.put(
         "datetime",
         createRows(
             "datetime",
-            // "1998-01-23T12:45:56Z",
-            // "1753-01-01T00:00:00Z",
-            // "9999-12-31T23:59:59.997000000Z",
+            "1998-01-23T12:45:56Z",
+            "1753-01-01T00:00:00Z",
+            "9999-12-31T23:59:59.997000000Z",
             "NULL"));
     expectedData.put(
-        "datetime_to_string", createPkRows("datetime_to_string", new Pair<>(4, "NULL")));
-    // expectedData.put(
-    //     "datetime_pk",
-    //     createRows(
-    //         "datetime_pk",
-    //         "1998-01-23T12:45:56Z",
-    //         "1753-01-01T00:00:00Z",
-    //         "9999-12-31T23:59:59.997000000Z"));
+        "datetime_to_string",
+        createRows(
+            "datetime_to_string",
+            "1998-01-23T12:45:56Z",
+            "1753-01-01T00:00:00Z",
+            "9999-12-31T23:59:59.997Z",
+            "NULL"));
+    expectedData.put(
+        "datetime_pk",
+        createRows(
+            "datetime_pk",
+            "1998-01-23T12:45:56Z",
+            "1753-01-01T00:00:00Z",
+            "9999-12-31T23:59:59.997000000Z"));
 
-    // TODO: smalldatetime is delivered as an unhandled Datastream "datetime" Avro RECORD (see class
-    // javadoc). Only the NULL row can be asserted; the PK variant is skipped entirely.
     expectedData.put(
         "smalldatetime",
         createRows(
             "smalldatetime",
-            // "2022-08-05T08:23:00Z",
-            // "1900-01-01T00:00:00Z",
-            // "2079-06-06T23:59:00Z",
+            "2022-08-05T08:23:00Z",
+            "1900-01-01T00:00:00Z",
+            "2079-06-06T23:59:00Z",
             "NULL"));
     expectedData.put(
-        "smalldatetime_to_string", createPkRows("smalldatetime_to_string", new Pair<>(4, "NULL")));
-    // expectedData.put(
-    //     "smalldatetime_pk",
-    //     createRows(
-    //         "smalldatetime_pk",
-    //         "2022-08-05T08:23:00Z",
-    //         "1900-01-01T00:00:00Z",
-    //         "2079-06-06T23:59:00Z"));
+        "smalldatetime_to_string",
+        createRows(
+            "smalldatetime_to_string",
+            "2022-08-05T08:23:00Z",
+            "1900-01-01T00:00:00Z",
+            "2079-06-06T23:59:00Z",
+            "NULL"));
+    expectedData.put(
+        "smalldatetime_pk",
+        createRows(
+            "smalldatetime_pk",
+            "2022-08-05T08:23:00Z",
+            "1900-01-01T00:00:00Z",
+            "2079-06-06T23:59:00Z"));
 
     String charA = String.format("%-255s", "a");
     String charSample = String.format("%-255s", "sample_char");
