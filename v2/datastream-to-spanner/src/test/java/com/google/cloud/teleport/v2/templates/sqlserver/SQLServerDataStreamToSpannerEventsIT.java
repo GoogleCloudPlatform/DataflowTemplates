@@ -233,9 +233,9 @@ public class SQLServerDataStreamToSpannerEventsIT extends DataStreamToSpannerITB
     LOG.info("Applying Users CDC wave (inserts, updates, delete) on SQL Server...");
     insertUsersCdcRows();
 
-    // 4. Wait on Spanner to merge the second wave of events. A row count alone is also satisfied
-    // by transient states (e.g. before the UPDATE of id 3 or the DELETE of id 2 is applied), so
-    // additionally wait for the updated row to be visible.
+    // 4. Wait on Spanner to reach the final state of the second wave: a row count alone is also
+    // satisfied by transient states (e.g. before the UPDATE of id 3 or the DELETE of id 2 is
+    // applied).
     ConditionCheck cdcCondition =
         SpannerRowsCheck.builder(spannerResourceManager, USERS_TABLE)
             .setMinRows(3)
@@ -243,20 +243,16 @@ public class SQLServerDataStreamToSpannerEventsIT extends DataStreamToSpannerITB
             .build()
             .and(
                 rowPresentCheck(
-                    "Users id 3 updated",
+                    "Users CDC wave applied",
                     "SELECT id FROM Users WHERE id = 3 AND age = 50 AND plan = 'Z'"
-                        + " AND subscribed = false"));
+                        + " AND subscribed = false"
+                        + " AND EXISTS (SELECT 1 FROM Users WHERE id = 4)"
+                        + " AND NOT EXISTS (SELECT 1 FROM Users WHERE id = 2)"));
     result =
         pipelineOperator()
             .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(10)), cdcCondition);
     assertThatResult(result).meetsConditions();
 
-    // Sleep for cutover time to wait till all CDCs propagate.
-    // A real world customer also has a small cut over time to reach consistency.
-    try {
-      Thread.sleep(CUTOVER_MILLIS);
-    } catch (InterruptedException e) {
-    }
     // Assert specific rows
     assertUsersTableContents();
   }

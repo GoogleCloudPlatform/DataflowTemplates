@@ -197,8 +197,6 @@ public class SQLServerDataStreamToSpannerTimezoneIT extends DataStreamToSpannerI
                     .build());
     assertThatResult(cdcResult).meetsConditions();
 
-    // Give in-flight events time to settle before the final assertion.
-    Thread.sleep(CUTOVER_MILLIS);
     assertCdcContents();
   }
 

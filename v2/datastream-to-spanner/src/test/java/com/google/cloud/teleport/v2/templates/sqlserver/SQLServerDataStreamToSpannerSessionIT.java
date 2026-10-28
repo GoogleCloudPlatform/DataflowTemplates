@@ -248,8 +248,8 @@ public class SQLServerDataStreamToSpannerSessionIT extends DataStreamToSpannerIT
     msSqlResourceManager.runSQLUpdate(
         "INSERT INTO Category (category_id, name, last_update) VALUES (4, 'ghi', NULL)");
 
-    // A row count alone is also satisfied before the UPDATE of category 2 is applied, so
-    // additionally wait for the renamed value to be visible.
+    // A row count alone is also satisfied by transient states (e.g. before the UPDATE of
+    // category 2 or the DELETE of category 1 is applied), so wait for the final state.
     LOG.info("Waiting for Category CDC rows...");
     result =
         pipelineOperator()
@@ -261,19 +261,16 @@ public class SQLServerDataStreamToSpannerSessionIT extends DataStreamToSpannerIT
                     .build()
                     .and(
                         rowPresentCheck(
-                            "Category 2 updated",
+                            "Category CDC wave applied",
                             "SELECT category_id FROM Category"
-                                + " WHERE category_id = 2 AND full_name = 'abc1'")));
+                                + " WHERE category_id = 2 AND full_name = 'abc1'"
+                                + " AND EXISTS (SELECT 1 FROM Category WHERE category_id = 4)"
+                                + " AND NOT EXISTS"
+                                + " (SELECT 1 FROM Category WHERE category_id = 1)")));
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();
 
-    // Sleep for cutover time to wait till all CDCs propagate.
-    // A real world customer also has a small cut over time to reach consistency.
-    try {
-      Thread.sleep(CUTOVER_MILLIS);
-    } catch (InterruptedException e) {
-    }
     assertCategoryTableCdcContents();
   }
 

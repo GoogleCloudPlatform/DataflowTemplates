@@ -21,7 +21,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.datastream.v1.DestinationConfig;
 import com.google.cloud.datastream.v1.SourceConfig;
 import com.google.cloud.datastream.v1.Stream;
-import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
@@ -283,26 +282,26 @@ public class SQLServerDatastreamToSpannerSingleDFShardedMigrationIT
         String.format(
             "INSERT INTO %s.%s (id, name, age) VALUES (13, 'Tester13', 113)", SCHEMA_S1L1, TABLE));
 
-    // The row count stays at 12 after the CDC wave (one delete, one insert), so wait for the
-    // inserted row to be visible instead of relying on the count alone.
+    // The row count stays at 12 after the CDC wave (one update, one delete, one insert), so wait
+    // for the final state instead of relying on the count alone.
     ConditionCheck cdcCheck =
         SpannerRowsCheck.builder(spannerResourceManager, TABLE)
             .setMinRows(12)
             .setMaxRows(12)
             .build()
-            .and(rowExistsCheck(13, "L1"));
+            .and(
+                rowPresentCheck(
+                    "Users CDC wave applied on shard L1",
+                    "SELECT id FROM Users WHERE id = 1 AND migration_shard_id = 'L1'"
+                        + " AND age_spanner = 20"
+                        + " AND EXISTS (SELECT 1 FROM Users WHERE id = 13"
+                        + " AND migration_shard_id = 'L1')"));
     LOG.info("Waiting for CDC rows to arrive in Spanner...");
     result =
         pipelineOperator()
             .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(10)), cdcCheck);
     assertThatResult(result).meetsConditions();
 
-    // Sleep for cutover time to wait till all CDCs propagate.
-    // A real world customer also has a small cut over time to reach consistency.
-    try {
-      Thread.sleep(CUTOVER_MILLIS);
-    } catch (InterruptedException e) {
-    }
     // Assert specific rows
     assertUsersTableContents();
   }
@@ -370,27 +369,19 @@ public class SQLServerDatastreamToSpannerSingleDFShardedMigrationIT
     return name.substring(name.lastIndexOf('/') + 1);
   }
 
-  private ConditionCheck rowExistsCheck(long id, String shardId) {
+  /** A condition that passes once the given query returns at least one row from Spanner. */
+  private static ConditionCheck rowPresentCheck(String description, String query) {
     return new ConditionCheck() {
       @Override
       protected String getDescription() {
-        return String.format(
-            "Spanner row with id=%d and migration_shard_id=%s exists in %s", id, shardId, TABLE);
+        return description;
       }
 
       @Override
       protected CheckResult check() {
-        List<Struct> rows =
-            spannerResourceManager.runQuery(
-                String.format(
-                    "SELECT id FROM %s WHERE id = %d AND migration_shard_id = '%s'",
-                    TABLE, id, shardId));
-        boolean found = !rows.isEmpty();
+        int found = spannerResourceManager.runQuery(query).size();
         return new CheckResult(
-            found,
-            found
-                ? String.format("Row id=%d found with shard %s", id, shardId)
-                : String.format("Row id=%d with shard %s not found yet", id, shardId));
+            found > 0, String.format("%s: query returned %d row(s)", description, found));
       }
     };
   }
