@@ -33,6 +33,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **outputAttributesMap**: Name of a string-to-string map field in which to pull a set of attributes associated with this message. For example, `attrs`.
 * **outputIdAttribute**: If set, will set an attribute for each Cloud Pub/Sub message with the given name and a unique value. For example, `id`.
 * **outputTimestampAttribute**: If set, will set an attribute for each Cloud Pub/Sub message with the given name and the message's publish time as the value. For example, `timestamp`.
+* **type**: The type of windowing to apply (e.g., fixed, sliding, sessions, global). Defaults to fixed. For example, `fixed`.
+* **size**: The window size in seconds. Defaults to 60. For example, `60`.
 
 
 
@@ -142,6 +144,8 @@ export OUTPUT_ATTRIBUTES=<outputAttributes>
 export OUTPUT_ATTRIBUTES_MAP=<outputAttributesMap>
 export OUTPUT_ID_ATTRIBUTE=<outputIdAttribute>
 export OUTPUT_TIMESTAMP_ATTRIBUTE=<outputTimestampAttribute>
+export TYPE=fixed
+export SIZE=60
 
 gcloud dataflow flex-template run "pubsub-subscription-to-pubsub-topic-yaml-job" \
   --project "$PROJECT" \
@@ -161,7 +165,9 @@ gcloud dataflow flex-template run "pubsub-subscription-to-pubsub-topic-yaml-job"
   --parameters "outputAttributes=$OUTPUT_ATTRIBUTES" \
   --parameters "outputAttributesMap=$OUTPUT_ATTRIBUTES_MAP" \
   --parameters "outputIdAttribute=$OUTPUT_ID_ATTRIBUTE" \
-  --parameters "outputTimestampAttribute=$OUTPUT_TIMESTAMP_ATTRIBUTE"
+  --parameters "outputTimestampAttribute=$OUTPUT_TIMESTAMP_ATTRIBUTE" \
+  --parameters "type=$TYPE" \
+  --parameters "size=$SIZE"
 ```
 
 For more information about the command, please check:
@@ -197,6 +203,8 @@ export OUTPUT_ATTRIBUTES=<outputAttributes>
 export OUTPUT_ATTRIBUTES_MAP=<outputAttributesMap>
 export OUTPUT_ID_ATTRIBUTE=<outputIdAttribute>
 export OUTPUT_TIMESTAMP_ATTRIBUTE=<outputTimestampAttribute>
+export TYPE=fixed
+export SIZE=60
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -205,7 +213,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="pubsub-subscription-to-pubsub-topic-yaml-job" \
 -DtemplateName="PubSub_Subscription_to_PubSub_Topic_Yaml" \
--Dparameters="subscription=$SUBSCRIPTION,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributesMap=$ATTRIBUTES_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,publishTimeField=$PUBLISH_TIME_FIELD,outputTopic=$OUTPUT_TOPIC,outputFormat=$OUTPUT_FORMAT,outputSchema=$OUTPUT_SCHEMA,outputAttributes=$OUTPUT_ATTRIBUTES,outputAttributesMap=$OUTPUT_ATTRIBUTES_MAP,outputIdAttribute=$OUTPUT_ID_ATTRIBUTE,outputTimestampAttribute=$OUTPUT_TIMESTAMP_ATTRIBUTE" \
+-Dparameters="subscription=$SUBSCRIPTION,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributesMap=$ATTRIBUTES_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,publishTimeField=$PUBLISH_TIME_FIELD,outputTopic=$OUTPUT_TOPIC,outputFormat=$OUTPUT_FORMAT,outputSchema=$OUTPUT_SCHEMA,outputAttributes=$OUTPUT_ATTRIBUTES,outputAttributesMap=$OUTPUT_ATTRIBUTES_MAP,outputIdAttribute=$OUTPUT_ID_ATTRIBUTE,outputTimestampAttribute=$OUTPUT_TIMESTAMP_ATTRIBUTE,type=$TYPE,size=$SIZE" \
 -f yaml
 ```
 
@@ -265,6 +273,8 @@ resource "google_dataflow_flex_template_job" "pubsub_subscription_to_pubsub_topi
     # outputAttributesMap = "<outputAttributesMap>"
     # outputIdAttribute = "<outputIdAttribute>"
     # outputTimestampAttribute = "<outputTimestampAttribute>"
+    # type = "fixed"
+    # size = "60"
   }
 }
 ```

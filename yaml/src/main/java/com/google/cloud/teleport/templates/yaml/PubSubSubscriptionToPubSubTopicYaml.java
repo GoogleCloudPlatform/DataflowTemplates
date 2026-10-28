@@ -190,4 +190,25 @@ public interface PubSubSubscriptionToPubSubTopicYaml {
           "If set, will set an attribute for each Cloud Pub/Sub message with the given name and the message's publish time as the value.",
       example = "timestamp")
   String getOutputTimestampAttribute();
+
+  @TemplateParameter.Text(
+      order = 16,
+      name = "type",
+      optional = true,
+      description = "The type of windowing to apply.",
+      helpText =
+          "The type of windowing to apply (e.g., fixed, sliding, sessions, global). Defaults to fixed.",
+      example = "fixed")
+  @Default.String("fixed")
+  String getType();
+
+  @TemplateParameter.Integer(
+      order = 17,
+      name = "size",
+      optional = true,
+      description = "The window size in seconds.",
+      helpText = "The window size in seconds. Defaults to 60.",
+      example = "60")
+  @Default.Integer(60)
+  Integer getSize();
 }

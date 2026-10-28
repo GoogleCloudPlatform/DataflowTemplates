@@ -20,11 +20,13 @@ template:
 
   options_file:
     - "pubsub_options"
+    - "windowing_options"
 
   parameters:
     - pubsub_subscription_read_options
     - pubsub_common_read_options
     - pubsub_write_options
+    - windowing_common_options
 
 pipeline:
   type: chain
@@ -51,8 +53,8 @@ pipeline:
         id_attribute: {{ outputIdAttribute }}
         timestamp_attribute: {{ outputTimestampAttribute }}
   windowing:
-    type: fixed
-    size: 60
+    type: {{ type | default('fixed') }}
+    size: {{ size | default(60) }}
 
 options:
   streaming: true

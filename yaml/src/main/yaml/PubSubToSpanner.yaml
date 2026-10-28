@@ -25,12 +25,14 @@ template:
   options_file:
     - "pubsub_options"
     - "spanner_options"
+    - "windowing_options"
 
   parameters:
     - pubsub_topic_read_options
     - pubsub_common_options
     - pubsub_read_options
     - spanner_common_options
+    - windowing_common_options
 
 pipeline:
   type: chain
@@ -54,8 +56,8 @@ pipeline:
         database: {{ databaseId }}
         table: {{ tableId }}
   windowing:
-    type: fixed
-    size: 60
+    type: {{ type | default('fixed') }}
+    size: {{ size | default(60) }}
 
 options:
   streaming: true

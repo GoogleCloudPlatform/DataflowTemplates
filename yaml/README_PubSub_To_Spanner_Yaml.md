@@ -33,6 +33,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **errorHandling**: This option specifies whether and where to output error rows.
 * **subscription**: Pub/Sub subscription to read the input from. For example, `projects/your-project-id/subscriptions/your-subscription-name`.
 * **projectId**: The Google Cloud project ID of the Cloud Spanner instance. For example, `your-project-id`.
+* **type**: The type of windowing to apply (e.g., fixed, sliding, sessions, global). Defaults to fixed. For example, `fixed`.
+* **size**: The window size in seconds. Defaults to 60. For example, `60`.
 
 
 
@@ -140,6 +142,8 @@ export TIMESTAMP_ATTRIBUTE=<timestampAttribute>
 export ERROR_HANDLING=<errorHandling>
 export SUBSCRIPTION=<subscription>
 export PROJECT_ID=<projectId>
+export TYPE=fixed
+export SIZE=60
 
 gcloud dataflow flex-template run "pubsub-to-spanner-yaml-job" \
   --project "$PROJECT" \
@@ -157,7 +161,9 @@ gcloud dataflow flex-template run "pubsub-to-spanner-yaml-job" \
   --parameters "projectId=$PROJECT_ID" \
   --parameters "instanceId=$INSTANCE_ID" \
   --parameters "databaseId=$DATABASE_ID" \
-  --parameters "tableId=$TABLE_ID"
+  --parameters "tableId=$TABLE_ID" \
+  --parameters "type=$TYPE" \
+  --parameters "size=$SIZE"
 ```
 
 For more information about the command, please check:
@@ -191,6 +197,8 @@ export TIMESTAMP_ATTRIBUTE=<timestampAttribute>
 export ERROR_HANDLING=<errorHandling>
 export SUBSCRIPTION=<subscription>
 export PROJECT_ID=<projectId>
+export TYPE=fixed
+export SIZE=60
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -199,7 +207,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="pubsub-to-spanner-yaml-job" \
 -DtemplateName="PubSub_To_Spanner_Yaml" \
--Dparameters="topic=$TOPIC,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributesMap=$ATTRIBUTES_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,errorHandling=$ERROR_HANDLING,subscription=$SUBSCRIPTION,projectId=$PROJECT_ID,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,tableId=$TABLE_ID" \
+-Dparameters="topic=$TOPIC,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributesMap=$ATTRIBUTES_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,errorHandling=$ERROR_HANDLING,subscription=$SUBSCRIPTION,projectId=$PROJECT_ID,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,tableId=$TABLE_ID,type=$TYPE,size=$SIZE" \
 -f yaml
 ```
 
@@ -257,6 +265,8 @@ resource "google_dataflow_flex_template_job" "pubsub_to_spanner_yaml" {
     # errorHandling = "<errorHandling>"
     # subscription = "<subscription>"
     # projectId = "<projectId>"
+    # type = "fixed"
+    # size = "60"
   }
 }
 ```

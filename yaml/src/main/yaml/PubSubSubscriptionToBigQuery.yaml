@@ -24,12 +24,14 @@ template:
   options_file:
     - "pubsub_options"
     - "bigquery_options"
+    - "windowing_options"
 
   parameters:
     - pubsub_subscription_read_options
     - pubsub_common_read_options
     - bigquery_common_options
     - bigquery_write_options
+    - windowing_common_options
 
 pipeline:
   transforms:
@@ -52,6 +54,9 @@ pipeline:
         write_disposition: {{ writeDisposition | default('WRITE_APPEND') }}
         create_disposition: {{ createDisposition | default('CREATE_NEVER') }}
         num_streams: {{ numStreams | default(1) }}
+  windowing:
+    type: {{ type | default('fixed') }}
+    size: {{ size | default(60) }}
 
 options:
   streaming: true
