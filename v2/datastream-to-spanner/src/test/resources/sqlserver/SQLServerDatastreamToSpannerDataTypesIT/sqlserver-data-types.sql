@@ -604,15 +604,9 @@ INSERT INTO date_pk_table VALUES ('2022-09-17', '2022-09-17'), ('0001-01-01', '0
 INSERT INTO time_table VALUES (1, '15:50:00.0000000'), (2, '00:00:00.0000000'), (3, '23:59:59.9999999'), (4, NULL);
 INSERT INTO time_pk_table VALUES ('15:50:00.0000000', '15:50:00.0000000'), ('00:00:00.0000000', '00:00:00.0000000'), ('23:59:59.9999999', '23:59:59.9999999');
 
--- TODO: Datastream maps SQL Server datetime2 to DatetimeUnifiedType (Avro RECORD "datetime" with fields {date, time}).
--- FormatDatastreamRecordToJson currently lacks handling for "datetime" and defaults to a nested JSON object {"date":..., "time":...}.
--- ChangeEventTypeConvertor.toTimestamp() calls .asText() which returns "" on ObjectNodes, throwing DateTimeParseException and routing non-null records to DLQ.
--- Until support for converting Datastream "datetime" RECORD type to an ISO-8601 string is added, only NULL values can be replicated.
--- INSERT INTO datetime2_table VALUES (1, '2022-08-05 08:23:11.1234567'), (2, '0001-01-01 00:00:00.0000000'), (3, '9999-12-31 23:59:59.9999999'), (4, NULL);
-INSERT INTO datetime2_table VALUES (1, NULL);
+INSERT INTO datetime2_table VALUES (1, '2022-08-05 08:23:11.1234567'), (2, '0001-01-01 00:00:00.0000000'), (3, '9999-12-31 23:59:59.9999999'), (4, NULL);
 INSERT INTO datetime2_to_string_table VALUES (1, '2022-08-05 08:23:11.1234567'), (2, '0001-01-01 00:00:00.0000000'), (3, '9999-12-31 23:59:59.9999999'), (4, NULL);
--- TODO: Non-null datetime2 values fail conversion to Timestamp and route to DLQ. Since PK columns cannot be NULL in SQL Server, all rows fail.
--- INSERT INTO datetime2_pk_table VALUES ('2022-08-05 08:23:11.1234567', '2022-08-05 08:23:11.1234567'), ('0001-01-01 00:00:00.0000000', '0001-01-01 00:00:00.0000000'), ('9999-12-31 23:59:59.9999999', '9999-12-31 23:59:59.9999999');
+INSERT INTO datetime2_pk_table VALUES ('2022-08-05 08:23:11.1234567', '2022-08-05 08:23:11.1234567'), ('0001-01-01 00:00:00.0000000', '0001-01-01 00:00:00.0000000'), ('9999-12-31 23:59:59.9999999', '9999-12-31 23:59:59.9999999');
 
 -- TODO: FormatDatastreamRecordToJson converts timestampTz values via micros * 1000 into a long of
 -- nanoseconds, which silently overflows for values outside ~1677-09-21..2262-04-11 (e.g. the SQL Server
@@ -625,25 +619,13 @@ INSERT INTO datetimeoffset_table VALUES (1, '2022-08-05 08:23:11.1234567 +00:00'
 INSERT INTO datetimeoffset_to_string_table VALUES (1, '2022-08-05 08:23:11.1234567 +00:00'), (2, '1900-01-01 00:00:00.0000000 +00:00'), (3, '2200-12-31 23:59:59.9999999 +00:00'), (4, NULL);
 INSERT INTO datetimeoffset_pk_table VALUES ('2022-08-05 08:23:11.1234567 +00:00', '2022-08-05 08:23:11.1234567 +00:00'), ('1900-01-01 00:00:00.0000000 +00:00', '1900-01-01 00:00:00.0000000 +00:00');
 
--- TODO: Datastream maps SQL Server datetime to DatetimeUnifiedType (Avro RECORD "datetime" with fields {date, time}).
--- FormatDatastreamRecordToJson currently lacks handling for "datetime" and defaults to a nested JSON object {"date":..., "time":...}.
--- ChangeEventTypeConvertor.toTimestamp() calls .asText() which returns "" on ObjectNodes, throwing DateTimeParseException and routing non-null records to DLQ.
--- Until support for converting Datastream "datetime" RECORD type to an ISO-8601 string is added, only NULL values can be replicated.
--- INSERT INTO datetime_table VALUES (1, '1998-01-23 12:45:56.000'), (2, '1753-01-01 00:00:00.000'), (3, '9999-12-31 23:59:59.997'), (4, NULL);
-INSERT INTO datetime_table VALUES (1, NULL);
+INSERT INTO datetime_table VALUES (1, '1998-01-23 12:45:56.000'), (2, '1753-01-01 00:00:00.000'), (3, '9999-12-31 23:59:59.997'), (4, NULL);
 INSERT INTO datetime_to_string_table VALUES (1, '1998-01-23 12:45:56.000'), (2, '1753-01-01 00:00:00.000'), (3, '9999-12-31 23:59:59.997'), (4, NULL);
--- TODO: Non-null datetime values fail conversion to Timestamp and route to DLQ. Since PK columns cannot be NULL in SQL Server, all rows fail.
--- INSERT INTO datetime_pk_table VALUES ('1998-01-23 12:45:56.000', '1998-01-23 12:45:56.000'), ('1753-01-01 00:00:00.000', '1753-01-01 00:00:00.000'), ('9999-12-31 23:59:59.997', '9999-12-31 23:59:59.997');
+INSERT INTO datetime_pk_table VALUES ('1998-01-23 12:45:56.000', '1998-01-23 12:45:56.000'), ('1753-01-01 00:00:00.000', '1753-01-01 00:00:00.000'), ('9999-12-31 23:59:59.997', '9999-12-31 23:59:59.997');
 
--- TODO: Datastream maps SQL Server smalldatetime to DatetimeUnifiedType (Avro RECORD "datetime" with fields {date, time}).
--- FormatDatastreamRecordToJson currently lacks handling for "datetime" and defaults to a nested JSON object {"date":..., "time":...}.
--- ChangeEventTypeConvertor.toTimestamp() calls .asText() which returns "" on ObjectNodes, throwing DateTimeParseException and routing non-null records to DLQ.
--- Until support for converting Datastream "datetime" RECORD type to an ISO-8601 string is added, only NULL values can be replicated.
--- INSERT INTO smalldatetime_table VALUES (1, '2022-08-05 08:23:00'), (2, '1900-01-01 00:00:00'), (3, '2079-06-06 23:59:00'), (4, NULL);
-INSERT INTO smalldatetime_table VALUES (1, NULL);
+INSERT INTO smalldatetime_table VALUES (1, '2022-08-05 08:23:00'), (2, '1900-01-01 00:00:00'), (3, '2079-06-06 23:59:00'), (4, NULL);
 INSERT INTO smalldatetime_to_string_table VALUES (1, '2022-08-05 08:23:00'), (2, '1900-01-01 00:00:00'), (3, '2079-06-06 23:59:00'), (4, NULL);
--- TODO: Non-null smalldatetime values fail conversion to Timestamp and route to DLQ. Since PK columns cannot be NULL in SQL Server, all rows fail.
--- INSERT INTO smalldatetime_pk_table VALUES ('2022-08-05 08:23:00', '2022-08-05 08:23:00'), ('1900-01-01 00:00:00', '1900-01-01 00:00:00'), ('2079-06-06 23:59:00', '2079-06-06 23:59:00');
+INSERT INTO smalldatetime_pk_table VALUES ('2022-08-05 08:23:00', '2022-08-05 08:23:00'), ('1900-01-01 00:00:00', '1900-01-01 00:00:00'), ('2079-06-06 23:59:00', '2079-06-06 23:59:00');
 
 INSERT INTO char_table VALUES (1, 'a'), (2, 'sample_char'), (3, NULL);
 -- TODO: STRING -> BYTES is hex-decoded by ChangeEventTypeConvertor.toByteArray() instead of UTF-8 encoded for non-binary source columns
