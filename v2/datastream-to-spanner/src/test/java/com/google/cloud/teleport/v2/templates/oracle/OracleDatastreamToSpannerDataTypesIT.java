@@ -20,6 +20,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -32,8 +33,8 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -179,21 +180,18 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
   private static final HashSet<OracleDatastreamToSpannerDataTypesIT> testInstances =
       new HashSet<>();
 
-  /** The isolated Oracle users created by the tests, dropped in {@link #cleanUp()}. */
-  private static final List<String> oracleUsers = Collections.synchronizedList(new ArrayList<>());
-
-  private static SpannerResourceManager spannerResourceManager;
-  private static SpannerResourceManager pgDialectSpannerResourceManager;
+  // GCS and Pub/Sub are shared by the tests, which use separate GCS paths. All the other resources
+  // (Oracle user, Spanner database, Datastream stream, Dataflow job) belong to a single test and
+  // are cleaned up as soon as that test completes, see runDataTypesTest.
   private static GcsResourceManager gcsResourceManager;
   private static PubsubResourceManager pubsubResourceManager;
-  private static DatastreamResourceManager datastreamResourceManager;
 
   @Before
   public void setUp() throws Exception {
     skipBaseCleanup = true;
     synchronized (OracleDatastreamToSpannerDataTypesIT.class) {
       testInstances.add(this);
-      if (spannerResourceManager == null) {
+      if (gcsResourceManager == null) {
         try {
           setUpSharedResources();
         } catch (Exception e) {
@@ -211,15 +209,8 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
 
   /** Creates the resource managers shared by the tests. */
   private void setUpSharedResources() throws Exception {
-    spannerResourceManager = setUpSpannerResourceManager();
-    pgDialectSpannerResourceManager = setUpPGDialectSpannerResourceManager();
     gcsResourceManager = setUpSpannerITGcsResourceManager();
     pubsubResourceManager = setUpPubSubResourceManager();
-    datastreamResourceManager =
-        DatastreamResourceManager.builder(testName, PROJECT, REGION)
-            .setCredentialsProvider(credentialsProvider)
-            .setPrivateConnectivity("datastream-connect-2")
-            .build();
   }
 
   @AfterClass
@@ -228,28 +219,17 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
   }
 
   /**
-   * Cancels the Dataflow jobs of the given test instances, cleans up the shared resource managers
-   * (the Datastream streams first) and drops the isolated Oracle users, then resets them so that a
-   * later setup (after a failed one) starts clean.
+   * Cancels any Dataflow job left by the given test instances and cleans up the shared resource
+   * managers, then resets them so that a later setup (after a failed one) starts clean.
    */
   private static void cleanUpSharedResources(
       Collection<OracleDatastreamToSpannerDataTypesIT> instances) {
     try {
       SharedOracleLiveITContainer.cleanUpTestResources(
-          instances,
-          new ArrayList<>(oracleUsers),
-          datastreamResourceManager,
-          spannerResourceManager,
-          pgDialectSpannerResourceManager,
-          pubsubResourceManager,
-          gcsResourceManager);
+          instances, List.of(), pubsubResourceManager, gcsResourceManager);
     } finally {
-      datastreamResourceManager = null;
-      spannerResourceManager = null;
-      pgDialectSpannerResourceManager = null;
       pubsubResourceManager = null;
       gcsResourceManager = null;
-      oracleUsers.clear();
     }
   }
 
@@ -327,7 +307,7 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
   @Test
   public void testOracleDataTypes() throws Exception {
     runDataTypesTest(
-        spannerResourceManager,
+        Dialect.GOOGLE_STANDARD_SQL,
         SPANNER_DDL_RESOURCE,
         OracleDataTypesTestData.tables(),
         OracleDataTypesTestData.unsupportedTables(),
@@ -342,7 +322,7 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
   @Test
   public void testOracleDataTypesPGDialect() throws Exception {
     runDataTypesTest(
-        pgDialectSpannerResourceManager,
+        Dialect.POSTGRESQL,
         PG_DIALECT_SPANNER_DDL_RESOURCE,
         OracleDataTypesTestData.postgresTables(),
         OracleDataTypesTestData.postgresUnsupportedTables(),
@@ -351,20 +331,74 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
   }
 
   /**
-   * Creates an isolated Oracle user with the tables and rows of {@code oracle-schema.sql} and the
-   * Spanner tables, replicates them with a Datastream stream and a Dataflow job (backfill, then
-   * CDC) and validates every table.
+   * Runs the data type test for a Spanner dialect with the resources of this test only (an isolated
+   * Oracle user, a Spanner database, a Datastream stream and a Dataflow job), which are cleaned up
+   * as soon as the test completes: the Dataflow job first, then the stream, the Spanner database
+   * and finally the Oracle user.
    */
   private void runDataTypesTest(
-      SpannerResourceManager spanner,
+      Dialect dialect,
       String spannerDdlResource,
       List<TypeTable> tables,
       List<UnsupportedTable> unsupportedTables,
       Map<String, String> knownMismatches,
       String gcsPathPrefix)
       throws Exception {
-    String oracleUser = SharedOracleLiveITContainer.setupOracleIsolatedUser();
-    oracleUsers.add(oracleUser);
+    SpannerResourceManager spanner = null;
+    DatastreamResourceManager datastream = null;
+    String oracleUser = null;
+    Throwable failure = null;
+    try {
+      spanner =
+          dialect == Dialect.POSTGRESQL
+              ? setUpPGDialectSpannerResourceManager()
+              : setUpSpannerResourceManager();
+      datastream =
+          DatastreamResourceManager.builder(testName, PROJECT, REGION)
+              .setCredentialsProvider(credentialsProvider)
+              .setPrivateConnectivity("datastream-connect-2")
+              .build();
+      oracleUser = SharedOracleLiveITContainer.setupOracleIsolatedUser();
+      replicateAndValidate(
+          spanner,
+          datastream,
+          oracleUser,
+          spannerDdlResource,
+          tables,
+          unsupportedTables,
+          knownMismatches,
+          gcsPathPrefix);
+    } catch (Throwable t) {
+      failure = t;
+      throw t;
+    } finally {
+      try {
+        SharedOracleLiveITContainer.cleanUpTestResources(
+            List.of(this), Arrays.asList(oracleUser), datastream, spanner);
+      } catch (RuntimeException cleanupError) {
+        if (failure == null) {
+          throw cleanupError;
+        }
+        failure.addSuppressed(cleanupError);
+      }
+    }
+  }
+
+  /**
+   * Creates the tables and rows of {@code oracle-schema.sql} in the given Oracle user and the
+   * Spanner tables, replicates them with a Datastream stream and a Dataflow job (backfill, then
+   * CDC) and validates every table.
+   */
+  private void replicateAndValidate(
+      SpannerResourceManager spanner,
+      DatastreamResourceManager datastream,
+      String oracleUser,
+      String spannerDdlResource,
+      List<TypeTable> tables,
+      List<UnsupportedTable> unsupportedTables,
+      Map<String, String> knownMismatches,
+      String gcsPathPrefix)
+      throws Exception {
     LOG.info("Creating Oracle schema and data in {}", oracleUser);
     SharedOracleLiveITContainer.executeSqlScript(oracleUser, ORACLE_DDL_RESOURCE);
 
@@ -390,7 +424,7 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
             null,
             null,
             gcsResourceManager,
-            datastreamResourceManager,
+            datastream,
             null,
             oracleSource);
     assertThatPipeline(jobInfo).isRunning();
