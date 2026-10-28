@@ -61,67 +61,6 @@ import org.slf4j.LoggerFactory;
  * custom transformation ({@code com.custom.CustomTransformationWithShardForLiveIT}) is applied
  * job-wide, but it only mutates/filters events of the {@code AllDatatypeTransformation} table and
  * is a no-op for every other table, so the remaining tests are not affected by it.
- *
- * <p>Coverage of the 9 tests of the MySQL reference and why some of them are not ported:
- *
- * <ul>
- *   <li>{@code migrationTestWithAllDatatypeTransformation} - ported ({@link
- *       #migrationTestWithAllDatatypeTransformation()}).
- *   <li>{@code migrationTestWithDatatypeSizeConversion} - ported ({@link
- *       #migrationTestWithDatatypeSizeConversion()}).
- *   <li>{@code migrationTestWithIdentityColumns} - ported ({@link
- *       #migrationTestWithIdentityColumns()}).
- *   <li>{@code migrationTestWithAllDatatypeConversionMapping} - not ported: the alternative (non
- *       default) SQL Server type mappings are already covered exhaustively by {@code
- *       SQLServerDatastreamToSpannerDataTypesIT} ({@code *_to_string}, {@code *_to_float64}, ...).
- *   <li>{@code migrationTestWithAllDatatypeDefaultMapping} - not ported: the default SQL Server
- *       type mappings are already covered by {@code SQLServerDatastreamToSpannerDataTypesIT}.
- *   <li>{@code migrationTestWithDatatypeSizeReducedConversion} - not ported: the reference only
- *       checks that the single row fitting the reduced Spanner sizes arrives; that behaviour is
- *       source independent (Spanner rejects oversized values regardless of the source) and the
- *       size-widening path is covered by {@link #migrationTestWithDatatypeSizeConversion()}.
- *   <li>{@code migrationTestWithGeneratedColumns} - not ported: SQL Server computed columns (PK and
- *       non-PK, generated to/from non-generated) are already covered by {@code
- *       SQLServerDatastreamToSpannerDataTypesIT}.
- *   <li>{@code migrationTestWithCharsetConversion} - not ported: MySQL-only (per-column charset /
- *       collation conversion has no SQL Server equivalent in the template).
- *   <li>{@code migrationTestWithSequenceColumns} - not ported: MySQL-only (the reference relies on
- *       a MySQL table without the key column and a Spanner {@code SEQUENCE} default); SQL Server
- *       auto-generated keys are covered by {@link #migrationTestWithIdentityColumns()} instead.
- * </ul>
- *
- * <p>SQL Server specific deviations from the reference {@code AllDatatypeTransformation} table. The
- * shared transformation class is not modified, so the source types are chosen such that the change
- * event has the exact shape the transformer expects:
- *
- * <ul>
- *   <li>{@code datetime_column} / {@code timestamp_column} are {@code datetimeoffset} with a UTC
- *       offset: SQL Server {@code datetime} / {@code datetime2} are delivered as an unhandled
- *       Datastream {@code datetime} Avro RECORD and routed to the DLQ.
- *   <li>{@code time_column} is a {@code varchar(8)} holding {@code HH:mm:ss}: SQL Server {@code
- *       time} is rendered as an ISO-8601 duration ({@code PT23H59M59S}) which the transformer's
- *       {@code HH:mm:ss} parser cannot read.
- *   <li>{@code year_column} is a {@code smallint} (MySQL {@code year} has no SQL Server equivalent;
- *       the transformer adds one to the integer value).
- *   <li>{@code enum_column} is a {@code varchar(10)} (MySQL {@code enum} has no SQL Server
- *       equivalent; the transformer overwrites the value).
- *   <li>{@code bit_column} is a {@code tinyint} (MySQL {@code bit(n)} bit-field has no SQL Server
- *       equivalent; the integer is written as-is into the Spanner {@code BYTES} column, same as the
- *       MySQL path).
- *   <li>MySQL {@code mediumint}, {@code set} and {@code json} columns have no SQL Server equivalent
- *       and are not part of the reference transformation table either.
- *   <li>Datastream emits {@code change_type = UPDATE} for SQL Server (MySQL emits {@code
- *       UPDATE-INSERT}), so the transformer's "pass update events through untouched" branch is not
- *       taken and update events get the same per-column transformation as inserts. The CDC
- *       expectations account for that.
- * </ul>
- *
- * <p>Known limitation: SQL Server {@code binary} / {@code varbinary} values reach the template as
- * base64 strings (Avro {@code bytes}) but {@code ChangeEventTypeConvertor.toByteArray()}
- * hex-decodes them for non-PostgreSQL sources, so {@code BYTES} columns fed directly from binary
- * source columns do not round-trip. In {@code AllDatatypeTransformation} every binary column is
- * overwritten by the transformer (hex strings), so they are asserted; in {@code
- * DatatypeColumnsWithSizes} the two binary columns are excluded from the assertion (see TODO).
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
@@ -332,12 +271,6 @@ public class SQLServerDataStreamToSpannerDDLIT extends DataStreamToSpannerITBase
                                 + " WHERE varchar_column = 'example3' AND tinyint_column = 35")));
     assertThatResult(result).meetsConditions();
 
-    // Sleep for cutover time to wait till all CDCs propagate.
-    // A real world customer also has a small cut over time to reach consistency.
-    try {
-      Thread.sleep(CUTOVER_MILLIS);
-    } catch (InterruptedException e) {
-    }
     assertAllDatatypeTransformationTableCdcContents();
   }
 
@@ -396,12 +329,6 @@ public class SQLServerDataStreamToSpannerDDLIT extends DataStreamToSpannerITBase
                     .build());
     assertThatResult(result).meetsConditions();
 
-    // Sleep for cutover time to wait till all CDCs propagate.
-    // A real world customer also has a small cut over time to reach consistency.
-    try {
-      Thread.sleep(CUTOVER_MILLIS);
-    } catch (InterruptedException e) {
-    }
     assertBooksContents(true);
   }
 

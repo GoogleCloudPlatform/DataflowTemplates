@@ -281,12 +281,6 @@ public class SQLServerSeparateShadowTableDatabasePKFocusedIT extends DataStreamT
                             "my_table id 10 present", "SELECT id FROM my_table WHERE id = 10")));
     assertThatResult(result).meetsConditions();
 
-    // Sleep for cutover time to wait till all CDCs propagate.
-    // A real world customer also has a small cut over time to reach consistency.
-    try {
-      Thread.sleep(CUTOVER_MILLIS);
-    } catch (InterruptedException e) {
-    }
     // Assert specific rows
     assertMyTableContents();
   }
@@ -336,13 +330,6 @@ public class SQLServerSeparateShadowTableDatabasePKFocusedIT extends DataStreamT
                             "alltypes int64_field 10 present",
                             "SELECT int64_field FROM alltypes WHERE int64_field = 10")));
     assertThatResult(result).meetsConditions();
-
-    // Sleep for cutover time to wait till all CDCs propagate
-    try {
-      Thread.sleep(CUTOVER_MILLIS);
-    } catch (InterruptedException e) {
-      // Ignore interruption as this is just a safety delay
-    }
 
     // Assert specific rows
     assertAllTypesContents();
