@@ -58,3 +58,6 @@ v1/src/test/java/com/google/cloud/teleport/templates/BigtableToVectorEmbeddingsI
 # Bigtable CDC shared logic
 v2/bigtable-changestreams-to-hbase/ @GoogleCloudPlatform/bigtable-migrations-team
 v2/bigtable-common/ @GoogleCloudPlatform/bigtable-migrations-team
+
+# Generated template documentation
+**/README_*.md @GoogleCloudPlatform/dataflow-templates-wg
