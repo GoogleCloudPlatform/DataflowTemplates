@@ -113,6 +113,8 @@ public class SpannerToSourceDb {
     UncaughtExceptionLogger.register();
 
     LOG.info("Starting Spanner change streams to sink");
+    // DIAG (temporary, LargeBacklogLT investigation): proves the diagnostic build was launched.
+    LOG.info("{} diagnostic template build", "RR_DIAG_V1");
 
     SpannerToSourceDbOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(SpannerToSourceDbOptions.class);
