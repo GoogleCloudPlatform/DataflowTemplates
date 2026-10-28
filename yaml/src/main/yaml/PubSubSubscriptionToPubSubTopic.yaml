@@ -9,7 +9,7 @@ template:
   flex_container_name: "pipeline-yaml"
   yamlTemplateFile: "PubSubSubscriptionToPubSubTopic.yaml"
   filesToCopy: >
-    {"main.py", "requirements.txt", "options/pubsub_options.yaml"}
+    {"main.py", "requirements.txt", "options/pubsub_options.yaml", "options/windowing_options.yaml"}
   contactInformation: "https://cloud.google.com/support"
   requirements: {
     "The input Pub/Sub subscription must exist prior to execution.",
