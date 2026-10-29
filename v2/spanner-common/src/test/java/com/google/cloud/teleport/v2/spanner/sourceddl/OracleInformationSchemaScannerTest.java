@@ -45,6 +45,7 @@ public class OracleInformationSchemaScannerTest {
   @Mock private ResultSet mockColsRs;
   @Mock private ResultSet mockPkRs;
   @Mock private ResultSet mockIdxRs;
+  @Mock private ResultSet mockFkRs;
 
   @Before
   public void setUp() throws SQLException {
@@ -207,5 +208,79 @@ public class OracleInformationSchemaScannerTest {
 
     OracleInformationSchemaScanner scanner = new OracleInformationSchemaScanner(mockConnection);
     assertThrows(RuntimeException.class, scanner::scan);
+  }
+
+  @Test
+  public void testScanForeignKeysFallbacksAndEdgeCases() throws SQLException {
+    when(mockConnection.getSchema()).thenThrow(new SQLException("Unsupported getSchema"));
+    when(mockMetaData.getUserName()).thenReturn("FALLBACK_USER");
+
+    when(mockMetaData.getTables(any(), eq("FALLBACK_USER"), eq("%"), eq(new String[] {"TABLE"})))
+        .thenReturn(mockTablesRs);
+    when(mockTablesRs.next()).thenReturn(true, true, true, true, true, false);
+    when(mockTablesRs.getString("TABLE_NAME"))
+        .thenReturn(null, "DR$idx", "MLOG$_t", "RUPD$_t", "ChildTable");
+
+    when(mockMetaData.getPrimaryKeys(any(), eq("FALLBACK_USER"), eq("ChildTable")))
+        .thenReturn(mockPkRs);
+    when(mockPkRs.next()).thenReturn(true, false);
+    when(mockPkRs.getString("PK_NAME")).thenReturn(null);
+    when(mockPkRs.getString("COLUMN_NAME")).thenReturn("ID");
+    when(mockPkRs.getInt("KEY_SEQ")).thenReturn(1);
+
+    when(mockMetaData.getColumns(any(), eq("FALLBACK_USER"), eq("ChildTable"), eq("%")))
+        .thenReturn(mockColsRs);
+    when(mockColsRs.next()).thenReturn(true, true, true, false);
+    when(mockColsRs.getString("COLUMN_NAME")).thenReturn("ID", "CREATED_AT", "RAW_COL");
+    when(mockColsRs.getString("TYPE_NAME")).thenReturn("NUMBER", "DATE", "RAW");
+    when(mockColsRs.getString("IS_NULLABLE")).thenReturn("NO", "YES", "YES");
+    when(mockColsRs.getInt("COLUMN_SIZE")).thenReturn(10, 7, 16);
+    when(mockColsRs.getInt("DECIMAL_DIGITS")).thenReturn(-127, 0, 0);
+    when(mockColsRs.wasNull()).thenReturn(false);
+
+    when(mockMetaData.getIndexInfo(
+            any(), eq("FALLBACK_USER"), eq("ChildTable"), eq(false), eq(true)))
+        .thenReturn(mockIdxRs);
+    when(mockIdxRs.next()).thenReturn(true, true, false);
+    when(mockIdxRs.getString("INDEX_NAME")).thenReturn(null, "SYS_C001");
+    when(mockIdxRs.getString("COLUMN_NAME")).thenReturn("ID", "ID");
+    when(mockIdxRs.getBoolean("NON_UNIQUE")).thenReturn(false, false);
+
+    when(mockMetaData.getImportedKeys(any(), eq("FALLBACK_USER"), eq("ChildTable")))
+        .thenReturn(mockFkRs);
+    when(mockFkRs.next()).thenReturn(true, true, false);
+    when(mockFkRs.getString("FK_NAME")).thenReturn(null, "FK_PARENT");
+    when(mockFkRs.getString("FKCOLUMN_NAME")).thenReturn("PARENT_ID", "PARENT_ID");
+    when(mockFkRs.getString("PKTABLE_NAME")).thenReturn("ParentTable", "ParentTable");
+    when(mockFkRs.getString("PKCOLUMN_NAME")).thenReturn("ID", "ID");
+
+    OracleInformationSchemaScanner scanner =
+        new OracleInformationSchemaScanner(mockConnection, "   ");
+    SourceSchema schema = scanner.scan();
+
+    SourceTable table = schema.table("ChildTable");
+    assertNotNull(table);
+    assertEquals(3, table.columns().size());
+    assertEquals(1, table.indexes().size());
+    assertTrue(table.indexes().get(0).isPrimary());
+    assertEquals(1, table.foreignKeys().size());
+    SourceForeignKey fk = table.foreignKeys().get(0);
+    assertEquals("FK_PARENT", fk.name());
+    assertEquals("ParentTable", fk.referencedTable());
+    assertEquals(List.of("PARENT_ID"), fk.keyColumns());
+    assertEquals(List.of("ID"), fk.referencedColumns());
+  }
+
+  @Test
+  public void testScanQuotedSchema() throws SQLException {
+    when(mockMetaData.getTables(any(), eq("MixedCaseSchema"), eq("%"), eq(new String[] {"TABLE"})))
+        .thenReturn(mockTablesRs);
+    when(mockTablesRs.next()).thenReturn(false);
+
+    OracleInformationSchemaScanner scanner =
+        new OracleInformationSchemaScanner(mockConnection, "\"MixedCaseSchema\"");
+    SourceSchema schema = scanner.scan();
+    assertNotNull(schema);
+    assertTrue(schema.tables().isEmpty());
   }
 }
