@@ -49,7 +49,7 @@
     <maven-source-plugin.version>3.4.0</maven-source-plugin.version>
     <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
     <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
-    <jacoco.version>0.8.13</jacoco.version>
+    <jacoco.version>0.8.15</jacoco.version>
 
     <!-- Beam and linked versions -->
     <beam.version>2.77.0</beam.version>
@@ -83,7 +83,7 @@
     <hamcrest.version>2.1</hamcrest.version>
     <hbase.client.version>2.6.7-hadoop3</hbase.client.version>
     <iceberg.version>1.10.1</iceberg.version>
-    <jackson.version>2.21.7</jackson.version>
+    <jackson.version>2.22.4</jackson.version>
     <jettison.version>1.5.4</jettison.version>
     <json.version>20250517</json.version>
     <junit.version>4.13.2</junit.version>
@@ -128,7 +128,7 @@
     <jetty.version>12.1.14</jetty.version>
     <httpclient5.version>5.6.4</httpclient5.version>
     <httpcore5.version>5.4.3</httpcore5.version>
-    <lz4-java.version>1.11.4</lz4-java.version>
+    <lz4-java.version>1.12.1</lz4-java.version>
     <!-- Socket factory JARs for Cloud SQL -->
     <mysql-socket-factory.version>1.15.2</mysql-socket-factory.version>
     <postgres-socket-factory.version>1.28.1</postgres-socket-factory.version>

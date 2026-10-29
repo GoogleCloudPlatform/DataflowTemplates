@@ -44,3 +44,12 @@ runs:
       with:
         distribution: 'temurin'
         java-version: ${{ inputs.java-version }}
+    - name: Remove Cached Beam RC Artifacts
+      shell: bash
+      run: |
+        if [[ -d ~/.m2/repository/org/apache/beam ]]; then
+          (find ~/.m2/repository/org/apache/beam -name "_remote.repositories" \
+            -exec grep -lZ "apache\.candidate" {} + 2>/dev/null || true) \
+            | xargs -0 -r -n1 dirname \
+            | xargs -r -t rm -rf
+        fi
