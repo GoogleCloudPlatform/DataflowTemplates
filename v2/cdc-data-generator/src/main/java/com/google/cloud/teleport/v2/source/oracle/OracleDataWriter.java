@@ -86,8 +86,7 @@ public class OracleDataWriter implements DataWriter {
     if (table == null) {
       throw new IllegalArgumentException("DataGeneratorTable must not be null");
     }
-    executeWrite(
-        rows, table, shardId, maxShardConnections, buildUpsertSql(table), MutationType.INSERT);
+    executeWrite(rows, table, shardId, maxShardConnections, MutationType.INSERT);
   }
 
   @Override
@@ -96,8 +95,7 @@ public class OracleDataWriter implements DataWriter {
     if (table == null) {
       throw new IllegalArgumentException("DataGeneratorTable must not be null");
     }
-    executeWrite(
-        rows, table, shardId, maxShardConnections, buildUpsertSql(table), MutationType.UPDATE);
+    executeWrite(rows, table, shardId, maxShardConnections, MutationType.UPDATE);
   }
 
   @Override
@@ -106,8 +104,7 @@ public class OracleDataWriter implements DataWriter {
     if (table == null) {
       throw new IllegalArgumentException("DataGeneratorTable must not be null");
     }
-    executeWrite(
-        rows, table, shardId, maxShardConnections, buildDeleteSql(table), MutationType.DELETE);
+    executeWrite(rows, table, shardId, maxShardConnections, MutationType.DELETE);
   }
 
   private void executeWrite(
@@ -115,7 +112,6 @@ public class OracleDataWriter implements DataWriter {
       DataGeneratorTable table,
       String shardId,
       int maxShardConnections,
-      String sql,
       MutationType operation) {
     if (rows == null || rows.isEmpty()) {
       return;
@@ -126,6 +122,10 @@ public class OracleDataWriter implements DataWriter {
     ensureInitialized(maxShardConnections);
 
     Shard shard = resolveShard(shardId);
+    String sql =
+        operation == MutationType.DELETE
+            ? buildDeleteSql(table, shard.getNamespace())
+            : buildUpsertSql(table, shard.getNamespace());
     String connectionKey = buildConnectionKey(shard);
 
     try (Connection connection = connectionHelper.getConnection(connectionKey)) {
@@ -230,6 +230,11 @@ public class OracleDataWriter implements DataWriter {
    */
   @VisibleForTesting
   static String buildUpsertSql(DataGeneratorTable table) {
+    return buildUpsertSql(table, null);
+  }
+
+  @VisibleForTesting
+  static String buildUpsertSql(DataGeneratorTable table, String namespace) {
     List<DataGeneratorColumn> cols = writableColumns(table);
     if (cols.isEmpty()) {
       throw new IllegalArgumentException(
@@ -242,7 +247,7 @@ public class OracleDataWriter implements DataWriter {
     }
 
     StringBuilder sql = new StringBuilder("MERGE INTO ");
-    sql.append(quote(table.name())).append(" t USING (SELECT ");
+    sql.append(qualifiedTableName(table, namespace)).append(" t USING (SELECT ");
     for (int i = 0; i < cols.size(); i++) {
       if (i > 0) {
         sql.append(", ");
@@ -292,13 +297,18 @@ public class OracleDataWriter implements DataWriter {
 
   @VisibleForTesting
   static String buildDeleteSql(DataGeneratorTable table) {
+    return buildDeleteSql(table, null);
+  }
+
+  @VisibleForTesting
+  static String buildDeleteSql(DataGeneratorTable table, String namespace) {
     List<String> pkNames = table.primaryKeys();
     if (pkNames == null || pkNames.isEmpty()) {
       throw new IllegalStateException(
           "Table " + table.name() + " has no primary key; cannot build DELETE.");
     }
     StringBuilder sql = new StringBuilder("DELETE FROM ");
-    sql.append(quote(table.name())).append(" WHERE ");
+    sql.append(qualifiedTableName(table, namespace)).append(" WHERE ");
     for (int i = 0; i < pkNames.size(); i++) {
       if (i > 0) {
         sql.append(" AND ");
@@ -306,6 +316,13 @@ public class OracleDataWriter implements DataWriter {
       sql.append(quote(pkNames.get(i))).append(" = ?");
     }
     return sql.toString();
+  }
+
+  private static String qualifiedTableName(DataGeneratorTable table, String namespace) {
+    if (namespace != null && !namespace.isBlank()) {
+      return quote(namespace.trim()) + "." + quote(table.name());
+    }
+    return quote(table.name());
   }
 
   private static List<DataGeneratorColumn> writableColumns(DataGeneratorTable table) {
@@ -390,7 +407,7 @@ public class OracleDataWriter implements DataWriter {
         statement.setDouble(index, ((Number) value).doubleValue());
         break;
       case BOOLEAN:
-        statement.setBoolean(index, (Boolean) value);
+        statement.setInt(index, Boolean.TRUE.equals(value) ? 1 : 0);
         break;
       case BYTES:
         statement.setBytes(index, (byte[]) value);
@@ -432,7 +449,7 @@ public class OracleDataWriter implements DataWriter {
       case FLOAT64:
         return Types.DOUBLE;
       case BOOLEAN:
-        return Types.BOOLEAN;
+        return Types.NUMERIC;
       case BYTES:
         return Types.VARBINARY;
       case NUMERIC:

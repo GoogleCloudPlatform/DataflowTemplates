@@ -28,6 +28,7 @@ import com.google.cloud.teleport.v2.templates.model.DataGeneratorForeignKey;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorUniqueKey;
+import com.google.cloud.teleport.v2.templates.model.LogicalType;
 import com.google.cloud.teleport.v2.templates.model.SinkConfig;
 import com.google.cloud.teleport.v2.templates.sink.SinkSchemaFetcher;
 import com.google.cloud.teleport.v2.templates.utils.Constants;
@@ -184,16 +185,22 @@ public class OracleSchemaFetcher implements SinkSchemaFetcher {
   }
 
   private DataGeneratorColumn mapSourceColumn(SourceColumn column, List<String> primaryKeys) {
+    LogicalType logicalType = typeMapper.getLogicalType(column.type(), null, column.size());
+    Long effectiveSize = column.size();
+    if (effectiveSize != null && effectiveSize > 0) {
+      effectiveSize = Math.min(effectiveSize, 20L);
+    }
+
     DataGeneratorColumn.Builder builder =
         DataGeneratorColumn.builder()
             .name(column.name())
-            .logicalType(typeMapper.getLogicalType(column.type(), null, column.size()))
+            .logicalType(logicalType)
             .isNullable(column.isNullable())
             .isGenerated(column.isGenerated())
             .isPrimaryKey(primaryKeys.contains(column.name()))
-            .size(column.size())
-            .precision(column.precision())
-            .scale(column.scale());
+            .size(effectiveSize);
+
+    populateNumericBounds(column, logicalType, builder);
 
     if (column.type() != null) {
       String upperType =
@@ -204,17 +211,70 @@ public class OracleSchemaFetcher implements SinkSchemaFetcher {
               .replaceAll("\\s+", " ")
               .trim();
       if ("INTERVAL YEAR TO MONTH".equals(upperType)) {
-        builder.fakerExpression("+01-02");
+        builder.fakerExpression("#{regexify '[+][0][0]-[0][0-9]'}");
       } else if ("INTERVAL DAY TO SECOND".equals(upperType)) {
-        builder.fakerExpression("+01 02:03:04.000000");
+        builder.fakerExpression("#{regexify '[+][0][0] [0-1][0-9]:[0-5][0-9]:[0-5][0-9]'}");
       } else if ("ROWID".equals(upperType) || "UROWID".equals(upperType)) {
-        builder.fakerExpression("AAAB12AADAAAA12AAA");
+        builder.fakerExpression("#{regexify 'AAA[A-Z]{3}AA[A-H]AAA[A-Z]{3}AA[A-Z]'}");
       } else if ("XMLTYPE".equals(upperType)) {
-        builder.fakerExpression("<root></root>");
+        builder.fakerExpression("#{regexify '<root>[a-z0-9]{8}</root>'}");
+      } else if (!primaryKeys.contains(column.name()) && isUnsupportedObjectOrFileType(upperType)) {
+        builder.isSkipped(true);
       }
     }
 
     return builder.build();
+  }
+
+  private static void populateNumericBounds(
+      SourceColumn column, LogicalType logicalType, DataGeneratorColumn.Builder builder) {
+    Integer rawPrecision = column.precision();
+    Integer rawScale = column.scale();
+    if (logicalType != LogicalType.NUMERIC) {
+      builder.precision(rawPrecision).scale(rawScale);
+      return;
+    }
+    if (rawScale != null && rawScale < 0) {
+      int prec = (rawPrecision != null && rawPrecision > 0) ? Math.min(rawPrecision, 10) : 10;
+      builder.precision(prec).scale(0);
+      return;
+    }
+    if (rawScale != null && rawPrecision != null && rawPrecision > 0 && rawScale > rawPrecision) {
+      int leadingZeros = rawScale - rawPrecision;
+      int sigDigits = Math.min(rawPrecision, 10);
+      String digitPattern = sigDigits <= 1 ? "[1-9]" : "[1-9][0-9]{" + (sigDigits - 1) + "}";
+      builder
+          .precision(rawScale)
+          .scale(rawScale)
+          .fakerExpression("#{regexify '0[.]" + "0".repeat(leadingZeros) + digitPattern + "'}");
+      return;
+    }
+    if (rawScale != null) {
+      int rawPrec =
+          (rawPrecision != null && rawPrecision > 0) ? rawPrecision : Math.max(10, rawScale + 5);
+      int effectivePrec = Math.min(rawPrec, Math.max(10, rawScale + 5));
+      builder.precision(effectivePrec).scale(rawScale);
+      return;
+    }
+    if (rawPrecision != null && rawPrecision > 0) {
+      builder.precision(Math.min(rawPrecision, 10)).scale(0);
+    }
+  }
+
+  private static boolean isUnsupportedObjectOrFileType(String upperType) {
+    switch (upperType) {
+      case "BFILE":
+      case "SDO_GEOMETRY":
+      case "ANYDATA":
+      case "ORDIMAGE":
+      case "ORDAUDIO":
+      case "ORDVIDEO":
+      case "ORDDOC":
+      case "ORDDICOM":
+        return true;
+      default:
+        return false;
+    }
   }
 
   protected Connection getConnection() throws SQLException {

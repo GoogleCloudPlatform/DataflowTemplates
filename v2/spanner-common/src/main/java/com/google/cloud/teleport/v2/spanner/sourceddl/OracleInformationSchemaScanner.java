@@ -50,7 +50,10 @@ public class OracleInformationSchemaScanner implements SourceSchemaScanner {
         SourceSchema.builder(SourceDatabaseType.ORACLE).databaseName("ORACLE");
     try {
       DatabaseMetaData metaData = connection.getMetaData();
-      String schemaPattern = (this.schema != null && !this.schema.isBlank()) ? this.schema : null;
+      String schemaPattern =
+          (this.schema != null && !this.schema.isBlank())
+              ? normalizeSchemaPattern(this.schema)
+              : null;
       if (schemaPattern == null) {
         try {
           schemaPattern = connection.getSchema();
@@ -84,6 +87,14 @@ public class OracleInformationSchemaScanner implements SourceSchemaScanner {
     return builder.tables(ImmutableMap.copyOf(tablesMap)).build();
   }
 
+  private static String normalizeSchemaPattern(String rawSchema) {
+    String trimmed = rawSchema.trim();
+    if (trimmed.length() >= 2 && trimmed.startsWith("\"") && trimmed.endsWith("\"")) {
+      return trimmed.substring(1, trimmed.length() - 1);
+    }
+    return trimmed.toUpperCase(Locale.ROOT);
+  }
+
   private SourceTable scanTable(DatabaseMetaData metaData, String schemaPattern, String tableName)
       throws SQLException {
     SourceTable.Builder tableBuilder =
@@ -91,10 +102,17 @@ public class OracleInformationSchemaScanner implements SourceSchemaScanner {
 
     List<String> pks = new ArrayList<>();
     Set<String> pkSet = new HashSet<>();
+    String pkIndexName = null;
     List<Map.Entry<Integer, String>> pkList = new ArrayList<>();
     try (ResultSet pkRs = metaData.getPrimaryKeys(null, schemaPattern, tableName)) {
       if (pkRs != null) {
         while (pkRs.next()) {
+          if (pkIndexName == null) {
+            try {
+              pkIndexName = pkRs.getString("PK_NAME");
+            } catch (Exception e) {
+            }
+          }
           String pkCol = pkRs.getString("COLUMN_NAME");
           if (pkCol != null) {
             int keySeq = 0;
@@ -117,6 +135,14 @@ public class OracleInformationSchemaScanner implements SourceSchemaScanner {
     try (ResultSet colsRs = metaData.getColumns(null, schemaPattern, tableName, "%")) {
       if (colsRs != null) {
         while (colsRs.next()) {
+          String colTable = null;
+          try {
+            colTable = colsRs.getString("TABLE_NAME");
+          } catch (Exception e) {
+          }
+          if (colTable != null && !tableName.equals(colTable)) {
+            continue;
+          }
           String columnName = colsRs.getString("COLUMN_NAME");
           String dataType = colsRs.getString("TYPE_NAME");
 
@@ -132,7 +158,15 @@ public class OracleInformationSchemaScanner implements SourceSchemaScanner {
             isGeneratedStr = colsRs.getString("IS_GENERATEDCOLUMN");
           } catch (Exception e) {
           }
-          colBuilder.isGenerated("YES".equalsIgnoreCase(isGeneratedStr));
+          String isAutoIncrementStr = "";
+          try {
+            isAutoIncrementStr = colsRs.getString("IS_AUTOINCREMENT");
+          } catch (Exception e) {
+          }
+          boolean isGenerated =
+              "YES".equalsIgnoreCase(isGeneratedStr)
+                  || (!pkSet.contains(columnName) && "YES".equalsIgnoreCase(isAutoIncrementStr));
+          colBuilder.isGenerated(isGenerated);
 
           populateColumnBounds(colsRs, dataType, colBuilder);
           columns.add(colBuilder.build());
@@ -140,7 +174,7 @@ public class OracleInformationSchemaScanner implements SourceSchemaScanner {
       }
     }
 
-    List<SourceIndex> indexes = scanIndexes(metaData, schemaPattern, tableName, pkSet);
+    List<SourceIndex> indexes = scanIndexes(metaData, schemaPattern, tableName, pkIndexName, pkSet);
     List<SourceForeignKey> foreignKeys = scanForeignKeys(metaData, schemaPattern, tableName);
 
     tableBuilder.columns(ImmutableList.copyOf(columns));
@@ -182,7 +216,7 @@ public class OracleInformationSchemaScanner implements SourceSchemaScanner {
         case "RAW":
         case "UROWID":
           if (!sizeNull && colSize > 0) {
-            colBuilder.size((long) Math.min(colSize, 20));
+            colBuilder.size((long) colSize);
           }
           break;
         case "NUMBER":
@@ -192,13 +226,11 @@ public class OracleInformationSchemaScanner implements SourceSchemaScanner {
         case "INTEGER":
         case "INT":
         case "SMALLINT":
-          if (!scaleNull && decimalDigits >= 0) {
-            int rawPrecision = (!sizeNull && colSize > 0) ? colSize : 10;
-            int effectivePrecision = Math.min(rawPrecision, Math.max(10, decimalDigits + 5));
-            if (decimalDigits <= effectivePrecision) {
-              colBuilder.precision(effectivePrecision);
-              colBuilder.scale(decimalDigits);
-            }
+          if (!sizeNull && colSize > 0) {
+            colBuilder.precision(colSize);
+          }
+          if (!scaleNull && decimalDigits != -127) {
+            colBuilder.scale(decimalDigits);
           }
           break;
         default:
@@ -210,9 +242,13 @@ public class OracleInformationSchemaScanner implements SourceSchemaScanner {
   }
 
   private List<SourceIndex> scanIndexes(
-      DatabaseMetaData metaData, String schemaPattern, String tableName, Set<String> pkSet) {
+      DatabaseMetaData metaData,
+      String schemaPattern,
+      String tableName,
+      String pkIndexName,
+      Set<String> pkSet) {
     List<SourceIndex> indexes = new ArrayList<>();
-    try (ResultSet idxRs = metaData.getIndexInfo(null, schemaPattern, tableName, true, true)) {
+    try (ResultSet idxRs = metaData.getIndexInfo(null, schemaPattern, tableName, false, true)) {
       if (idxRs == null) {
         return indexes;
       }
@@ -236,8 +272,14 @@ public class OracleInformationSchemaScanner implements SourceSchemaScanner {
         indexColumns.computeIfAbsent(indexName, k -> new ArrayList<>()).add(columnName);
       }
       for (Map.Entry<String, SourceIndex.Builder> entry : indexBuilders.entrySet()) {
-        List<String> cols = indexColumns.get(entry.getKey());
-        boolean isPkIndex = cols.size() == pkSet.size() && pkSet.containsAll(cols);
+        String indexName = entry.getKey();
+        List<String> cols = indexColumns.get(indexName);
+        boolean isPkIndex =
+            (pkIndexName != null && pkIndexName.equals(indexName))
+                || (pkIndexName == null
+                    && !pkSet.isEmpty()
+                    && cols.size() == pkSet.size()
+                    && pkSet.containsAll(cols));
         indexes.add(
             entry.getValue().isPrimary(isPkIndex).columns(ImmutableList.copyOf(cols)).build());
       }

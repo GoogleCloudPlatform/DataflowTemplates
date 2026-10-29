@@ -180,12 +180,90 @@ public class OracleSchemaFetcherTest {
     assertThat(actualTable.columns()).hasSize(3);
     assertThat(actualTable.columns().stream().map(DataGeneratorColumn::name))
         .containsExactly("Id", "Name", "IntervalCol");
-    assertThat(actualTable.columns().get(2).fakerExpression()).isEqualTo("+01-02");
+    assertThat(actualTable.columns().get(1).size()).isEqualTo(20L);
+    assertThat(actualTable.columns().get(2).fakerExpression())
+        .isEqualTo("#{regexify '[+][0][0]-[0][0-9]'}");
     assertThat(actualTable.primaryKeys()).containsExactly("Id");
     assertThat(actualTable.foreignKeys()).hasSize(1);
     assertThat(actualTable.foreignKeys().get(0).name()).isEqualTo("fk_test");
     assertThat(actualTable.uniqueKeys()).hasSize(1);
     assertThat(actualTable.uniqueKeys().get(0).name()).isEqualTo("idx_unique");
+  }
+
+  @Test
+  public void testGetSchema_numericAndSpecialTypeBounds() throws Exception {
+    SourceColumn colPk =
+        SourceColumn.builder(SourceDatabaseType.ORACLE)
+            .name("Id")
+            .type("NUMBER")
+            .isNullable(false)
+            .isGenerated(false)
+            .precision(38)
+            .scale(0)
+            .build();
+    SourceColumn colSubUnit =
+        SourceColumn.builder(SourceDatabaseType.ORACLE)
+            .name("SubUnitNum")
+            .type("NUMBER")
+            .isNullable(true)
+            .isGenerated(false)
+            .precision(3)
+            .scale(4)
+            .build();
+    SourceColumn colNegScale =
+        SourceColumn.builder(SourceDatabaseType.ORACLE)
+            .name("NegScaleNum")
+            .type("NUMBER")
+            .isNullable(true)
+            .isGenerated(false)
+            .precision(4)
+            .scale(-2)
+            .build();
+    SourceColumn colXml =
+        SourceColumn.builder(SourceDatabaseType.ORACLE)
+            .name("XmlCol")
+            .type("XMLTYPE")
+            .isNullable(true)
+            .isGenerated(false)
+            .build();
+    SourceColumn colBfile =
+        SourceColumn.builder(SourceDatabaseType.ORACLE)
+            .name("BfileCol")
+            .type("BFILE")
+            .isNullable(true)
+            .isGenerated(false)
+            .build();
+
+    SourceTable table =
+        SourceTable.builder(SourceDatabaseType.ORACLE)
+            .name("SpecialTable")
+            .columns(ImmutableList.of(colPk, colSubUnit, colNegScale, colXml, colBfile))
+            .primaryKeyColumns(ImmutableList.of("Id"))
+            .foreignKeys(ImmutableList.of())
+            .indexes(ImmutableList.of())
+            .build();
+    SourceSchema sourceSchema =
+        SourceSchema.builder(SourceDatabaseType.ORACLE)
+            .tables(ImmutableMap.of(table.name(), table))
+            .databaseName("ORACLE")
+            .build();
+    when(mockScanner.scan()).thenReturn(sourceSchema);
+    when(mockConnection.getSchema()).thenReturn("C##DATASTREAM");
+
+    DataGeneratorSchema schema = fetcher.getSchema();
+    DataGeneratorTable actualTable = schema.tables().get("SpecialTable");
+    assertThat(actualTable).isNotNull();
+    assertThat(actualTable.columns().get(0).precision()).isEqualTo(10);
+    assertThat(actualTable.columns().get(0).scale()).isEqualTo(0);
+    assertThat(actualTable.columns().get(1).precision()).isEqualTo(4);
+    assertThat(actualTable.columns().get(1).scale()).isEqualTo(4);
+    assertThat(actualTable.columns().get(1).fakerExpression())
+        .isEqualTo("#{regexify '0[.]0[1-9][0-9]{2}'}");
+    assertThat(actualTable.columns().get(2).precision()).isEqualTo(4);
+    assertThat(actualTable.columns().get(2).scale()).isEqualTo(0);
+    assertThat(actualTable.columns().get(3).fakerExpression())
+        .isEqualTo("#{regexify '<root>[a-z0-9]{8}</root>'}");
+    assertThat(actualTable.columns().get(4).isSkipped()).isTrue();
   }
 
   @Test

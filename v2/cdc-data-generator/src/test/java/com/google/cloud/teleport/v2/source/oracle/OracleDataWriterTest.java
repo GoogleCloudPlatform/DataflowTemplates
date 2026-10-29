@@ -204,6 +204,15 @@ public class OracleDataWriterTest {
   }
 
   @Test
+  public void testBuildSql_withNamespace() {
+    String upsertSql = OracleDataWriter.buildUpsertSql(simpleTable(), "C##DATASTREAM");
+    assertThat(upsertSql).startsWith("MERGE INTO \"C##DATASTREAM\".\"users\" t USING");
+
+    String deleteSql = OracleDataWriter.buildDeleteSql(simpleTable(), "C##DATASTREAM");
+    assertThat(deleteSql).isEqualTo("DELETE FROM \"C##DATASTREAM\".\"users\" WHERE \"id\" = ?");
+  }
+
+  @Test
   public void testBuildUpsertSql_multiPk() {
     DataGeneratorTable table =
         simpleTable().toBuilder().primaryKeys(ImmutableList.of("id", "name")).build();
@@ -601,7 +610,7 @@ public class OracleDataWriterTest {
     writer()
         .setStatementParameters(
             mockStatement, row, singleColumnTable(c), OracleDataWriter.MutationType.INSERT);
-    verify(mockStatement).setBoolean(1, true);
+    verify(mockStatement).setInt(1, 1);
   }
 
   @Test
@@ -659,7 +668,7 @@ public class OracleDataWriterTest {
       Types.VARCHAR,
       Types.BIGINT,
       Types.DOUBLE,
-      Types.BOOLEAN,
+      Types.NUMERIC,
       Types.VARBINARY,
       Types.DATE,
       Types.TIMESTAMP,
