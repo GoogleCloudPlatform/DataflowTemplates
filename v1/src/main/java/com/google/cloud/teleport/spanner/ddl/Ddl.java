@@ -56,6 +56,7 @@ public class Ddl implements Serializable {
   private ImmutableSortedMap<String, ChangeStream> changeStreams;
   private ImmutableSortedMap<String, Sequence> sequences;
   private ImmutableSortedMap<String, Placement> placements;
+  private ImmutableSortedMap<String, LocalityGroup> localityGroups;
   private ImmutableSortedMap<String, NamedSchema> schemas;
   private TreeMultimap<String, String> parents;
   // This is only populated by InformationSchemaScanner and not while reading from AVRO files.
@@ -74,6 +75,7 @@ public class Ddl implements Serializable {
       ImmutableSortedMap<String, ChangeStream> changeStreams,
       ImmutableSortedMap<String, Sequence> sequences,
       ImmutableSortedMap<String, Placement> placements,
+      ImmutableSortedMap<String, LocalityGroup> localityGroups,
       ImmutableSortedMap<String, NamedSchema> schemas,
       TreeMultimap<String, String> parents,
       TreeMultimap<String, String> referencedTables,
@@ -89,6 +91,7 @@ public class Ddl implements Serializable {
     this.changeStreams = changeStreams;
     this.sequences = sequences;
     this.placements = placements;
+    this.localityGroups = localityGroups;
     this.schemas = schemas;
     this.parents = parents;
     this.referencedTables = referencedTables;
@@ -208,6 +211,14 @@ public class Ddl implements Serializable {
     return placements.get(placementName.toLowerCase());
   }
 
+  public Collection<LocalityGroup> localityGroups() {
+    return localityGroups.values();
+  }
+
+  public LocalityGroup localityGroup(String localityGroupName) {
+    return localityGroups.get(localityGroupName.toLowerCase());
+  }
+
   public Collection<NamedSchema> schemas() {
     return schemas.values();
   }
@@ -301,6 +312,11 @@ public class Ddl implements Serializable {
       appendable.append("\n");
       placement.prettyPrint(appendable);
     }
+
+    for (LocalityGroup localityGroup : localityGroups()) {
+      appendable.append("\n");
+      localityGroup.prettyPrint(appendable);
+    }
   }
 
   public List<String> statements() {
@@ -313,6 +329,7 @@ public class Ddl implements Serializable {
     builder
         .addAll(createNamedSchemaStatements())
         .addAll(createSequenceStatements())
+        .addAll(createLocalityGroupStatements())
         .addAll(createTableStatements())
         .addAll(createIndexStatements())
         .addAll(addForeignKeyStatements())
@@ -436,6 +453,14 @@ public class Ddl implements Serializable {
     return result;
   }
 
+  public List<String> createLocalityGroupStatements() {
+    List<String> result = new ArrayList<>(localityGroups.size());
+    for (LocalityGroup localityGroup : localityGroups()) {
+      result.add(localityGroup.prettyPrint());
+    }
+    return result;
+  }
+
   public String createProtoBundleStatement() {
     StringBuilder appendable = new StringBuilder();
     String quote = NameUtils.identifierQuote(dialect);
@@ -537,6 +562,7 @@ public class Ddl implements Serializable {
     private Map<String, ChangeStream> changeStreams = Maps.newLinkedHashMap();
     private Map<String, Sequence> sequences = Maps.newLinkedHashMap();
     private Map<String, Placement> placements = Maps.newLinkedHashMap();
+    private Map<String, LocalityGroup> localityGroups = Maps.newLinkedHashMap();
     private Map<String, NamedSchema> schemas = Maps.newLinkedHashMap();
     private TreeMultimap<String, String> parents = TreeMultimap.create();
     private TreeMultimap<String, String> referencedTables = TreeMultimap.create();
@@ -685,6 +711,22 @@ public class Ddl implements Serializable {
       return placements.containsKey(name.toLowerCase());
     }
 
+    public LocalityGroup.Builder createLocalityGroup(String name) {
+      LocalityGroup localityGroup = localityGroups.get(name.toLowerCase());
+      if (localityGroup == null) {
+        return LocalityGroup.builder(dialect).name(name).ddlBuilder(this);
+      }
+      return localityGroup.toBuilder().ddlBuilder(this);
+    }
+
+    public void addLocalityGroup(LocalityGroup localityGroup) {
+      localityGroups.put(localityGroup.name().toLowerCase(), localityGroup);
+    }
+
+    public boolean hasLocalityGroup(String name) {
+      return localityGroups.containsKey(name.toLowerCase());
+    }
+
     public NamedSchema.Builder createSchema(String name) {
       NamedSchema schema = schemas.get(name.toLowerCase());
       if (schema == null) {
@@ -746,6 +788,7 @@ public class Ddl implements Serializable {
           ImmutableSortedMap.copyOf(changeStreams),
           ImmutableSortedMap.copyOf(sequences),
           ImmutableSortedMap.copyOf(placements),
+          ImmutableSortedMap.copyOf(localityGroups),
           ImmutableSortedMap.copyOf(schemas),
           parents,
           referencedTables,
@@ -767,6 +810,7 @@ public class Ddl implements Serializable {
     builder.changeStreams.putAll(changeStreams);
     builder.sequences.putAll(sequences);
     builder.placements.putAll(placements);
+    builder.localityGroups.putAll(localityGroups);
     builder.parents.putAll(parents);
     builder.referencedTables.putAll(referencedTables);
     builder.databaseOptions = databaseOptions;
@@ -825,6 +869,11 @@ public class Ddl implements Serializable {
     if (placements != null ? !placements.equals(ddl.placements) : ddl.placements != null) {
       return false;
     }
+    if (localityGroups != null
+        ? !localityGroups.equals(ddl.localityGroups)
+        : ddl.localityGroups != null) {
+      return false;
+    }
     if (protoDescriptors != null
         ? !protoDescriptors.equals(ddl.protoDescriptors)
         : ddl.protoDescriptors != null) {
@@ -846,6 +895,7 @@ public class Ddl implements Serializable {
     result = 31 * result + (changeStreams != null ? changeStreams.hashCode() : 0);
     result = 31 * result + (sequences != null ? sequences.hashCode() : 0);
     result = 31 * result + (placements != null ? placements.hashCode() : 0);
+    result = 31 * result + (localityGroups != null ? localityGroups.hashCode() : 0);
     result = 31 * result + (databaseOptions != null ? databaseOptions.hashCode() : 0);
     result = 31 * result + (protoBundle != null ? protoBundle.hashCode() : 0);
     result = 31 * result + (protoDescriptors != null ? protoDescriptors.hashCode() : 0);

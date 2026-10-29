@@ -1643,6 +1643,221 @@ public class DdlTest {
   }
 
   @Test
+  public void localityGroups() {
+    Ddl ddl =
+        Ddl.builder()
+            .createLocalityGroup("default")
+            .options(ImmutableList.of("storage=\"hdd\""))
+            .endLocalityGroup()
+            .createLocalityGroup("lg1")
+            .options(ImmutableList.of("storage=\"ssd\""))
+            .endLocalityGroup()
+            .createLocalityGroup("lg2")
+            .options(ImmutableList.of("storage=\"ssd\"", "ssd_to_hdd_spill_timespan=\"30d\""))
+            .endLocalityGroup()
+            .build();
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "ALTER LOCALITY GROUP `default` SET OPTIONS (storage=\"hdd\")"
+                + " CREATE LOCALITY GROUP `lg1` OPTIONS (storage=\"ssd\")"
+                + " CREATE LOCALITY GROUP `lg2` OPTIONS (storage=\"ssd\", ssd_to_hdd_spill_timespan=\"30d\")"));
+
+    List<String> statements = ddl.statements();
+    assertEquals(3, statements.size());
+    assertThat(
+        statements.get(0),
+        equalToCompressingWhiteSpace(
+            "ALTER LOCALITY GROUP `default` SET OPTIONS (storage=\"hdd\")"));
+    assertThat(
+        statements.get(1),
+        equalToCompressingWhiteSpace("CREATE LOCALITY GROUP `lg1` OPTIONS (storage=\"ssd\")"));
+    assertThat(
+        statements.get(2),
+        equalToCompressingWhiteSpace(
+            "CREATE LOCALITY GROUP `lg2` OPTIONS (storage=\"ssd\", ssd_to_hdd_spill_timespan=\"30d\")"));
+    assertNotNull(ddl.hashCode());
+    assertEquals(3, ddl.localityGroups().size());
+    assertNotNull(ddl.localityGroup("lg1"));
+  }
+
+  @Test
+  public void pgLocalityGroups() {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createLocalityGroup("default")
+            .options(ImmutableList.of("storage='hdd'"))
+            .endLocalityGroup()
+            .createLocalityGroup("lg1")
+            .options(ImmutableList.of("ssd_to_hdd_spill_timespan='30d'", "storage='ssd'"))
+            .endLocalityGroup()
+            .build();
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "ALTER LOCALITY GROUP \"default\" STORAGE 'hdd'"
+                + " CREATE LOCALITY GROUP \"lg1\" STORAGE 'ssd' SSD_TO_HDD_SPILL_TIMESPAN '30d'"));
+
+    List<String> statements = ddl.statements();
+    assertEquals(2, statements.size());
+    assertThat(
+        statements.get(0),
+        equalToCompressingWhiteSpace("ALTER LOCALITY GROUP \"default\" STORAGE 'hdd'"));
+    assertThat(
+        statements.get(1),
+        equalToCompressingWhiteSpace(
+            "CREATE LOCALITY GROUP \"lg1\" STORAGE 'ssd' SSD_TO_HDD_SPILL_TIMESPAN '30d'"));
+    assertNotNull(ddl.hashCode());
+    assertEquals(2, ddl.localityGroups().size());
+    assertNotNull(ddl.localityGroup("lg1"));
+  }
+
+  @Test
+  public void localityGroupsBeforeTables() {
+    Index idx =
+        Index.builder()
+            .name("UsersByFirstName")
+            .table("Users")
+            .columns()
+            .create()
+            .name("first_name")
+            .asc()
+            .endIndexColumn()
+            .end()
+            .options(ImmutableList.of("locality_group=\"lg1\""))
+            .build();
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("Users")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("first_name")
+            .string()
+            .max()
+            .columnOptions(ImmutableList.of("locality_group=\"default\""))
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .options(ImmutableList.of("locality_group=\"lg1\""))
+            .indexes(ImmutableList.of(idx.prettyPrint()))
+            .endTable()
+            .createLocalityGroup("lg1")
+            .options(ImmutableList.of("storage=\"ssd\""))
+            .endLocalityGroup()
+            .build();
+
+    List<String> statements = ddl.statements();
+    assertEquals(3, statements.size());
+    assertThat(
+        statements.get(0),
+        equalToCompressingWhiteSpace("CREATE LOCALITY GROUP `lg1` OPTIONS (storage=\"ssd\")"));
+    assertThat(
+        statements.get(1),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE `Users` ("
+                + " `id` INT64 NOT NULL,"
+                + " `first_name` STRING(MAX) OPTIONS (locality_group=\"default\"),"
+                + " ) PRIMARY KEY (`id` ASC),"
+                + " OPTIONS (locality_group=\"lg1\")"));
+    assertThat(
+        statements.get(2),
+        equalToCompressingWhiteSpace(
+            "CREATE INDEX `UsersByFirstName` ON `Users`(`first_name` ASC) OPTIONS (locality_group=\"lg1\")"));
+  }
+
+  @Test
+  public void pgLocalityGroupsWithTablesColumnsAndIndexes() {
+    Index idx1 =
+        Index.builder(Dialect.POSTGRESQL)
+            .name("UsersByFirstName")
+            .table("Users")
+            .columns()
+            .create()
+            .name("first_name")
+            .asc()
+            .endIndexColumn()
+            .end()
+            .options(ImmutableList.of("locality_group='lg1'"))
+            .build();
+    Index idx2 =
+        Index.builder(Dialect.POSTGRESQL)
+            .name("UsersInterleavedIdx")
+            .table("Users")
+            .interleaveIn("ParentUsers")
+            .columns()
+            .create()
+            .name("id")
+            .asc()
+            .endIndexColumn()
+            .end()
+            .options(ImmutableList.of("locality_group='lg1'"))
+            .build();
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("ParentUsers")
+            .column("id")
+            .pgInt8()
+            .notNull()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .createTable("Users")
+            .column("id")
+            .pgInt8()
+            .notNull()
+            .endColumn()
+            .column("first_name")
+            .pgVarchar()
+            .columnOptions(ImmutableList.of("locality_group='default'"))
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .interleaveInParent("ParentUsers")
+            .interleaveType(Table.InterleaveType.IN_PARENT)
+            .onDeleteCascade(true)
+            .options(ImmutableList.of("locality_group='lg1'"))
+            .indexes(ImmutableList.of(idx1.prettyPrint(), idx2.prettyPrint()))
+            .endTable()
+            .createLocalityGroup("lg1")
+            .options(ImmutableList.of("storage='ssd'"))
+            .endLocalityGroup()
+            .build();
+
+    List<String> statements = ddl.statements();
+    assertEquals(5, statements.size());
+    assertThat(
+        statements.get(0),
+        equalToCompressingWhiteSpace("CREATE LOCALITY GROUP \"lg1\" STORAGE 'ssd'"));
+    assertThat(
+        statements.get(1),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE \"ParentUsers\" ( \"id\" bigint NOT NULL, PRIMARY KEY (\"id\") )"));
+    assertThat(
+        statements.get(2),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE \"Users\" ("
+                + " \"id\" bigint NOT NULL,"
+                + " \"first_name\" character varying LOCALITY GROUP \"default\","
+                + " PRIMARY KEY (\"id\")"
+                + " ) LOCALITY GROUP \"lg1\""
+                + " INTERLEAVE IN PARENT \"ParentUsers\" ON DELETE CASCADE"));
+    assertThat(
+        statements.get(3),
+        equalToCompressingWhiteSpace(
+            "CREATE INDEX \"UsersByFirstName\" ON \"Users\"(\"first_name\" ASC) LOCALITY GROUP \"lg1\""));
+    assertThat(
+        statements.get(4),
+        equalToCompressingWhiteSpace(
+            "CREATE INDEX \"UsersInterleavedIdx\" ON \"Users\"(\"id\" ASC) LOCALITY GROUP \"lg1\" INTERLEAVE IN \"ParentUsers\""));
+  }
+
+  @Test
   public void protobundle() {
     Ddl.Builder builder = Ddl.builder();
     builder.mergeProtoBundle(
