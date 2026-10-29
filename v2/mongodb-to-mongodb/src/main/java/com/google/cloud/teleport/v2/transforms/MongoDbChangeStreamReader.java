@@ -30,8 +30,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.metrics.Counter;
@@ -313,6 +315,24 @@ public class MongoDbChangeStreamReader {
     return new BsonDocument("$match", exprDoc);
   }
 
+  /**
+   * Builds the Change Stream aggregation pipeline for a partition, applying any partition {@code
+   * $match} filter followed by {@code {$unset: "updateDescription"}} to strip redundant modified
+   * field deltas when {@code fullDocument} is already returned.
+   */
+  static List<Bson> buildChangeStreamPipeline(ChangeStreamPartition partition) {
+    List<Bson> pipeline = new ArrayList<>(2);
+    if (partition != null
+        && partition.getMatchFilterJson() != null
+        && !partition.getMatchFilterJson().isEmpty()) {
+      pipeline.add(BsonDocument.parse(partition.getMatchFilterJson()));
+    }
+    if (partition == null || !"default".equalsIgnoreCase(partition.getFullDocumentStrategy())) {
+      pipeline.add(new BsonDocument("$unset", new BsonString("updateDescription")));
+    }
+    return pipeline;
+  }
+
   /** Generates partition descriptors for a collection using server-side keyset hashing. */
   public static List<ChangeStreamPartition> generatePartitions(
       MongoClient client,
@@ -495,15 +515,29 @@ public class MongoDbChangeStreamReader {
     private static final long serialVersionUID = 1L;
 
     private final long offset;
-    private final String resumeTokenJson;
+    private final BsonDocument resumeToken;
+    private transient String cachedResumeTokenJson;
 
     public ChangeStreamRestriction() {
-      this(0L, null);
+      this(0L, null, null);
     }
 
     public ChangeStreamRestriction(long offset, String resumeTokenJson) {
+      this(
+          offset,
+          resumeTokenJson != null ? BsonDocument.parse(resumeTokenJson) : null,
+          resumeTokenJson);
+    }
+
+    private ChangeStreamRestriction(
+        long offset, BsonDocument resumeToken, String cachedResumeTokenJson) {
       this.offset = offset;
-      this.resumeTokenJson = resumeTokenJson;
+      this.resumeToken = resumeToken;
+      this.cachedResumeTokenJson = cachedResumeTokenJson;
+    }
+
+    public static ChangeStreamRestriction of(long offset, BsonDocument resumeToken) {
+      return new ChangeStreamRestriction(offset, resumeToken, null);
     }
 
     public long getOffset() {
@@ -511,11 +545,19 @@ public class MongoDbChangeStreamReader {
     }
 
     public String getResumeTokenJson() {
-      return resumeTokenJson;
+      if (resumeToken == null) {
+        return null;
+      }
+      String json = cachedResumeTokenJson;
+      if (json == null) {
+        json = resumeToken.toJson(CANONICAL_JSON_SETTINGS);
+        cachedResumeTokenJson = json;
+      }
+      return json;
     }
 
     public BsonDocument getResumeToken() {
-      return resumeTokenJson != null ? BsonDocument.parse(resumeTokenJson) : null;
+      return resumeToken;
     }
 
     @Override
@@ -527,12 +569,12 @@ public class MongoDbChangeStreamReader {
         return false;
       }
       ChangeStreamRestriction that = (ChangeStreamRestriction) o;
-      return offset == that.offset && Objects.equals(resumeTokenJson, that.resumeTokenJson);
+      return offset == that.offset && Objects.equals(resumeToken, that.resumeToken);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(offset, resumeTokenJson);
+      return Objects.hash(offset, resumeToken);
     }
 
     @Override
@@ -540,7 +582,7 @@ public class MongoDbChangeStreamReader {
       return "ChangeStreamRestriction{offset="
           + offset
           + ", hasResumeToken="
-          + (resumeTokenJson != null)
+          + (resumeToken != null)
           + "}";
     }
   }
@@ -658,19 +700,10 @@ public class MongoDbChangeStreamReader {
     public static final long MAX_SLICE_DURATION_MS = 10000L;
     public static final long IDLE_RESUME_DELAY_MS = 20L;
     public static final long GRACE_POLL_TIMEOUT_MS = 300L;
+    public static final long COALESCE_POLL_TIMEOUT_MS = 50L;
     public static final long CURSOR_EXPIRATION_TIMEOUT_MS = 300_000L; // 5 minutes idle timeout
     public static final int MONGO_ERROR_CHANGE_STREAM_HISTORY_LOST_280 = 280;
     public static final int MONGO_ERROR_CHANGE_STREAM_HISTORY_LOST_286 = 286;
-
-    /**
-     * Stride (in events) at which the BSON resume token is serialized to an Extended JSON string
-     * during the inner polling loop. Serializing toJson() on all 10,000 events per slice causes
-     * heavy CPU and heap contention on reader threads. Reusing the serialized token string across
-     * this stride eliminates 99.5% of serialization overhead while still satisfying Beam's
-     * claim-before-output requirement on every single element. The exact final resume token is
-     * always serialized and committed at slice completion.
-     */
-    public static final int RESUME_TOKEN_SERIALIZATION_STRIDE = 200;
 
     private final Counter changeEventsRead =
         Metrics.counter(MongoDbChangeStreamReader.class, "changeEventsRead");
@@ -737,11 +770,27 @@ public class MongoDbChangeStreamReader {
       TOKEN_MISMATCH
     }
 
-    /** Holds a cached cursor and tracks its last access timestamp and resume token for eviction. */
+    /**
+     * Holds a cached cursor with a dedicated background prefetcher thread that continuously drains
+     * {@code cursor.tryNext()} into a bounded {@link ArrayBlockingQueue} so {@code getMore} network
+     * RPCs are pipelined across SDF slice boundaries.
+     */
     public static class PartitionCursorHolder implements AutoCloseable {
+      public static final int PREFETCH_QUEUE_CAPACITY = 4096;
+      private static final AtomicInteger PREFETCHER_THREAD_ID = new AtomicInteger(0);
+
       private final MongoChangeStreamCursor<ChangeStreamDocument<Document>> cursor;
+      private final ArrayBlockingQueue<ChangeStreamDocument<Document>> eventQueue =
+          new ArrayBlockingQueue<>(PREFETCH_QUEUE_CAPACITY);
+      private final Object pollLock = new Object();
+      private final Thread prefetcherThread;
+      private volatile boolean running = true;
       private volatile long lastAccessedMs;
       private volatile BsonDocument lastResumeToken;
+      private volatile BsonDocument latestPostBatchToken;
+      private boolean lastTryNextWasNull = false;
+      private long completedPolls = 0L;
+      private Throwable prefetchError = null;
 
       public PartitionCursorHolder(
           MongoChangeStreamCursor<ChangeStreamDocument<Document>> cursor,
@@ -749,6 +798,137 @@ public class MongoDbChangeStreamReader {
         this.cursor = cursor;
         this.lastAccessedMs = System.currentTimeMillis();
         this.lastResumeToken = initialToken;
+        this.latestPostBatchToken = null;
+        this.prefetcherThread =
+            new Thread(
+                this::runPrefetchLoop,
+                "mongodb-cdc-prefetcher-" + PREFETCHER_THREAD_ID.incrementAndGet());
+        this.prefetcherThread.setDaemon(true);
+        this.prefetcherThread.start();
+      }
+
+      private void runPrefetchLoop() {
+        while (running && !Thread.currentThread().isInterrupted()) {
+          try {
+            long startNs = System.nanoTime();
+            ChangeStreamDocument<Document> event = cursor.tryNext();
+            if (!running) {
+              break;
+            }
+            if (event != null) {
+              enqueueEvent(event);
+            } else {
+              handleEmptyPoll(startNs);
+            }
+          } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            break;
+          } catch (Throwable t) {
+            recordPrefetchFailure(t);
+            break;
+          }
+        }
+      }
+
+      private void enqueueEvent(ChangeStreamDocument<Document> event) throws InterruptedException {
+        synchronized (pollLock) {
+          lastTryNextWasNull = false;
+          latestPostBatchToken = null;
+        }
+        while (running && !eventQueue.offer(event, 50L, TimeUnit.MILLISECONDS)) {
+          // Bounded queue is full; wait for consumer to drain or close().
+        }
+        synchronized (pollLock) {
+          completedPolls++;
+          pollLock.notifyAll();
+        }
+      }
+
+      private void handleEmptyPoll(long startNs) throws InterruptedException {
+        BsonDocument token = null;
+        try {
+          token = cursor.getResumeToken();
+        } catch (Exception ignored) {
+          // Cursor may not expose a post-batch resume token on transient close; safe to skip.
+        }
+        long elapsedMs = (System.nanoTime() - startNs) / 1_000_000L;
+        synchronized (pollLock) {
+          if (token != null && eventQueue.isEmpty()) {
+            latestPostBatchToken = token;
+          }
+          lastTryNextWasNull = true;
+          completedPolls++;
+          pollLock.notifyAll();
+          if (elapsedMs < 5L && running && lastTryNextWasNull) {
+            pollLock.wait(5L);
+          }
+        }
+      }
+
+      private void recordPrefetchFailure(Throwable t) {
+        synchronized (pollLock) {
+          if (running) {
+            prefetchError = t;
+          }
+          running = false;
+          completedPolls++;
+          pollLock.notifyAll();
+        }
+      }
+
+      public void requestFreshPollIfIdle() {
+        this.lastAccessedMs = System.currentTimeMillis();
+        synchronized (pollLock) {
+          if (prefetchError == null && completedPolls > 0 && lastTryNextWasNull) {
+            lastTryNextWasNull = false;
+            pollLock.notifyAll();
+          }
+        }
+      }
+
+      public ChangeStreamDocument<Document> pollNext(long timeoutMs) {
+        this.lastAccessedMs = System.currentTimeMillis();
+        ChangeStreamDocument<Document> item = eventQueue.poll();
+        if (item != null) {
+          return item;
+        }
+        long deadlineMs = System.currentTimeMillis() + timeoutMs;
+        synchronized (pollLock) {
+          while (true) {
+            item = eventQueue.poll();
+            if (item != null) {
+              return item;
+            }
+            if (prefetchError != null) {
+              rethrowPrefetchError();
+            }
+            if (!running || (completedPolls > 0 && lastTryNextWasNull)) {
+              return null;
+            }
+            long remainingMs = deadlineMs - System.currentTimeMillis();
+            if (remainingMs <= 0) {
+              return eventQueue.poll();
+            }
+            try {
+              pollLock.wait(Math.min(remainingMs, 10L));
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+              return null;
+            }
+          }
+        }
+      }
+
+      private void rethrowPrefetchError() {
+        Throwable err = this.prefetchError;
+        this.prefetchError = null;
+        if (err instanceof RuntimeException) {
+          throw (RuntimeException) err;
+        }
+        if (err instanceof Error) {
+          throw (Error) err;
+        }
+        throw new IllegalStateException("Unexpected error in change stream prefetcher", err);
       }
 
       public MongoChangeStreamCursor<ChangeStreamDocument<Document>> getCursor() {
@@ -765,12 +945,31 @@ public class MongoDbChangeStreamReader {
         this.lastAccessedMs = System.currentTimeMillis();
       }
 
+      public BsonDocument getLatestPostBatchResumeToken() {
+        synchronized (pollLock) {
+          return (eventQueue.isEmpty() && lastTryNextWasNull) ? latestPostBatchToken : null;
+        }
+      }
+
       public boolean isExpired(long timeoutMs) {
         return (System.currentTimeMillis() - lastAccessedMs) > timeoutMs;
       }
 
       @Override
       public void close() {
+        running = false;
+        synchronized (pollLock) {
+          pollLock.notifyAll();
+        }
+        if (prefetcherThread != null) {
+          prefetcherThread.interrupt();
+          try {
+            prefetcherThread.join(1000L);
+          } catch (InterruptedException ignored) {
+            Thread.currentThread().interrupt();
+          }
+        }
+        eventQueue.clear();
         if (cursor != null) {
           try {
             cursor.close();
@@ -850,7 +1049,7 @@ public class MongoDbChangeStreamReader {
       if (cursorHolder != null) {
         if (!Objects.equals(cursorHolder.getLastResumeToken(), currentToken)) {
           // Partition was progressed on another worker or reconnect required; discard stale cursor
-          LOG.debug(
+          LOG.info(
               "Cursor token mismatch on partition {}; holder={} restriction={}",
               partitionKey,
               cursorHolder.getLastResumeToken(),
@@ -862,6 +1061,10 @@ public class MongoDbChangeStreamReader {
       }
 
       // Ensure cursor is initialized for this partition
+      String targetDesc =
+          partition.isDatabaseLevel()
+              ? "database '" + partition.getSourceDatabase() + "'"
+              : "collection '" + partition.getSourceCollection() + "'";
       if (cursorHolder == null) {
         try {
           MongoClient mongoClient =
@@ -869,10 +1072,7 @@ public class MongoDbChangeStreamReader {
 
           MongoDatabase db = mongoClient.getDatabase(partition.getSourceDatabase());
 
-          List<Bson> pipeline = new ArrayList<>();
-          if (partition.getMatchFilterJson() != null && !partition.getMatchFilterJson().isEmpty()) {
-            pipeline.add(BsonDocument.parse(partition.getMatchFilterJson()));
-          }
+          List<Bson> pipeline = buildChangeStreamPipeline(partition);
 
           ChangeStreamIterable<Document> stream;
           if (partition.isDatabaseLevel()) {
@@ -922,11 +1122,18 @@ public class MongoDbChangeStreamReader {
               throw mce;
             }
           }
-          cursorBuildMillis.update(System.currentTimeMillis() - buildStartMs);
+          long buildElapsedMs = System.currentTimeMillis() - buildStartMs;
+          cursorBuildMillis.update(buildElapsedMs);
           rebuiltThisSlice = true;
           cursorHolder = new PartitionCursorHolder(activeCursor, currentToken);
           cursorCache.put(partitionKey, cursorHolder);
           changeStreamCursorReconnects.inc();
+          LOG.info(
+              "Built change stream cursor for {} partition {} in {}ms (cause: {})",
+              targetDesc,
+              partition.getPartitionIndex(),
+              buildElapsedMs,
+              rebuildCause);
           if (rebuildCause == RebuildCause.TOKEN_MISMATCH) {
             cursorRebuildTokenMismatch.inc();
           } else if (rebuildCause == RebuildCause.CACHE_MISS) {
@@ -936,10 +1143,6 @@ public class MongoDbChangeStreamReader {
           }
         } catch (MongoCommandException mce) {
           int errCode = mce.getErrorCode();
-          String targetDesc =
-              partition.isDatabaseLevel()
-                  ? "database '" + partition.getSourceDatabase() + "'"
-                  : "collection '" + partition.getSourceCollection() + "'";
           if (errCode == MONGO_ERROR_CHANGE_STREAM_HISTORY_LOST_280
               || errCode == MONGO_ERROR_CHANGE_STREAM_HISTORY_LOST_286) {
             changeStreamHistoryLost.inc();
@@ -954,10 +1157,6 @@ public class MongoDbChangeStreamReader {
           closeCursorForPartition(partitionKey);
           return ProcessContinuation.resume().withResumeDelay(Duration.millis(1000));
         } catch (Exception e) {
-          String targetDesc =
-              partition.isDatabaseLevel()
-                  ? "database '" + partition.getSourceDatabase() + "'"
-                  : "collection '" + partition.getSourceCollection() + "'";
           changeEventsErrors.inc();
           LOG.error(
               "Error initializing change stream cursor for {}, partition {}: {}. Will retry in 1s.",
@@ -975,49 +1174,28 @@ public class MongoDbChangeStreamReader {
       long currentOffset = currentRestriction.getOffset();
       BsonDocument postBatchToken = null;
       BsonDocument lastSeenResumeToken = null;
-      String currentResumeTokenJson = currentRestriction.getResumeTokenJson();
 
       try {
-        MongoChangeStreamCursor<ChangeStreamDocument<Document>> cursor = cursorHolder.getCursor();
-        long lastEventTimeMs = sliceStartTime;
+        if (!rebuiltThisSlice) {
+          cursorHolder.requestFreshPollIfIdle();
+        }
         while (eventsInSlice < MAX_EVENTS_PER_SLICE
             && (System.currentTimeMillis() - sliceStartTime) < MAX_SLICE_DURATION_MS) {
-          ChangeStreamDocument<Document> event = cursor.tryNext();
+          long pollTimeoutMs =
+              eventsInSlice == 0 ? GRACE_POLL_TIMEOUT_MS : COALESCE_POLL_TIMEOUT_MS;
+          ChangeStreamDocument<Document> event = cursorHolder.pollNext(pollTimeoutMs);
           if (event == null) {
-            long timeSinceLastEvent = System.currentTimeMillis() - lastEventTimeMs;
-            if (timeSinceLastEvent < GRACE_POLL_TIMEOUT_MS
-                && (System.currentTimeMillis() - sliceStartTime) < MAX_SLICE_DURATION_MS) {
-              try {
-                Thread.sleep(5);
-              } catch (InterruptedException ignored) {
-                Thread.currentThread().interrupt();
-                break;
-              }
-              continue;
-            }
-            // Post-batch resume token capture on idle
-            try {
-              postBatchToken = cursor.getResumeToken();
-              if (postBatchToken != null) {
-                cursorHolder.setLastResumeToken(postBatchToken);
-                currentResumeTokenJson = postBatchToken.toJson(CANONICAL_JSON_SETTINGS);
-                if (!tracker.tryClaim(
-                    new ChangeStreamRestriction(
-                        currentOffset + eventsInSlice, currentResumeTokenJson))) {
-                  closeCursorForPartition(partitionKey);
-                  return ProcessContinuation.stop();
-                }
-              }
-            } catch (Exception e) {
-              LOG.debug("Could not retrieve post-batch resume token: {}", e.getMessage());
+            postBatchToken = cursorHolder.getLatestPostBatchResumeToken();
+            if (postBatchToken != null) {
+              lastSeenResumeToken = postBatchToken;
+              cursorHolder.setLastResumeToken(postBatchToken);
             }
             break;
           }
 
-          lastEventTimeMs = System.currentTimeMillis();
           if (eventsInSlice == 0 && rebuiltThisSlice) {
             // Time for the server to relocate the resume point and return the first match.
-            cursorFirstEventMillis.update(lastEventTimeMs - sliceStartTime);
+            cursorFirstEventMillis.update(System.currentTimeMillis() - sliceStartTime);
           }
           eventsInSlice++;
           changeEventsRead.inc();
@@ -1052,12 +1230,8 @@ public class MongoDbChangeStreamReader {
           if (event.getResumeToken() != null) {
             lastSeenResumeToken = event.getResumeToken();
             cursorHolder.setLastResumeToken(lastSeenResumeToken);
-            if (eventsInSlice % RESUME_TOKEN_SERIALIZATION_STRIDE == 0) {
-              currentResumeTokenJson = lastSeenResumeToken.toJson(CANONICAL_JSON_SETTINGS);
-            }
             if (!tracker.tryClaim(
-                new ChangeStreamRestriction(
-                    currentOffset + eventsInSlice, currentResumeTokenJson))) {
+                ChangeStreamRestriction.of(currentOffset + eventsInSlice, lastSeenResumeToken))) {
               closeCursorForPartition(partitionKey);
               return ProcessContinuation.stop();
             }
@@ -1074,17 +1248,15 @@ public class MongoDbChangeStreamReader {
           }
         }
 
-        if (lastSeenResumeToken != null && eventsInSlice % RESUME_TOKEN_SERIALIZATION_STRIDE != 0) {
-          currentResumeTokenJson = lastSeenResumeToken.toJson(CANONICAL_JSON_SETTINGS);
-          tracker.tryClaim(
-              new ChangeStreamRestriction(currentOffset + eventsInSlice, currentResumeTokenJson));
+        if (postBatchToken != null) {
+          if (!tracker.tryClaim(
+              ChangeStreamRestriction.of(currentOffset + eventsInSlice, postBatchToken))) {
+            closeCursorForPartition(partitionKey);
+            return ProcessContinuation.stop();
+          }
         }
       } catch (MongoCommandException mce) {
         int errCode = mce.getErrorCode();
-        String targetDesc =
-            partition.isDatabaseLevel()
-                ? "database '" + partition.getSourceDatabase() + "'"
-                : "collection '" + partition.getSourceCollection() + "'";
         if (errCode == MONGO_ERROR_CHANGE_STREAM_HISTORY_LOST_280
             || errCode == MONGO_ERROR_CHANGE_STREAM_HISTORY_LOST_286) {
           changeStreamHistoryLost.inc();
@@ -1100,10 +1272,6 @@ public class MongoDbChangeStreamReader {
         closeCursorForPartition(partitionKey);
         return ProcessContinuation.resume().withResumeDelay(Duration.millis(1000));
       } catch (Exception e) {
-        String targetDesc =
-            partition.isDatabaseLevel()
-                ? "database '" + partition.getSourceDatabase() + "'"
-                : "collection '" + partition.getSourceCollection() + "'";
         changeEventsErrors.inc();
         LOG.warn(
             "Transient exception during change stream poll on {}, partition {}: {}. Reconnecting cursor...",
@@ -1161,10 +1329,7 @@ public class MongoDbChangeStreamReader {
       }
       if (clientCache != null) {
         for (MongoClient client : clientCache.values()) {
-          try {
-            client.close();
-          } catch (Exception ignored) {
-          }
+          MongoDbTransforms.closeIfNotShared(client);
         }
         clientCache.clear();
       }
@@ -1226,7 +1391,14 @@ public class MongoDbChangeStreamReader {
     TimestampSortKey sortKey = TimestampSortKey.cdc(epochSeconds, subSeconds);
 
     BsonDocument docKeyBson = event.getDocumentKey();
-    String docKeyStr = docKeyBson != null ? docKeyBson.toJson(CANONICAL_JSON_SETTINGS) : null;
+    String docKeyStr = null;
+    if (docKeyBson != null) {
+      if (docKeyBson.size() > 1 && docKeyBson.containsKey("_id")) {
+        docKeyStr = new BsonDocument("_id", docKeyBson.get("_id")).toJson(CANONICAL_JSON_SETTINGS);
+      } else {
+        docKeyStr = docKeyBson.toJson(CANONICAL_JSON_SETTINGS);
+      }
+    }
 
     Document fullDoc = event.getFullDocument();
     if (fullDoc == null
@@ -1237,9 +1409,8 @@ public class MongoDbChangeStreamReader {
       // Dropping because no payload is available to write, and subsequent DELETE handles deletion.
       return null;
     }
-    String originalDocStr = fullDoc != null ? fullDoc.toJson(CANONICAL_JSON_SETTINGS) : null;
 
     return DocumentWithMetadata.cdcEvent(
-        fullDoc, originalDocStr, eventCol, targetCol, opType, sortKey, docKeyStr);
+        fullDoc, /* originalDocument= */ null, eventCol, targetCol, opType, sortKey, docKeyStr);
   }
 }

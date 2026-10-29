@@ -23,7 +23,6 @@ import com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.FailureStage
 import com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.OperationType;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptRuntime;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.util.concurrent.RateLimiter;
 import com.mongodb.ConnectionString;
 import com.mongodb.ErrorCategory;
 import com.mongodb.MongoBulkWriteException;
@@ -46,6 +45,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -54,11 +55,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantLock;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Filter;
 import org.apache.beam.sdk.transforms.GroupIntoBatches;
@@ -80,8 +84,6 @@ import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.bson.Document;
 import org.bson.UuidRepresentation;
-import org.bson.json.JsonMode;
-import org.bson.json.JsonWriterSettings;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
@@ -93,9 +95,231 @@ public class MongoDbTransforms {
   private static final ConcurrentHashMap<String, MongoClient> CLIENT_CACHE =
       new ConcurrentHashMap<>();
 
+  private static final ConcurrentHashMap<Integer, SharedWritePool> WRITE_POOL_CACHE =
+      new ConcurrentHashMap<>();
+
+  private static final ConcurrentHashMap<String, WorkerRateLimiter> WORKER_RATE_LIMITERS =
+      new ConcurrentHashMap<>();
+
+  /**
+   * Per-worker-JVM write rate limiter shared across all harness threads of a {@link DoFn} stage.
+   *
+   * <p>When {@code maxRate > 0}, linearly increases the per-worker write rate from {@code
+   * initialRate} to {@code maxRate} over {@code rampUpMinutes} across {@code rampUpSteps} steps.
+   * When {@code maxRate == null || maxRate <= 0}, warms up exponentially ({@code initialRate *
+   * 2^elapsedMinutes}) over {@code rampUpMinutes} across {@code rampUpSteps} steps and then
+   * disables rate limiting completely so steady-state writes run uncapped with zero lock overhead.
+   *
+   * <p>The warm-up clock anchors lazily on the first {@link #acquire(int)} call so upstream split
+   * generation and {@code GroupIntoBatches} buffering delays do not prematurely consume the warm-up
+   * window.
+   */
+  static final class WorkerRateLimiter {
+    private static final Logger LOG = LoggerFactory.getLogger(WorkerRateLimiter.class);
+
+    private final double initialRate;
+    private final double maxRate;
+    private final boolean uncappedAfterRampUp;
+    private final long rampUpDurationMs;
+    private final int rampUpSteps;
+    private final ReentrantLock acquireLock = new ReentrantLock();
+
+    private volatile boolean disabled;
+    private volatile double currentRate;
+    private long startTimeMs;
+    private long lastComputedStep;
+    private double nextFreeTimeMs;
+
+    WorkerRateLimiter(
+        int initialRate, Integer maxRate, Integer rampUpMinutes, Integer rampUpSteps) {
+      this.initialRate = initialRate;
+      this.uncappedAfterRampUp = (maxRate == null || maxRate <= 0);
+      this.maxRate = this.uncappedAfterRampUp ? 0.0 : maxRate;
+      int mins = (rampUpMinutes != null && rampUpMinutes > 0) ? rampUpMinutes : 0;
+      this.rampUpDurationMs = mins * 60_000L;
+      int defaultSteps = Math.max(1, mins);
+      this.rampUpSteps = (rampUpSteps != null && rampUpSteps > 0) ? rampUpSteps : defaultSteps;
+      this.startTimeMs = -1L;
+      this.nextFreeTimeMs = 0.0;
+      this.lastComputedStep = 0;
+      if (this.uncappedAfterRampUp && this.rampUpDurationMs <= 0) {
+        this.disabled = true;
+        this.currentRate = Double.POSITIVE_INFINITY;
+      } else {
+        this.disabled = false;
+        this.currentRate = initialRate;
+        LOG.info(
+            "Enabled per-worker write rate {} ramp-up: initialRate={} docs/s/worker,"
+                + " targetMax={} docs/s/worker, duration={} mins, steps={}",
+            this.uncappedAfterRampUp ? "uncapped-exponential" : "bounded-linear",
+            initialRate,
+            this.uncappedAfterRampUp ? "UNCAPPED" : maxRate,
+            mins,
+            this.rampUpSteps);
+      }
+    }
+
+    synchronized double updateRate(long nowMs) {
+      if (disabled) {
+        return Double.POSITIVE_INFINITY;
+      }
+      if (startTimeMs < 0 || rampUpDurationMs <= 0 || rampUpSteps <= 0) {
+        return currentRate;
+      }
+      long elapsedMs = Math.max(0L, nowMs - startTimeMs);
+      if (uncappedAfterRampUp && elapsedMs >= rampUpDurationMs) {
+        disabled = true;
+        currentRate = Double.POSITIVE_INFINITY;
+        LOG.info(
+            "Write rate warm-up complete after {} mins: disabling write rate limiter"
+                + " (uncapped steady-state)",
+            TimeUnit.MILLISECONDS.toMinutes(elapsedMs));
+        return currentRate;
+      }
+      if (!uncappedAfterRampUp && maxRate <= initialRate) {
+        return currentRate;
+      }
+
+      long stepDurationMs = Math.max(1L, rampUpDurationMs / rampUpSteps);
+      long currentStep = Math.min(rampUpSteps, elapsedMs / stepDurationMs);
+      if (currentStep > lastComputedStep) {
+        lastComputedStep = currentStep;
+        double oldRate = currentRate;
+        double newRate;
+        if (uncappedAfterRampUp) {
+          double elapsedRampMinutes =
+              (currentStep * (rampUpDurationMs / 60_000.0)) / (double) rampUpSteps;
+          newRate = initialRate * Math.pow(2.0, elapsedRampMinutes);
+        } else {
+          double rateRange = maxRate - initialRate;
+          newRate = initialRate + (rateRange * currentStep) / (double) rampUpSteps;
+        }
+        if (newRate != oldRate) {
+          currentRate = newRate;
+          LOG.info(
+              "Write rate ramp-up ({}): increased write rate from {} to {} docs/s/worker"
+                  + " (step {}/{}, elapsedMinutes={})",
+              uncappedAfterRampUp ? "uncapped-exponential" : "bounded-linear",
+              String.format("%.1f", oldRate),
+              String.format("%.1f", newRate),
+              currentStep,
+              rampUpSteps,
+              TimeUnit.MILLISECONDS.toMinutes(elapsedMs));
+        }
+      }
+      return currentRate;
+    }
+
+    void acquire(int permits) throws InterruptedException {
+      if (permits <= 0 || disabled) {
+        return;
+      }
+      acquireLock.lockInterruptibly();
+      try {
+        while (!disabled) {
+          long nowMs = System.currentTimeMillis();
+          double waitMs;
+          synchronized (this) {
+            if (startTimeMs < 0) {
+              startTimeMs = nowMs;
+              nextFreeTimeMs = nowMs;
+            }
+            double rate = updateRate(nowMs);
+            if (disabled || !Double.isFinite(rate) || rate <= 0) {
+              return;
+            }
+            waitMs = nextFreeTimeMs - nowMs;
+            if (waitMs <= 0) {
+              double baseMs = Math.max(nextFreeTimeMs, nowMs - 1000.0);
+              nextFreeTimeMs = baseMs + (permits * 1000.0) / rate;
+              return;
+            }
+          }
+          long sleepMs = Math.min((long) Math.ceil(waitMs), 100L);
+          if (sleepMs > 0) {
+            Thread.sleep(sleepMs);
+          }
+        }
+      } finally {
+        acquireLock.unlock();
+      }
+    }
+
+    double getRate() {
+      return currentRate;
+    }
+
+    boolean isDisabled() {
+      return disabled;
+    }
+
+    synchronized long getStartTimeMs() {
+      return startTimeMs;
+    }
+
+    synchronized void setStartTimeMs(long startTimeMs) {
+      this.startTimeMs = startTimeMs;
+      this.nextFreeTimeMs = startTimeMs;
+      this.lastComputedStep = 0;
+    }
+  }
+
+  private static WorkerRateLimiter getOrCreateWorkerRateLimiter(
+      String key,
+      Integer initialRate,
+      Integer maxRate,
+      Integer rampUpMinutes,
+      Integer rampUpSteps) {
+    if (initialRate == null || initialRate <= 0) {
+      return null;
+    }
+    return WORKER_RATE_LIMITERS.computeIfAbsent(
+        key, k -> new WorkerRateLimiter(initialRate, maxRate, rampUpMinutes, rampUpSteps));
+  }
+
+  private static class SharedWritePool {
+    final ExecutorService executor;
+    final Semaphore semaphore;
+
+    SharedWritePool(int concurrency) {
+      this.executor =
+          Executors.newFixedThreadPool(
+              concurrency,
+              r -> {
+                Thread t = new Thread(r, "mongodb-async-writer");
+                t.setDaemon(true);
+                return t;
+              });
+      this.semaphore = new Semaphore(concurrency);
+    }
+  }
+
+  private static SharedWritePool getOrCreateWritePool(Integer maxConcurrentAsyncWrites) {
+    int concurrency =
+        (maxConcurrentAsyncWrites != null && maxConcurrentAsyncWrites > 0)
+            ? maxConcurrentAsyncWrites
+            : 10;
+    return WRITE_POOL_CACHE.computeIfAbsent(concurrency, SharedWritePool::new);
+  }
+
   /** Returns a cached JVM-wide MongoClient for the given URI, or creates a new one if absent. */
   public static MongoClient getOrCreateMongoClient(String uri) {
     return CLIENT_CACHE.computeIfAbsent(uri, MongoDbTransforms::createMongoClient);
+  }
+
+  /**
+   * Closes the given {@link MongoClient} only if it is not a shared JVM-wide instance managed by
+   * {@link #CLIENT_CACHE}. Shared clients remain open for the lifetime of the worker JVM so that
+   * concurrent {@link DoFn} instances on the same worker do not close each other's connections.
+   */
+  public static void closeIfNotShared(MongoClient client) {
+    if (client != null && !CLIENT_CACHE.containsValue(client)) {
+      try {
+        client.close();
+      } catch (Exception ignored) {
+        // Best-effort close during DoFn teardown.
+      }
+    }
   }
 
   /**
@@ -114,9 +338,22 @@ public class MongoDbTransforms {
       builder.readPreference(ReadPreference.secondaryPreferred());
     }
     builder.applyToConnectionPoolSettings(
-        pool -> pool.maxSize(256).minSize(0).maxWaitTime(30, TimeUnit.SECONDS));
+        pool ->
+            pool.maxSize(
+                    Objects.requireNonNullElse(connectionString.getMaxConnectionPoolSize(), 256))
+                .minSize(Objects.requireNonNullElse(connectionString.getMinConnectionPoolSize(), 0))
+                .maxWaitTime(
+                    Objects.requireNonNullElse(connectionString.getMaxWaitTime(), 30_000),
+                    TimeUnit.MILLISECONDS));
     builder.applyToSocketSettings(
-        socket -> socket.connectTimeout(15, TimeUnit.SECONDS).readTimeout(60, TimeUnit.SECONDS));
+        socket ->
+            socket
+                .connectTimeout(
+                    Objects.requireNonNullElse(connectionString.getConnectTimeout(), 15_000),
+                    TimeUnit.MILLISECONDS)
+                .readTimeout(
+                    Objects.requireNonNullElse(connectionString.getSocketTimeout(), 60_000),
+                    TimeUnit.MILLISECONDS));
     return MongoClients.create(builder.build());
   }
 
@@ -138,7 +375,7 @@ public class MongoDbTransforms {
     private Integer writeRateRampUpSteps = 5;
     private Integer maxWriteRatePerWorker = 25000;
     private SerializableFunction<String, MongoClient> clientFactory =
-        MongoDbTransforms::createMongoClient;
+        MongoDbTransforms::getOrCreateMongoClient;
 
     private Integer numWriteShards = 64;
     private Integer maxBufferingDurationMs = 200;
@@ -305,6 +542,12 @@ public class MongoDbTransforms {
         Metrics.counter(WriteToDlq.class, "dlqPermanentEmitted");
 
     public WriteToDlq(String retryablePath, String permanentPath, String tempLocation) {
+      this(null, retryablePath, permanentPath, tempLocation);
+    }
+
+    public WriteToDlq(
+        String stageName, String retryablePath, String permanentPath, String tempLocation) {
+      super(stageName);
       this.retryablePath = retryablePath;
       this.permanentPath = permanentPath;
       this.tempLocation = tempLocation;
@@ -324,69 +567,76 @@ public class MongoDbTransforms {
       PCollection<DocumentWithMetadata> permanent =
           input.apply("FilterPermanent", Filter.by(item -> item.getErrorType() == PERMANENT));
 
-      boolean isUnbounded = input.isBounded() == PCollection.IsBounded.UNBOUNDED;
+      // Dataflow Streaming Engine requires windowed writes with explicit sharding even when the
+      // upstream PCollection is bounded (e.g., BACKFILL mode forced onto Streaming Engine).
+      boolean isUnbounded =
+          input.isBounded() == PCollection.IsBounded.UNBOUNDED
+              || input.getPipeline().getOptions().as(StreamingOptions.class).isStreaming();
 
-      PCollection<String> retryableJson =
-          retryable.apply(
-              "MapToJson_Retryable",
-              ParDo.of(
-                  new DoFn<DocumentWithMetadata, String>() {
-                    @ProcessElement
-                    public void processElement(ProcessContext c) {
-                      dlqRetryableEmitted.inc();
-                      DocumentWithMetadata item = c.element();
-                      c.output(
-                          item.toDlqJson(
-                              item.getErrorMessage(), item.getErrorType(), item.getRetryCount()));
-                    }
-                  }));
+      String filePrefix =
+          (getName() != null && !getName().isEmpty())
+              ? "/error-" + getName().replaceAll("[^a-zA-Z0-9_-]", "").toLowerCase()
+              : "/error";
 
-      if (isUnbounded) {
-        retryableJson
-            .apply("WindowRetryableDlq", Window.into(FixedWindows.of(Duration.standardMinutes(1))))
-            .apply(
-                "WriteDlq_Retryable",
-                TextIO.write()
-                    .to(retryablePath + "/error")
-                    .withSuffix(".json")
-                    .withWindowedWrites()
-                    .withNumShards(1));
-      } else {
-        retryableJson.apply(
-            "WriteDlq_Retryable", TextIO.write().to(retryablePath + "/error").withSuffix(".json"));
-      }
-
-      PCollection<String> permanentJson =
-          permanent.apply(
-              "MapToJson_Permanent",
-              ParDo.of(
-                  new DoFn<DocumentWithMetadata, String>() {
-                    @ProcessElement
-                    public void processElement(ProcessContext c) {
-                      dlqPermanentEmitted.inc();
-                      DocumentWithMetadata item = c.element();
-                      c.output(
-                          item.toDlqJson(
-                              item.getErrorMessage(), item.getErrorType(), item.getRetryCount()));
-                    }
-                  }));
-
-      if (isUnbounded) {
-        permanentJson
-            .apply("WindowPermanentDlq", Window.into(FixedWindows.of(Duration.standardMinutes(1))))
-            .apply(
-                "WriteDlq_Permanent",
-                TextIO.write()
-                    .to(permanentPath + "/error")
-                    .withSuffix(".json")
-                    .withWindowedWrites()
-                    .withNumShards(1));
-      } else {
-        permanentJson.apply(
-            "WriteDlq_Permanent", TextIO.write().to(permanentPath + "/error").withSuffix(".json"));
-      }
+      writeDlqTier(
+          retryable, "Retryable", retryablePath + filePrefix, dlqRetryableEmitted, isUnbounded);
+      writeDlqTier(
+          permanent, "Permanent", permanentPath + filePrefix, dlqPermanentEmitted, isUnbounded);
 
       return PDone.in(input.getPipeline());
+    }
+
+    private static void writeDlqTier(
+        PCollection<DocumentWithMetadata> tierItems,
+        String tierName,
+        String outputPrefix,
+        Counter emittedCounter,
+        boolean isUnbounded) {
+      PCollection<String> jsonLines =
+          tierItems.apply(
+              "MapToJson_" + tierName,
+              ParDo.of(
+                  new DoFn<DocumentWithMetadata, String>() {
+                    @Override
+                    public Duration getAllowedTimestampSkew() {
+                      return Duration.millis(Long.MAX_VALUE);
+                    }
+
+                    @ProcessElement
+                    public void processElement(ProcessContext c) {
+                      emittedCounter.inc();
+                      DocumentWithMetadata item = c.element();
+                      String json =
+                          item.toDlqJson(
+                              item.getErrorMessage(), item.getErrorType(), item.getRetryCount());
+                      if (c.timestamp()
+                          .isAfter(
+                              GlobalWindow.INSTANCE
+                                  .maxTimestamp()
+                                  .minus(Duration.standardMinutes(2)))) {
+                        c.outputWithTimestamp(json, GlobalWindow.TIMESTAMP_MIN_VALUE);
+                      } else {
+                        c.output(json);
+                      }
+                    }
+                  }));
+
+      if (isUnbounded) {
+        jsonLines
+            .apply(
+                "Window" + tierName + "Dlq",
+                Window.into(FixedWindows.of(Duration.standardMinutes(1))))
+            .apply(
+                "WriteDlq_" + tierName,
+                TextIO.write()
+                    .to(outputPrefix)
+                    .withSuffix(".json")
+                    .withWindowedWrites()
+                    .withNumShards(1));
+      } else {
+        jsonLines.apply(
+            "WriteDlq_" + tierName, TextIO.write().to(outputPrefix).withSuffix(".json"));
+      }
     }
   }
 
@@ -412,10 +662,9 @@ public class MongoDbTransforms {
     private final Integer maxWriteRatePerWorker;
     private final SerializableFunction<String, MongoClient> clientFactory;
     private final TupleTag<DocumentWithMetadata> failureTag;
+    private final String rateLimiterKey = UUID.randomUUID().toString();
     private transient FluentBackoff backoffSpec;
-    private transient RateLimiter rateLimiter;
-    private transient long startTimeMs;
-    private transient long lastComputedStep;
+    private transient WorkerRateLimiter workerRateLimiter;
 
     private final Counter successfulWrites =
         Metrics.counter(WriteWithDlq.class, "successfulWrites");
@@ -590,18 +839,24 @@ public class MongoDbTransforms {
     }
 
     @VisibleForTesting
-    RateLimiter getRateLimiter() {
-      return rateLimiter;
+    WorkerRateLimiter getRateLimiter() {
+      return (workerRateLimiter != null && !workerRateLimiter.isDisabled())
+          ? workerRateLimiter
+          : null;
     }
 
     @VisibleForTesting
     void setStartTimeMs(long startTimeMs) {
-      this.startTimeMs = startTimeMs;
+      if (workerRateLimiter != null) {
+        workerRateLimiter.setStartTimeMs(startTimeMs);
+      }
     }
 
     @VisibleForTesting
     void updateRateLimiterForTest() {
-      updateRateLimiterIfNeeded();
+      if (workerRateLimiter != null) {
+        workerRateLimiter.updateRate(System.currentTimeMillis());
+      }
     }
 
     @Setup
@@ -614,21 +869,16 @@ public class MongoDbTransforms {
       backoffSpec =
           FluentBackoff.DEFAULT
               .withMaxRetries(maxWriteRetries)
-              .withInitialBackoff(Duration.standardSeconds(2))
+              .withInitialBackoff(Duration.millis(200))
               .withExponent(2.0);
-      if (initialWriteRatePerWorker != null && initialWriteRatePerWorker > 0) {
-        rateLimiter = RateLimiter.create(initialWriteRatePerWorker);
-        startTimeMs = System.currentTimeMillis();
-        lastComputedStep = 0;
-        LOG.info(
-            "Enabled linear write rate ramp-up: initialRate={} docs/s/worker, targetMax={}"
-                + " docs/s/worker, duration={} mins, steps={}",
-            initialWriteRatePerWorker,
-            maxWriteRatePerWorker,
-            writeRateRampUpMinutes,
-            writeRateRampUpSteps);
-      } else {
-        rateLimiter = null;
+      workerRateLimiter =
+          getOrCreateWorkerRateLimiter(
+              rateLimiterKey,
+              initialWriteRatePerWorker,
+              maxWriteRatePerWorker,
+              writeRateRampUpMinutes,
+              writeRateRampUpSteps);
+      if (workerRateLimiter == null) {
         LOG.info("Write rate limiting is disabled (initialWriteRatePerWorker <= 0)");
       }
       LOG.info(
@@ -640,55 +890,12 @@ public class MongoDbTransforms {
           maxWriteRetries);
     }
 
-    private void updateRateLimiterIfNeeded() {
-      if (rateLimiter == null
-          || writeRateRampUpMinutes == null
-          || writeRateRampUpMinutes <= 0
-          || writeRateRampUpSteps == null
-          || writeRateRampUpSteps <= 0
-          || maxWriteRatePerWorker == null
-          || maxWriteRatePerWorker <= initialWriteRatePerWorker) {
-        return;
-      }
-      long stepDurationMs = (writeRateRampUpMinutes * 60L * 1000L) / writeRateRampUpSteps;
-      if (stepDurationMs <= 0) {
-        stepDurationMs = 1;
-      }
-      long elapsedMs = System.currentTimeMillis() - startTimeMs;
-      long currentStep = Math.min(writeRateRampUpSteps, elapsedMs / stepDurationMs);
-
-      if (currentStep > lastComputedStep) {
-        lastComputedStep = currentStep;
-        double rateRange = maxWriteRatePerWorker - initialWriteRatePerWorker;
-        double newRate =
-            initialWriteRatePerWorker + (rateRange * currentStep) / (double) writeRateRampUpSteps;
-
-        double oldRate = rateLimiter.getRate();
-        if (newRate != oldRate) {
-          rateLimiter.setRate(newRate);
-          LOG.info(
-              "Linear write rate ramp-up: increased write rate from {} to {} docs/s/worker"
-                  + " (step {}/{}, elapsedMinutes={})",
-              String.format("%.1f", oldRate),
-              String.format("%.1f", newRate),
-              currentStep,
-              writeRateRampUpSteps,
-              TimeUnit.MILLISECONDS.toMinutes(elapsedMs));
-        }
-      }
-    }
-
     @Teardown
     public void teardown() {
       if (executor != null) {
         executor.shutdown();
       }
-      if (mongoClient != null) {
-        try {
-          mongoClient.close();
-        } catch (Exception ignored) {
-        }
-      }
+      MongoDbTransforms.closeIfNotShared(mongoClient);
     }
 
     @StartBundle
@@ -788,9 +995,8 @@ public class MongoDbTransforms {
 
       if (!updatesByCollection.isEmpty()) {
         batchesFlushed.inc();
-        updateRateLimiterIfNeeded();
-        if (rateLimiter != null && !items.isEmpty()) {
-          rateLimiter.acquire(items.size());
+        if (workerRateLimiter != null && !items.isEmpty()) {
+          workerRateLimiter.acquire(items.size());
         }
         LOG.debug(
             "Flushing batch of {} documents across {} target collection(s) to MongoDB (active"
@@ -1095,6 +1301,7 @@ public class MongoDbTransforms {
 
     private final String uri;
     private final String database;
+    private final Integer maxConcurrentAsyncWrites;
     private final Integer maxWriteRetries;
     private final Integer dlqMaxRetries;
     private final Integer initialWriteRatePerWorker;
@@ -1103,10 +1310,9 @@ public class MongoDbTransforms {
     private final Integer maxWriteRatePerWorker;
     private final SerializableFunction<String, MongoClient> clientFactory;
     private final TupleTag<DocumentWithMetadata> failureTag;
+    private final String rateLimiterKey = UUID.randomUUID().toString();
     private transient FluentBackoff backoffSpec;
-    private transient RateLimiter rateLimiter;
-    private transient long startTimeMs;
-    private transient long lastComputedStep;
+    private transient WorkerRateLimiter workerRateLimiter;
 
     private final Counter successfulWrites =
         Metrics.counter(WriteWithDlq.class, "successfulWrites");
@@ -1124,8 +1330,13 @@ public class MongoDbTransforms {
         Metrics.counter(WriteWithDlq.class, "writeDropsSkipped");
     private final Counter writeBatchesCoalesced =
         Metrics.counter(WriteWithDlq.class, "writeBatchesCoalesced");
+    private final Distribution bulkWriteLatencyMs =
+        Metrics.distribution(WriteWithDlq.class, "bulkWriteLatencyMs");
 
     private transient MongoClient mongoClient;
+    private transient SharedWritePool writePool;
+    private transient ConcurrentLinkedQueue<CompletableFuture<Void>> futures;
+    private transient Map<String, CompletableFuture<Void>> inFlightByKey;
     private transient ConcurrentLinkedQueue<DocumentWithMetadata> failures;
     private transient AtomicLong successfulCount;
     private transient ConcurrentHashMap<String, AtomicLong> dynamicCounters;
@@ -1156,6 +1367,7 @@ public class MongoDbTransforms {
         TupleTag<DocumentWithMetadata> failureTag) {
       this.uri = uri;
       this.database = database;
+      this.maxConcurrentAsyncWrites = maxConcurrentAsyncWrites;
       this.maxWriteRetries = maxWriteRetries;
       this.dlqMaxRetries = dlqMaxRetries;
       this.initialWriteRatePerWorker = initialWriteRatePerWorker;
@@ -1269,105 +1481,71 @@ public class MongoDbTransforms {
     }
 
     @VisibleForTesting
-    RateLimiter getRateLimiter() {
-      return rateLimiter;
+    WorkerRateLimiter getRateLimiter() {
+      return (workerRateLimiter != null && !workerRateLimiter.isDisabled())
+          ? workerRateLimiter
+          : null;
     }
 
     @VisibleForTesting
     void setStartTimeMs(long startTimeMs) {
-      this.startTimeMs = startTimeMs;
+      if (workerRateLimiter != null) {
+        workerRateLimiter.setStartTimeMs(startTimeMs);
+      }
     }
 
     @VisibleForTesting
     void updateRateLimiterForTest() {
-      updateRateLimiterIfNeeded();
+      if (workerRateLimiter != null) {
+        workerRateLimiter.updateRate(System.currentTimeMillis());
+      }
     }
 
     @Setup
     public void setup() {
+      writePool = getOrCreateWritePool(maxConcurrentAsyncWrites);
       if (clientFactory != null && uri != null) {
         mongoClient = clientFactory.apply(uri);
       }
       backoffSpec =
           FluentBackoff.DEFAULT
               .withMaxRetries(maxWriteRetries)
-              .withInitialBackoff(Duration.standardSeconds(2))
+              .withInitialBackoff(Duration.millis(200))
               .withExponent(2.0);
-      if (initialWriteRatePerWorker != null && initialWriteRatePerWorker > 0) {
-        rateLimiter = RateLimiter.create(initialWriteRatePerWorker);
-        startTimeMs = System.currentTimeMillis();
-        lastComputedStep = 0;
-        LOG.info(
-            "Enabled linear write rate ramp-up for WriteBatchesFn: initialRate={} docs/s/worker,"
-                + " targetMax={} docs/s/worker, duration={} mins, steps={}",
-            initialWriteRatePerWorker,
-            maxWriteRatePerWorker,
-            writeRateRampUpMinutes,
-            writeRateRampUpSteps);
-      } else {
-        rateLimiter = null;
+      workerRateLimiter =
+          getOrCreateWorkerRateLimiter(
+              rateLimiterKey,
+              initialWriteRatePerWorker,
+              maxWriteRatePerWorker,
+              writeRateRampUpMinutes,
+              writeRateRampUpSteps);
+      if (workerRateLimiter == null) {
         LOG.info(
             "Write rate limiting is disabled for WriteBatchesFn (initialWriteRatePerWorker <= 0)");
       }
       LOG.info(
-          "Initialized MongoDB WriteBatchesFn worker thread for database '{}' (maxWriteRetries={})",
+          "Initialized MongoDB WriteBatchesFn worker thread for database '{}'"
+              + " (maxConcurrentAsyncWrites={}, maxWriteRetries={})",
           database,
+          maxConcurrentAsyncWrites,
           maxWriteRetries);
-    }
-
-    private void updateRateLimiterIfNeeded() {
-      if (rateLimiter == null
-          || writeRateRampUpMinutes == null
-          || writeRateRampUpMinutes <= 0
-          || writeRateRampUpSteps == null
-          || writeRateRampUpSteps <= 0
-          || maxWriteRatePerWorker == null
-          || maxWriteRatePerWorker <= initialWriteRatePerWorker) {
-        return;
-      }
-      long stepDurationMs = (writeRateRampUpMinutes * 60L * 1000L) / writeRateRampUpSteps;
-      if (stepDurationMs <= 0) {
-        stepDurationMs = 1;
-      }
-      long elapsedMs = System.currentTimeMillis() - startTimeMs;
-      long currentStep = Math.min(writeRateRampUpSteps, elapsedMs / stepDurationMs);
-
-      if (currentStep > lastComputedStep) {
-        lastComputedStep = currentStep;
-        double rateRange = maxWriteRatePerWorker - initialWriteRatePerWorker;
-        double newRate =
-            initialWriteRatePerWorker + (rateRange * currentStep) / (double) writeRateRampUpSteps;
-
-        double oldRate = rateLimiter.getRate();
-        if (newRate != oldRate) {
-          rateLimiter.setRate(newRate);
-          LOG.info(
-              "Linear write rate ramp-up: increased write rate from {} to {} docs/s/worker"
-                  + " (step {}/{}, elapsedMinutes={})",
-              String.format("%.1f", oldRate),
-              String.format("%.1f", newRate),
-              currentStep,
-              writeRateRampUpSteps,
-              TimeUnit.MILLISECONDS.toMinutes(elapsedMs));
-        }
-      }
     }
 
     @Teardown
     public void teardown() {
-      if (mongoClient != null) {
-        try {
-          mongoClient.close();
-        } catch (Exception ignored) {
-        }
-      }
+      MongoDbTransforms.closeIfNotShared(mongoClient);
     }
 
     @StartBundle
     public void startBundle() {
+      if (writePool == null) {
+        writePool = getOrCreateWritePool(maxConcurrentAsyncWrites);
+      }
       if (mongoClient == null && clientFactory != null && uri != null) {
         mongoClient = clientFactory.apply(uri);
       }
+      futures = new ConcurrentLinkedQueue<>();
+      inFlightByKey = new HashMap<>();
       failures = new ConcurrentLinkedQueue<>();
       successfulCount = new AtomicLong(0);
       dynamicCounters = new ConcurrentHashMap<>();
@@ -1410,6 +1588,34 @@ public class MongoDbTransforms {
       }
     }
 
+    private void putCoalescedOp(
+        Map<String, LinkedHashMap<Object, CoalescedOp>> coalescedByCollection,
+        String targetCol,
+        Object id,
+        WriteModel<Document> model,
+        DocumentWithMetadata item,
+        boolean isDelete) {
+      LinkedHashMap<Object, CoalescedOp> colMap =
+          coalescedByCollection.computeIfAbsent(targetCol, k -> new LinkedHashMap<>());
+      // org.bson.Document implements Map, whose equals/hashCode ignore key insertion order,
+      // whereas MongoDB treats composite subdocument _ids with different field order as distinct
+      // documents. Use the canonical JSON dedupKey for Map/byte[] _ids to preserve field order.
+      Object coalesceKey =
+          (id instanceof Map || id instanceof byte[]) && item.getDedupKey() != null
+              ? item.getDedupKey()
+              : id;
+      CoalescedOp prev = colMap.get(coalesceKey);
+      if (prev != null) {
+        writeBatchesCoalesced.inc();
+        if (item.getTimestampSortKey() != null
+            && prev.item.getTimestampSortKey() != null
+            && item.getTimestampSortKey().compareTo(prev.item.getTimestampSortKey()) < 0) {
+          return;
+        }
+      }
+      colMap.put(coalesceKey, new CoalescedOp(model, item, isDelete));
+    }
+
     private void flushBatch(List<DocumentWithMetadata> items) throws InterruptedException {
       if (items == null || items.isEmpty()) {
         return;
@@ -1426,14 +1632,13 @@ public class MongoDbTransforms {
         if (item.getOperationType() != null && item.getOperationType().isDelete()) {
           Object id = item.getId();
           if (id != null) {
-            LinkedHashMap<Object, CoalescedOp> colMap =
-                coalescedByCollection.computeIfAbsent(targetCol, k -> new LinkedHashMap<>());
-            CoalescedOp prev =
-                colMap.put(
-                    id, new CoalescedOp(new DeleteOneModel<>(new Document("_id", id)), item, true));
-            if (prev != null) {
-              writeBatchesCoalesced.inc();
-            }
+            putCoalescedOp(
+                coalescedByCollection,
+                targetCol,
+                id,
+                new DeleteOneModel<>(new Document("_id", id)),
+                item,
+                /* isDelete= */ true);
           } else {
             LOG.warn("Received DELETE event with null ID; routing to DLQ.");
             writePermanentDlqMessage(
@@ -1453,19 +1658,14 @@ public class MongoDbTransforms {
           if (doc != null) {
             Object id = doc.get("_id");
             if (id != null) {
-              LinkedHashMap<Object, CoalescedOp> colMap =
-                  coalescedByCollection.computeIfAbsent(targetCol, k -> new LinkedHashMap<>());
-              CoalescedOp prev =
-                  colMap.put(
-                      id,
-                      new CoalescedOp(
-                          new ReplaceOneModel<>(
-                              new Document("_id", id), doc, new ReplaceOptions().upsert(true)),
-                          item,
-                          false));
-              if (prev != null) {
-                writeBatchesCoalesced.inc();
-              }
+              putCoalescedOp(
+                  coalescedByCollection,
+                  targetCol,
+                  id,
+                  new ReplaceOneModel<>(
+                      new Document("_id", id), doc, new ReplaceOptions().upsert(true)),
+                  item,
+                  /* isDelete= */ false);
             } else {
               LOG.warn("Received document without '_id' field; routing to DLQ.");
               writePermanentDlqMessage(
@@ -1484,15 +1684,14 @@ public class MongoDbTransforms {
 
       if (!coalescedByCollection.isEmpty()) {
         batchesFlushed.inc();
-        updateRateLimiterIfNeeded();
 
         int totalCoalescedCount = 0;
         for (LinkedHashMap<Object, CoalescedOp> colMap : coalescedByCollection.values()) {
           totalCoalescedCount += colMap.size();
         }
 
-        if (rateLimiter != null && totalCoalescedCount > 0) {
-          rateLimiter.acquire(totalCoalescedCount);
+        if (workerRateLimiter != null && totalCoalescedCount > 0) {
+          workerRateLimiter.acquire(totalCoalescedCount);
         }
 
         LOG.debug(
@@ -1522,7 +1721,40 @@ public class MongoDbTransforms {
 
           MongoCollection<Document> col = mongoClient.getDatabase(database).getCollection(colName);
 
-          writeBatchWithRetry(colName, col, currentUpdates, currentItemList);
+          List<CompletableFuture<Void>> priorFutures = null;
+          if (inFlightByKey != null) {
+            for (Object coalesceKey : colMap.keySet()) {
+              String scopedKey = colName + "#" + coalesceKey;
+              CompletableFuture<Void> prior = inFlightByKey.get(scopedKey);
+              if (prior != null && !prior.isDone()) {
+                if (priorFutures == null) {
+                  priorFutures = new ArrayList<>(4);
+                }
+                priorFutures.add(prior);
+              }
+            }
+          }
+          if (priorFutures != null) {
+            CompletableFuture.allOf(priorFutures.toArray(new CompletableFuture[0])).join();
+          }
+
+          writePool.semaphore.acquire();
+          CompletableFuture<Void> future =
+              CompletableFuture.runAsync(
+                  () -> {
+                    try {
+                      writeBatchWithRetry(colName, col, currentUpdates, currentItemList);
+                    } finally {
+                      writePool.semaphore.release();
+                    }
+                  },
+                  writePool.executor);
+          futures.add(future);
+          if (inFlightByKey != null) {
+            for (Object coalesceKey : colMap.keySet()) {
+              inFlightByKey.put(colName + "#" + coalesceKey, future);
+            }
+          }
         }
       }
     }
@@ -1536,13 +1768,17 @@ public class MongoDbTransforms {
       Sleeper sleeper = Sleeper.DEFAULT;
 
       while (true) {
+        long writeStartMs = System.currentTimeMillis();
         try {
           col.bulkWrite(currentUpdates, new BulkWriteOptions().ordered(false));
+          long writeLatency = System.currentTimeMillis() - writeStartMs;
+          bulkWriteLatencyMs.update(writeLatency);
           successfulCount.addAndGet(currentItemList.size());
           LOG.debug(
-              "Successfully bulk-wrote {} documents to collection '{}'",
+              "Successfully bulk-wrote {} documents to collection '{}' in {}ms",
               currentItemList.size(),
-              colName);
+              colName,
+              writeLatency);
           break;
         } catch (MongoBulkWriteException e) {
           List<BulkWriteError> writeErrors = e.getWriteErrors();
@@ -1738,6 +1974,12 @@ public class MongoDbTransforms {
 
     @FinishBundle
     public void finishBundle(FinishBundleContext c) {
+      if (futures != null && !futures.isEmpty()) {
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+      }
+      if (inFlightByKey != null) {
+        inFlightByKey.clear();
+      }
       successfulWrites.inc(successfulCount.get());
       if (inMemoryRetriesCount != null) {
         inMemoryRetries.inc(inMemoryRetriesCount.get());
@@ -1780,8 +2022,6 @@ public class MongoDbTransforms {
   /** A {@link DoFn} that applies a JavaScript UDF to the document. */
   public static class ApplyUdfFn extends DoFn<DocumentWithMetadata, DocumentWithMetadata> {
     private static final Logger LOG = LoggerFactory.getLogger(ApplyUdfFn.class);
-    private static final JsonWriterSettings CANONICAL_JSON_SETTINGS =
-        JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
 
     private final String fileSystemPath;
     private final String functionName;
@@ -1824,17 +2064,14 @@ public class MongoDbTransforms {
       if (javascriptRuntime != null) {
         try {
           String payload = item.getOriginalDocument();
-          if (payload == null && item.getDocument() != null) {
-            payload = item.getDocument().toJson(CANONICAL_JSON_SETTINGS);
-          }
           if (payload == null) {
             c.output(item);
             return;
           }
           String transformed = javascriptRuntime.invoke(payload);
           if (transformed != null) {
-            Document doc = Document.parse(transformed);
-            c.output(item.withDocument(doc));
+            Document doc = Document.parse(transformed, DocumentWithMetadata.DOCUMENT_CODEC);
+            c.output(item.withDocument(doc, payload));
           } else {
             LOG.warn("UDF returned null for document ID: {}", item.getId());
             udfProcessingFailures.inc();

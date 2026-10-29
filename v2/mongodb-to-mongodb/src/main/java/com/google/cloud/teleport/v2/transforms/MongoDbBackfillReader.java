@@ -78,7 +78,7 @@ import org.slf4j.LoggerFactory;
 public class MongoDbBackfillReader {
 
   private static final Logger LOG = LoggerFactory.getLogger(MongoDbBackfillReader.class);
-  public static final int DEFAULT_CURSOR_BATCH_SIZE = 2000;
+  public static final int DEFAULT_CURSOR_BATCH_SIZE = 5000;
   public static final int DEFAULT_MAX_SPLITS = 10000;
   private static final JsonWriterSettings CANONICAL_JSON_SETTINGS =
       JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
@@ -504,12 +504,13 @@ public class MongoDbBackfillReader {
     private static final long serialVersionUID = 1L;
 
     private final int partitionIndexInSlot;
+    private final int endPartitionIndexInSlot;
     private final long offsetInCurrentPartition;
     private final String lastSeenIdJson;
     private final boolean done;
 
     public BackfillSlotRestriction() {
-      this(0, 0L, null, false);
+      this(0, Integer.MAX_VALUE, 0L, null, false);
     }
 
     public BackfillSlotRestriction(
@@ -517,7 +518,17 @@ public class MongoDbBackfillReader {
         long offsetInCurrentPartition,
         String lastSeenIdJson,
         boolean done) {
+      this(partitionIndexInSlot, Integer.MAX_VALUE, offsetInCurrentPartition, lastSeenIdJson, done);
+    }
+
+    public BackfillSlotRestriction(
+        int partitionIndexInSlot,
+        int endPartitionIndexInSlot,
+        long offsetInCurrentPartition,
+        String lastSeenIdJson,
+        boolean done) {
       this.partitionIndexInSlot = partitionIndexInSlot;
+      this.endPartitionIndexInSlot = endPartitionIndexInSlot;
       this.offsetInCurrentPartition = offsetInCurrentPartition;
       this.lastSeenIdJson = lastSeenIdJson;
       this.done = done;
@@ -525,6 +536,10 @@ public class MongoDbBackfillReader {
 
     public int getPartitionIndexInSlot() {
       return partitionIndexInSlot;
+    }
+
+    public int getEndPartitionIndexInSlot() {
+      return endPartitionIndexInSlot;
     }
 
     public long getOffsetInCurrentPartition() {
@@ -561,6 +576,7 @@ public class MongoDbBackfillReader {
       }
       BackfillSlotRestriction that = (BackfillSlotRestriction) o;
       return partitionIndexInSlot == that.partitionIndexInSlot
+          && endPartitionIndexInSlot == that.endPartitionIndexInSlot
           && offsetInCurrentPartition == that.offsetInCurrentPartition
           && done == that.done
           && Objects.equals(lastSeenIdJson, that.lastSeenIdJson);
@@ -568,13 +584,19 @@ public class MongoDbBackfillReader {
 
     @Override
     public int hashCode() {
-      return Objects.hash(partitionIndexInSlot, offsetInCurrentPartition, lastSeenIdJson, done);
+      return Objects.hash(
+          partitionIndexInSlot,
+          endPartitionIndexInSlot,
+          offsetInCurrentPartition,
+          lastSeenIdJson,
+          done);
     }
 
     @Override
     public String toString() {
       return "BackfillSlotRestriction{partIdx="
           + partitionIndexInSlot
+          + (endPartitionIndexInSlot < Integer.MAX_VALUE ? "/" + endPartitionIndexInSlot : "")
           + ", offset="
           + offsetInCurrentPartition
           + ", lastId="
@@ -619,18 +641,44 @@ public class MongoDbBackfillReader {
     @Override
     public synchronized @Nullable SplitResult<BackfillSlotRestriction> trySplit(
         double fractionOfRemainder) {
+      if (shouldStop || currentRestriction == null || currentRestriction.isDone()) {
+        return null;
+      }
       if (fractionOfRemainder == 0.0) {
-        if (shouldStop || (currentRestriction != null && currentRestriction.isDone())) {
-          return null;
-        }
         shouldStop = true;
         return SplitResult.of(
             currentRestriction,
             new BackfillSlotRestriction(
                 currentRestriction.getPartitionIndexInSlot(),
+                currentRestriction.getEndPartitionIndexInSlot(),
                 currentRestriction.getOffsetInCurrentPartition(),
                 currentRestriction.getLastSeenIdJson(),
                 currentRestriction.isDone()));
+      }
+      int curPart = currentRestriction.getPartitionIndexInSlot();
+      int endPart = currentRestriction.getEndPartitionIndexInSlot();
+      int remainingWholePartitions = endPart - (curPart + 1);
+      if (endPart < Integer.MAX_VALUE && remainingWholePartitions >= 1) {
+        int splitOffset =
+            Math.max(
+                1,
+                Math.min(
+                    remainingWholePartitions,
+                    (int) Math.round(remainingWholePartitions * fractionOfRemainder)));
+        int splitPartIdx = curPart + splitOffset;
+        if (splitPartIdx > curPart && splitPartIdx < endPart) {
+          BackfillSlotRestriction primary =
+              new BackfillSlotRestriction(
+                  curPart,
+                  splitPartIdx,
+                  currentRestriction.getOffsetInCurrentPartition(),
+                  currentRestriction.getLastSeenIdJson(),
+                  false);
+          BackfillSlotRestriction residual =
+              new BackfillSlotRestriction(splitPartIdx, endPart, 0L, null, false);
+          this.currentRestriction = primary;
+          return SplitResult.of(primary, residual);
+        }
       }
       return null;
     }
@@ -655,13 +703,16 @@ public class MongoDbBackfillReader {
    * Splittable DoFn executing sequential backfill partitions assigned to a concurrency slot. Caps
    * maximum active cursors against MongoDB to the total number of slots cluster-wide.
    */
+  @DoFn.BoundedPerElement
   public static class ProcessBackfillSlotFn extends DoFn<BackfillSlotTask, DocumentWithMetadata> {
 
-    public static final int MAX_DOCS_PER_SLICE = 2000;
+    public static final int MAX_DOCS_PER_SLICE = 25000;
     public static final long MAX_SLICE_DURATION_MS = 10000L;
     public static final long CURSOR_EXPIRATION_TIMEOUT_MS = 300_000L;
 
     private final SerializableFunction<String, MongoClient> clientFactory;
+    private final int cursorBatchSize;
+    private final int maxDocsPerSlice;
 
     private transient ConcurrentHashMap<String, MongoClient> clientCache;
     private transient ConcurrentHashMap<String, PartitionCursorHolder> cursorCache;
@@ -676,16 +727,30 @@ public class MongoDbBackfillReader {
         Metrics.counter(MongoDbBackfillReader.class, "backfillReadErrors");
 
     public ProcessBackfillSlotFn() {
-      this(MongoDbTransforms::getOrCreateMongoClient);
+      this(
+          MongoDbTransforms::getOrCreateMongoClient, DEFAULT_CURSOR_BATCH_SIZE, MAX_DOCS_PER_SLICE);
     }
 
     public ProcessBackfillSlotFn(SerializableFunction<String, MongoClient> clientFactory) {
+      this(clientFactory, DEFAULT_CURSOR_BATCH_SIZE, MAX_DOCS_PER_SLICE);
+    }
+
+    public ProcessBackfillSlotFn(
+        SerializableFunction<String, MongoClient> clientFactory,
+        int cursorBatchSize,
+        int maxDocsPerSlice) {
       this.clientFactory = clientFactory;
+      this.cursorBatchSize = cursorBatchSize > 0 ? cursorBatchSize : DEFAULT_CURSOR_BATCH_SIZE;
+      this.maxDocsPerSlice = maxDocsPerSlice > 0 ? maxDocsPerSlice : MAX_DOCS_PER_SLICE;
     }
 
     @GetInitialRestriction
     public BackfillSlotRestriction getInitialRestriction(@Element BackfillSlotTask slotTask) {
-      return new BackfillSlotRestriction(0, 0L, null, false);
+      int endIdx =
+          (slotTask != null && slotTask.getPartitions() != null)
+              ? slotTask.getPartitions().size()
+              : Integer.MAX_VALUE;
+      return new BackfillSlotRestriction(0, endIdx, 0L, null, false);
     }
 
     @NewTracker
@@ -724,8 +789,12 @@ public class MongoDbBackfillReader {
       }
 
       int partitionIdx = currentRestriction.getPartitionIndexInSlot();
-      if (partitionIdx >= partitions.size()) {
-        tracker.tryClaim(new BackfillSlotRestriction(partitionIdx, 0L, null, true));
+      int endPartitionIdx =
+          Math.min(partitions.size(), currentRestriction.getEndPartitionIndexInSlot());
+      if (partitionIdx >= endPartitionIdx) {
+        tracker.tryClaim(
+            new BackfillSlotRestriction(
+                partitionIdx, currentRestriction.getEndPartitionIndexInSlot(), 0L, null, true));
         return ProcessContinuation.stop();
       }
 
@@ -780,7 +849,7 @@ public class MongoDbBackfillReader {
               collection
                   .find(queryFilter)
                   .sort(new BsonDocument("_id", new BsonInt32(1)))
-                  .batchSize(DEFAULT_CURSOR_BATCH_SIZE);
+                  .batchSize(cursorBatchSize);
 
           MongoCursor<Document> cursor = findIterable.iterator();
           cursorHolder = new PartitionCursorHolder(cursor, currentLastSeenIdJson);
@@ -805,7 +874,7 @@ public class MongoDbBackfillReader {
 
       try {
         MongoCursor<Document> cursor = cursorHolder.getCursor();
-        while (docsInSlice < MAX_DOCS_PER_SLICE
+        while (docsInSlice < maxDocsPerSlice
             && (System.currentTimeMillis() - sliceStartTime) < MAX_SLICE_DURATION_MS) {
           if (!cursor.hasNext()) {
             // Reached EOF for this partition
@@ -824,23 +893,40 @@ public class MongoDbBackfillReader {
                 currentOffset + docsInSlice);
 
             int nextPartitionIdx = partitionIdx + 1;
-            if (nextPartitionIdx < partitions.size()) {
-              tracker.tryClaim(new BackfillSlotRestriction(nextPartitionIdx, 0L, null, false));
+            int currentEndIdx =
+                Math.min(
+                    partitions.size(), tracker.currentRestriction().getEndPartitionIndexInSlot());
+            if (nextPartitionIdx < currentEndIdx) {
+              tracker.tryClaim(
+                  new BackfillSlotRestriction(
+                      nextPartitionIdx,
+                      tracker.currentRestriction().getEndPartitionIndexInSlot(),
+                      0L,
+                      null,
+                      false));
               return ProcessContinuation.resume();
             } else {
-              tracker.tryClaim(new BackfillSlotRestriction(nextPartitionIdx, 0L, null, true));
+              tracker.tryClaim(
+                  new BackfillSlotRestriction(
+                      nextPartitionIdx,
+                      tracker.currentRestriction().getEndPartitionIndexInSlot(),
+                      0L,
+                      null,
+                      true));
               return ProcessContinuation.stop();
             }
           }
 
           Document doc = cursor.next();
-          BsonValue docId = doc.toBsonDocument().get("_id");
-          String nextIdJson =
-              docId != null ? new BsonDocument("_id", docId).toJson(CANONICAL_JSON_SETTINGS) : null;
+          String nextIdJson = DocumentWithMetadata.serializeIdDocument(doc.get("_id"));
 
           if (!tracker.tryClaim(
               new BackfillSlotRestriction(
-                  partitionIdx, currentOffset + docsInSlice + 1, nextIdJson, false))) {
+                  partitionIdx,
+                  tracker.currentRestriction().getEndPartitionIndexInSlot(),
+                  currentOffset + docsInSlice + 1,
+                  nextIdJson,
+                  false))) {
             closeCursorForPartition(partitionKey);
             return ProcessContinuation.stop();
           }
@@ -929,10 +1015,7 @@ public class MongoDbBackfillReader {
       }
       if (clientCache != null) {
         for (MongoClient client : clientCache.values()) {
-          try {
-            client.close();
-          } catch (Exception ignored) {
-          }
+          MongoDbTransforms.closeIfNotShared(client);
         }
         clientCache.clear();
       }
@@ -949,29 +1032,76 @@ public class MongoDbBackfillReader {
 
     private final List<BackfillPartition> partitions;
     private final int maxConcurrentReads;
+    private final int cursorBatchSize;
+    private final int maxDocsPerSlice;
     private final SerializableFunction<String, MongoClient> clientFactory;
 
     public ReadPartitions(List<BackfillPartition> partitions) {
-      this(partitions, DEFAULT_MAX_CONCURRENT_READS, MongoDbTransforms::getOrCreateMongoClient);
+      this(
+          partitions,
+          DEFAULT_MAX_CONCURRENT_READS,
+          DEFAULT_CURSOR_BATCH_SIZE,
+          ProcessBackfillSlotFn.MAX_DOCS_PER_SLICE,
+          MongoDbTransforms::getOrCreateMongoClient);
     }
 
     public ReadPartitions(List<BackfillPartition> partitions, int maxConcurrentReads) {
-      this(partitions, maxConcurrentReads, MongoDbTransforms::getOrCreateMongoClient);
+      this(
+          partitions,
+          maxConcurrentReads,
+          DEFAULT_CURSOR_BATCH_SIZE,
+          ProcessBackfillSlotFn.MAX_DOCS_PER_SLICE,
+          MongoDbTransforms::getOrCreateMongoClient);
+    }
+
+    public ReadPartitions(
+        List<BackfillPartition> partitions,
+        int maxConcurrentReads,
+        int cursorBatchSize,
+        int maxDocsPerSlice) {
+      this(
+          partitions,
+          maxConcurrentReads,
+          cursorBatchSize,
+          maxDocsPerSlice,
+          MongoDbTransforms::getOrCreateMongoClient);
     }
 
     public ReadPartitions(
         List<BackfillPartition> partitions,
         SerializableFunction<String, MongoClient> clientFactory) {
-      this(partitions, DEFAULT_MAX_CONCURRENT_READS, clientFactory);
+      this(
+          partitions,
+          DEFAULT_MAX_CONCURRENT_READS,
+          DEFAULT_CURSOR_BATCH_SIZE,
+          ProcessBackfillSlotFn.MAX_DOCS_PER_SLICE,
+          clientFactory);
     }
 
     public ReadPartitions(
         List<BackfillPartition> partitions,
         int maxConcurrentReads,
         SerializableFunction<String, MongoClient> clientFactory) {
+      this(
+          partitions,
+          maxConcurrentReads,
+          DEFAULT_CURSOR_BATCH_SIZE,
+          ProcessBackfillSlotFn.MAX_DOCS_PER_SLICE,
+          clientFactory);
+    }
+
+    public ReadPartitions(
+        List<BackfillPartition> partitions,
+        int maxConcurrentReads,
+        int cursorBatchSize,
+        int maxDocsPerSlice,
+        SerializableFunction<String, MongoClient> clientFactory) {
       this.partitions = partitions;
       this.maxConcurrentReads =
           maxConcurrentReads > 0 ? maxConcurrentReads : DEFAULT_MAX_CONCURRENT_READS;
+      this.cursorBatchSize = cursorBatchSize > 0 ? cursorBatchSize : DEFAULT_CURSOR_BATCH_SIZE;
+      this.maxDocsPerSlice =
+          maxDocsPerSlice > 0 ? maxDocsPerSlice : ProcessBackfillSlotFn.MAX_DOCS_PER_SLICE;
       this.clientFactory = clientFactory;
     }
 
@@ -983,7 +1113,10 @@ public class MongoDbBackfillReader {
                 "EmptyBackfillSlotTasks",
                 Create.empty(SerializableCoder.of(BackfillSlotTask.class)))
             .apply("ReshuffleBackfillEmptySlotTasks", Reshuffle.viaRandomKey())
-            .apply("ProcessEmptyBackfillSlot", ParDo.of(new ProcessBackfillSlotFn(clientFactory)))
+            .apply(
+                "ProcessEmptyBackfillSlot",
+                ParDo.of(
+                    new ProcessBackfillSlotFn(clientFactory, cursorBatchSize, maxDocsPerSlice)))
             .setCoder(DocumentWithMetadataCoder.of());
       }
 
@@ -995,7 +1128,9 @@ public class MongoDbBackfillReader {
               "CreateBackfillSlotTasks",
               Create.of(slotTasks).withCoder(SerializableCoder.of(BackfillSlotTask.class)))
           .apply("ReshuffleBackfillSlotTasks", Reshuffle.viaRandomKey())
-          .apply("ReadBackfillSlotTasks", ParDo.of(new ProcessBackfillSlotFn(clientFactory)))
+          .apply(
+              "ReadBackfillSlotTasks",
+              ParDo.of(new ProcessBackfillSlotFn(clientFactory, cursorBatchSize, maxDocsPerSlice)))
           .setCoder(DocumentWithMetadataCoder.of());
     }
   }

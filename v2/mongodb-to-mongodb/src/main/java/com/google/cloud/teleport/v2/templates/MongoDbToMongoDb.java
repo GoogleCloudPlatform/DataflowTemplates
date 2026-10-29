@@ -191,8 +191,8 @@ public class MongoDbToMongoDb {
         optional = true,
         description = "Initial Write Rate Per Worker",
         helpText =
-            "Initial maximum documents/second written per worker thread during linear write rate"
-                + " ramp-up. Set to <= 0 to disable throttling.")
+            "Initial maximum documents/second written per worker JVM during write rate ramp-up."
+                + " Set to <= 0 to disable throttling.")
     @Default.Integer(5000)
     Integer getInitialWriteRatePerWorker();
 
@@ -203,8 +203,7 @@ public class MongoDbToMongoDb {
         groupName = "Target",
         optional = true,
         description = "Write Rate Ramp Up Minutes",
-        helpText =
-            "Number of minutes between linear rate limit increases during write rate ramp-up.")
+        helpText = "Duration in minutes for write rate ramp-up.")
     @Default.Integer(5)
     Integer getWriteRateRampUpMinutes();
 
@@ -216,7 +215,9 @@ public class MongoDbToMongoDb {
         optional = true,
         description = "Max Write Rate Per Worker",
         helpText =
-            "Maximum target documents/second per worker after completing ramp-up. Default is 25000.")
+            "Maximum target documents/second per worker after completing ramp-up. Set to <= 0 to"
+                + " warm up exponentially over writeRateRampUpMinutes and then run uncapped."
+                + " Default is 25000.")
     @Default.Integer(25000)
     Integer getMaxWriteRatePerWorker();
 
@@ -227,7 +228,7 @@ public class MongoDbToMongoDb {
         groupName = "Target",
         optional = true,
         description = "Write Rate Ramp Up Steps",
-        helpText = "Number of discrete linear step increases over the ramp-up period.")
+        helpText = "Number of discrete step increases over the ramp-up period.")
     @Default.Integer(5)
     Integer getWriteRateRampUpSteps();
 
@@ -281,17 +282,17 @@ public class MongoDbToMongoDb {
         order = 18,
         groupName = "Source",
         enumOptions = {
+          @TemplateParameter.TemplateEnumOption("BACKFILL"),
           @TemplateParameter.TemplateEnumOption("BACKFILL_AND_STREAMING"),
-          @TemplateParameter.TemplateEnumOption("STREAMING_CDC"),
-          @TemplateParameter.TemplateEnumOption("BACKFILL")
+          @TemplateParameter.TemplateEnumOption("STREAMING_CDC")
         },
         optional = true,
         description = "Migration Mode",
         helpText =
-            "Migration mode: 'BACKFILL_AND_STREAMING' (historical backfill and streaming CDC in"
-                + " parallel with stateful deduplication), 'STREAMING_CDC' (stream CDC only),"
-                + " or 'BACKFILL' (historical backfill only).")
-    @Default.String("BACKFILL_AND_STREAMING")
+            "Migration mode: 'BACKFILL' (historical backfill only), 'BACKFILL_AND_STREAMING'"
+                + " (historical backfill and streaming CDC in parallel with stateful"
+                + " deduplication), or 'STREAMING_CDC' (stream CDC only). Default is 'BACKFILL'.")
+    @Default.String("BACKFILL")
     String getMigrationMode();
 
     void setMigrationMode(String value);
@@ -416,9 +417,9 @@ public class MongoDbToMongoDb {
         description = "Deduplication State Retention (hours)",
         helpText =
             "How long per-document deduplication state is retained after the most recent accepted"
-                + " event, in hours. Only applies when both backfill and change streams are"
-                + " enabled. Defaults to 0, meaning state is kept for the life of the job; this is"
-                + " recommended. Per-document state is only about a hundred bytes, so bounding it"
+                + " event, in hours. Only applies when change streams are enabled. Defaults to 0,"
+                + " meaning state is kept for the life of the job; this is recommended."
+                + " Per-document state is only about a hundred bytes, so bounding it"
                 + " saves little, and if state expires while backfill is still running then a"
                 + " stale backfill record for that document is treated as unseen and re-applied"
                 + " over newer change stream data. Only set this if deduplication state size is a"
@@ -428,6 +429,35 @@ public class MongoDbToMongoDb {
     Integer getDedupStateRetentionHours();
 
     void setDedupStateRetentionHours(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 28,
+        groupName = "Source",
+        optional = true,
+        description = "Backfill Cursor Batch Size",
+        helpText =
+            "Number of documents fetched per MongoDB cursor getMore network round-trip during"
+                + " historical backfill. Tune based on average document size (e.g. 5000 for 1-10"
+                + " KiB docs, 500 for 250 KiB docs). Default is 5000.")
+    @Default.Integer(5000)
+    Integer getBackfillCursorBatchSize();
+
+    void setBackfillCursorBatchSize(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 29,
+        groupName = "Source",
+        optional = true,
+        description = "Backfill Max Documents Per Slice",
+        helpText =
+            "Maximum number of documents emitted per Splittable DoFn continuation slice before"
+                + " checkpointing progress to Windmill. Tune based on document size and target"
+                + " chunk size (e.g. 25000-50000 for 1 KiB docs, 1000-2000 for 250 KiB docs)."
+                + " Default is 25000.")
+    @Default.Integer(25000)
+    Integer getBackfillMaxDocsPerSlice();
+
+    void setBackfillMaxDocsPerSlice(Integer value);
   }
 
   /**
@@ -458,6 +488,12 @@ public class MongoDbToMongoDb {
             dtpe);
       }
     }
+    if (sec <= 0 || sec > Integer.MAX_VALUE) {
+      throw new IllegalArgumentException(
+          "startAtOperationTime epoch seconds out of valid 32-bit range: '"
+              + value
+              + "'. Expected positive epoch seconds (e.g. 1789041600, not milliseconds).");
+    }
     return new BsonTimestamp((int) sec, 0);
   }
 
@@ -469,7 +505,20 @@ public class MongoDbToMongoDb {
   public static void run(Options options) {
     String migrationMode = options.getMigrationMode();
     if (migrationMode == null || migrationMode.isEmpty()) {
-      migrationMode = "BACKFILL_AND_STREAMING";
+      migrationMode = "BACKFILL";
+    }
+    // ProcessBackfillSlotFn is annotated with @DoFn.BoundedPerElement so DirectRunner integration
+    // and unit tests can execute BACKFILL pipelines in bounded mode and terminate cleanly.
+    // On DataflowRunner, however, a purely bounded PCollection graph defaults to Legacy Batch
+    // execution (ignoring enableStreamingEngine=true), which replaces GroupIntoBatches with a
+    // full-dataset disk-shuffle barrier (BatchGroupIntoBatches) and skews shard keys across a
+    // subset of workers. Explicitly enabling streaming mode on DataflowRunner forces execution
+    // onto Dataflow Streaming Engine (Windmill) so reads and batched writes pipeline concurrently
+    // across all workers while still auto-terminating in JOB_STATE_DONE once bounded backfill
+    // restrictions complete.
+    if (options.getRunner() != null && options.getRunner().getSimpleName().contains("Dataflow")) {
+      options.setStreaming(true);
+      options.as(DataflowPipelineOptions.class).setEnableStreamingEngine(true);
     }
 
     Pipeline pipeline = Pipeline.create(options);
@@ -503,16 +552,7 @@ public class MongoDbToMongoDb {
       }
     }
 
-    String stagingLocation = options.as(DataflowPipelineOptions.class).getStagingLocation();
-    String tmpDirectory = options.getTempLocation();
-    if (tmpDirectory == null || tmpDirectory.isEmpty()) {
-      if (stagingLocation != null && !stagingLocation.isEmpty()) {
-        tmpDirectory =
-            stagingLocation.endsWith("/") ? stagingLocation + "tmp" : stagingLocation + "/tmp";
-      } else {
-        tmpDirectory = "/tmp";
-      }
-    }
+    String tmpDirectory = resolveTempDirectory(options);
 
     String dlqDirectory = options.getDlqDirectory();
     if (dlqDirectory == null || dlqDirectory.isEmpty()) {
@@ -537,13 +577,26 @@ public class MongoDbToMongoDb {
         options.getMaxConcurrentAsyncWrites(),
         options.getMaxWriteRetries(),
         options.getDlqMaxRetries());
-    LOG.info(
-        "  Write Rate Limiting:     linear ramp-up from {} to {} docs/s/worker over {} mins in"
-            + " {} steps",
-        options.getInitialWriteRatePerWorker(),
-        options.getMaxWriteRatePerWorker(),
-        options.getWriteRateRampUpMinutes(),
-        options.getWriteRateRampUpSteps());
+    if (options.getInitialWriteRatePerWorker() != null
+        && options.getInitialWriteRatePerWorker() <= 0) {
+      LOG.info("  Write Rate Limiting:     disabled (initialWriteRatePerWorker <= 0)");
+    } else if (options.getMaxWriteRatePerWorker() != null
+        && options.getMaxWriteRatePerWorker() <= 0) {
+      LOG.info(
+          "  Write Rate Limiting:     uncapped exponential warm-up from {} docs/s/worker over {}"
+              + " mins in {} steps, then uncapped",
+          options.getInitialWriteRatePerWorker(),
+          options.getWriteRateRampUpMinutes(),
+          options.getWriteRateRampUpSteps());
+    } else {
+      LOG.info(
+          "  Write Rate Limiting:     linear ramp-up from {} to {} docs/s/worker over {} mins in"
+              + " {} steps",
+          options.getInitialWriteRatePerWorker(),
+          options.getMaxWriteRatePerWorker(),
+          options.getWriteRateRampUpMinutes(),
+          options.getWriteRateRampUpSteps());
+    }
     boolean includeBackfill =
         "BACKFILL_AND_STREAMING".equalsIgnoreCase(migrationMode)
             || "BACKFILL".equalsIgnoreCase(migrationMode);
@@ -560,6 +613,8 @@ public class MongoDbToMongoDb {
       LOG.info("  Backfill Chunk Size:     {}", options.getTargetBackfillChunkSize());
       LOG.info("  Max Backfill Splits:     {}", options.getMaxBackfillSplits());
       LOG.info("  Max Concurrent Reads:    {}", options.getMaxConcurrentBackfillReads());
+      LOG.info("  Cursor Batch Size:       {}", options.getBackfillCursorBatchSize());
+      LOG.info("  Max Docs Per Slice:      {}", options.getBackfillMaxDocsPerSlice());
     }
     LOG.info("  DLQ Base Directory:      {}", baseDlqPath + timestampPath);
     LOG.info("  DLQ Retryable Directory: {}", retryableDlqPath);
@@ -741,12 +796,20 @@ public class MongoDbToMongoDb {
             options.getMaxConcurrentBackfillReads() != null
                 ? options.getMaxConcurrentBackfillReads()
                 : MongoDbBackfillReader.ReadPartitions.DEFAULT_MAX_CONCURRENT_READS;
+        int cursorBatchSize =
+            options.getBackfillCursorBatchSize() != null
+                ? options.getBackfillCursorBatchSize()
+                : MongoDbBackfillReader.DEFAULT_CURSOR_BATCH_SIZE;
+        int maxDocsPerSlice =
+            options.getBackfillMaxDocsPerSlice() != null
+                ? options.getBackfillMaxDocsPerSlice()
+                : MongoDbBackfillReader.ProcessBackfillSlotFn.MAX_DOCS_PER_SLICE;
         PCollection<DocumentWithMetadata> backfillDocs =
             pipeline
                 .apply(
                     "ReadBackfill",
                     new MongoDbBackfillReader.ReadPartitions(
-                        backfillPartitions, maxConcurrentReads))
+                        backfillPartitions, maxConcurrentReads, cursorBatchSize, maxDocsPerSlice))
                 .setCoder(DocumentWithMetadataCoder.of());
         allStreams.add(backfillDocs);
       }
@@ -772,11 +835,7 @@ public class MongoDbToMongoDb {
           documents.apply(
               "ProcessDocuments",
               new ProcessDocuments(
-                  options,
-                  retryableDlqPath,
-                  permanentDlqPath,
-                  tmpDirectory,
-                  includeBackfill && includeCdc));
+                  options, retryableDlqPath, permanentDlqPath, tmpDirectory, includeCdc));
 
       validDocs.apply(
           "WriteDocuments",
@@ -784,6 +843,23 @@ public class MongoDbToMongoDb {
     }
 
     pipeline.run();
+  }
+
+  private static String resolveTempDirectory(Options options) {
+    String tmpDirectory = options.getTempLocation();
+    if (tmpDirectory != null && !tmpDirectory.isEmpty()) {
+      return tmpDirectory;
+    }
+    String stagingLocation = null;
+    try {
+      stagingLocation = options.as(DataflowPipelineOptions.class).getStagingLocation();
+    } catch (Exception ignored) {
+      // Non-Dataflow runners (e.g. DirectRunner) may reject DataflowPipelineOptions projection.
+    }
+    if (stagingLocation != null && !stagingLocation.isEmpty()) {
+      return stagingLocation.endsWith("/") ? stagingLocation + "tmp" : stagingLocation + "/tmp";
+    }
+    return "/tmp";
   }
 
   /**
@@ -820,9 +896,9 @@ public class MongoDbToMongoDb {
     public PCollection<DocumentWithMetadata> expand(PCollection<DocumentWithMetadata> input) {
       PCollection<DocumentWithMetadata> documents = input;
 
-      // Stateful Deduplication Stage: Only needed when reconciling historical backfill records
-      // with concurrent live CDC mutations. In pure STREAMING_CDC mode, change stream events
-      // for any given document are already strictly ordered and sequential from the oplog.
+      // Stateful Deduplication Stage: Required whenever CDC mutations are processed (standalone
+      // or combined with backfill) to enforce strict monotonic event ordering and drop stale
+      // out-of-order mutations per document key across change streams and retries.
       if (requiresDeduplication) {
         Integer retentionHours = options.getDedupStateRetentionHours();
         Duration dedupStateRetention =
@@ -852,7 +928,8 @@ public class MongoDbToMongoDb {
         udfProcessed
             .get(udfFailureTag)
             .apply(
-                "WriteToDlq_UDF", new WriteToDlq(retryableDlqPath, permanentDlqPath, tmpDirectory));
+                "WriteToDlq_UDF",
+                new WriteToDlq("udf", retryableDlqPath, permanentDlqPath, tmpDirectory));
 
         documents = udfProcessed.get(udfSuccessTag).setCoder(DocumentWithMetadataCoder.of());
       }
@@ -872,7 +949,7 @@ public class MongoDbToMongoDb {
           .get(failureTag)
           .apply(
               "WriteToDlq_Validate",
-              new WriteToDlq(retryableDlqPath, permanentDlqPath, tmpDirectory));
+              new WriteToDlq("validate", retryableDlqPath, permanentDlqPath, tmpDirectory));
 
       return processed.get(successTag).setCoder(DocumentWithMetadataCoder.of());
     }
@@ -928,7 +1005,8 @@ public class MongoDbToMongoDb {
                           : DEFAULT_WRITE_RATE_RAMP_UP_STEPS));
 
       writeFailures.apply(
-          "WriteToDlq_Write", new WriteToDlq(retryableDlqPath, permanentDlqPath, tmpDirectory));
+          "WriteToDlq_Write",
+          new WriteToDlq("write", retryableDlqPath, permanentDlqPath, tmpDirectory));
 
       return PDone.in(validDocs.getPipeline());
     }
