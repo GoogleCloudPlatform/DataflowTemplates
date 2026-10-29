@@ -213,6 +213,24 @@ public class OracleDataWriterTest {
   }
 
   @Test
+  public void testBuildSql_withLowercaseNamespace_normalizesToUppercase() {
+    String upsertSql = OracleDataWriter.buildUpsertSql(simpleTable(), " c##datastream ");
+    assertThat(upsertSql).startsWith("MERGE INTO \"C##DATASTREAM\".\"users\" t USING");
+
+    String deleteSql = OracleDataWriter.buildDeleteSql(simpleTable(), " c##datastream ");
+    assertThat(deleteSql).isEqualTo("DELETE FROM \"C##DATASTREAM\".\"users\" WHERE \"id\" = ?");
+  }
+
+  @Test
+  public void testBuildSql_withQuotedNamespace_preservesCase() {
+    String upsertSql = OracleDataWriter.buildUpsertSql(simpleTable(), " \"customSchema\" ");
+    assertThat(upsertSql).startsWith("MERGE INTO \"customSchema\".\"users\" t USING");
+
+    String deleteSql = OracleDataWriter.buildDeleteSql(simpleTable(), " \"customSchema\" ");
+    assertThat(deleteSql).isEqualTo("DELETE FROM \"customSchema\".\"users\" WHERE \"id\" = ?");
+  }
+
+  @Test
   public void testBuildUpsertSql_multiPk() {
     DataGeneratorTable table =
         simpleTable().toBuilder().primaryKeys(ImmutableList.of("id", "name")).build();

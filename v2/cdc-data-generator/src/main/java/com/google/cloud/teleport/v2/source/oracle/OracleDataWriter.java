@@ -35,6 +35,7 @@ import java.sql.Types;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.apache.beam.sdk.values.Row;
 import org.joda.time.ReadableInstant;
@@ -320,7 +321,12 @@ public class OracleDataWriter implements DataWriter {
 
   private static String qualifiedTableName(DataGeneratorTable table, String namespace) {
     if (namespace != null && !namespace.isBlank()) {
-      return quote(namespace.trim()) + "." + quote(table.name());
+      String trimmed = namespace.trim();
+      String normalized =
+          (trimmed.length() >= 2 && trimmed.startsWith("\"") && trimmed.endsWith("\""))
+              ? trimmed.substring(1, trimmed.length() - 1)
+              : trimmed.toUpperCase(Locale.ROOT);
+      return quote(normalized) + "." + quote(table.name());
     }
     return quote(table.name());
   }
