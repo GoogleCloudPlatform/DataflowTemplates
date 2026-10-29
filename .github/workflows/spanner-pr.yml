@@ -166,6 +166,9 @@ jobs:
       id: setup-env
       uses: ./.github/actions/setup-env
     - name: Run Integration Smoke Tests
+      env:
+        # Bulk/Reverse ITs share one MySQL/PostgreSQL/Cassandra container per template.
+        SHARED_TEST_CONTAINERS: 'true'
       run: |
         ./cicd/run-it-smoke-tests \
         --modules-to-build="SPANNER" \
@@ -214,6 +217,8 @@ jobs:
     - name: Run Integration Tests
       env:
         SPECIFIC_TEST: ${{ github.event.inputs.specific_test }}
+        # Bulk/Reverse ITs share one MySQL/PostgreSQL/Cassandra container per template.
+        SHARED_TEST_CONTAINERS: 'true'
       run: |
         ./cicd/run-it-tests \
         --modules-to-build="SPANNER" \
