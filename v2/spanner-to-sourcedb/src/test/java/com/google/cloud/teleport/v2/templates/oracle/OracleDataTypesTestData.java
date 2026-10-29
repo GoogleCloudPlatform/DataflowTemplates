@@ -15,24 +15,51 @@
  */
 package com.google.cloud.teleport.v2.templates.oracle;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.cloud.ByteArray;
+import com.google.cloud.Date;
+import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.Mutation;
+import com.google.cloud.spanner.Value;
+import com.google.cloud.teleport.v2.spanner.oracleutils.SpannerOracleResourceManager;
+import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
+import org.apache.beam.it.conditions.ConditionCheck;
+import org.apache.beam.it.gcp.artifacts.Artifact;
+import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * Test data for {@link SpannerToOracleDataTypesIT} (GoogleSQL) and {@link
- * SpannerToOracleDataTypesPGDialectIT} (PostgreSQL dialect), derived from the Oracle data type
- * mapping matrix.
+ * Shared test data and execution/validation helpers for {@link SpannerToOracleDataTypesIT}
+ * (GoogleSQL) and {@link SpannerToOracleDataTypesPGDialectIT} (PostgreSQL dialect), derived from
+ * the Oracle data type mapping matrix.
  *
  * <p>Each {@link TypeTable} tests one Oracle column type mapping: its rows are written to Spanner
  * with the table's Spanner type and the replicated Oracle values are asserted. Value lists are
  * shared between tables (and dialects) through the {@code *_VALUES} constants. Non-key tables use
  * ids {@code 1..n} and every table has a single data column, named after the table with the {@code
  * _table} suffix replaced by {@code _col} (e.g. {@code char_col} in {@code char_table}). {@link
- * UnsupportedTable}s cover Oracle types the reverse generator cannot write: only the row count is
- * checked.
+ * UnsupportedTable}s cover scenario D types (Datastream-unsupported Oracle types) for which only
+ * row-count consistency is checked. Tables listed in the dialect test's {@code KNOWN_MISMATCHES}
+ * map are skipped when writing, waiting, and validating so that unsupported or known-broken
+ * mappings do not cause continuous DLQ retry loops during pipeline execution.
  *
  * <p>Types that are not tested:
  *
@@ -56,13 +83,13 @@ import java.util.List;
  *   <li><b>REF CURSOR</b> (scenario D): PL/SQL-only type; cannot be a table column.
  *   <li><b>ASSOCIATIVE ARRAY</b> (scenario D): PL/SQL-only type; cannot be a table column.
  *   <li><b>JSON</b>: Native JSON column type: excluded from these tests for now.
- *   <li><b>CLOB / NCLOB alternatives</b> (scenario B): The matrix lists no Spanner PostgreSQL
- *       alternative for CLOB/NCLOB.
  *   <li><b>RAW -&gt; BYTEA(length)</b> (scenario B): Spanner PostgreSQL has no length-limited
  *       BYTEA; the matrix lists only VARCHAR (Base64).
  * </ul>
  */
 final class OracleDataTypesTestData {
+
+  private static final Logger LOG = LoggerFactory.getLogger(OracleDataTypesTestData.class);
 
   private OracleDataTypesTestData() {}
 
@@ -624,10 +651,7 @@ final class OracleDataTypesTestData {
           same("3q2+7w=="),
           same("AA=="));
 
-  /**
-   * The empty string is written as '', which Oracle stores as NULL. The matrix lists no Spanner
-   * PostgreSQL alternative for CLOB.
-   */
+  /** The empty string is written as '', which Oracle stores as NULL. */
   private static final List<Row> CLOB_VALUES =
       List.of(
           row("", null),
@@ -1308,6 +1332,12 @@ final class OracleDataTypesTestData {
             "numeric",
             FLOAT,
             BINARY_FLOAT_TO_NUMERIC_VALUES_2),
+        table(
+            "binary_float_to_bigint_table",
+            "BINARY_FLOAT",
+            "bigint",
+            FLOAT,
+            BINARY_FLOAT_TO_INT64_VALUES),
         table("binary_double_table", "BINARY_DOUBLE", "float8", DOUBLE, BINARY_DOUBLE_VALUES),
         table(
             "binary_double_to_varchar_table",
@@ -1321,6 +1351,12 @@ final class OracleDataTypesTestData {
             "numeric",
             DOUBLE,
             BINARY_DOUBLE_TO_NUMERIC_VALUES_2),
+        table(
+            "binary_double_to_bigint_table",
+            "BINARY_DOUBLE",
+            "bigint",
+            DOUBLE,
+            BINARY_FLOAT_TO_INT64_VALUES),
         table("integer_table", "INTEGER", "bigint", NUMBER, NUMBER_TO_INT64_VALUES),
         table(
             "integer_to_numeric_table", "INTEGER", "numeric", NUMBER, INTEGER_TO_NUMERIC_VALUES_2),
@@ -1430,7 +1466,9 @@ final class OracleDataTypesTestData {
         table("blob_table", "BLOB", "bytea", BYTES, BLOB_VALUES),
         table("blob_to_varchar_table", "BLOB", "varchar", BYTES, BLOB_VALUES),
         table("clob_table", "CLOB", "varchar", STRING, CLOB_VALUES),
-        table("nclob_table", "NCLOB", "varchar", STRING, CLOB_VALUES));
+        table("clob_to_bytea_table", "CLOB", "bytea", STRING, CLOB_TO_BYTES_VALUES),
+        table("nclob_table", "NCLOB", "varchar", STRING, CLOB_VALUES),
+        table("nclob_to_bytea_table", "NCLOB", "bytea", STRING, CLOB_TO_BYTES_VALUES));
   }
 
   /** Unsupported-type tables of {@link SpannerToOracleDataTypesPGDialectIT}. */
@@ -1549,5 +1587,437 @@ final class OracleDataTypesTestData {
 
   private static String base64(byte[] bytes) {
     return Base64.getEncoder().encodeToString(bytes);
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Shared IT execution and validation helpers
+  // ---------------------------------------------------------------------------------------------
+
+  /**
+   * Writes every row of every supported table (excluding {@code knownMismatchTables}) to Spanner
+   * with the table's Spanner column type. Tables in {@code knownMismatchTables} are skipped so they
+   * do not trigger continuous dead-letter queue retry loops during pipeline execution.
+   */
+  static void writeRowsInSpanner(
+      SpannerResourceManager spannerResourceManager,
+      List<TypeTable> tables,
+      List<UnsupportedTable> unsupportedTables,
+      Set<String> knownMismatchTables,
+      boolean postgres)
+      throws Exception {
+    for (TypeTable t : tables) {
+      if (knownMismatchTables.contains(t.table())) {
+        continue;
+      }
+      List<Mutation> mutations = new ArrayList<>();
+      for (int i = 0; i < t.rows().size(); i++) {
+        Mutation.WriteBuilder builder = Mutation.newInsertOrUpdateBuilder(t.table());
+        if (!t.pk()) {
+          builder.set("id").to((long) (i + 1));
+        }
+        builder
+            .set(t.column())
+            .to(toSpannerValue(t.spannerType(), t.rows().get(i).spanner(), postgres));
+        mutations.add(builder.build());
+      }
+      writeToSpanner(spannerResourceManager, t.table(), mutations);
+    }
+    for (UnsupportedTable t : unsupportedTables) {
+      if (knownMismatchTables.contains(t.table())) {
+        continue;
+      }
+      List<Mutation> mutations = new ArrayList<>();
+      for (int i = 0; i < t.values().size(); i++) {
+        mutations.add(
+            Mutation.newInsertOrUpdateBuilder(t.table())
+                .set("id")
+                .to((long) (i + 1))
+                .set(t.column())
+                .to(toSpannerValue(t.spannerType(), t.values().get(i), postgres))
+                .build());
+      }
+      writeToSpanner(spannerResourceManager, t.table(), mutations);
+    }
+    LOG.info("Wrote all rows to Spanner");
+  }
+
+  private static void writeToSpanner(
+      SpannerResourceManager spannerResourceManager, String table, List<Mutation> mutations)
+      throws Exception {
+    try {
+      spannerResourceManager.write(mutations);
+    } catch (Exception e) {
+      // A Spanner write failure is a test setup problem; report it with the table name.
+      throw new Exception("Failed to write rows to Spanner table " + table, e);
+    }
+  }
+
+  static ConditionCheck buildConditionCheck(
+      String oracleUsername,
+      List<TypeTable> tables,
+      List<UnsupportedTable> unsupportedTables,
+      Set<String> knownMismatchTables) {
+    Map<String, Integer> rowCounts = new LinkedHashMap<>();
+    tables.forEach(t -> rowCounts.put(t.table(), t.rows().size()));
+    unsupportedTables.forEach(t -> rowCounts.put(t.table(), t.values().size()));
+    ConditionCheck combined = null;
+    for (Map.Entry<String, Integer> entry : rowCounts.entrySet()) {
+      String table = entry.getKey();
+      int rows = entry.getValue();
+      if (knownMismatchTables.contains(table)) {
+        continue;
+      }
+      ConditionCheck c =
+          new ConditionCheck() {
+            @Override
+            protected String getDescription() {
+              return "Checking Oracle table " + table + " has " + rows + " rows";
+            }
+
+            @Override
+            protected CheckResult check() {
+              return new CheckResult(
+                  SharedOracleReverseITContainer.getRowCount(oracleUsername, quote(table)) >= rows);
+            }
+          };
+      combined = combined == null ? c : combined.and(c);
+    }
+    return combined;
+  }
+
+  /**
+   * Validates scenarios A, B and C: every expected row and value must be present in Oracle for
+   * tables not listed in {@code knownMismatches}.
+   */
+  static void validateSupportedTypes(
+      SpannerOracleResourceManager jdbcResourceManager,
+      String oracleUsername,
+      List<TypeTable> tables,
+      Map<String, String> knownMismatches,
+      List<String> failures)
+      throws Exception {
+    try (Connection conn =
+        DriverManager.getConnection(
+            jdbcResourceManager.getUri(),
+            oracleUsername,
+            SharedOracleReverseITContainer.ISOLATED_USER_PASSWORD)) {
+      for (TypeTable t : tables) {
+        String table = t.table();
+        if (knownMismatches.containsKey(table)) {
+          LOG.info(
+              "SKIPPED KNOWN MISMATCH ({}): {} [{} -> {}]",
+              knownMismatches.get(table),
+              table,
+              t.spannerType(),
+              t.sourceType());
+          continue;
+        }
+        boolean pk = t.pk();
+        Compare mode = t.compare();
+        String sql =
+            "SELECT " + (pk ? "" : "\"id\", ") + t.readExpr() + " AS v FROM " + quote(table);
+        List<String> tableFailures = new ArrayList<>();
+        Map<Long, Object> byId = new HashMap<>();
+        List<Object> pkValues = new ArrayList<>();
+        try (Statement st = conn.createStatement();
+            ResultSet rs = st.executeQuery(sql)) {
+          while (rs.next()) {
+            Object v = readValue(rs, mode);
+            LOG.info("ACTUAL {} {}={}", table, pk ? "pk" : "id=" + rs.getLong("id"), describe(v));
+            if (pk) {
+              pkValues.add(v);
+            } else {
+              byId.put(rs.getLong("id"), v);
+            }
+          }
+        } catch (Exception e) {
+          tableFailures.add("read failed: " + e.getMessage());
+        }
+        int expectedCount = t.rows().size();
+        int actualCount = pk ? pkValues.size() : byId.size();
+        if (actualCount != expectedCount) {
+          tableFailures.add(
+              String.format("expected %d rows but found %d", expectedCount, actualCount));
+        }
+        for (int i = 0; i < expectedCount; i++) {
+          String exp = t.rows().get(i).expected();
+          if (pk) {
+            Object match = null;
+            for (Object v : pkValues) {
+              if (matches(exp, v, mode)) {
+                match = v;
+                break;
+              }
+            }
+            if (match == null) {
+              tableFailures.add("missing pk value " + abbreviate(exp));
+            } else {
+              pkValues.remove(match);
+            }
+          } else {
+            long id = i + 1;
+            if (!byId.containsKey(id)) {
+              tableFailures.add("id=" + id + " missing (expected " + abbreviate(exp) + ")");
+            } else if (!matches(exp, byId.get(id), mode)) {
+              tableFailures.add(
+                  "id="
+                      + id
+                      + " expected "
+                      + abbreviate(exp)
+                      + " but was "
+                      + describe(byId.get(id)));
+            }
+          }
+        }
+        report(
+            table,
+            t.spannerType(),
+            t.sourceType(),
+            tableFailures,
+            knownMismatches,
+            failures,
+            actualCount);
+      }
+    }
+  }
+
+  private static void report(
+      String table,
+      String spannerType,
+      String sourceType,
+      List<String> tableFailures,
+      Map<String, String> knownMismatches,
+      List<String> failures,
+      int rows) {
+    if (knownMismatches.containsKey(table)) {
+      if (tableFailures.isEmpty()) {
+        failures.add(
+            table
+                + " ["
+                + spannerType
+                + " -> "
+                + sourceType
+                + "] is in KNOWN_MISMATCHES ("
+                + knownMismatches.get(table)
+                + ") but passed validation; remove it from KNOWN_MISMATCHES");
+      } else {
+        for (String f : tableFailures) {
+          LOG.warn(
+              "KNOWN MISMATCH (ignored: {}) {} [{} -> {}]: {}",
+              knownMismatches.get(table),
+              table,
+              spannerType,
+              sourceType,
+              f);
+        }
+      }
+      return;
+    }
+    for (String f : tableFailures) {
+      failures.add(table + " [" + spannerType + " -> " + sourceType + "]: " + f);
+    }
+    if (tableFailures.isEmpty()) {
+      LOG.info("PASS {} ({} rows)", table, rows);
+    }
+  }
+
+  /**
+   * Validates scenario D: for Datastream-unsupported Oracle types that the reverse generator can
+   * write (i.e. not listed in {@code knownMismatches}), every written row must reach Oracle
+   * (row-count consistency).
+   */
+  static void validateUnsupportedTypes(
+      String oracleUsername,
+      List<UnsupportedTable> unsupportedTables,
+      Map<String, String> knownMismatches,
+      List<String> failures) {
+    for (UnsupportedTable t : unsupportedTables) {
+      String table = t.table();
+      if (knownMismatches.containsKey(table)) {
+        LOG.info(
+            "SKIPPED KNOWN MISMATCH ({}): {} [{} -> {}]",
+            knownMismatches.get(table),
+            table,
+            t.spannerType(),
+            t.sourceType());
+        continue;
+      }
+      long expectedCount = t.values().size();
+      long actual;
+      try {
+        actual = SharedOracleReverseITContainer.getRowCount(oracleUsername, quote(table));
+      } catch (Exception e) {
+        failures.add(table + ": read failed: " + e.getMessage());
+        continue;
+      }
+      List<String> tableFailures = new ArrayList<>();
+      if (actual != expectedCount) {
+        tableFailures.add(
+            String.format(
+                "expected %d rows but found %d (unsupported type)", expectedCount, actual));
+      }
+      report(
+          table,
+          t.spannerType(),
+          t.sourceType(),
+          tableFailures,
+          knownMismatches,
+          failures,
+          (int) actual);
+    }
+  }
+
+  /** Logs dead-letter queue files written by the pipeline, to explain missing rows. */
+  static void logDeadLetterQueue(GcsResourceManager gcsResourceManager) {
+    try {
+      List<Artifact> artifacts = gcsResourceManager.listArtifacts("dlq/", Pattern.compile(".*"));
+      LOG.info("Found {} DLQ file(s)", artifacts.size());
+      for (Artifact a : artifacts) {
+        String contents = new String(a.contents(), StandardCharsets.UTF_8);
+        LOG.info(
+            "DLQ file {} ({} bytes): {}", a.name(), contents.length(), abbreviate(contents, 4000));
+      }
+    } catch (Exception e) {
+      LOG.warn("Unable to list DLQ files", e);
+    }
+  }
+
+  private static String quote(String identifier) {
+    // Oracle folds unquoted identifiers to upper case; the schema keeps them lower case.
+    return "\"" + identifier + "\"";
+  }
+
+  /** Builds a typed Spanner value for the given GoogleSQL or PostgreSQL-dialect column type. */
+  private static Value toSpannerValue(String spannerType, String v, boolean postgres)
+      throws Exception {
+    try {
+      if (postgres) {
+        String type = spannerType.toLowerCase();
+        if (type.equals("varchar[]")) {
+          if (v == null) {
+            return Value.stringArray(null);
+          }
+          List<String> items = new ArrayList<>();
+          new ObjectMapper().readTree(v).forEach(n -> items.add(n.asText()));
+          return Value.stringArray(items);
+        } else if (type.startsWith("varchar")) {
+          return Value.string(v);
+        } else if (type.equals("bytea")) {
+          return Value.bytes(v == null ? null : ByteArray.fromBase64(v));
+        } else if (type.equals("bigint")) {
+          return Value.int64(v == null ? null : Long.parseLong(v));
+        } else if (type.equals("float8")) {
+          return Value.float64(v == null ? null : Double.parseDouble(v));
+        } else if (type.equals("float4")) {
+          return Value.float32(v == null ? null : Float.parseFloat(v));
+        } else if (type.equals("numeric")) {
+          return Value.pgNumeric(v);
+        } else if (type.equals("timestamptz")) {
+          return Value.timestamp(v == null ? null : Timestamp.parseTimestamp(v));
+        } else if (type.equals("date")) {
+          return Value.date(v == null ? null : Date.parseDate(v));
+        } else if (type.equals("jsonb")) {
+          return Value.pgJsonb(v);
+        }
+      } else {
+        String type = spannerType.toUpperCase();
+        if (type.startsWith("STRING")) {
+          return Value.string(v);
+        } else if (type.startsWith("BYTES")) {
+          return Value.bytes(v == null ? null : ByteArray.fromBase64(v));
+        } else if (type.equals("INT64")) {
+          return Value.int64(v == null ? null : Long.parseLong(v));
+        } else if (type.equals("FLOAT64")) {
+          return Value.float64(v == null ? null : Double.parseDouble(v));
+        } else if (type.equals("FLOAT32")) {
+          return Value.float32(v == null ? null : Float.parseFloat(v));
+        } else if (type.equals("NUMERIC")) {
+          return Value.numeric(v == null ? null : new BigDecimal(v));
+        } else if (type.equals("TIMESTAMP")) {
+          return Value.timestamp(v == null ? null : Timestamp.parseTimestamp(v));
+        } else if (type.equals("DATE")) {
+          return Value.date(v == null ? null : Date.parseDate(v));
+        } else if (type.equals("JSON")) {
+          return Value.json(v);
+        } else if (type.startsWith("ARRAY<STRING")) {
+          if (v == null) {
+            return Value.stringArray(null);
+          }
+          List<String> items = new ArrayList<>();
+          new ObjectMapper().readTree(v).forEach(n -> items.add(n.asText()));
+          return Value.stringArray(items);
+        }
+      }
+    } catch (IOException e) {
+      throw new Exception(e);
+    }
+    throw new IllegalArgumentException("Unsupported Spanner type in test data: " + spannerType);
+  }
+
+  private static Object readValue(ResultSet rs, Compare mode) throws Exception {
+    Object v;
+    switch (mode) {
+      case NUMBER:
+        v = rs.getBigDecimal("v");
+        break;
+      case FLOAT:
+        v = rs.getFloat("v");
+        break;
+      case DOUBLE:
+        v = rs.getDouble("v");
+        break;
+      case BYTES:
+        byte[] b = rs.getBytes("v");
+        v = b == null ? null : Base64.getEncoder().encodeToString(b);
+        break;
+      default:
+        v = rs.getString("v");
+    }
+    return rs.wasNull() ? null : v;
+  }
+
+  /** Type-aware comparison of an expected value against an Oracle column value. */
+  private static boolean matches(String expected, Object actual, Compare mode) {
+    if (expected == null || actual == null) {
+      return expected == null && actual == null;
+    }
+    try {
+      switch (mode) {
+        case NUMBER:
+          return new BigDecimal(expected).compareTo((BigDecimal) actual) == 0;
+        case FLOAT:
+          return Float.valueOf(expected).equals(actual);
+        case DOUBLE:
+          return Double.valueOf(expected).equals(actual);
+        default:
+          return expected.equals(actual);
+      }
+    } catch (Exception e) {
+      return false;
+    }
+  }
+
+  private static String describe(Object v) {
+    if (v == null) {
+      return "NULL";
+    }
+    if (v instanceof BigDecimal) {
+      return abbreviate(((BigDecimal) v).toPlainString());
+    }
+    return abbreviate(v.toString());
+  }
+
+  private static String abbreviate(String s) {
+    return abbreviate(s, 120);
+  }
+
+  private static String abbreviate(String s, int max) {
+    if (s == null) {
+      return "NULL";
+    }
+    String quoted = "'" + s + "'";
+    return quoted.length() <= max
+        ? quoted
+        : quoted.substring(0, max) + "...(length=" + s.length() + ")";
   }
 }

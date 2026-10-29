@@ -443,6 +443,12 @@ CREATE TABLE "binary_float_to_numeric_table" (
   PRIMARY KEY ("id")
 );
 
+CREATE TABLE "binary_float_to_bigint_table" (
+  "id" bigint NOT NULL,
+  "binary_float_to_bigint_col" bigint,
+  PRIMARY KEY ("id")
+);
+
 CREATE TABLE "binary_double_table" (
   "id" bigint NOT NULL,
   "binary_double_col" float8,
@@ -458,6 +464,12 @@ CREATE TABLE "binary_double_to_varchar_table" (
 CREATE TABLE "binary_double_to_numeric_table" (
   "id" bigint NOT NULL,
   "binary_double_to_numeric_col" numeric,
+  PRIMARY KEY ("id")
+);
+
+CREATE TABLE "binary_double_to_bigint_table" (
+  "id" bigint NOT NULL,
+  "binary_double_to_bigint_col" bigint,
   PRIMARY KEY ("id")
 );
 
@@ -676,9 +688,21 @@ CREATE TABLE "clob_table" (
   PRIMARY KEY ("id")
 );
 
+CREATE TABLE "clob_to_bytea_table" (
+  "id" bigint NOT NULL,
+  "clob_to_bytea_col" bytea,
+  PRIMARY KEY ("id")
+);
+
 CREATE TABLE "nclob_table" (
   "id" bigint NOT NULL,
   "nclob_col" varchar,
+  PRIMARY KEY ("id")
+);
+
+CREATE TABLE "nclob_to_bytea_table" (
+  "id" bigint NOT NULL,
+  "nclob_to_bytea_col" bytea,
   PRIMARY KEY ("id")
 );
 

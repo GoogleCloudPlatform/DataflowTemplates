@@ -74,9 +74,11 @@ CREATE TABLE "binary_float_table" ("id" NUMBER(10) NOT NULL, "binary_float_col" 
 CREATE TABLE "binary_float_to_float8_table" ("id" NUMBER(10) NOT NULL, "binary_float_to_float8_col" BINARY_FLOAT, PRIMARY KEY ("id"));
 CREATE TABLE "binary_float_to_varchar_table" ("id" NUMBER(10) NOT NULL, "binary_float_to_varchar_col" BINARY_FLOAT, PRIMARY KEY ("id"));
 CREATE TABLE "binary_float_to_numeric_table" ("id" NUMBER(10) NOT NULL, "binary_float_to_numeric_col" BINARY_FLOAT, PRIMARY KEY ("id"));
+CREATE TABLE "binary_float_to_bigint_table" ("id" NUMBER(10) NOT NULL, "binary_float_to_bigint_col" BINARY_FLOAT, PRIMARY KEY ("id"));
 CREATE TABLE "binary_double_table" ("id" NUMBER(10) NOT NULL, "binary_double_col" BINARY_DOUBLE, PRIMARY KEY ("id"));
 CREATE TABLE "binary_double_to_varchar_table" ("id" NUMBER(10) NOT NULL, "binary_double_to_varchar_col" BINARY_DOUBLE, PRIMARY KEY ("id"));
 CREATE TABLE "binary_double_to_numeric_table" ("id" NUMBER(10) NOT NULL, "binary_double_to_numeric_col" BINARY_DOUBLE, PRIMARY KEY ("id"));
+CREATE TABLE "binary_double_to_bigint_table" ("id" NUMBER(10) NOT NULL, "binary_double_to_bigint_col" BINARY_DOUBLE, PRIMARY KEY ("id"));
 CREATE TABLE "integer_table" ("id" NUMBER(10) NOT NULL, "integer_col" INTEGER, PRIMARY KEY ("id"));
 CREATE TABLE "integer_to_numeric_table" ("id" NUMBER(10) NOT NULL, "integer_to_numeric_col" INTEGER, PRIMARY KEY ("id"));
 CREATE TABLE "integer_to_varchar_table" ("id" NUMBER(10) NOT NULL, "integer_to_varchar_col" INTEGER, PRIMARY KEY ("id"));
@@ -114,7 +116,9 @@ CREATE TABLE "raw_pk_table" ("raw_pk_col" RAW(2000) NOT NULL, PRIMARY KEY ("raw_
 CREATE TABLE "blob_table" ("id" NUMBER(10) NOT NULL, "blob_col" BLOB, PRIMARY KEY ("id"));
 CREATE TABLE "blob_to_varchar_table" ("id" NUMBER(10) NOT NULL, "blob_to_varchar_col" BLOB, PRIMARY KEY ("id"));
 CREATE TABLE "clob_table" ("id" NUMBER(10) NOT NULL, "clob_col" CLOB, PRIMARY KEY ("id"));
+CREATE TABLE "clob_to_bytea_table" ("id" NUMBER(10) NOT NULL, "clob_to_bytea_col" CLOB, PRIMARY KEY ("id"));
 CREATE TABLE "nclob_table" ("id" NUMBER(10) NOT NULL, "nclob_col" NCLOB, PRIMARY KEY ("id"));
+CREATE TABLE "nclob_to_bytea_table" ("id" NUMBER(10) NOT NULL, "nclob_to_bytea_col" NCLOB, PRIMARY KEY ("id"));
 CREATE TABLE "interval_year_to_month_table" ("id" NUMBER(10) NOT NULL, "interval_year_to_month_col" INTERVAL YEAR(9) TO MONTH, PRIMARY KEY ("id"));
 CREATE TABLE "interval_day_to_second_table" ("id" NUMBER(10) NOT NULL, "interval_day_to_second_col" INTERVAL DAY(9) TO SECOND(9), PRIMARY KEY ("id"));
 CREATE TABLE "long_raw_table" ("id" NUMBER(10) NOT NULL, "long_raw_col" LONG RAW, PRIMARY KEY ("id"));

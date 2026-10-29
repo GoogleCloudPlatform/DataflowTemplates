@@ -20,42 +20,23 @@ import static com.google.common.truth.Truth.assertWithMessage;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.cloud.ByteArray;
-import com.google.cloud.Date;
-import com.google.cloud.Timestamp;
-import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.spanner.oracleutils.SpannerOracleResourceManager;
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDb;
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDbITBase;
-import com.google.cloud.teleport.v2.templates.oracle.OracleDataTypesTestData.Compare;
 import com.google.cloud.teleport.v2.templates.oracle.OracleDataTypesTestData.TypeTable;
 import com.google.cloud.teleport.v2.templates.oracle.OracleDataTypesTestData.UnsupportedTable;
 import com.google.pubsub.v1.SubscriptionName;
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Pattern;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.conditions.ConditionCheck;
-import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
@@ -76,8 +57,9 @@ import org.slf4j.LoggerFactory;
  * <p>For every Oracle type and alias in the matrix, rows are written to Spanner with the default
  * Spanner type (scenario A), every alternative Spanner type (scenario B) and as a primary key
  * (scenario C), and the replicated Oracle values are asserted. Types that Datastream marks as
- * unsupported are written for row-count consistency (scenario D). Tables, Spanner values and
- * expected Oracle values are defined in {@link OracleDataTypesTestData}.
+ * unsupported and that the reverse generator can write are checked for row-count consistency
+ * (scenario D). Tables, Spanner values, expected Oracle values and shared execution/validation
+ * helpers are defined in {@link OracleDataTypesTestData}.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
@@ -96,7 +78,8 @@ public class SpannerToOracleDataTypesIT extends SpannerToSourceDbITBase {
 
   /**
    * Tables whose mapping is known not to behave as the matrix expects, with the root cause. They
-   * are still written and logged, but excluded from the wait condition and from the assertions.
+   * are skipped when writing to Spanner, waiting, and validating so that unsupported or broken
+   * mappings do not cause continuous dead-letter queue retry loops during pipeline execution.
    */
   private static final Map<String, String> KNOWN_MISMATCHES = knownMismatches();
 
@@ -233,8 +216,9 @@ public class SpannerToOracleDataTypesIT extends SpannerToSourceDbITBase {
   /**
    * KNOWN LIMITATIONS &amp; MATRIX DISCREPANCIES (Spanner -&gt; Oracle, reverse replication)
    *
-   * <p>The tables below are still written to Spanner, but are listed in {@link #KNOWN_MISMATCHES}
-   * and excluded from the wait condition and value assertions:
+   * <p>The tables below are listed in {@link #KNOWN_MISMATCHES} and skipped when writing to
+   * Spanner, waiting, and validating so they do not trigger continuous dead-letter queue retry
+   * loops:
    *
    * <ul>
    *   <li><b>Spanner BYTES -&gt; Oracle character columns (13 tables, e.g. {@code
@@ -275,20 +259,24 @@ public class SpannerToOracleDataTypesIT extends SpannerToSourceDbITBase {
     List<TypeTable> tables = OracleDataTypesTestData.googleSqlTables();
     List<UnsupportedTable> unsupportedTables = OracleDataTypesTestData.googleSqlUnsupportedTables();
 
-    writeRowsInSpanner(tables, unsupportedTables);
+    OracleDataTypesTestData.writeRowsInSpanner(
+        spannerResourceManager, tables, unsupportedTables, KNOWN_MISMATCH_TABLES, false);
 
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(DATA_WAIT_MINUTES)),
-                buildConditionCheck(tables, unsupportedTables));
+                OracleDataTypesTestData.buildConditionCheck(
+                    testUsername, tables, unsupportedTables, KNOWN_MISMATCH_TABLES));
     LOG.info("Wait finished with result {}", result);
 
     // Validate every table and collect all failures, so a single run reports all mismatches.
     List<String> failures = new ArrayList<>();
-    validateSupportedTypes(tables, failures);
-    validateUnsupportedTypes(unsupportedTables, failures);
-    logDeadLetterQueue();
+    OracleDataTypesTestData.validateSupportedTypes(
+        jdbcResourceManager, testUsername, tables, KNOWN_MISMATCHES, failures);
+    OracleDataTypesTestData.validateUnsupportedTypes(
+        testUsername, unsupportedTables, KNOWN_MISMATCHES, failures);
+    OracleDataTypesTestData.logDeadLetterQueue(gcsResourceManager);
 
     if (!failures.isEmpty()) {
       LOG.error(
@@ -298,313 +286,5 @@ public class SpannerToOracleDataTypesIT extends SpannerToSourceDbITBase {
         .that(failures)
         .isEmpty();
     assertThatResult(result).meetsConditions();
-  }
-
-  /** Writes every row of every table to Spanner with the table's Spanner column type. */
-  private void writeRowsInSpanner(List<TypeTable> tables, List<UnsupportedTable> unsupportedTables)
-      throws Exception {
-    for (TypeTable t : tables) {
-      List<Mutation> mutations = new ArrayList<>();
-      for (int i = 0; i < t.rows().size(); i++) {
-        Mutation.WriteBuilder builder = Mutation.newInsertOrUpdateBuilder(t.table());
-        if (!t.pk()) {
-          builder.set("id").to((long) (i + 1));
-        }
-        builder.set(t.column()).to(toSpannerValue(t.spannerType(), t.rows().get(i).spanner()));
-        mutations.add(builder.build());
-      }
-      writeToSpanner(t.table(), mutations);
-    }
-    for (UnsupportedTable t : unsupportedTables) {
-      List<Mutation> mutations = new ArrayList<>();
-      for (int i = 0; i < t.values().size(); i++) {
-        mutations.add(
-            Mutation.newInsertOrUpdateBuilder(t.table())
-                .set("id")
-                .to((long) (i + 1))
-                .set(t.column())
-                .to(toSpannerValue(t.spannerType(), t.values().get(i)))
-                .build());
-      }
-      writeToSpanner(t.table(), mutations);
-    }
-    LOG.info("Wrote all rows to Spanner");
-  }
-
-  private void writeToSpanner(String table, List<Mutation> mutations) throws Exception {
-    try {
-      spannerResourceManager.write(mutations);
-    } catch (Exception e) {
-      // A Spanner write failure is a test setup problem; report it with the table name.
-      throw new Exception("Failed to write rows to Spanner table " + table, e);
-    }
-  }
-
-  private ConditionCheck buildConditionCheck(
-      List<TypeTable> tables, List<UnsupportedTable> unsupportedTables) {
-    Map<String, Integer> rowCounts = new LinkedHashMap<>();
-    tables.forEach(t -> rowCounts.put(t.table(), t.rows().size()));
-    unsupportedTables.forEach(t -> rowCounts.put(t.table(), t.values().size()));
-    ConditionCheck combined = null;
-    for (Map.Entry<String, Integer> entry : rowCounts.entrySet()) {
-      String table = entry.getKey();
-      int rows = entry.getValue();
-      if (KNOWN_MISMATCH_TABLES.contains(table)) {
-        continue;
-      }
-      ConditionCheck c =
-          new ConditionCheck() {
-            @Override
-            protected String getDescription() {
-              return "Checking Oracle table " + table + " has " + rows + " rows";
-            }
-
-            @Override
-            protected CheckResult check() {
-              return new CheckResult(
-                  SharedOracleReverseITContainer.getRowCount(testUsername, quote(table)) >= rows);
-            }
-          };
-      combined = combined == null ? c : combined.and(c);
-    }
-    return combined;
-  }
-
-  /** Validates scenarios A, B and C: every expected row and value must be present in Oracle. */
-  private void validateSupportedTypes(List<TypeTable> tables, List<String> failures)
-      throws Exception {
-    try (Connection conn =
-        DriverManager.getConnection(
-            jdbcResourceManager.getUri(),
-            testUsername,
-            SharedOracleReverseITContainer.ISOLATED_USER_PASSWORD)) {
-      for (TypeTable t : tables) {
-        String table = t.table();
-        boolean pk = t.pk();
-        Compare mode = t.compare();
-        String sql =
-            "SELECT " + (pk ? "" : "\"id\", ") + t.readExpr() + " AS v FROM " + quote(table);
-        List<String> tableFailures = new ArrayList<>();
-        Map<Long, Object> byId = new HashMap<>();
-        List<Object> pkValues = new ArrayList<>();
-        try (Statement st = conn.createStatement();
-            ResultSet rs = st.executeQuery(sql)) {
-          while (rs.next()) {
-            Object v = readValue(rs, mode);
-            LOG.info("ACTUAL {} {}={}", table, pk ? "pk" : "id=" + rs.getLong("id"), describe(v));
-            if (pk) {
-              pkValues.add(v);
-            } else {
-              byId.put(rs.getLong("id"), v);
-            }
-          }
-        } catch (Exception e) {
-          tableFailures.add("read failed: " + e.getMessage());
-        }
-        int expectedCount = t.rows().size();
-        int actualCount = pk ? pkValues.size() : byId.size();
-        if (actualCount != expectedCount) {
-          tableFailures.add(
-              String.format("expected %d rows but found %d", expectedCount, actualCount));
-        }
-        for (int i = 0; i < expectedCount; i++) {
-          String exp = t.rows().get(i).expected();
-          if (pk) {
-            Object match = null;
-            for (Object v : pkValues) {
-              if (matches(exp, v, mode)) {
-                match = v;
-                break;
-              }
-            }
-            if (match == null) {
-              tableFailures.add("missing pk value " + abbreviate(exp));
-            } else {
-              pkValues.remove(match);
-            }
-          } else {
-            long id = i + 1;
-            if (!byId.containsKey(id)) {
-              tableFailures.add("id=" + id + " missing (expected " + abbreviate(exp) + ")");
-            } else if (!matches(exp, byId.get(id), mode)) {
-              tableFailures.add(
-                  "id="
-                      + id
-                      + " expected "
-                      + abbreviate(exp)
-                      + " but was "
-                      + describe(byId.get(id)));
-            }
-          }
-        }
-        report(table, t.spannerType(), t.sourceType(), tableFailures, failures, actualCount);
-      }
-    }
-  }
-
-  private void report(
-      String table,
-      String spannerType,
-      String sourceType,
-      List<String> tableFailures,
-      List<String> failures,
-      int rows) {
-    for (String f : tableFailures) {
-      String msg = table + " [" + spannerType + " -> " + sourceType + "]: " + f;
-      if (KNOWN_MISMATCH_TABLES.contains(table)) {
-        LOG.warn("KNOWN MISMATCH (ignored: {}) {}", KNOWN_MISMATCHES.get(table), msg);
-      } else {
-        failures.add(msg);
-      }
-    }
-    if (tableFailures.isEmpty()) {
-      LOG.info("PASS {} ({} rows)", table, rows);
-    }
-  }
-
-  /** Validates scenario D: every written row must reach Oracle (row-count consistency). */
-  private void validateUnsupportedTypes(
-      List<UnsupportedTable> unsupportedTables, List<String> failures) {
-    for (UnsupportedTable t : unsupportedTables) {
-      String table = t.table();
-      long expectedCount = t.values().size();
-      long actual;
-      try {
-        actual = SharedOracleReverseITContainer.getRowCount(testUsername, quote(table));
-      } catch (Exception e) {
-        failures.add(table + ": read failed: " + e.getMessage());
-        continue;
-      }
-      List<String> tableFailures = new ArrayList<>();
-      if (actual != expectedCount) {
-        tableFailures.add(
-            String.format(
-                "expected %d rows but found %d (unsupported type)", expectedCount, actual));
-      }
-      report(table, t.spannerType(), t.sourceType(), tableFailures, failures, (int) actual);
-    }
-  }
-
-  /** Logs dead-letter queue files written by the pipeline, to explain missing rows. */
-  private void logDeadLetterQueue() {
-    try {
-      List<Artifact> artifacts = gcsResourceManager.listArtifacts("dlq/", Pattern.compile(".*"));
-      LOG.info("Found {} DLQ file(s)", artifacts.size());
-      for (Artifact a : artifacts) {
-        String contents = new String(a.contents(), StandardCharsets.UTF_8);
-        LOG.info(
-            "DLQ file {} ({} bytes): {}", a.name(), contents.length(), abbreviate(contents, 4000));
-      }
-    } catch (Exception e) {
-      LOG.warn("Unable to list DLQ files", e);
-    }
-  }
-
-  private static String quote(String identifier) {
-    // Oracle folds unquoted identifiers to upper case; the schema keeps them lower case.
-    return "\"" + identifier + "\"";
-  }
-
-  /** Builds a typed Spanner value for the given Spanner column type. */
-  private static Value toSpannerValue(String spannerType, String v) throws Exception {
-    String type = spannerType.toUpperCase();
-    try {
-      if (type.startsWith("STRING")) {
-        return Value.string(v);
-      } else if (type.startsWith("BYTES")) {
-        return Value.bytes(v == null ? null : ByteArray.fromBase64(v));
-      } else if (type.equals("INT64")) {
-        return Value.int64(v == null ? null : Long.parseLong(v));
-      } else if (type.equals("FLOAT64")) {
-        return Value.float64(v == null ? null : Double.parseDouble(v));
-      } else if (type.equals("FLOAT32")) {
-        return Value.float32(v == null ? null : Float.parseFloat(v));
-      } else if (type.equals("NUMERIC")) {
-        return Value.numeric(v == null ? null : new BigDecimal(v));
-      } else if (type.equals("TIMESTAMP")) {
-        return Value.timestamp(v == null ? null : Timestamp.parseTimestamp(v));
-      } else if (type.equals("DATE")) {
-        return Value.date(v == null ? null : Date.parseDate(v));
-      } else if (type.equals("JSON")) {
-        return Value.json(v);
-      } else if (type.startsWith("ARRAY<STRING")) {
-        if (v == null) {
-          return Value.stringArray(null);
-        }
-        List<String> items = new ArrayList<>();
-        new ObjectMapper().readTree(v).forEach(n -> items.add(n.asText()));
-        return Value.stringArray(items);
-      }
-    } catch (IOException e) {
-      throw new Exception(e);
-    }
-    throw new IllegalArgumentException("Unsupported Spanner type in test data: " + spannerType);
-  }
-
-  private static Object readValue(ResultSet rs, Compare mode) throws Exception {
-    Object v;
-    switch (mode) {
-      case NUMBER:
-        v = rs.getBigDecimal("v");
-        break;
-      case FLOAT:
-        v = rs.getFloat("v");
-        break;
-      case DOUBLE:
-        v = rs.getDouble("v");
-        break;
-      case BYTES:
-        byte[] b = rs.getBytes("v");
-        v = b == null ? null : Base64.getEncoder().encodeToString(b);
-        break;
-      default:
-        v = rs.getString("v");
-    }
-    return rs.wasNull() ? null : v;
-  }
-
-  /** Type-aware comparison of an expected value against an Oracle column value. */
-  private static boolean matches(String expected, Object actual, Compare mode) {
-    if (expected == null || actual == null) {
-      return expected == null && actual == null;
-    }
-    try {
-      switch (mode) {
-        case NUMBER:
-          return new BigDecimal(expected).compareTo((BigDecimal) actual) == 0;
-        case FLOAT:
-          return Float.valueOf(expected).equals(actual);
-        case DOUBLE:
-          return Double.valueOf(expected).equals(actual);
-        default:
-          return expected.equals(actual);
-      }
-    } catch (Exception e) {
-      return false;
-    }
-  }
-
-  private static String describe(Object v) {
-    if (v == null) {
-      return "NULL";
-    }
-    if (v instanceof BigDecimal) {
-      return abbreviate(((BigDecimal) v).toPlainString());
-    }
-    return abbreviate(v.toString());
-  }
-
-  private static String abbreviate(String s) {
-    return abbreviate(s, 120);
-  }
-
-  private static String abbreviate(String s, int max) {
-    if (s == null) {
-      return "NULL";
-    }
-    String quoted = "'" + s + "'";
-    return quoted.length() <= max
-        ? quoted
-        : quoted.substring(0, max) + "...(length=" + s.length() + ")";
   }
 }
