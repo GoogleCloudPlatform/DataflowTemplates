@@ -25,6 +25,7 @@ import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSpannerConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTypeConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
@@ -79,7 +80,7 @@ public abstract class ChangeEventContext {
       JsonNode changeEvent, Ddl ddl, Map<String, Pair<String, String>> shadowColumnConstants)
       throws InvalidChangeEventException, DroppedTableException {
     this.changeEvent = changeEvent;
-    this.dataTable = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
+    this.dataTable = changeEvent.get(Constants.EVENT_TABLE_NAME_KEY).asText();
     Table table = ddl.table(this.dataTable);
     if (table == null) {
       throw new DroppedTableException(
@@ -118,13 +119,13 @@ public abstract class ChangeEventContext {
 
     this.primaryKey =
         ChangeEventSpannerConvertor.changeEventToPrimaryKey(
-            changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText(),
+            changeEvent.get(Constants.EVENT_TABLE_NAME_KEY).asText(),
             ddl,
             changeEvent,
             /* convertNameToLowerCase= */ true);
 
     String changeType = getChangeType(changeEvent);
-    boolean isDelete = DatastreamConstants.DELETE_EVENT.equalsIgnoreCase(changeType);
+    boolean isDelete = Constants.DELETE_EVENT.equalsIgnoreCase(changeType);
 
     if (hasGeneratedPK && isDelete) {
       // For delete events on tables with generated primary keys, we need to use DML
@@ -139,7 +140,7 @@ public abstract class ChangeEventContext {
 
   public Statement getDataDmlStatement(Ddl ddl) throws ChangeEventConvertorException {
     String changeType = getChangeType(changeEvent);
-    boolean isDelete = DatastreamConstants.DELETE_EVENT.equalsIgnoreCase(changeType);
+    boolean isDelete = Constants.DELETE_EVENT.equalsIgnoreCase(changeType);
     if (!isDelete) {
       return null;
     }
@@ -252,10 +253,8 @@ public abstract class ChangeEventContext {
   }
 
   public static String getChangeType(JsonNode changeEvent) {
-    return changeEvent.has(DatastreamConstants.EVENT_CHANGE_TYPE_KEY)
-        ? changeEvent
-            .get(DatastreamConstants.EVENT_CHANGE_TYPE_KEY)
-            .asText(DatastreamConstants.EMPTY_EVENT)
-        : DatastreamConstants.EMPTY_EVENT;
+    return changeEvent.has(Constants.EVENT_CHANGE_TYPE_KEY)
+        ? changeEvent.get(Constants.EVENT_CHANGE_TYPE_KEY).asText(Constants.EMPTY_EVENT)
+        : Constants.EMPTY_EVENT;
   }
 }

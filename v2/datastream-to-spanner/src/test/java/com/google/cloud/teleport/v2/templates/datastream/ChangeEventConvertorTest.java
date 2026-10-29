@@ -28,6 +28,7 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import java.io.IOException;
@@ -287,7 +288,7 @@ public class ChangeEventConvertorTest {
         "timestamp_field2", Timestamp.of(java.sql.Timestamp.valueOf("2020-12-30 4:12:12.1")));
     changeEvent.put("date_field", "2020-12-30T00:00:00Z");
     changeEvent.put("date_field2", "2020-12-30");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, tableName);
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, tableName);
     return changeEvent;
   }
 
@@ -369,7 +370,7 @@ public class ChangeEventConvertorTest {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("first_name", "A");
     changeEvent.put("last_name", "B");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     JsonNode ce = parseChangeEvent(changeEvent.toString());
     Mutation mutation = ChangeEventConvertor.changeEventToMutation(ddl, ce);
     Map<String, Value> actual = mutation.asMap();
@@ -391,7 +392,7 @@ public class ChangeEventConvertorTest {
     Ddl ddl = getTestDdl();
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("first_name", "A");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     JsonNode ce = parseChangeEvent(changeEvent.toString());
     Mutation mutation = ChangeEventConvertor.changeEventToMutation(ddl, ce);
   }
@@ -402,7 +403,7 @@ public class ChangeEventConvertorTest {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("first_name", "A");
     changeEvent.put("last_name", JSONObject.NULL);
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     JsonNode ce = parseChangeEvent(changeEvent.toString());
     Mutation mutation = ChangeEventConvertor.changeEventToMutation(ddl, ce);
     Map<String, Value> actual = mutation.asMap();
@@ -461,7 +462,7 @@ public class ChangeEventConvertorTest {
   public void canConvertValidDeleteChangeEventToMutation() throws Exception {
     Ddl ddl = getTestDdl();
     JSONObject changeEvent = getTestChangeEvent("Users2");
-    changeEvent.put(DatastreamConstants.EVENT_CHANGE_TYPE_KEY, "DELETE");
+    changeEvent.put(Constants.EVENT_CHANGE_TYPE_KEY, "DELETE");
     JsonNode ce = parseChangeEvent(changeEvent.toString());
     Mutation mutation = ChangeEventConvertor.changeEventToMutation(ddl, ce);
 
@@ -534,7 +535,7 @@ public class ChangeEventConvertorTest {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("first_name", "A");
     changeEvent.put("last_name", "B");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     JsonNode ce = parseChangeEvent(changeEvent.toString());
     ChangeEventConvertor.verifySpannerSchema(ddl, ce);
   }
@@ -545,7 +546,7 @@ public class ChangeEventConvertorTest {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("first_name", "A");
     changeEvent.put("last_name", "B");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users_test");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users_test");
     JsonNode ce = parseChangeEvent(changeEvent.toString());
     ChangeEventConvertor.verifySpannerSchema(ddl, ce);
   }
@@ -557,13 +558,13 @@ public class ChangeEventConvertorTest {
     changeEvent.put("first_name", "A");
     changeEvent.put("last_name", "B");
     changeEvent.put("test_column", "C");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     JsonNode ce = parseChangeEvent(changeEvent.toString());
     ChangeEventConvertor.verifySpannerSchema(ddl, ce);
 
     assertThat(ce.has("first_name"), is(true));
     assertThat(ce.has("last_name"), is(true));
-    assertThat(ce.has(DatastreamConstants.EVENT_TABLE_NAME_KEY), is(true));
+    assertThat(ce.has(Constants.EVENT_TABLE_NAME_KEY), is(true));
     assertThat(ce.has("test_column"), is(false));
   }
 
@@ -572,7 +573,7 @@ public class ChangeEventConvertorTest {
     Ddl ddl = getTestDdl();
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("first_name", "A");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     JsonNode ce = parseChangeEvent(changeEvent.toString());
     ChangeEventConvertor.verifySpannerSchema(ddl, ce);
   }
