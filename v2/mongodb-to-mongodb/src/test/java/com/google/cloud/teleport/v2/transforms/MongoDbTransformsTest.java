@@ -19,6 +19,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -61,6 +62,7 @@ import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.util.SerializableUtils;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
@@ -742,6 +744,99 @@ public class MongoDbTransformsTest {
     assertEquals(25000.0, fn.getRateLimiter().getRate(), 0.01);
 
     fn.teardown();
+  }
+
+  @Test
+  public void testWriteBatchesFn_uncappedExponentialWarmupDisablesAfterRampUp() {
+    MongoDbTransforms.WriteBatchesFn fn =
+        MongoDbTransforms.WriteBatchesFn.builder()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withInitialWriteRatePerWorker(100)
+            .withMaxWriteRatePerWorker(0)
+            .withWriteRateRampUpMinutes(5)
+            .withWriteRateRampUpSteps(5)
+            .build();
+    fn.setup();
+    assertNotNull(fn.getRateLimiter());
+    assertEquals(100.0, fn.getRateLimiter().getRate(), 0.01);
+
+    // 1 minute elapsed => 100 * 2^1 = 200
+    fn.setStartTimeMs(System.currentTimeMillis() - 1 * 60 * 1000L);
+    fn.updateRateLimiterForTest();
+    assertEquals(200.0, fn.getRateLimiter().getRate(), 0.01);
+
+    // 2 minutes elapsed => 100 * 2^2 = 400
+    fn.setStartTimeMs(System.currentTimeMillis() - 2 * 60 * 1000L);
+    fn.updateRateLimiterForTest();
+    assertEquals(400.0, fn.getRateLimiter().getRate(), 0.01);
+
+    // 4 minutes elapsed => 100 * 2^4 = 1600
+    fn.setStartTimeMs(System.currentTimeMillis() - 4 * 60 * 1000L);
+    fn.updateRateLimiterForTest();
+    assertEquals(1600.0, fn.getRateLimiter().getRate(), 0.01);
+
+    // >= 5 minutes elapsed => warm-up complete, rate limiter disabled (uncapped steady-state)
+    fn.setStartTimeMs(System.currentTimeMillis() - 5 * 60 * 1000L);
+    fn.updateRateLimiterForTest();
+    assertNull(fn.getRateLimiter());
+
+    fn.teardown();
+  }
+
+  @Test
+  public void testWriteBatchesFn_sharesRateLimiterAcrossDeserializedWorkerThreads() {
+    MongoDbTransforms.WriteBatchesFn prototype =
+        MongoDbTransforms.WriteBatchesFn.builder()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withInitialWriteRatePerWorker(250)
+            .withMaxWriteRatePerWorker(0)
+            .withWriteRateRampUpMinutes(6)
+            .withWriteRateRampUpSteps(24)
+            .build();
+
+    MongoDbTransforms.WriteBatchesFn thread1 = SerializableUtils.clone(prototype);
+    MongoDbTransforms.WriteBatchesFn thread2 = SerializableUtils.clone(prototype);
+    thread1.setup();
+    thread2.setup();
+
+    assertNotNull(thread1.getRateLimiter());
+    assertSame(thread1.getRateLimiter(), thread2.getRateLimiter());
+
+    thread1.teardown();
+    thread2.teardown();
+  }
+
+  @Test
+  public void testWorkerRateLimiter_anchorsWarmupClockLazilyOnFirstAcquire()
+      throws InterruptedException {
+    MongoDbTransforms.WorkerRateLimiter limiter =
+        new MongoDbTransforms.WorkerRateLimiter(500, 0, 6, 24);
+
+    // Before any acquire() call, the warm-up clock is unanchored (-1L) and idle time does not
+    // advance or expire the warm-up window.
+    assertEquals(-1L, limiter.getStartTimeMs());
+    limiter.updateRate(System.currentTimeMillis() + 10 * 60_000L);
+    assertThat(limiter.isDisabled()).isFalse();
+    assertEquals(500.0, limiter.getRate(), 0.01);
+
+    // First acquire() anchors startTimeMs lazily at the moment writes begin.
+    long beforeFirstAcquireMs = System.currentTimeMillis();
+    limiter.acquire(1);
+    long anchoredStartMs = limiter.getStartTimeMs();
+    assertThat(anchoredStartMs).isAtLeast(beforeFirstAcquireMs);
+    assertThat(limiter.isDisabled()).isFalse();
+    assertEquals(500.0, limiter.getRate(), 0.01);
+
+    // Warm-up progression is measured strictly from anchoredStartMs: +3 mins => 500 * 2^3 = 4000,
+    // +6 mins => warm-up complete (disabled).
+    limiter.updateRate(anchoredStartMs + 3 * 60_000L);
+    assertEquals(4000.0, limiter.getRate(), 0.01);
+    assertThat(limiter.isDisabled()).isFalse();
+
+    limiter.updateRate(anchoredStartMs + 6 * 60_000L);
+    assertThat(limiter.isDisabled()).isTrue();
   }
 
   @Test

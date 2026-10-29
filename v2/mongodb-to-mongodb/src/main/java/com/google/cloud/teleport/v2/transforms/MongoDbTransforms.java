@@ -23,7 +23,6 @@ import com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.FailureStage
 import com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.OperationType;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.JavascriptRuntime;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.util.concurrent.RateLimiter;
 import com.mongodb.ConnectionString;
 import com.mongodb.ErrorCategory;
 import com.mongodb.MongoBulkWriteException;
@@ -47,6 +46,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -55,6 +55,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantLock;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.TextIO;
@@ -96,6 +97,185 @@ public class MongoDbTransforms {
 
   private static final ConcurrentHashMap<Integer, SharedWritePool> WRITE_POOL_CACHE =
       new ConcurrentHashMap<>();
+
+  private static final ConcurrentHashMap<String, WorkerRateLimiter> WORKER_RATE_LIMITERS =
+      new ConcurrentHashMap<>();
+
+  /**
+   * Per-worker-JVM write rate limiter shared across all harness threads of a {@link DoFn} stage.
+   *
+   * <p>When {@code maxRate > 0}, linearly increases the per-worker write rate from {@code
+   * initialRate} to {@code maxRate} over {@code rampUpMinutes} across {@code rampUpSteps} steps.
+   * When {@code maxRate == null || maxRate <= 0}, warms up exponentially ({@code initialRate *
+   * 2^elapsedMinutes}) over {@code rampUpMinutes} across {@code rampUpSteps} steps and then
+   * disables rate limiting completely so steady-state writes run uncapped with zero lock overhead.
+   *
+   * <p>The warm-up clock anchors lazily on the first {@link #acquire(int)} call so upstream split
+   * generation and {@code GroupIntoBatches} buffering delays do not prematurely consume the warm-up
+   * window.
+   */
+  static final class WorkerRateLimiter {
+    private static final Logger LOG = LoggerFactory.getLogger(WorkerRateLimiter.class);
+
+    private final double initialRate;
+    private final double maxRate;
+    private final boolean uncappedAfterRampUp;
+    private final long rampUpDurationMs;
+    private final int rampUpSteps;
+    private final ReentrantLock acquireLock = new ReentrantLock();
+
+    private volatile boolean disabled;
+    private volatile double currentRate;
+    private long startTimeMs;
+    private long lastComputedStep;
+    private double nextFreeTimeMs;
+
+    WorkerRateLimiter(
+        int initialRate, Integer maxRate, Integer rampUpMinutes, Integer rampUpSteps) {
+      this.initialRate = initialRate;
+      this.uncappedAfterRampUp = (maxRate == null || maxRate <= 0);
+      this.maxRate = this.uncappedAfterRampUp ? 0.0 : maxRate;
+      int mins = (rampUpMinutes != null && rampUpMinutes > 0) ? rampUpMinutes : 0;
+      this.rampUpDurationMs = mins * 60_000L;
+      int defaultSteps = Math.max(1, mins);
+      this.rampUpSteps = (rampUpSteps != null && rampUpSteps > 0) ? rampUpSteps : defaultSteps;
+      this.startTimeMs = -1L;
+      this.nextFreeTimeMs = 0.0;
+      this.lastComputedStep = 0;
+      if (this.uncappedAfterRampUp && this.rampUpDurationMs <= 0) {
+        this.disabled = true;
+        this.currentRate = Double.POSITIVE_INFINITY;
+      } else {
+        this.disabled = false;
+        this.currentRate = initialRate;
+        LOG.info(
+            "Enabled per-worker write rate {} ramp-up: initialRate={} docs/s/worker,"
+                + " targetMax={} docs/s/worker, duration={} mins, steps={}",
+            this.uncappedAfterRampUp ? "uncapped-exponential" : "bounded-linear",
+            initialRate,
+            this.uncappedAfterRampUp ? "UNCAPPED" : maxRate,
+            mins,
+            this.rampUpSteps);
+      }
+    }
+
+    synchronized double updateRate(long nowMs) {
+      if (disabled) {
+        return Double.POSITIVE_INFINITY;
+      }
+      if (startTimeMs < 0 || rampUpDurationMs <= 0 || rampUpSteps <= 0) {
+        return currentRate;
+      }
+      long elapsedMs = Math.max(0L, nowMs - startTimeMs);
+      if (uncappedAfterRampUp && elapsedMs >= rampUpDurationMs) {
+        disabled = true;
+        currentRate = Double.POSITIVE_INFINITY;
+        LOG.info(
+            "Write rate warm-up complete after {} mins: disabling write rate limiter"
+                + " (uncapped steady-state)",
+            TimeUnit.MILLISECONDS.toMinutes(elapsedMs));
+        return currentRate;
+      }
+      if (!uncappedAfterRampUp && maxRate <= initialRate) {
+        return currentRate;
+      }
+
+      long stepDurationMs = Math.max(1L, rampUpDurationMs / rampUpSteps);
+      long currentStep = Math.min(rampUpSteps, elapsedMs / stepDurationMs);
+      if (currentStep > lastComputedStep) {
+        lastComputedStep = currentStep;
+        double oldRate = currentRate;
+        double newRate;
+        if (uncappedAfterRampUp) {
+          double elapsedRampMinutes =
+              (currentStep * (rampUpDurationMs / 60_000.0)) / (double) rampUpSteps;
+          newRate = initialRate * Math.pow(2.0, elapsedRampMinutes);
+        } else {
+          double rateRange = maxRate - initialRate;
+          newRate = initialRate + (rateRange * currentStep) / (double) rampUpSteps;
+        }
+        if (newRate != oldRate) {
+          currentRate = newRate;
+          LOG.info(
+              "Write rate ramp-up ({}): increased write rate from {} to {} docs/s/worker"
+                  + " (step {}/{}, elapsedMinutes={})",
+              uncappedAfterRampUp ? "uncapped-exponential" : "bounded-linear",
+              String.format("%.1f", oldRate),
+              String.format("%.1f", newRate),
+              currentStep,
+              rampUpSteps,
+              TimeUnit.MILLISECONDS.toMinutes(elapsedMs));
+        }
+      }
+      return currentRate;
+    }
+
+    void acquire(int permits) throws InterruptedException {
+      if (permits <= 0 || disabled) {
+        return;
+      }
+      acquireLock.lockInterruptibly();
+      try {
+        while (!disabled) {
+          long nowMs = System.currentTimeMillis();
+          double waitMs;
+          synchronized (this) {
+            if (startTimeMs < 0) {
+              startTimeMs = nowMs;
+              nextFreeTimeMs = nowMs;
+            }
+            double rate = updateRate(nowMs);
+            if (disabled || !Double.isFinite(rate) || rate <= 0) {
+              return;
+            }
+            waitMs = nextFreeTimeMs - nowMs;
+            if (waitMs <= 0) {
+              double baseMs = Math.max(nextFreeTimeMs, nowMs - 1000.0);
+              nextFreeTimeMs = baseMs + (permits * 1000.0) / rate;
+              return;
+            }
+          }
+          long sleepMs = Math.min((long) Math.ceil(waitMs), 100L);
+          if (sleepMs > 0) {
+            Thread.sleep(sleepMs);
+          }
+        }
+      } finally {
+        acquireLock.unlock();
+      }
+    }
+
+    double getRate() {
+      return currentRate;
+    }
+
+    boolean isDisabled() {
+      return disabled;
+    }
+
+    synchronized long getStartTimeMs() {
+      return startTimeMs;
+    }
+
+    synchronized void setStartTimeMs(long startTimeMs) {
+      this.startTimeMs = startTimeMs;
+      this.nextFreeTimeMs = startTimeMs;
+      this.lastComputedStep = 0;
+    }
+  }
+
+  private static WorkerRateLimiter getOrCreateWorkerRateLimiter(
+      String key,
+      Integer initialRate,
+      Integer maxRate,
+      Integer rampUpMinutes,
+      Integer rampUpSteps) {
+    if (initialRate == null || initialRate <= 0) {
+      return null;
+    }
+    return WORKER_RATE_LIMITERS.computeIfAbsent(
+        key, k -> new WorkerRateLimiter(initialRate, maxRate, rampUpMinutes, rampUpSteps));
+  }
 
   private static class SharedWritePool {
     final ExecutorService executor;
@@ -482,10 +662,9 @@ public class MongoDbTransforms {
     private final Integer maxWriteRatePerWorker;
     private final SerializableFunction<String, MongoClient> clientFactory;
     private final TupleTag<DocumentWithMetadata> failureTag;
+    private final String rateLimiterKey = UUID.randomUUID().toString();
     private transient FluentBackoff backoffSpec;
-    private transient RateLimiter rateLimiter;
-    private transient long startTimeMs;
-    private transient long lastComputedStep;
+    private transient WorkerRateLimiter workerRateLimiter;
 
     private final Counter successfulWrites =
         Metrics.counter(WriteWithDlq.class, "successfulWrites");
@@ -660,18 +839,24 @@ public class MongoDbTransforms {
     }
 
     @VisibleForTesting
-    RateLimiter getRateLimiter() {
-      return rateLimiter;
+    WorkerRateLimiter getRateLimiter() {
+      return (workerRateLimiter != null && !workerRateLimiter.isDisabled())
+          ? workerRateLimiter
+          : null;
     }
 
     @VisibleForTesting
     void setStartTimeMs(long startTimeMs) {
-      this.startTimeMs = startTimeMs;
+      if (workerRateLimiter != null) {
+        workerRateLimiter.setStartTimeMs(startTimeMs);
+      }
     }
 
     @VisibleForTesting
     void updateRateLimiterForTest() {
-      updateRateLimiterIfNeeded();
+      if (workerRateLimiter != null) {
+        workerRateLimiter.updateRate(System.currentTimeMillis());
+      }
     }
 
     @Setup
@@ -686,19 +871,14 @@ public class MongoDbTransforms {
               .withMaxRetries(maxWriteRetries)
               .withInitialBackoff(Duration.millis(200))
               .withExponent(2.0);
-      if (initialWriteRatePerWorker != null && initialWriteRatePerWorker > 0) {
-        rateLimiter = RateLimiter.create(initialWriteRatePerWorker);
-        startTimeMs = System.currentTimeMillis();
-        lastComputedStep = 0;
-        LOG.info(
-            "Enabled linear write rate ramp-up: initialRate={} docs/s/worker, targetMax={}"
-                + " docs/s/worker, duration={} mins, steps={}",
-            initialWriteRatePerWorker,
-            maxWriteRatePerWorker,
-            writeRateRampUpMinutes,
-            writeRateRampUpSteps);
-      } else {
-        rateLimiter = null;
+      workerRateLimiter =
+          getOrCreateWorkerRateLimiter(
+              rateLimiterKey,
+              initialWriteRatePerWorker,
+              maxWriteRatePerWorker,
+              writeRateRampUpMinutes,
+              writeRateRampUpSteps);
+      if (workerRateLimiter == null) {
         LOG.info("Write rate limiting is disabled (initialWriteRatePerWorker <= 0)");
       }
       LOG.info(
@@ -708,44 +888,6 @@ public class MongoDbTransforms {
           batchSize,
           maxConcurrentAsyncWrites,
           maxWriteRetries);
-    }
-
-    private void updateRateLimiterIfNeeded() {
-      if (rateLimiter == null
-          || writeRateRampUpMinutes == null
-          || writeRateRampUpMinutes <= 0
-          || writeRateRampUpSteps == null
-          || writeRateRampUpSteps <= 0
-          || maxWriteRatePerWorker == null
-          || maxWriteRatePerWorker <= initialWriteRatePerWorker) {
-        return;
-      }
-      long stepDurationMs = (writeRateRampUpMinutes * 60L * 1000L) / writeRateRampUpSteps;
-      if (stepDurationMs <= 0) {
-        stepDurationMs = 1;
-      }
-      long elapsedMs = System.currentTimeMillis() - startTimeMs;
-      long currentStep = Math.min(writeRateRampUpSteps, elapsedMs / stepDurationMs);
-
-      if (currentStep > lastComputedStep) {
-        lastComputedStep = currentStep;
-        double rateRange = maxWriteRatePerWorker - initialWriteRatePerWorker;
-        double newRate =
-            initialWriteRatePerWorker + (rateRange * currentStep) / (double) writeRateRampUpSteps;
-
-        double oldRate = rateLimiter.getRate();
-        if (newRate != oldRate) {
-          rateLimiter.setRate(newRate);
-          LOG.info(
-              "Linear write rate ramp-up: increased write rate from {} to {} docs/s/worker"
-                  + " (step {}/{}, elapsedMinutes={})",
-              String.format("%.1f", oldRate),
-              String.format("%.1f", newRate),
-              currentStep,
-              writeRateRampUpSteps,
-              TimeUnit.MILLISECONDS.toMinutes(elapsedMs));
-        }
-      }
     }
 
     @Teardown
@@ -853,9 +995,8 @@ public class MongoDbTransforms {
 
       if (!updatesByCollection.isEmpty()) {
         batchesFlushed.inc();
-        updateRateLimiterIfNeeded();
-        if (rateLimiter != null && !items.isEmpty()) {
-          rateLimiter.acquire(items.size());
+        if (workerRateLimiter != null && !items.isEmpty()) {
+          workerRateLimiter.acquire(items.size());
         }
         LOG.debug(
             "Flushing batch of {} documents across {} target collection(s) to MongoDB (active"
@@ -1169,10 +1310,9 @@ public class MongoDbTransforms {
     private final Integer maxWriteRatePerWorker;
     private final SerializableFunction<String, MongoClient> clientFactory;
     private final TupleTag<DocumentWithMetadata> failureTag;
+    private final String rateLimiterKey = UUID.randomUUID().toString();
     private transient FluentBackoff backoffSpec;
-    private transient RateLimiter rateLimiter;
-    private transient long startTimeMs;
-    private transient long lastComputedStep;
+    private transient WorkerRateLimiter workerRateLimiter;
 
     private final Counter successfulWrites =
         Metrics.counter(WriteWithDlq.class, "successfulWrites");
@@ -1341,18 +1481,24 @@ public class MongoDbTransforms {
     }
 
     @VisibleForTesting
-    RateLimiter getRateLimiter() {
-      return rateLimiter;
+    WorkerRateLimiter getRateLimiter() {
+      return (workerRateLimiter != null && !workerRateLimiter.isDisabled())
+          ? workerRateLimiter
+          : null;
     }
 
     @VisibleForTesting
     void setStartTimeMs(long startTimeMs) {
-      this.startTimeMs = startTimeMs;
+      if (workerRateLimiter != null) {
+        workerRateLimiter.setStartTimeMs(startTimeMs);
+      }
     }
 
     @VisibleForTesting
     void updateRateLimiterForTest() {
-      updateRateLimiterIfNeeded();
+      if (workerRateLimiter != null) {
+        workerRateLimiter.updateRate(System.currentTimeMillis());
+      }
     }
 
     @Setup
@@ -1366,19 +1512,14 @@ public class MongoDbTransforms {
               .withMaxRetries(maxWriteRetries)
               .withInitialBackoff(Duration.millis(200))
               .withExponent(2.0);
-      if (initialWriteRatePerWorker != null && initialWriteRatePerWorker > 0) {
-        rateLimiter = RateLimiter.create(initialWriteRatePerWorker);
-        startTimeMs = System.currentTimeMillis();
-        lastComputedStep = 0;
-        LOG.info(
-            "Enabled linear write rate ramp-up for WriteBatchesFn: initialRate={} docs/s/worker,"
-                + " targetMax={} docs/s/worker, duration={} mins, steps={}",
-            initialWriteRatePerWorker,
-            maxWriteRatePerWorker,
-            writeRateRampUpMinutes,
-            writeRateRampUpSteps);
-      } else {
-        rateLimiter = null;
+      workerRateLimiter =
+          getOrCreateWorkerRateLimiter(
+              rateLimiterKey,
+              initialWriteRatePerWorker,
+              maxWriteRatePerWorker,
+              writeRateRampUpMinutes,
+              writeRateRampUpSteps);
+      if (workerRateLimiter == null) {
         LOG.info(
             "Write rate limiting is disabled for WriteBatchesFn (initialWriteRatePerWorker <= 0)");
       }
@@ -1388,44 +1529,6 @@ public class MongoDbTransforms {
           database,
           maxConcurrentAsyncWrites,
           maxWriteRetries);
-    }
-
-    private void updateRateLimiterIfNeeded() {
-      if (rateLimiter == null
-          || writeRateRampUpMinutes == null
-          || writeRateRampUpMinutes <= 0
-          || writeRateRampUpSteps == null
-          || writeRateRampUpSteps <= 0
-          || maxWriteRatePerWorker == null
-          || maxWriteRatePerWorker <= initialWriteRatePerWorker) {
-        return;
-      }
-      long stepDurationMs = (writeRateRampUpMinutes * 60L * 1000L) / writeRateRampUpSteps;
-      if (stepDurationMs <= 0) {
-        stepDurationMs = 1;
-      }
-      long elapsedMs = System.currentTimeMillis() - startTimeMs;
-      long currentStep = Math.min(writeRateRampUpSteps, elapsedMs / stepDurationMs);
-
-      if (currentStep > lastComputedStep) {
-        lastComputedStep = currentStep;
-        double rateRange = maxWriteRatePerWorker - initialWriteRatePerWorker;
-        double newRate =
-            initialWriteRatePerWorker + (rateRange * currentStep) / (double) writeRateRampUpSteps;
-
-        double oldRate = rateLimiter.getRate();
-        if (newRate != oldRate) {
-          rateLimiter.setRate(newRate);
-          LOG.info(
-              "Linear write rate ramp-up: increased write rate from {} to {} docs/s/worker"
-                  + " (step {}/{}, elapsedMinutes={})",
-              String.format("%.1f", oldRate),
-              String.format("%.1f", newRate),
-              currentStep,
-              writeRateRampUpSteps,
-              TimeUnit.MILLISECONDS.toMinutes(elapsedMs));
-        }
-      }
     }
 
     @Teardown
@@ -1581,15 +1684,14 @@ public class MongoDbTransforms {
 
       if (!coalescedByCollection.isEmpty()) {
         batchesFlushed.inc();
-        updateRateLimiterIfNeeded();
 
         int totalCoalescedCount = 0;
         for (LinkedHashMap<Object, CoalescedOp> colMap : coalescedByCollection.values()) {
           totalCoalescedCount += colMap.size();
         }
 
-        if (rateLimiter != null && totalCoalescedCount > 0) {
-          rateLimiter.acquire(totalCoalescedCount);
+        if (workerRateLimiter != null && totalCoalescedCount > 0) {
+          workerRateLimiter.acquire(totalCoalescedCount);
         }
 
         LOG.debug(
