@@ -114,6 +114,7 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
    * are still created, replicated and logged, but excluded from the wait condition and from the
    * assertions. See the Javadoc of {@link #testOracleDataTypes()}.
    */
+  // TODO(b/579256484): Re-enable validation once these template conversions are fixed.
   private static final Map<String, String> KNOWN_MISMATCHES = knownMismatches();
 
   /**
@@ -123,6 +124,7 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
    * column ({@code ChangeEventTypeConvertor#toValue} rejects {@code PG_ARRAY}), so these rows go to
    * the DLQ.
    */
+  // TODO(b/579256484): Re-enable varray_table validation once PG_ARRAY handling is added.
   private static final Map<String, String> PG_DIALECT_KNOWN_MISMATCHES =
       ImmutableMap.<String, String>builder()
           .putAll(KNOWN_MISMATCHES)
@@ -138,6 +140,7 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
    * condition and the value assertions). Their expected values are kept in {@link
    * OracleDataTypesTestData}. See the Javadoc of {@link #testOracleDataTypes()}.
    */
+  // TODO(b/579256484): Enable stream_large_objects and re-enable LOB table validation.
   private static final Set<String> LOB_TABLES_NOT_VALIDATED =
       Set.of(
           "blob_table",
@@ -235,31 +238,32 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
 
   /**
    * KNOWN LIMITATIONS &amp; MATRIX DISCREPANCIES (Oracle -&gt; Datastream -&gt; Spanner, backfill
-   * and CDC)
+   * and CDC; tracked under b/579256484)
    *
    * <p>The tables below are still created and replicated, but are listed in {@link
    * #KNOWN_MISMATCHES} and excluded from the wait condition and value assertions:
    *
    * <ul>
-   *   <li><b>Text -&gt; Spanner BYTES (11 tables, e.g. {@code varchar2_to_bytes_table}, {@code
-   *       nchar_to_bytes_table})</b>: Datastream emits Oracle character data (VARCHAR2, CHAR,
-   *       NVARCHAR2, NCHAR and aliases) as Avro strings, and Oracle RAW is also emitted as an
-   *       (uppercase hex) Avro string. The change event carries no type information to tell the two
-   *       apart, so <code>ChangeEventTypeConvertor#toByteArray</code> hex-decodes every
-   *       non-PostgreSQL string routed to a <code>BYTES</code> column. Text is therefore not
-   *       converted to its UTF-8 bytes: strings that happen to be valid hex (e.g. {@code 'A'} or
-   *       {@code 'DEADBEEF'}) are silently decoded to unrelated bytes, and other strings (e.g.
-   *       {@code 'DROP TABLE'}) fail conversion. Users who need text in Spanner <code>BYTES
+   *   <li><b>Text -&gt; Spanner BYTES (b/579256484; 11 tables, e.g. {@code
+   *       varchar2_to_bytes_table}, {@code nchar_to_bytes_table})</b>: Datastream emits Oracle
+   *       character data (VARCHAR2, CHAR, NVARCHAR2, NCHAR and aliases) as Avro strings, and Oracle
+   *       RAW is also emitted as an (uppercase hex) Avro string. The change event carries no type
+   *       information to tell the two apart, so <code>ChangeEventTypeConvertor#toByteArray</code>
+   *       hex-decodes every non-PostgreSQL string routed to a <code>BYTES</code> column. Text is
+   *       therefore not converted to its UTF-8 bytes: strings that happen to be valid hex (e.g.
+   *       {@code 'A'} or {@code 'DEADBEEF'}) are silently decoded to unrelated bytes, and other
+   *       strings (e.g. {@code 'DROP TABLE'}) fail conversion. Users who need text in Spanner
+   *       <code>BYTES
    *       </code> should use a custom transformation to encode the text.
-   *   <li><b>DATE/TIMESTAMP -&gt; Spanner INT64 (4 tables: {@code date}, {@code timestamp}, {@code
-   *       timestamp_tz}, {@code timestamp_ltz} {@code _to_int64_table})</b>: the template has no
-   *       temporal-to-integer (e.g. epoch) conversion, so these rows fail conversion and are
-   *       written to the dead-letter queue instead of Spanner.
+   *   <li><b>DATE/TIMESTAMP -&gt; Spanner INT64 (b/579256484; 4 tables: {@code date}, {@code
+   *       timestamp}, {@code timestamp_tz}, {@code timestamp_ltz} {@code _to_int64_table})</b>: the
+   *       template has no temporal-to-integer (e.g. epoch) conversion, so these rows fail
+   *       conversion and are written to the dead-letter queue instead of Spanner.
    * </ul>
    *
-   * <p><b>LOB validation is disabled (6 tables, {@link #LOB_TABLES_NOT_VALIDATED}: {@code
-   * blob_table}, {@code blob_to_str_table}, {@code clob_table}, {@code clob_to_bytes_table}, {@code
-   * nclob_table}, {@code nclob_to_bytes_table})</b>: the test does not enable Datastream
+   * <p><b>LOB validation is disabled (b/579256484; 6 tables, {@link #LOB_TABLES_NOT_VALIDATED}:
+   * {@code blob_table}, {@code blob_to_str_table}, {@code clob_table}, {@code clob_to_bytes_table},
+   * {@code nclob_table}, {@code nclob_to_bytes_table})</b>: the test does not enable Datastream
    * large-object streaming ({@code OracleSourceConfig.stream_large_objects}), and without it
    * Datastream replicates BLOB, CLOB and NCLOB values as <code>NULL</code>. These tables are
    * created and replicated, but excluded from the wait condition and the value assertions; their
@@ -267,12 +271,13 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
    * When LOB streaming is enabled, these known issues apply:
    *
    * <ul>
-   *   <li><b>BLOB -&gt; Spanner BYTES &mdash; open bug</b>: Datastream emits BLOB as Avro <code>
-   *       bytes</code>, which the template writes into the change event as base64, but <code>
-   *       ChangeEventTypeConvertor#toByteArray</code> hex-decodes every non-PostgreSQL <code>BYTES
-   *       </code> value, so the data is silently corrupted (e.g. {@code DEADBEEF} is stored as
+   *   <li><b>BLOB -&gt; Spanner BYTES &mdash; open bug (b/579256484)</b>: Datastream emits BLOB as
+   *       Avro <code>bytes</code>, which the template writes into the change event as base64, but
+   *       <code>ChangeEventTypeConvertor#toByteArray</code> hex-decodes every non-PostgreSQL <code>
+   *       BYTES</code> value, so the data is silently corrupted (e.g. {@code DEADBEEF} is stored as
    *       {@code 2F1F6FEF}).
-   *   <li><b>CLOB/NCLOB -&gt; Spanner BYTES</b>: same text -&gt; BYTES limitation as above.
+   *   <li><b>CLOB/NCLOB -&gt; Spanner BYTES (b/579256484)</b>: same text -&gt; BYTES limitation as
+   *       above.
    * </ul>
    *
    * <p><b>TIMESTAMP WITH TIME ZONE / WITH LOCAL TIME ZONE values are restricted</b> (all {@code
@@ -280,15 +285,16 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
    * that would hit them are not validated:
    *
    * <ul>
-   *   <li><b>Non-UTC offsets are stored as the wrong instant &mdash; open bug</b>: for Oracle,
-   *       Datastream puts the local wall-clock time in the {@code timestampTz.timestamp} field and
-   *       the offset separately, but <code>FormatDatastreamRecordToJson</code> treats {@code
-   *       timestamp} as the instant, so the offset is ignored (e.g. {@code 10:30 +05:30} is stored
-   *       as {@code 10:30Z} instead of {@code 05:00Z}). Only UTC values ({@code +00:00} / {@code
-   *       UTC}) are validated; the test database and session time zone are {@code +00:00}.
-   *   <li><b>Values outside ~1677-09-21..2262-04-11 overflow &mdash; open bug</b>: <code>
-   *       FormatDatastreamRecordToJson</code> converts the microseconds to nanoseconds in a {@code
-   *       long}, which overflows (e.g. {@code 0001-01-01} is stored as {@code
+   *   <li><b>Non-UTC offsets are stored as the wrong instant &mdash; open bug (b/579256484)</b>:
+   *       for Oracle, Datastream puts the local wall-clock time in the {@code
+   *       timestampTz.timestamp} field and the offset separately, but <code>
+   *       FormatDatastreamRecordToJson</code> treats {@code timestamp} as the instant, so the
+   *       offset is ignored (e.g. {@code 10:30 +05:30} is stored as {@code 10:30Z} instead of
+   *       {@code 05:00Z}). Only UTC values ({@code +00:00} / {@code UTC}) are validated; the test
+   *       database and session time zone are {@code +00:00}.
+   *   <li><b>Values outside ~1677-09-21..2262-04-11 overflow &mdash; open bug (b/579256484)</b>:
+   *       <code>FormatDatastreamRecordToJson</code> converts the microseconds to nanoseconds in a
+   *       {@code long}, which overflows (e.g. {@code 0001-01-01} is stored as {@code
    *       1754-08-30T22:43:41Z}). This affects every Datastream source that sends {@code
    *       timestampTz}. The matrix extremes {@code 0001-01-01} / {@code 9999-12-31} are replaced by
    *       {@code 1700-01-01} / {@code 2200-12-31}.
@@ -356,7 +362,8 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
       datastream =
           DatastreamResourceManager.builder(testName, PROJECT, REGION)
               .setCredentialsProvider(credentialsProvider)
-              .setPrivateConnectivity("datastream-connect-2")
+              .setPrivateConnectivity(
+                  System.getProperty("privateConnectivity", "datastream-connect-2"))
               .build();
       oracleUser = SharedOracleLiveITContainer.setupOracleIsolatedUser();
       replicateAndValidate(
