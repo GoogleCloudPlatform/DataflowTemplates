@@ -51,7 +51,8 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Main functional integration test for standard datastream-to-spanner live streaming CDC migrations
- * with SQL Server.
+ * with SQL Server: an initial wave of INSERTs followed by UPDATEs and DELETEs, verified on two
+ * tables mapped through a session file.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
@@ -82,6 +83,9 @@ public class SQLServerDataStreamToSpannerIT extends DataStreamToSpannerITBase {
 
   @Before
   public void setUp() throws IOException {
+    // Cancel the Dataflow job ourselves (tearDownBase in cleanUp) before deleting the resources it
+    // uses; the base class @After would otherwise run after this class's @After.
+    skipBaseCleanup = true;
     sqlServerResourceManager = setUpSqlServerResourceManager();
     spannerResourceManager = setUpSpannerResourceManager();
     pubsubResourceManager = setUpPubSubResourceManager();
@@ -90,7 +94,8 @@ public class SQLServerDataStreamToSpannerIT extends DataStreamToSpannerITBase {
   }
 
   @After
-  public void cleanUp() {
+  public void cleanUp() throws IOException {
+    tearDownBase();
     // Datastream streams are deleted first, before the CDC-enabled source database is dropped.
     ResourceManagerUtils.cleanResources(
         datastreamResourceManager,
@@ -144,47 +149,95 @@ public class SQLServerDataStreamToSpannerIT extends DataStreamToSpannerITBase {
             sqlServerSource);
     assertThatPipeline(jobInfo).isRunning();
 
-    // Insert initial data
+    // 1. Initial wave of inserts (two rows per table).
     insertSqlServerData("source_table1", 1, "Alice", 30, "Y", "2026-01-01");
+    insertSqlServerData("source_table1", 2, "Carol", 35, "N", "2026-01-03");
     insertSqlServerData("source_table2", 1, "Bob", 40, "N", "2026-01-02");
+    insertSqlServerData("source_table2", 2, "Dave", 45, "Y", "2026-01-04");
 
-    ConditionCheck condition =
+    ConditionCheck insertCondition =
         SpannerRowsCheck.builder(spannerResourceManager, "source_table1")
-            .setMinRows(1)
+            .setMinRows(2)
+            .setMaxRows(2)
             .build()
             .and(
                 SpannerRowsCheck.builder(spannerResourceManager, "source_table2")
-                    .setMinRows(1)
+                    .setMinRows(2)
+                    .setMaxRows(2)
                     .build());
-
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(JOB_START_PROCESSING_WAIT_MINUTES)),
-                condition);
+                insertCondition);
     assertThatResult(result).meetsConditions();
 
-    List<Struct> rows1 = spannerResourceManager.readTableRecords("source_table1", COLUMNS);
-    SpannerAsserts.assertThatStructs(rows1)
-        .hasRecordsUnorderedCaseInsensitiveColumns(
-            List.of(
-                Map.of(
-                    ROW_ID, 1L,
-                    NAME, "Alice",
-                    AGE, 30L,
-                    MEMBER, "Y",
-                    ENTRY_ADDED, "2026-01-01")));
+    assertTableContents(
+        "source_table1",
+        row(1L, "Alice", 30L, "Y", "2026-01-01"),
+        row(2L, "Carol", 35L, "N", "2026-01-03"));
+    assertTableContents(
+        "source_table2",
+        row(1L, "Bob", 40L, "N", "2026-01-02"),
+        row(2L, "Dave", 45L, "Y", "2026-01-04"));
 
-    List<Struct> rows2 = spannerResourceManager.readTableRecords("source_table2", COLUMNS);
-    SpannerAsserts.assertThatStructs(rows2)
-        .hasRecordsUnorderedCaseInsensitiveColumns(
-            List.of(
-                Map.of(
-                    ROW_ID, 1L,
-                    NAME, "Bob",
-                    AGE, 40L,
-                    MEMBER, "N",
-                    ENTRY_ADDED, "2026-01-02")));
+    // 2. Second wave: update row 1 and delete row 2 in each table.
+    sqlServerResourceManager.runSQLUpdate(
+        "UPDATE source_table1 SET name = 'ALICE', age = 31, member = 'N' WHERE id = 1");
+    sqlServerResourceManager.runSQLUpdate("DELETE FROM source_table1 WHERE id = 2");
+    sqlServerResourceManager.runSQLUpdate(
+        "UPDATE source_table2 SET name = 'BOB', age = 41, member = 'Y' WHERE id = 1");
+    sqlServerResourceManager.runSQLUpdate("DELETE FROM source_table2 WHERE id = 2");
+
+    // A row count alone is also met before the UPDATE is applied, so wait for the final state.
+    ConditionCheck cdcCondition =
+        rowPresentCheck(
+                "source_table1 CDC wave applied",
+                "SELECT id FROM source_table1 WHERE id = 1 AND name = 'ALICE' AND age = 31"
+                    + " AND member = 'N'"
+                    + " AND NOT EXISTS (SELECT 1 FROM source_table1 WHERE id = 2)")
+            .and(
+                rowPresentCheck(
+                    "source_table2 CDC wave applied",
+                    "SELECT id FROM source_table2 WHERE id = 1 AND name = 'BOB' AND age = 41"
+                        + " AND member = 'Y'"
+                        + " AND NOT EXISTS (SELECT 1 FROM source_table2 WHERE id = 2)"));
+    result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(10)), cdcCondition);
+    assertThatResult(result).meetsConditions();
+
+    assertTableContents("source_table1", row(1L, "ALICE", 31L, "N", "2026-01-01"));
+    assertTableContents("source_table2", row(1L, "BOB", 41L, "Y", "2026-01-02"));
+  }
+
+  private static Map<String, Object> row(
+      long id, String name, long age, String member, String entryAdded) {
+    return Map.of(ROW_ID, id, NAME, name, AGE, age, MEMBER, member, ENTRY_ADDED, entryAdded);
+  }
+
+  @SafeVarargs
+  private void assertTableContents(String tableName, Map<String, Object>... expectedRows) {
+    List<Struct> rows = spannerResourceManager.readTableRecords(tableName, COLUMNS);
+    SpannerAsserts.assertThatStructs(rows)
+        .hasRecordsUnorderedCaseInsensitiveColumns(List.of(expectedRows));
+  }
+
+  /** A condition that passes once the given query returns at least one row from Spanner. */
+  private ConditionCheck rowPresentCheck(String description, String query) {
+    return new ConditionCheck() {
+      @Override
+      protected String getDescription() {
+        return description;
+      }
+
+      @Override
+      protected CheckResult check() {
+        int found = spannerResourceManager.runQuery(query).size();
+        return new CheckResult(
+            found > 0, String.format("%s: query returned %d row(s)", description, found));
+      }
+    };
   }
 
   private void insertSqlServerData(
