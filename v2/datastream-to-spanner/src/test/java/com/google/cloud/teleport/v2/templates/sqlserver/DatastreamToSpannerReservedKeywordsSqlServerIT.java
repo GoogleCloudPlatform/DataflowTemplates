@@ -75,6 +75,9 @@ public class DatastreamToSpannerReservedKeywordsSqlServerIT extends DataStreamTo
 
   @Before
   public void setUp() throws IOException {
+    // Cancel the Dataflow job ourselves (tearDownBase in cleanUp) before deleting the resources it
+    // uses; the base class @After would otherwise run after this class's @After.
+    skipBaseCleanup = true;
     LOG.info("Setting up SQL Server resource manager...");
     msSqlResourceManager = setUpSqlServerResourceManager();
     LOG.info("SQL Server resource manager created with URI: {}", msSqlResourceManager.getUri());
@@ -95,7 +98,8 @@ public class DatastreamToSpannerReservedKeywordsSqlServerIT extends DataStreamTo
   }
 
   @After
-  public void cleanUp() {
+  public void cleanUp() throws IOException {
+    tearDownBase();
     LOG.info("Cleaning up resources...");
     // Datastream streams are deleted first, before the CDC-enabled source database is dropped.
     ResourceManagerUtils.cleanResources(
