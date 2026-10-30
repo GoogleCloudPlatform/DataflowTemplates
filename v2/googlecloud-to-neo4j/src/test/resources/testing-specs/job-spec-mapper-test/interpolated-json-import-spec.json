@@ -1,0 +1,65 @@
+{
+    "version": "1",
+    "actions": [
+        {
+            "type": "bigquery",
+            "name": "prepare-data",
+            "active": true,
+            "stage": "start",
+            "sql": "CREATE TABLE $dataset.people AS SELECT 1 AS id"
+        },
+        {
+            "type": "http",
+            "name": "notify-$dataset",
+            "active": true,
+            "stage": "end",
+            "url": "https://example.com/$dataset",
+            "method": "GET",
+            "headers": {
+                "X-Dataset": "$dataset"
+            }
+        }
+    ],
+    "sources": [
+        {
+            "type": "bigquery",
+            "name": "query-source",
+            "query": "SELECT id FROM $dataset.people LIMIT $limit"
+        },
+        {
+            "type": "text",
+            "name": "text-source",
+            "urls": ["gs://$bucket/people-1.csv", "gs://$bucket/people-2.csv"],
+            "format": "excel",
+            "header": ["id"]
+        }
+    ],
+    "targets": {
+        "nodes": [
+            {
+                "name": "query-people",
+                "source": "query-source",
+                "write_mode": "create",
+                "labels": ["QueryPerson"],
+                "properties": [{"source_field": "id", "target_property": "id"}],
+                "schema": {
+                    "key_constraints": [
+                        {"name": "query-person-id", "label": "QueryPerson", "properties": ["id"]}
+                    ]
+                }
+            },
+            {
+                "name": "text-people",
+                "source": "text-source",
+                "write_mode": "create",
+                "labels": ["TextPerson"],
+                "properties": [{"source_field": "id", "target_property": "id"}],
+                "schema": {
+                    "key_constraints": [
+                        {"name": "text-person-id", "label": "TextPerson", "properties": ["id"]}
+                    ]
+                }
+            }
+        ]
+    }
+}
