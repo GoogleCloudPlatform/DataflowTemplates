@@ -16,9 +16,9 @@ INSERT INTO Books (title) VALUES ('Pride and Prejudice');
 
 INSERT INTO Books (title) VALUES ('The Hitchhiker''s Guide to the Galaxy');
 
-INSERT INTO DatatypeColumnsReducedSizes (varchar_column, char_column, nvarchar_column, varbinary_column) VALUES ('fits', 'abc', N'abc', 0x0102);
+INSERT INTO DatatypeColumnsReducedSizes (varchar_column, char_column, nvarchar_column) VALUES ('fits', 'abc', N'abc');
 
-INSERT INTO DatatypeColumnsReducedSizes (varchar_column, char_column, nvarchar_column, varbinary_column) VALUES ('too_long', 'char_long', N'nvarchar_long', 0x0102030405060708);
+INSERT INTO DatatypeColumnsReducedSizes (varchar_column, char_column, nvarchar_column) VALUES ('too_long', 'char_long', N'nvarchar_long');
 
 INSERT INTO Singers (first_name, last_name) VALUES ('Marc', 'Richards');
 

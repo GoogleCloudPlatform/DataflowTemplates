@@ -38,9 +38,8 @@ CREATE TABLE IF NOT EXISTS Books (
 
 CREATE TABLE IF NOT EXISTS DatatypeColumnsReducedSizes (
     varchar_column STRING(20) NOT NULL,
-    char_column STRING(5),
+    char_column STRING(10),
     nvarchar_column STRING(5),
-    varbinary_column BYTES(5),
 ) PRIMARY KEY (varchar_column);
 
 CREATE SEQUENCE singer_seq OPTIONS (sequence_kind='bit_reversed_positive', skip_range_min = 0, skip_range_max = 3);
