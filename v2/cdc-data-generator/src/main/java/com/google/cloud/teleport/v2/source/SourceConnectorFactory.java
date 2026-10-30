@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.v2.source;
 
 import com.google.cloud.teleport.v2.source.mysql.MySqlSourceConnector;
-import com.google.cloud.teleport.v2.source.oracle.OracleSourceConnector;
 import com.google.cloud.teleport.v2.source.spanner.SpannerSourceConnector;
 import com.google.cloud.teleport.v2.templates.CdcDataGeneratorOptions;
 import com.google.cloud.teleport.v2.templates.CdcDataGeneratorOptions.SinkType;
@@ -42,8 +41,6 @@ public class SourceConnectorFactory {
         return new SpannerSourceConnector();
       case MYSQL:
         return new MySqlSourceConnector();
-      case ORACLE:
-        return new OracleSourceConnector();
       default:
         throw new IllegalArgumentException("Unsupported sink type: " + sinkType);
     }
@@ -72,7 +69,7 @@ public class SourceConnectorFactory {
   /**
    * Gets the appropriate {@link ISourceConnector} for the given source type string.
    *
-   * @param sourceType the source type name (e.g. "SPANNER", "MYSQL", "ORACLE")
+   * @param sourceType the source type name (e.g. "SPANNER", "MYSQL")
    * @return the source connector
    */
   public static ISourceConnector getSourceConnectorBySourceType(String sourceType) {
@@ -85,8 +82,6 @@ public class SourceConnectorFactory {
         return new SpannerSourceConnector();
       case "MYSQL":
         return new MySqlSourceConnector();
-      case "ORACLE":
-        return new OracleSourceConnector();
       default:
         throw new IllegalArgumentException("Unsupported source type: " + sourceType);
     }

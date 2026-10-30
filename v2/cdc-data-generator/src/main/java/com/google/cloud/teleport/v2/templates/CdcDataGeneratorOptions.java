@@ -29,11 +29,10 @@ public interface CdcDataGeneratorOptions
       order = 1,
       enumOptions = {
         @TemplateParameter.TemplateEnumOption("SPANNER"),
-        @TemplateParameter.TemplateEnumOption("MYSQL"),
-        @TemplateParameter.TemplateEnumOption("ORACLE")
+        @TemplateParameter.TemplateEnumOption("MYSQL")
       },
       description = "Type of sink to generate data for",
-      helpText = "The type of sink to generate data for. Supported values: SPANNER, MYSQL, ORACLE.")
+      helpText = "The type of sink to generate data for. Supported values: SPANNER, MYSQL.")
   @Required
   SinkType getSinkType();
 
@@ -179,7 +178,6 @@ public interface CdcDataGeneratorOptions
 
   enum SinkType {
     SPANNER,
-    MYSQL,
-    ORACLE
+    MYSQL
   }
 }
