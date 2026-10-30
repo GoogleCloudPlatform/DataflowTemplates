@@ -192,6 +192,10 @@ public class DdlToAvroSchemaConverterTest {
             .onUpdateExpression("PENDING_COMMIT_TIMESTAMP()")
             .columnOptions(ImmutableList.of("allow_commit_timestamp=TRUE"))
             .endColumn()
+            .column("partition_array")
+            .type(Type.array(Type.string()))
+            .max()
+            .endColumn()
             .primaryKey()
             .asc("id")
             .asc("gen_id")
@@ -203,7 +207,9 @@ public class DdlToAvroSchemaConverterTest {
                     "CREATE SEARCH INDEX `SearchIndex` ON `Users` (`MyTokens`)"
                         + " OPTIONS (sort_order_sharding=TRUE)",
                     "CREATE VECTOR INDEX `VI` ON `Users`(`Embeddings` ) WHERE Embeddings IS NOT NULL"
-                        + " OPTIONS (distance_type=\"COSINE\")"))
+                        + " OPTIONS (distance_type=\"COSINE\")",
+                    "CREATE SEARCH INDEX `ArrayPartitionedSearchIndex` ON `Users` (`MyTokens`)"
+                        + " UNNEST(`partition_array`) AS `element` PARTITION BY `element`"))
             .foreignKeys(
                 ImmutableList.of(
                     "ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
@@ -232,7 +238,7 @@ public class DdlToAvroSchemaConverterTest {
 
     List<Schema.Field> fields = avroSchema.getFields();
 
-    assertThat(fields, hasSize(14));
+    assertThat(fields, hasSize(15));
 
     assertThat(fields.get(0).name(), equalTo("id"));
     // Not null
@@ -369,6 +375,17 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(field13.getProp(ON_UPDATE_EXPRESSION), equalTo("PENDING_COMMIT_TIMESTAMP()"));
     assertThat(field13.getProp(SPANNER_OPTION + "0"), equalTo("allow_commit_timestamp=TRUE"));
 
+    Schema.Field field14 = fields.get(14);
+    assertThat(field14.name(), equalTo("partition_array"));
+    assertThat(field14.schema(), equalTo(nullableArray(Schema.Type.STRING)));
+    assertThat(field14.getProp(SQL_TYPE), equalTo("ARRAY<STRING(MAX)>"));
+    assertThat(field14.getProp(NOT_NULL), equalTo(null));
+    assertThat(field14.getProp(GENERATION_EXPRESSION), equalTo(null));
+    assertThat(field14.getProp(STORED), equalTo(null));
+    assertThat(field14.getProp(DEFAULT_EXPRESSION), equalTo(null));
+    assertThat(field14.getProp(ON_UPDATE_EXPRESSION), equalTo(null));
+    assertThat(field14.getProp(SPANNER_OPTION + "0"), equalTo(null));
+
     // spanner pk
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_0"), equalTo("`id` ASC"));
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_1"), equalTo("`gen_id` ASC"));
@@ -384,6 +401,11 @@ public class DdlToAvroSchemaConverterTest {
         equalTo(
             "CREATE SEARCH INDEX `SearchIndex` ON `Users` (`MyTokens`)"
                 + " OPTIONS (sort_order_sharding=TRUE)"));
+    assertThat(
+        avroSchema.getProp(SPANNER_INDEX + "3"),
+        equalTo(
+            "CREATE SEARCH INDEX `ArrayPartitionedSearchIndex` ON `Users` (`MyTokens`)"
+                + " UNNEST(`partition_array`) AS `element` PARTITION BY `element`"));
     assertThat(
         avroSchema.getProp(SPANNER_FOREIGN_KEY + "0"),
         equalTo(
@@ -484,6 +506,10 @@ public class DdlToAvroSchemaConverterTest {
             .defaultExpression("spanner.pending_commit_timestamp()")
             .onUpdateExpression("spanner.pending_commit_timestamp()")
             .endColumn()
+            .column("partition_array")
+            .type(Type.pgArray(Type.pgVarchar()))
+            .max()
+            .endColumn()
             .primaryKey()
             .asc("id")
             .asc("gen_id")
@@ -495,7 +521,9 @@ public class DdlToAvroSchemaConverterTest {
                     "CREATE SEARCH INDEX \"SearchIndex\" ON \"Users\" (\"tokens\")"
                         + " WITH (sort_order_sharding=TRUE)",
                     "CREATE INDEX \"VI\" ON \"Users\" USING ScaNN (\"Embeddings\")"
-                        + " WITH (distance_type='COSINE') WHERE \"Embeddings\" NOT NULL"))
+                        + " WITH (distance_type='COSINE') WHERE \"Embeddings\" NOT NULL",
+                    "CREATE SEARCH INDEX \"ArrayPartitionedSearchIndex\" ON \"Users\" (\"MyTokens\")"
+                        + " UNNEST(\"partition_array\") AS \"element\" PARTITION BY \"element\""))
             .foreignKeys(
                 ImmutableList.of(
                     "ALTER TABLE \"Users\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"first_name\")"
@@ -519,7 +547,7 @@ public class DdlToAvroSchemaConverterTest {
 
     List<Schema.Field> fields = avroSchema.getFields();
 
-    assertThat(fields, hasSize(13));
+    assertThat(fields, hasSize(14));
 
     assertThat(fields.get(0).name(), equalTo("id"));
     // Not null
@@ -637,6 +665,17 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(
         field12.getProp(ON_UPDATE_EXPRESSION), equalTo("spanner.pending_commit_timestamp()"));
 
+    Schema.Field field13 = fields.get(13);
+    assertThat(field13.name(), equalTo("partition_array"));
+    assertThat(field13.schema(), equalTo(nullableArray(Schema.Type.STRING)));
+    assertThat(field13.getProp(SQL_TYPE), equalTo("character varying[]"));
+    assertThat(field13.getProp(NOT_NULL), equalTo(null));
+    assertThat(field13.getProp(GENERATION_EXPRESSION), equalTo(null));
+    assertThat(field13.getProp(STORED), equalTo(null));
+    assertThat(field13.getProp(DEFAULT_EXPRESSION), equalTo(null));
+    assertThat(field13.getProp(ON_UPDATE_EXPRESSION), equalTo(null));
+    assertThat(field13.getProp(SPANNER_OPTION + "0"), equalTo(null));
+
     // spanner pk
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_0"), equalTo("\"id\" ASC"));
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_1"), equalTo("\"gen_id\" ASC"));
@@ -652,6 +691,12 @@ public class DdlToAvroSchemaConverterTest {
         avroSchema.getProp(SPANNER_INDEX + "1"),
         equalTo(
             "CREATE SEARCH INDEX \"SearchIndex\" ON \"Users\" (\"tokens\") WITH (sort_order_sharding=TRUE)"));
+
+    assertThat(
+        avroSchema.getProp(SPANNER_INDEX + "3"),
+        equalTo(
+            "CREATE SEARCH INDEX \"ArrayPartitionedSearchIndex\" ON \"Users\" (\"MyTokens\")"
+                + " UNNEST(\"partition_array\") AS \"element\" PARTITION BY \"element\""));
 
     assertThat(
         avroSchema.getProp(SPANNER_FOREIGN_KEY + "0"),

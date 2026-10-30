@@ -62,6 +62,9 @@ public abstract class Index implements Serializable {
   @Nullable
   abstract ImmutableList<String> orderBy();
 
+  @Nullable
+  abstract ImmutableList<String> unnest();
+
   public static Builder builder(Dialect dialect) {
     return new AutoValue_Index.Builder().dialect(dialect).nullFiltered(false).unique(false);
   }
@@ -106,6 +109,30 @@ public abstract class Index implements Serializable {
             .map(c -> c.prettyPrint())
             .collect(Collectors.joining(", "));
     appendable.append("(").append(indexColumnsString).append(")");
+
+    if (unnest() != null) {
+      String unnestString =
+          unnest().stream()
+              .map(
+                  c -> {
+                    String[] parts = c.trim().split("\\s+");
+                    if (parts.length < 2) {
+                      throw new IllegalArgumentException("Invalid unnest expression: " + c);
+                    }
+                    String path = parts[0];
+                    String alias = parts[1];
+
+                    // Format with dialect-appropriate identifier quoting
+                    return String.format(
+                        "UNNEST(%s) AS %s",
+                        quoteIdentifier(path, dialect()), quoteIdentifier(alias, dialect()));
+                  })
+              .collect(Collectors.joining(", "));
+
+      if (!unnestString.isEmpty()) {
+        appendable.append(" ").append(unnestString);
+      }
+    }
 
     String storingString =
         indexColumns().stream()
@@ -177,6 +204,30 @@ public abstract class Index implements Serializable {
             .map(c -> c.prettyPrint())
             .collect(Collectors.joining(", "));
     appendable.append("(").append(indexColumnsString).append(")");
+
+    if (unnest() != null) {
+      String unnestString =
+          unnest().stream()
+              .map(
+                  c -> {
+                    String[] parts = c.trim().split("\\s+");
+                    if (parts.length < 2) {
+                      throw new IllegalArgumentException("Invalid unnest expression: " + c);
+                    }
+                    String path = parts[0];
+                    String alias = parts[1];
+
+                    // Format with dialect-appropriate identifier quoting
+                    return String.format(
+                        "UNNEST(%s) AS %s",
+                        quoteIdentifier(path, dialect()), quoteIdentifier(alias, dialect()));
+                  })
+              .collect(Collectors.joining(", "));
+
+      if (!unnestString.isEmpty()) {
+        appendable.append(" ").append(unnestString);
+      }
+    }
 
     String storingString =
         indexColumns().stream()
@@ -294,6 +345,8 @@ public abstract class Index implements Serializable {
     public abstract Builder partitionBy(ImmutableList<String> keys);
 
     public abstract Builder orderBy(ImmutableList<String> keys);
+
+    public abstract Builder unnest(ImmutableList<String> keys);
 
     abstract Index autoBuild();
 
