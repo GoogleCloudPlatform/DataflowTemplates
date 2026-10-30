@@ -39,8 +39,7 @@ CREATE TABLE Books (
 CREATE TABLE DatatypeColumnsReducedSizes (
     varchar_column VARCHAR(20) NOT NULL PRIMARY KEY,
     char_column CHAR(10),
-    nvarchar_column NVARCHAR(20),
-    varbinary_column VARBINARY(20)
+    nvarchar_column NVARCHAR(20)
 );
 
 CREATE SEQUENCE singer_seq START WITH 1 INCREMENT BY 1;

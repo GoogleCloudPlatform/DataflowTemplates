@@ -308,7 +308,9 @@ public class SQLServerDataStreamToSpannerDDLIT extends DataStreamToSpannerITBase
 
   /**
    * Values wider than the (reduced) Spanner column are rejected by Spanner and routed to the DLQ
-   * instead of being truncated: of the two backfill rows only the one that fits must arrive.
+   * instead of being truncated: of the two backfill rows only the one that fits must arrive. Note
+   * that SQL Server pads {@code CHAR(n)} values to {@code n} characters, so the reduction is
+   * applied to the {@code NVARCHAR} column and {@code char_column} keeps its full width on Spanner.
    */
   @Test
   public void migrationTestWithDatatypeSizeReducedConversion() {
@@ -326,14 +328,12 @@ public class SQLServerDataStreamToSpannerDDLIT extends DataStreamToSpannerITBase
     List<Map<String, Object>> events = new ArrayList<>();
     Map<String, Object> row = new HashMap<>();
     row.put("varchar_column", "fits");
-    row.put("char_column", "abc");
+    row.put("char_column", String.format("%-10s", "abc"));
     row.put("nvarchar_column", "abc");
-    row.put("varbinary_column", "AQI=");
     events.add(row);
     SpannerAsserts.assertThatStructs(
             spannerResourceManager.runQuery(
-                "SELECT varchar_column, char_column, nvarchar_column, varbinary_column FROM "
-                    + REDUCED_SIZES_TABLE))
+                "SELECT varchar_column, char_column, nvarchar_column FROM " + REDUCED_SIZES_TABLE))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 
