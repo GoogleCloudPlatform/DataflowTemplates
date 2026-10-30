@@ -33,7 +33,10 @@ public enum SourceType {
   ORACLE(new String[] {"oracle"}),
 
   /** SQL Server source database type. */
-  SQLSERVER(new String[] {"sqlserver"});
+  SQLSERVER(new String[] {"sqlserver"}),
+
+  /** Amazon DynamoDB source database type. */
+  DYNAMODB(new String[] {"dynamodb"});
 
   private final String[] sourceTypeStringValues;
 

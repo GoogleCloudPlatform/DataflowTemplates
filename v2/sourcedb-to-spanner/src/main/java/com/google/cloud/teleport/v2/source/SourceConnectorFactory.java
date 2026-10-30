@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.source;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.source.cassandra.CassandraSrcToSpSourceConnector;
+import com.google.cloud.teleport.v2.source.dynamodb.DynamoDbSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.jdbc.AbstractJdbcSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.mysql.MySqlSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.postgres.PostgresSrcToSpSourceConnector;
@@ -48,6 +49,8 @@ public class SourceConnectorFactory {
       return new com.google.cloud.teleport.v2.source.oracle.OracleSrcToSpSourceConnector();
     } else if (SourceDbToSpannerOptions.SQLSERVER_SOURCE_DIALECT.equals(dialect)) {
       return new SqlServerSrcToSpSourceConnector();
+    } else if (SourceDbToSpannerOptions.DYNAMODB_SOURCE_DIALECT.equals(dialect)) {
+      return new DynamoDbSrcToSpSourceConnector();
     }
     /* Implementation detail, not having a default leads to failure in compile time checks enforced here */
     throw new IllegalArgumentException("Unsupported source database dialect: " + dialect);
@@ -75,6 +78,8 @@ public class SourceConnectorFactory {
         return new com.google.cloud.teleport.v2.source.oracle.OracleSrcToSpSourceConnector();
       case Constants.SQLSERVER_SOURCE_TYPE:
         return new SqlServerSrcToSpSourceConnector();
+      case Constants.DYNAMODB_SOURCE_TYPE:
+        return new DynamoDbSrcToSpSourceConnector();
       default:
         throw new IllegalArgumentException("Unsupported source type: " + sourceType);
     }

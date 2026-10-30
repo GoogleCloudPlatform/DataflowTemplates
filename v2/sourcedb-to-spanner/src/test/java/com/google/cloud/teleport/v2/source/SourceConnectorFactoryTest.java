@@ -21,6 +21,7 @@ import static org.junit.Assert.assertThrows;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.source.cassandra.CassandraSrcToSpSourceConnector;
+import com.google.cloud.teleport.v2.source.dynamodb.DynamoDbSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.jdbc.AbstractJdbcSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.mysql.MySqlSrcToSpSourceConnector;
 import com.google.cloud.teleport.v2.source.postgres.PostgresSrcToSpSourceConnector;
@@ -100,6 +101,16 @@ public class SourceConnectorFactoryTest {
     ISrcToSpSourceConnector connector = SourceConnectorFactory.getSourceConnectorByDialect(options);
 
     assertThat(connector).isInstanceOf(SqlServerSrcToSpSourceConnector.class);
+  }
+
+  @Test
+  public void testGetSourceConnectorByDialect_optionsDynamoDb() {
+    SourceDbToSpannerOptions options = PipelineOptionsFactory.as(SourceDbToSpannerOptions.class);
+    options.setSourceDbDialect(SourceDbToSpannerOptions.DYNAMODB_SOURCE_DIALECT);
+
+    ISrcToSpSourceConnector connector = SourceConnectorFactory.getSourceConnectorByDialect(options);
+
+    assertThat(connector).isInstanceOf(DynamoDbSrcToSpSourceConnector.class);
   }
 
   @Test
@@ -209,6 +220,13 @@ public class SourceConnectorFactoryTest {
     ISrcToSpSourceConnector connector =
         SourceConnectorFactory.getSourceConnectorBySourceType(Constants.SQLSERVER_SOURCE_TYPE);
     assertThat(connector).isInstanceOf(SqlServerSrcToSpSourceConnector.class);
+  }
+
+  @Test
+  public void testGetSourceConnectorBySourceType_dynamodb() {
+    ISrcToSpSourceConnector connector =
+        SourceConnectorFactory.getSourceConnectorBySourceType(Constants.DYNAMODB_SOURCE_TYPE);
+    assertThat(connector).isInstanceOf(DynamoDbSrcToSpSourceConnector.class);
   }
 
   @Test
