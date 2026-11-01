@@ -182,8 +182,7 @@ public class CloudSqlShardOrchestrator {
 
   /**
    * HTTP status codes that are retried: 409 (Conflict), 429 (Rate Limit) and the transient server
-   * errors 502 (Bad Gateway), 503 (Service Unavailable) and 504 (Gateway Timeout). 500 (Internal
-   * Error) is not retried because it can be a deterministic server bug.
+   * errors 502 (Bad Gateway), 503 (Service Unavailable) and 504 (Gateway Timeout).
    */
   private static final Set<Integer> RETRYABLE_STATUS_CODES = Set.of(409, 429, 502, 503, 504);
 
