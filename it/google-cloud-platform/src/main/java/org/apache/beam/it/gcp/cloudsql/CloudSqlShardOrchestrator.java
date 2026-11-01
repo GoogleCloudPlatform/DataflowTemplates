@@ -33,6 +33,7 @@ import java.security.GeneralSecurityException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -180,8 +181,15 @@ public class CloudSqlShardOrchestrator {
   private static final long INITIAL_BACKOFF_MS = 1000; // 1 second
 
   /**
-   * Executes a Cloud SQL Admin API request with retries for 409 (Conflict) and 429 (Rate Limit)
-   * errors.
+   * HTTP status codes that are retried: 409 (Conflict), 429 (Rate Limit) and the transient server
+   * errors 502 (Bad Gateway), 503 (Service Unavailable) and 504 (Gateway Timeout). 500 (Internal
+   * Error) is not retried because it can be a deterministic server bug.
+   */
+  private static final Set<Integer> RETRYABLE_STATUS_CODES = Set.of(409, 429, 502, 503, 504);
+
+  /**
+   * Executes a Cloud SQL Admin API request with exponential-backoff retries for the status codes in
+   * {@link #RETRYABLE_STATUS_CODES}.
    */
   protected <T> T executeWithRetries(
       com.google.api.client.googleapis.services.AbstractGoogleClientRequest<T> request)
@@ -193,7 +201,7 @@ public class CloudSqlShardOrchestrator {
       try {
         return request.execute();
       } catch (GoogleJsonResponseException e) {
-        if ((e.getStatusCode() == 409 || e.getStatusCode() == 429) && retries < MAX_RETRIES) {
+        if (RETRYABLE_STATUS_CODES.contains(e.getStatusCode()) && retries < MAX_RETRIES) {
           LOG.warn(
               "Cloud SQL API returned {}. Retrying in {}ms... (Attempt {}/{})",
               e.getStatusCode(),

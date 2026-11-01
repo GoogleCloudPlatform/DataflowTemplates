@@ -349,6 +349,57 @@ public class CloudSqlShardOrchestratorTest {
   }
 
   @Test
+  public void testExecuteWithRetries_retriesOnTransientServerErrors() throws Exception {
+    for (int statusCode : new int[] {502, 503, 504}) {
+      TestCloudSqlShardOrchestrator orchestrator =
+          new TestCloudSqlShardOrchestrator(
+              DatabaseType.MYSQL, MYSQL_8_0, PROJECT_ID, REGION, gcsResourceManager, sqlAdmin);
+
+      com.google.api.client.googleapis.services.AbstractGoogleClientRequest<DatabaseInstance>
+          mockRequest =
+              mock(com.google.api.client.googleapis.services.AbstractGoogleClientRequest.class);
+
+      GoogleJsonResponseException transientError =
+          new GoogleJsonResponseException(
+              new HttpResponseException.Builder(statusCode, "Unavailable", new HttpHeaders()),
+              null);
+
+      DatabaseInstance instance = new DatabaseInstance().setName("inst1");
+
+      when(mockRequest.execute()).thenThrow(transientError).thenReturn(instance);
+
+      DatabaseInstance result = orchestrator.executeWithRetries(mockRequest);
+
+      assertThat(result).isEqualTo(instance);
+      verify(mockRequest, times(2)).execute();
+    }
+  }
+
+  @Test
+  public void testExecuteWithRetries_doesNotRetryOn500() throws Exception {
+    TestCloudSqlShardOrchestrator orchestrator =
+        new TestCloudSqlShardOrchestrator(
+            DatabaseType.MYSQL, MYSQL_8_0, PROJECT_ID, REGION, gcsResourceManager, sqlAdmin);
+
+    com.google.api.client.googleapis.services.AbstractGoogleClientRequest<DatabaseInstance>
+        mockRequest =
+            mock(com.google.api.client.googleapis.services.AbstractGoogleClientRequest.class);
+
+    GoogleJsonResponseException exception500 =
+        new GoogleJsonResponseException(
+            new HttpResponseException.Builder(500, "Internal Error", new HttpHeaders()), null);
+
+    when(mockRequest.execute()).thenThrow(exception500);
+
+    GoogleJsonResponseException thrown =
+        assertThrows(
+            GoogleJsonResponseException.class, () -> orchestrator.executeWithRetries(mockRequest));
+
+    assertThat(thrown.getStatusCode()).isEqualTo(500);
+    verify(mockRequest, times(1)).execute();
+  }
+
+  @Test
   public void testWaitForOperation_throwsOnOpError() throws Exception {
     TestCloudSqlShardOrchestrator orchestrator =
         new TestCloudSqlShardOrchestrator(
