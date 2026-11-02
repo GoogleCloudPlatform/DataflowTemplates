@@ -33,10 +33,6 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class DataStreamToSpannerTallTableLT extends DataStreamToSpannerLTBase {
 
-  /**
-   * 350M rows take about 3 h on a 20-node Spanner instance and about 4h40m on 8 nodes. The shared
-   * instance can be either size, so allow 6 h.
-   */
   @Override
   protected Duration getLoadTestTimeout() {
     return Duration.ofHours(6);
