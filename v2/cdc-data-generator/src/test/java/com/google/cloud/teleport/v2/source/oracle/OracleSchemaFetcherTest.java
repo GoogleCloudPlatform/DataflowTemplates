@@ -180,7 +180,7 @@ public class OracleSchemaFetcherTest {
     assertThat(actualTable.columns()).hasSize(3);
     assertThat(actualTable.columns().stream().map(DataGeneratorColumn::name))
         .containsExactly("Id", "Name", "IntervalCol");
-    assertThat(actualTable.columns().get(1).size()).isEqualTo(20L);
+    assertThat(actualTable.columns().get(1).size()).isEqualTo(255L);
     assertThat(actualTable.columns().get(2).fakerExpression())
         .isEqualTo("#{regexify '[+][0][0]-[0][0-9]'}");
     assertThat(actualTable.primaryKeys()).containsExactly("Id");
@@ -233,11 +233,20 @@ public class OracleSchemaFetcherTest {
             .isNullable(true)
             .isGenerated(false)
             .build();
+    SourceColumn colLargeVarchar =
+        SourceColumn.builder(SourceDatabaseType.ORACLE)
+            .name("LargeVarchar")
+            .type("VARCHAR2")
+            .isNullable(true)
+            .isGenerated(false)
+            .size(4000L)
+            .build();
 
     SourceTable table =
         SourceTable.builder(SourceDatabaseType.ORACLE)
             .name("SpecialTable")
-            .columns(ImmutableList.of(colPk, colSubUnit, colNegScale, colXml, colBfile))
+            .columns(
+                ImmutableList.of(colPk, colSubUnit, colNegScale, colXml, colBfile, colLargeVarchar))
             .primaryKeyColumns(ImmutableList.of("Id"))
             .foreignKeys(ImmutableList.of())
             .indexes(ImmutableList.of())
@@ -259,11 +268,14 @@ public class OracleSchemaFetcherTest {
     assertThat(actualTable.columns().get(1).scale()).isEqualTo(4);
     assertThat(actualTable.columns().get(1).fakerExpression())
         .isEqualTo("#{regexify '0[.]0[1-9][0-9]{2}'}");
-    assertThat(actualTable.columns().get(2).precision()).isEqualTo(4);
+    assertThat(actualTable.columns().get(2).precision()).isEqualTo(6);
     assertThat(actualTable.columns().get(2).scale()).isEqualTo(0);
+    assertThat(actualTable.columns().get(2).fakerExpression())
+        .isEqualTo("#{regexify '[1-9][0-9]{3}00'}");
     assertThat(actualTable.columns().get(3).fakerExpression())
         .isEqualTo("#{regexify '<root>[a-z0-9]{8}</root>'}");
     assertThat(actualTable.columns().get(4).isSkipped()).isTrue();
+    assertThat(actualTable.columns().get(5).size()).isEqualTo(1000L);
   }
 
   @Test

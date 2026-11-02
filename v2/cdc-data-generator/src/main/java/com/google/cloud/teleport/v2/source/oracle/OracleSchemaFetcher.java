@@ -60,6 +60,8 @@ public class OracleSchemaFetcher implements SinkSchemaFetcher {
   private String namespace;
   private String connectionProperties;
 
+  private static final long MAX_STRING_LENGTH_WITH_LOB = 1000L;
+
   private final OracleTypeMapper typeMapper = new OracleTypeMapper();
 
   private final ConnectionProvider connectionProvider;
@@ -138,9 +140,10 @@ public class OracleSchemaFetcher implements SinkSchemaFetcher {
   }
 
   private DataGeneratorTable mapSourceTable(SourceTable table) {
+    boolean hasLobColumn = hasLobColumns(table);
     ImmutableList.Builder<DataGeneratorColumn> columnsBuilder = ImmutableList.builder();
     for (SourceColumn column : table.columns()) {
-      columnsBuilder.add(mapSourceColumn(column, table.primaryKeyColumns()));
+      columnsBuilder.add(mapSourceColumn(column, table.primaryKeyColumns(), hasLobColumn));
     }
 
     ImmutableList.Builder<DataGeneratorForeignKey> foreignKeysBuilder = ImmutableList.builder();
@@ -180,15 +183,43 @@ public class OracleSchemaFetcher implements SinkSchemaFetcher {
         .build();
   }
 
-  private DataGeneratorColumn mapSourceColumn(SourceColumn column, List<String> primaryKeys) {
+  private static boolean hasLobColumns(SourceTable table) {
+    for (SourceColumn column : table.columns()) {
+      if (column.type() == null) {
+        continue;
+      }
+      String upperType =
+          column
+              .type()
+              .toUpperCase(Locale.ROOT)
+              .replaceAll("\\s*\\([^)]*\\)", "")
+              .replaceAll("\\s+", " ")
+              .trim();
+      switch (upperType) {
+        case "CLOB":
+        case "NCLOB":
+        case "BLOB":
+        case "LONG":
+        case "LONG RAW":
+        case "XMLTYPE":
+          return true;
+        default:
+          break;
+      }
+    }
+    return false;
+  }
+
+  private DataGeneratorColumn mapSourceColumn(
+      SourceColumn column, List<String> primaryKeys, boolean hasLobColumn) {
     LogicalType logicalType = typeMapper.getLogicalType(column.type(), null, column.size());
     Long effectiveSize = column.size();
-    // Cap generated string/byte lengths at Constants.DEFAULT_STRING_LENGTH (20) so that synthetic
-    // values remain short and prevent ojdbc8 from promoting large multi-byte VARCHAR2 binds to LONG
-    // stream binds, which fails with ORA-01461 when bound alongside LOB columns in a multi-column
-    // MERGE INTO ... USING (SELECT ? FROM DUAL) statement.
-    if (effectiveSize != null && effectiveSize > 0) {
-      effectiveSize = Math.min(effectiveSize, (long) Constants.DEFAULT_STRING_LENGTH);
+    // Preserve the actual column size when no LOB columns are present in the table. When LOB
+    // columns are present, cap string/byte lengths at MAX_STRING_LENGTH_WITH_LOB (1000) to prevent
+    // ojdbc8 from promoting large multi-byte VARCHAR2 binds to LONG stream binds, which fails with
+    // ORA-01461 when bound alongside LOB columns in MERGE INTO ... USING (SELECT ? FROM DUAL).
+    if (hasLobColumn && effectiveSize != null && effectiveSize > 0) {
+      effectiveSize = Math.min(effectiveSize, MAX_STRING_LENGTH_WITH_LOB);
     }
 
     DataGeneratorColumn.Builder builder =
@@ -235,8 +266,17 @@ public class OracleSchemaFetcher implements SinkSchemaFetcher {
       return;
     }
     if (rawScale != null && rawScale < 0) {
-      int prec = (rawPrecision != null && rawPrecision > 0) ? Math.min(rawPrecision, 10) : 10;
-      builder.precision(prec).scale(0);
+      // Oracle NUMBER(p, s) with negative scale s < 0 rounds values to 10^|s| (up to p significant
+      // digits followed by |s| trailing zeros before the decimal point). Since DataGeneratorUtils
+      // requires scale >= 0 on DataGeneratorColumn, synthesize p significant digits followed by
+      // |s| trailing zeros via regexify with scale 0.
+      int trailingZeros = Math.min(-rawScale, 10);
+      int sigDigits = (rawPrecision != null && rawPrecision > 0) ? Math.min(rawPrecision, 10) : 10;
+      String digitPattern = sigDigits <= 1 ? "[1-9]" : "[1-9][0-9]{" + (sigDigits - 1) + "}";
+      builder
+          .precision(sigDigits + trailingZeros)
+          .scale(0)
+          .fakerExpression("#{regexify '" + digitPattern + "0".repeat(trailingZeros) + "'}");
       return;
     }
     if (rawScale != null && rawPrecision != null && rawPrecision > 0 && rawScale > rawPrecision) {
