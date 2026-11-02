@@ -78,6 +78,8 @@ public class SpannerToSourceDbLargeBacklogLT extends SpannerToSourceDbLTBase {
   private static final String SESSION_FILE_RESOURCE =
       "SpannerToSourceDbLargeBacklogLT/session.json";
   private static final String TABLE = "MigrationLoadTest";
+  // The template's default shadowTablePrefix is "rev_shadow_"; this test does not override it.
+  private static final String SHADOW_TABLE = "rev_shadow_" + TABLE;
 
   private static final String DEFAULT_PHYSICAL_SHARD_1 = "nokill-high-resources-backlog-shard1";
   private static final String DEFAULT_PHYSICAL_SHARD_2 = "nokill-high-resources-backlog-shard2";
@@ -94,7 +96,6 @@ public class SpannerToSourceDbLargeBacklogLT extends SpannerToSourceDbLTBase {
   private static final String DEFAULT_MAX_WORKERS = "200";
   private static final String DEFAULT_MACHINE_TYPE = "n2-highmem-8";
   private static final String DEFAULT_EXPECTED_SHARD_COUNT = "250000000";
-  private static final String DEFAULT_METRIC_THRESHOLD = "1000000000";
   private static final String DEFAULT_VERIFICATION_TIMEOUT_MINUTES = "30";
 
   private CloudSqlShardOrchestrator orchestrator;
@@ -288,55 +289,65 @@ public class SpannerToSourceDbLargeBacklogLT extends SpannerToSourceDbLTBase {
     // This is a long running test (7-8 hours) and we don't expect the SQL count queries to pass
     // the assertion for the first few hours (when the replication backlog is being processed).
     // Asserting on direct database counts during early stages would be highly inefficient and put
-    // unnecessary resource contention on the database shards. Thus, we poll the
-    // "success_record_count" metric and only start asserting on SQL counts once the metric
-    // threshold is met.
-    // Note that the above metric can NOT act as a reliable source of truth for the success of a
-    // replication pipeline. It is ONLY used as an indicator to start the SQL count verification.
+    // unnecessary resource contention on the database shards. Thus, we poll the row count of the
+    // shadow table in the metadata database and only start asserting on SQL counts once it
+    // reaches the expected count.
+    // The shadow row of a record is written in the same Spanner transaction as its MySQL write
+    // and commits after it, so every shadow row means its MySQL write committed. The
+    // "success_record_count" metric is only logged: it can permanently fall short of the real
+    // count (for example, increments are lost when workers are removed), so it can NOT act as a
+    // reliable source of truth.
 
     long expectedShardCount =
         Long.parseLong(
             getProperty(
                 "expectedShardCount", DEFAULT_EXPECTED_SHARD_COUNT, TestProperties.Type.PROPERTY));
-    long metricThreshold =
-        Long.parseLong(
-            getProperty("metricThreshold", DEFAULT_METRIC_THRESHOLD, TestProperties.Type.PROPERTY));
 
     long startTimeMillis = System.currentTimeMillis();
     int numShards = 4;
 
-    ConditionCheck successRecordsCheck =
+    ConditionCheck shadowRowsCheck =
         new ConditionCheck() {
           @Override
           protected String getDescription() {
             return String.format(
-                "Check if Dataflow metric success_record_count reaches %d", metricThreshold);
+                "Check if shadow table %s reaches %d rows", SHADOW_TABLE, expectedSpannerCount);
           }
 
           @Override
           protected CheckResult check() {
+            LOG.info("--- PIPELINE PROGRESS UPDATE ---");
+            LOG.info(
+                "Time Elapsed: {} minutes / {} minutes",
+                (System.currentTimeMillis() - startTimeMillis) / 60000,
+                reverseTimeoutMinutes);
             try {
               Double successRecordsCount =
                   pipelineLauncher.getMetric(
                       project, region, reverseJobInfo.jobId(), "success_record_count");
-              long polledCount = successRecordsCount != null ? successRecordsCount.longValue() : 0;
-
-              LOG.info("--- PIPELINE PROGRESS UPDATE ---");
+              LOG.info("Polled success_record_count (informational): {}", successRecordsCount);
+            } catch (Exception e) {
+              LOG.warn("Failed to retrieve success_record_count: {}", e.getMessage());
+            }
+            try {
+              long queryStartMillis = System.currentTimeMillis();
+              long shadowRows = spannerMetadataResourceManager.getRowCount(SHADOW_TABLE);
               LOG.info(
-                  "Time Elapsed: {} minutes / {} minutes",
-                  (System.currentTimeMillis() - startTimeMillis) / 60000,
-                  reverseTimeoutMinutes);
-              LOG.info(
-                  "Polled success_record_count: {} / Target: {}", polledCount, metricThreshold);
+                  "Polled {} row count: {} / Target: {} (query took {} ms)",
+                  SHADOW_TABLE,
+                  shadowRows,
+                  expectedSpannerCount,
+                  System.currentTimeMillis() - queryStartMillis);
               LOG.info("---------------------------------");
-
-              if (polledCount >= metricThreshold) {
-                return new CheckResult(true, String.format("Threshold reached: %d", polledCount));
+              if (shadowRows == expectedSpannerCount) {
+                return new CheckResult(
+                    true, String.format("Shadow table has all %d rows", shadowRows));
               }
               return new CheckResult(
-                  false, String.format("Current progress: %d rows", polledCount));
+                  false, String.format("Current progress: %d shadow rows", shadowRows));
             } catch (Exception e) {
-              return new CheckResult(false, "Failed to retrieve job metrics: " + e.getMessage());
+              LOG.info("---------------------------------");
+              return new CheckResult(false, "Failed to count shadow table rows: " + e.getMessage());
             }
           }
         };
@@ -350,14 +361,14 @@ public class SpannerToSourceDbLargeBacklogLT extends SpannerToSourceDbLTBase {
                     15)), // Poll every 15 minutes. Since the test runs for 7-8 hours, 15-minute
             // intervals
             // print exactly 4 logs per hour, preventing clutter and API call costs.
-            successRecordsCheck);
+            shadowRowsCheck);
 
     assertThatResult(result).meetsConditions();
 
     // Verify database parity on MySQL shards with a retry loop to handle minor replication
     // synchronization lag
     LOG.info(
-        "Replication threshold reached. Verifying logical databases row counts on CloudSQL with a catch-up retry loop...");
+        "Shadow table count reached. Verifying logical databases row counts on CloudSQL with a catch-up retry loop...");
     long verificationStartTime = System.currentTimeMillis();
     int verificationTimeoutMinutes =
         Integer.parseInt(
