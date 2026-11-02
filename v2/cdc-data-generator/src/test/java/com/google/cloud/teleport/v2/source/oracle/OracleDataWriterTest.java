@@ -270,6 +270,44 @@ public class OracleDataWriterTest {
   }
 
   @Test
+  public void testBuildDeleteSql_multiPk() {
+    DataGeneratorTable table =
+        simpleTable().toBuilder().primaryKeys(ImmutableList.of("id", "name")).build();
+    String sql = OracleDataWriter.buildDeleteSql(table);
+    assertThat(sql).isEqualTo("DELETE FROM \"users\" WHERE \"id\" = ? AND \"name\" = ?");
+  }
+
+  @Test
+  public void testBuildUpsertSql_noPkThrows() {
+    DataGeneratorTable table = simpleTable().toBuilder().primaryKeys(ImmutableList.of()).build();
+    assertThrows(IllegalStateException.class, () -> OracleDataWriter.buildUpsertSql(table));
+  }
+
+  @Test
+  public void testBuildUpsertSql_generatedPrimaryKeyRetainedInWritableColumns() {
+    DataGeneratorColumn genPk =
+        DataGeneratorColumn.builder()
+            .name("id")
+            .logicalType(LogicalType.INT64)
+            .isNullable(false)
+            .isGenerated(true)
+            .size(null)
+            .precision(null)
+            .scale(null)
+            .build();
+    DataGeneratorColumn nameCol = col("name", LogicalType.STRING);
+    DataGeneratorTable table =
+        simpleTable().toBuilder()
+            .columns(ImmutableList.of(genPk, nameCol))
+            .primaryKeys(ImmutableList.of("id"))
+            .build();
+    String sql = OracleDataWriter.buildUpsertSql(table);
+    assertThat(sql).contains("USING (SELECT ? AS \"id\", ? AS \"name\" FROM DUAL) s");
+    assertThat(sql).contains("ON (t.\"id\" = s.\"id\")");
+    assertThat(sql).contains("WHEN MATCHED THEN UPDATE SET t.\"name\" = s.\"name\"");
+  }
+
+  @Test
   public void testBuildUpsertSql_identifierWithDoubleQuote() {
     DataGeneratorColumn weird =
         DataGeneratorColumn.builder()
@@ -379,6 +417,22 @@ public class OracleDataWriterTest {
         IllegalArgumentException.class,
         () ->
             w.insert(
+                ImmutableList.of(simpleRow(1L, "a")),
+                null,
+                "shardA",
+                Constants.DEFAULT_JDBC_POOL_SIZE));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            w.update(
+                ImmutableList.of(simpleRow(1L, "a")),
+                null,
+                "shardA",
+                Constants.DEFAULT_JDBC_POOL_SIZE));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            w.delete(
                 ImmutableList.of(simpleRow(1L, "a")),
                 null,
                 "shardA",
@@ -624,11 +678,17 @@ public class OracleDataWriterTest {
   @Test
   public void testSetParameter_booleanType() throws Exception {
     DataGeneratorColumn c = col("b", LogicalType.BOOLEAN);
-    Row row = singleValueRow("b", Schema.FieldType.BOOLEAN, true);
+    Row rowTrue = singleValueRow("b", Schema.FieldType.BOOLEAN, true);
     writer()
         .setStatementParameters(
-            mockStatement, row, singleColumnTable(c), OracleDataWriter.MutationType.INSERT);
+            mockStatement, rowTrue, singleColumnTable(c), OracleDataWriter.MutationType.INSERT);
     verify(mockStatement).setInt(1, 1);
+
+    Row rowFalse = singleValueRow("b", Schema.FieldType.BOOLEAN, false);
+    writer()
+        .setStatementParameters(
+            mockStatement, rowFalse, singleColumnTable(c), OracleDataWriter.MutationType.INSERT);
+    verify(mockStatement).setInt(1, 0);
   }
 
   @Test
@@ -643,13 +703,51 @@ public class OracleDataWriterTest {
   }
 
   @Test
-  public void testSetParameter_numericType_bigDecimal() throws Exception {
+  public void testSetParameter_numericType_bigDecimalAndString() throws Exception {
     DataGeneratorColumn c = col("n", LogicalType.NUMERIC);
     Row row = singleValueRow("n", Schema.FieldType.DECIMAL, new BigDecimal("1.23"));
     writer()
         .setStatementParameters(
             mockStatement, row, singleColumnTable(c), OracleDataWriter.MutationType.INSERT);
     verify(mockStatement).setBigDecimal(1, new BigDecimal("1.23"));
+
+    Row stringRow = singleValueRow("n", Schema.FieldType.STRING, "4.56");
+    writer()
+        .setStatementParameters(
+            mockStatement, stringRow, singleColumnTable(c), OracleDataWriter.MutationType.INSERT);
+    verify(mockStatement).setBigDecimal(1, new BigDecimal("4.56"));
+  }
+
+  @Test
+  public void testSetParameter_uuidType_callsSetObject() throws Exception {
+    DataGeneratorColumn c = col("u", LogicalType.UUID);
+    Row row = singleValueRow("u", Schema.FieldType.STRING, "550e8400-e29b-41d4-a716-446655440000");
+    writer()
+        .setStatementParameters(
+            mockStatement, row, singleColumnTable(c), OracleDataWriter.MutationType.INSERT);
+    verify(mockStatement).setObject(1, "550e8400-e29b-41d4-a716-446655440000");
+  }
+
+  @Test
+  public void testSetStatementParameters_deleteMissingPkColumnThrows() {
+    DataGeneratorTable table =
+        simpleTable().toBuilder().primaryKeys(ImmutableList.of("nonexistent_pk")).build();
+    Row row = simpleRow(1L, "a");
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            writer()
+                .setStatementParameters(
+                    mockStatement, row, table, OracleDataWriter.MutationType.DELETE));
+  }
+
+  @Test
+  public void testSetStatementParameters_nullRowBindsNull() throws Exception {
+    writer()
+        .setStatementParameters(
+            mockStatement, null, simpleTable(), OracleDataWriter.MutationType.INSERT);
+    verify(mockStatement).setNull(1, Types.BIGINT);
+    verify(mockStatement).setNull(2, Types.VARCHAR);
   }
 
   @Test

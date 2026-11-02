@@ -117,9 +117,6 @@ public class OracleDataWriter implements DataWriter {
     if (rows == null || rows.isEmpty()) {
       return;
     }
-    if (table == null) {
-      throw new IllegalArgumentException("DataGeneratorTable must not be null");
-    }
     ensureInitialized(maxShardConnections);
 
     Shard shard = resolveShard(shardId);
@@ -333,8 +330,10 @@ public class OracleDataWriter implements DataWriter {
 
   private static List<DataGeneratorColumn> writableColumns(DataGeneratorTable table) {
     ImmutableList.Builder<DataGeneratorColumn> builder = ImmutableList.builder();
+    List<String> pkNames = table.primaryKeys();
     for (DataGeneratorColumn col : table.columns()) {
-      if (col.isSkipped() || col.isGenerated()) {
+      if (col.isSkipped()
+          || (col.isGenerated() && (pkNames == null || !pkNames.contains(col.name())))) {
         continue;
       }
       builder.add(col);
