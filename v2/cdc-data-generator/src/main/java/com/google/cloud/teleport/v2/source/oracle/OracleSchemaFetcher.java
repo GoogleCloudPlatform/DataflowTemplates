@@ -125,11 +125,7 @@ public class OracleSchemaFetcher implements SinkSchemaFetcher {
   private DataGeneratorSchema scanOracleSchema(Connection connection) throws SQLException {
     String schemaName = (namespace != null && !namespace.isBlank()) ? namespace : null;
     if (schemaName == null) {
-      try {
-        schemaName = connection.getSchema();
-      } catch (Exception e) {
-        // Ignore and let scanner fall back to metadata username.
-      }
+      schemaName = connection.getSchema();
     }
     OracleInformationSchemaScanner scanner = createScanner(connection, schemaName);
     SourceSchema sourceSchema = scanner.scan();
@@ -187,8 +183,12 @@ public class OracleSchemaFetcher implements SinkSchemaFetcher {
   private DataGeneratorColumn mapSourceColumn(SourceColumn column, List<String> primaryKeys) {
     LogicalType logicalType = typeMapper.getLogicalType(column.type(), null, column.size());
     Long effectiveSize = column.size();
+    // Cap generated string/byte lengths at Constants.DEFAULT_STRING_LENGTH (20) so that synthetic
+    // values remain short and prevent ojdbc8 from promoting large multi-byte VARCHAR2 binds to LONG
+    // stream binds, which fails with ORA-01461 when bound alongside LOB columns in a multi-column
+    // MERGE INTO ... USING (SELECT ? FROM DUAL) statement.
     if (effectiveSize != null && effectiveSize > 0) {
-      effectiveSize = Math.min(effectiveSize, 20L);
+      effectiveSize = Math.min(effectiveSize, (long) Constants.DEFAULT_STRING_LENGTH);
     }
 
     DataGeneratorColumn.Builder builder =

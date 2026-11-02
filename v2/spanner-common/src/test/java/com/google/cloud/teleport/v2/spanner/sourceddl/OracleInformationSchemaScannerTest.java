@@ -212,7 +212,7 @@ public class OracleInformationSchemaScannerTest {
 
   @Test
   public void testScanForeignKeysFallbacksAndEdgeCases() throws SQLException {
-    when(mockConnection.getSchema()).thenThrow(new SQLException("Unsupported getSchema"));
+    when(mockConnection.getSchema()).thenReturn(null);
     when(mockMetaData.getUserName()).thenReturn("FALLBACK_USER");
 
     when(mockMetaData.getTables(any(), eq("FALLBACK_USER"), eq("%"), eq(new String[] {"TABLE"})))

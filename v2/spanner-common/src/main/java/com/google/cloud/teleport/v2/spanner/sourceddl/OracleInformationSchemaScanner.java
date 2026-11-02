@@ -55,16 +55,10 @@ public class OracleInformationSchemaScanner implements SourceSchemaScanner {
               ? normalizeSchemaPattern(this.schema)
               : null;
       if (schemaPattern == null) {
-        try {
-          schemaPattern = connection.getSchema();
-        } catch (Exception e) {
-        }
+        schemaPattern = connection.getSchema();
       }
       if (schemaPattern == null) {
-        try {
-          schemaPattern = metaData.getUserName();
-        } catch (Exception e) {
-        }
+        schemaPattern = metaData.getUserName();
       }
 
       try (ResultSet rs = metaData.getTables(null, schemaPattern, "%", new String[] {"TABLE"})) {
@@ -108,18 +102,11 @@ public class OracleInformationSchemaScanner implements SourceSchemaScanner {
       if (pkRs != null) {
         while (pkRs.next()) {
           if (pkIndexName == null) {
-            try {
-              pkIndexName = pkRs.getString("PK_NAME");
-            } catch (Exception e) {
-            }
+            pkIndexName = pkRs.getString("PK_NAME");
           }
           String pkCol = pkRs.getString("COLUMN_NAME");
           if (pkCol != null) {
-            int keySeq = 0;
-            try {
-              keySeq = pkRs.getInt("KEY_SEQ");
-            } catch (Exception e) {
-            }
+            int keySeq = pkRs.getInt("KEY_SEQ");
             pkList.add(Map.entry(keySeq, pkCol));
             pkSet.add(pkCol);
           }
@@ -135,11 +122,7 @@ public class OracleInformationSchemaScanner implements SourceSchemaScanner {
     try (ResultSet colsRs = metaData.getColumns(null, schemaPattern, tableName, "%")) {
       if (colsRs != null) {
         while (colsRs.next()) {
-          String colTable = null;
-          try {
-            colTable = colsRs.getString("TABLE_NAME");
-          } catch (Exception e) {
-          }
+          String colTable = colsRs.getString("TABLE_NAME");
           if (colTable != null && !tableName.equals(colTable)) {
             continue;
           }
@@ -153,16 +136,8 @@ public class OracleInformationSchemaScanner implements SourceSchemaScanner {
                   .isNullable("YES".equalsIgnoreCase(colsRs.getString("IS_NULLABLE")))
                   .isPrimaryKey(pkSet.contains(columnName));
 
-          String isGeneratedStr = "";
-          try {
-            isGeneratedStr = colsRs.getString("IS_GENERATEDCOLUMN");
-          } catch (Exception e) {
-          }
-          String isAutoIncrementStr = "";
-          try {
-            isAutoIncrementStr = colsRs.getString("IS_AUTOINCREMENT");
-          } catch (Exception e) {
-          }
+          String isGeneratedStr = colsRs.getString("IS_GENERATEDCOLUMN");
+          String isAutoIncrementStr = colsRs.getString("IS_AUTOINCREMENT");
           boolean isGenerated =
               "YES".equalsIgnoreCase(isGeneratedStr)
                   || (!pkSet.contains(columnName) && "YES".equalsIgnoreCase(isAutoIncrementStr));
@@ -185,7 +160,7 @@ public class OracleInformationSchemaScanner implements SourceSchemaScanner {
   }
 
   private void populateColumnBounds(
-      ResultSet colsRs, String dataType, SourceColumn.Builder colBuilder) {
+      ResultSet colsRs, String dataType, SourceColumn.Builder colBuilder) throws SQLException {
     if (dataType == null) {
       return;
     }
@@ -195,49 +170,45 @@ public class OracleInformationSchemaScanner implements SourceSchemaScanner {
             .replaceAll("\\s*\\([^)]*\\)", "")
             .replaceAll("\\s+", " ")
             .trim();
-    try {
-      int colSize = colsRs.getInt("COLUMN_SIZE");
-      boolean sizeNull = colsRs.wasNull();
-      int decimalDigits = colsRs.getInt("DECIMAL_DIGITS");
-      boolean scaleNull = colsRs.wasNull();
+    int colSize = colsRs.getInt("COLUMN_SIZE");
+    boolean sizeNull = colsRs.wasNull();
+    int decimalDigits = colsRs.getInt("DECIMAL_DIGITS");
+    boolean scaleNull = colsRs.wasNull();
 
-      switch (upperType) {
-        case "VARCHAR2":
-        case "VARCHAR":
-        case "CHAR":
-        case "CHARACTER":
-        case "NVARCHAR2":
-        case "NCHAR":
-        case "NCHAR VARYING":
-        case "NATIONAL CHARACTER":
-        case "NATIONAL CHAR":
-        case "NATIONAL CHARACTER VARYING":
-        case "NATIONAL CHAR VARYING":
-        case "RAW":
-        case "UROWID":
-          if (!sizeNull && colSize > 0) {
-            colBuilder.size((long) colSize);
-          }
-          break;
-        case "NUMBER":
-        case "NUMERIC":
-        case "DECIMAL":
-        case "DEC":
-        case "INTEGER":
-        case "INT":
-        case "SMALLINT":
-          if (!sizeNull && colSize > 0) {
-            colBuilder.precision(colSize);
-          }
-          if (!scaleNull && decimalDigits != -127) {
-            colBuilder.scale(decimalDigits);
-          }
-          break;
-        default:
-          break;
-      }
-    } catch (Exception e) {
-      // Ignore if metadata columns are not available in mock ResultSets.
+    switch (upperType) {
+      case "VARCHAR2":
+      case "VARCHAR":
+      case "CHAR":
+      case "CHARACTER":
+      case "NVARCHAR2":
+      case "NCHAR":
+      case "NCHAR VARYING":
+      case "NATIONAL CHARACTER":
+      case "NATIONAL CHAR":
+      case "NATIONAL CHARACTER VARYING":
+      case "NATIONAL CHAR VARYING":
+      case "RAW":
+      case "UROWID":
+        if (!sizeNull && colSize > 0) {
+          colBuilder.size((long) colSize);
+        }
+        break;
+      case "NUMBER":
+      case "NUMERIC":
+      case "DECIMAL":
+      case "DEC":
+      case "INTEGER":
+      case "INT":
+      case "SMALLINT":
+        if (!sizeNull && colSize > 0) {
+          colBuilder.precision(colSize);
+        }
+        if (!scaleNull && decimalDigits != -127) {
+          colBuilder.scale(decimalDigits);
+        }
+        break;
+      default:
+        break;
     }
   }
 
@@ -246,7 +217,8 @@ public class OracleInformationSchemaScanner implements SourceSchemaScanner {
       String schemaPattern,
       String tableName,
       String pkIndexName,
-      Set<String> pkSet) {
+      Set<String> pkSet)
+      throws SQLException {
     List<SourceIndex> indexes = new ArrayList<>();
     try (ResultSet idxRs = metaData.getIndexInfo(null, schemaPattern, tableName, false, true)) {
       if (idxRs == null) {
@@ -283,14 +255,12 @@ public class OracleInformationSchemaScanner implements SourceSchemaScanner {
         indexes.add(
             entry.getValue().isPrimary(isPkIndex).columns(ImmutableList.copyOf(cols)).build());
       }
-    } catch (Exception e) {
-      // Ignore index scan errors if unsupported by driver/mock.
     }
     return indexes;
   }
 
   private List<SourceForeignKey> scanForeignKeys(
-      DatabaseMetaData metaData, String schemaPattern, String tableName) {
+      DatabaseMetaData metaData, String schemaPattern, String tableName) throws SQLException {
     List<SourceForeignKey> foreignKeys = new ArrayList<>();
     try (ResultSet fkRs = metaData.getImportedKeys(null, schemaPattern, tableName)) {
       if (fkRs == null) {
@@ -322,8 +292,6 @@ public class OracleInformationSchemaScanner implements SourceSchemaScanner {
                 .referencedColumns(ImmutableList.copyOf(refColsMap.get(fkName)))
                 .build());
       }
-    } catch (Exception e) {
-      // Ignore FK scan errors if unsupported by driver/mock.
     }
     return foreignKeys;
   }
