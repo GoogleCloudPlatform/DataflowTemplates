@@ -1769,8 +1769,7 @@ public class DdlTest {
         ForeignKey.builder().name("fk_odsn").table("Users").referencedTable("AllowedNames");
     fkWithDeleteSetNullBuilder.columnsBuilder().add("first_name", "last_name");
     fkWithDeleteSetNullBuilder.referencedColumnsBuilder().add("first_name", "last_name");
-    fkWithDeleteSetNullBuilder.referentialAction(
-        Optional.of(ReferentialAction.ON_DELETE_SET_NULL));
+    fkWithDeleteSetNullBuilder.referentialAction(Optional.of(ReferentialAction.ON_DELETE_SET_NULL));
     ForeignKey fkWithDeleteSetNull = fkWithDeleteSetNullBuilder.build();
     assertTrue(fkWithDeleteSetNull.equals(fkWithDeleteSetNull));
     assertFalse(fkWithDeleteCascade1.equals(fkWithDeleteSetNull));
