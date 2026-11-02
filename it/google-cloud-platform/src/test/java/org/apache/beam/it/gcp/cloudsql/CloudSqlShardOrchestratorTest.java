@@ -349,11 +349,21 @@ public class CloudSqlShardOrchestratorTest {
   }
 
   @Test
-  public void testExecuteWithRetries_retriesOnTransientServerErrors() throws Exception {
+  public void testExecuteWithRetries_retriesOnTransientServerErrors_mySql() throws Exception {
+    assertRetriesOnTransientServerErrors(DatabaseType.MYSQL, MYSQL_8_0);
+  }
+
+  @Test
+  public void testExecuteWithRetries_retriesOnTransientServerErrors_postgres() throws Exception {
+    assertRetriesOnTransientServerErrors(DatabaseType.POSTGRESQL, POSTGRES_14);
+  }
+
+  private void assertRetriesOnTransientServerErrors(DatabaseType databaseType, String dbVersion)
+      throws Exception {
     for (int statusCode : new int[] {502, 503, 504}) {
       TestCloudSqlShardOrchestrator orchestrator =
           new TestCloudSqlShardOrchestrator(
-              DatabaseType.MYSQL, MYSQL_8_0, PROJECT_ID, REGION, gcsResourceManager, sqlAdmin);
+              databaseType, dbVersion, PROJECT_ID, REGION, gcsResourceManager, sqlAdmin);
 
       com.google.api.client.googleapis.services.AbstractGoogleClientRequest<DatabaseInstance>
           mockRequest =
