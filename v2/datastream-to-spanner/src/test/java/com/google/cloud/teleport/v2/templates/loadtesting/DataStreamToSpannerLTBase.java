@@ -218,8 +218,6 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
             }
           });
     }
-    // Streaming right fitting requires horizontal autoscaling to be enabled.
-    params.put("autoscalingAlgorithm", "THROUGHPUT_BASED");
     // Add all parameters for the template
     params.putAll(templateParameters);
 
@@ -228,7 +226,6 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
 
     options.addEnvironment("maxWorkers", maxWorkers).addEnvironment("numWorkers", numWorkers);
     options.addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
-    options.addEnvironment("additionalExperiments", List.of("enable_streaming_rightfitting"));
 
     // Set all environment options
     environmentOptions.forEach((key, value) -> options.addEnvironment(key, value));
