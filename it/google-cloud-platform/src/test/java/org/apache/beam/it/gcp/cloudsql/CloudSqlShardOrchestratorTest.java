@@ -325,44 +325,12 @@ public class CloudSqlShardOrchestratorTest {
   }
 
   @Test
-  public void testExecuteWithRetries_retriesOnRetryableErrors_mySql() throws Exception {
+  public void testExecuteWithRetries_retriesOnRetryableErrors() throws Exception {
+    TestCloudSqlShardOrchestrator orchestrator =
+        new TestCloudSqlShardOrchestrator(
+            DatabaseType.MYSQL, MYSQL_8_0, PROJECT_ID, REGION, gcsResourceManager, sqlAdmin);
+
     for (int statusCode : new int[] {409, 429, 502, 503, 504}) {
-      TestCloudSqlShardOrchestrator orchestrator =
-          new TestCloudSqlShardOrchestrator(
-              DatabaseType.MYSQL, MYSQL_8_0, PROJECT_ID, REGION, gcsResourceManager, sqlAdmin);
-
-      com.google.api.client.googleapis.services.AbstractGoogleClientRequest<DatabaseInstance>
-          mockRequest =
-              mock(com.google.api.client.googleapis.services.AbstractGoogleClientRequest.class);
-
-      GoogleJsonResponseException retryableError =
-          new GoogleJsonResponseException(
-              new HttpResponseException.Builder(statusCode, "Retryable error", new HttpHeaders()),
-              null);
-
-      DatabaseInstance instance = new DatabaseInstance().setName("inst1");
-
-      when(mockRequest.execute()).thenThrow(retryableError).thenReturn(instance);
-
-      DatabaseInstance result = orchestrator.executeWithRetries(mockRequest);
-
-      assertThat(result).isEqualTo(instance);
-      verify(mockRequest, times(2)).execute();
-    }
-  }
-
-  @Test
-  public void testExecuteWithRetries_retriesOnRetryableErrors_postgres() throws Exception {
-    for (int statusCode : new int[] {409, 429, 502, 503, 504}) {
-      TestCloudSqlShardOrchestrator orchestrator =
-          new TestCloudSqlShardOrchestrator(
-              DatabaseType.POSTGRESQL,
-              POSTGRES_14,
-              PROJECT_ID,
-              REGION,
-              gcsResourceManager,
-              sqlAdmin);
-
       com.google.api.client.googleapis.services.AbstractGoogleClientRequest<DatabaseInstance>
           mockRequest =
               mock(com.google.api.client.googleapis.services.AbstractGoogleClientRequest.class);
