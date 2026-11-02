@@ -325,58 +325,56 @@ public class CloudSqlShardOrchestratorTest {
   }
 
   @Test
-  public void testExecuteWithRetries_retriesOn409() throws Exception {
-    TestCloudSqlShardOrchestrator orchestrator =
-        new TestCloudSqlShardOrchestrator(
-            DatabaseType.MYSQL, MYSQL_8_0, PROJECT_ID, REGION, gcsResourceManager, sqlAdmin);
-
-    com.google.api.client.googleapis.services.AbstractGoogleClientRequest<DatabaseInstance>
-        mockRequest =
-            mock(com.google.api.client.googleapis.services.AbstractGoogleClientRequest.class);
-
-    GoogleJsonResponseException exception409 =
-        new GoogleJsonResponseException(
-            new HttpResponseException.Builder(409, "Conflict", new HttpHeaders()), null);
-
-    DatabaseInstance instance = new DatabaseInstance().setName("inst1");
-
-    when(mockRequest.execute()).thenThrow(exception409).thenReturn(instance);
-
-    DatabaseInstance result = orchestrator.executeWithRetries(mockRequest);
-
-    assertThat(result).isEqualTo(instance);
-    verify(mockRequest, times(2)).execute();
-  }
-
-  @Test
-  public void testExecuteWithRetries_retriesOnTransientServerErrors_mySql() throws Exception {
-    assertRetriesOnTransientServerErrors(DatabaseType.MYSQL, MYSQL_8_0);
-  }
-
-  @Test
-  public void testExecuteWithRetries_retriesOnTransientServerErrors_postgres() throws Exception {
-    assertRetriesOnTransientServerErrors(DatabaseType.POSTGRESQL, POSTGRES_14);
-  }
-
-  private void assertRetriesOnTransientServerErrors(DatabaseType databaseType, String dbVersion)
-      throws Exception {
-    for (int statusCode : new int[] {502, 503, 504}) {
+  public void testExecuteWithRetries_retriesOnRetryableErrors_mySql() throws Exception {
+    for (int statusCode : new int[] {409, 429, 502, 503, 504}) {
       TestCloudSqlShardOrchestrator orchestrator =
           new TestCloudSqlShardOrchestrator(
-              databaseType, dbVersion, PROJECT_ID, REGION, gcsResourceManager, sqlAdmin);
+              DatabaseType.MYSQL, MYSQL_8_0, PROJECT_ID, REGION, gcsResourceManager, sqlAdmin);
 
       com.google.api.client.googleapis.services.AbstractGoogleClientRequest<DatabaseInstance>
           mockRequest =
               mock(com.google.api.client.googleapis.services.AbstractGoogleClientRequest.class);
 
-      GoogleJsonResponseException transientError =
+      GoogleJsonResponseException retryableError =
           new GoogleJsonResponseException(
-              new HttpResponseException.Builder(statusCode, "Unavailable", new HttpHeaders()),
+              new HttpResponseException.Builder(statusCode, "Retryable error", new HttpHeaders()),
               null);
 
       DatabaseInstance instance = new DatabaseInstance().setName("inst1");
 
-      when(mockRequest.execute()).thenThrow(transientError).thenReturn(instance);
+      when(mockRequest.execute()).thenThrow(retryableError).thenReturn(instance);
+
+      DatabaseInstance result = orchestrator.executeWithRetries(mockRequest);
+
+      assertThat(result).isEqualTo(instance);
+      verify(mockRequest, times(2)).execute();
+    }
+  }
+
+  @Test
+  public void testExecuteWithRetries_retriesOnRetryableErrors_postgres() throws Exception {
+    for (int statusCode : new int[] {409, 429, 502, 503, 504}) {
+      TestCloudSqlShardOrchestrator orchestrator =
+          new TestCloudSqlShardOrchestrator(
+              DatabaseType.POSTGRESQL,
+              POSTGRES_14,
+              PROJECT_ID,
+              REGION,
+              gcsResourceManager,
+              sqlAdmin);
+
+      com.google.api.client.googleapis.services.AbstractGoogleClientRequest<DatabaseInstance>
+          mockRequest =
+              mock(com.google.api.client.googleapis.services.AbstractGoogleClientRequest.class);
+
+      GoogleJsonResponseException retryableError =
+          new GoogleJsonResponseException(
+              new HttpResponseException.Builder(statusCode, "Retryable error", new HttpHeaders()),
+              null);
+
+      DatabaseInstance instance = new DatabaseInstance().setName("inst1");
+
+      when(mockRequest.execute()).thenThrow(retryableError).thenReturn(instance);
 
       DatabaseInstance result = orchestrator.executeWithRetries(mockRequest);
 
