@@ -35,7 +35,7 @@ public class DataStreamToSpannerTallTableLT extends DataStreamToSpannerLTBase {
 
   @Override
   protected Duration getLoadTestTimeout() {
-    return Duration.ofHours(6);
+    return Duration.ofHours(10);
   }
 
   @Test

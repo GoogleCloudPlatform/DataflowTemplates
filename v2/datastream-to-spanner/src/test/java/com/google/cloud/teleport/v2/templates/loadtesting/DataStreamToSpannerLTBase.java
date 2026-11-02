@@ -218,6 +218,8 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
             }
           });
     }
+    // Streaming right fitting requires horizontal autoscaling to be enabled.
+    params.put("autoscalingAlgorithm", "THROUGHPUT_BASED");
     // Add all parameters for the template
     params.putAll(templateParameters);
 
