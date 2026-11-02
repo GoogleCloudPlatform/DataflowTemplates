@@ -34,7 +34,7 @@ template:
 pipeline:
   transforms:
     - type: ReadFromPubSub
-      name: ReadMessages
+      name: ReadFromPubSub
       config:
         subscription: {{ subscription }}
         format: {{ format | default('JSON') }}
@@ -46,7 +46,7 @@ pipeline:
         publish_time_field: {{ publishTimeField }}
     - type: WriteToBigQuery
       name: WriteToBigQuery
-      input: ReadMessages
+      input: ReadFromPubSub
       config:
         table: {{ table }}
         write_disposition: {{ writeDisposition | default('WRITE_APPEND') }}
