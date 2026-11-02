@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.time.LocalDate;
 import java.util.List;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
@@ -233,6 +234,38 @@ public class FormatDatastreamRecordToJsonTest {
     FormatDatastreamRecordToJson.UnifiedTypesFormatter.handleLogicalFieldType(
         fieldNamePositiveNumber, fieldSchema, element, jsonObject);
     assertTrue(jsonObject.get(fieldNamePositiveNumber).asText().equals("1981-11-21T11:45:11Z"));
+  }
+
+  @Test
+  public void testDatetimeRecord() {
+    Schema schema =
+        SchemaBuilder.builder()
+            .record("datetime")
+            .fields()
+            .requiredInt("date")
+            .requiredLong("time")
+            .endRecord();
+    ObjectNode jsonObject = new ObjectNode(new JsonNodeFactory(true));
+
+    // 2026-08-27 (20692 days since the epoch) 14:19:26.713 (51566713000 micros of day).
+    GenericData.Record record = new GenericData.Record(schema);
+    record.put("date", 20692);
+    record.put("time", 51566713000L);
+    UnifiedTypesFormatter.handleDatastreamRecordType("dt", schema, record, jsonObject);
+    assertEquals("2026-08-27T14:19:26.713Z", jsonObject.get("dt").asText());
+
+    // Range boundaries of SQL Server datetime2 must not overflow or shift.
+    GenericData.Record minRecord = new GenericData.Record(schema);
+    minRecord.put("date", (int) LocalDate.of(1, 1, 1).toEpochDay());
+    minRecord.put("time", 0L);
+    UnifiedTypesFormatter.handleDatastreamRecordType("min", schema, minRecord, jsonObject);
+    assertEquals("0001-01-01T00:00:00Z", jsonObject.get("min").asText());
+
+    GenericData.Record maxRecord = new GenericData.Record(schema);
+    maxRecord.put("date", (int) LocalDate.of(9999, 12, 31).toEpochDay());
+    maxRecord.put("time", 86399999999L);
+    UnifiedTypesFormatter.handleDatastreamRecordType("max", schema, maxRecord, jsonObject);
+    assertEquals("9999-12-31T23:59:59.999999Z", jsonObject.get("max").asText());
   }
 
   @Test

@@ -604,6 +604,10 @@ INSERT INTO date_pk_table VALUES ('2022-09-17', '2022-09-17'), ('0001-01-01', '0
 INSERT INTO time_table VALUES (1, '15:50:00.0000000'), (2, '00:00:00.0000000'), (3, '23:59:59.9999999'), (4, NULL);
 INSERT INTO time_pk_table VALUES ('15:50:00.0000000', '15:50:00.0000000'), ('00:00:00.0000000', '00:00:00.0000000'), ('23:59:59.9999999', '23:59:59.9999999');
 
+-- datetime, datetime2 and smalldatetime are delivered by Datastream as a "datetime" Avro RECORD
+-- {date: epoch days, time: microseconds of day}. FormatDatastreamRecordToJson renders it as an
+-- ISO-8601 UTC wall-clock string. datetime2 (100ns precision) is truncated to microseconds by
+-- Datastream, so '9999-12-31 23:59:59.9999999' is asserted as '9999-12-31T23:59:59.999999Z'.
 INSERT INTO datetime2_table VALUES (1, '2022-08-05 08:23:11.1234567'), (2, '0001-01-01 00:00:00.0000000'), (3, '9999-12-31 23:59:59.9999999'), (4, NULL);
 INSERT INTO datetime2_to_string_table VALUES (1, '2022-08-05 08:23:11.1234567'), (2, '0001-01-01 00:00:00.0000000'), (3, '9999-12-31 23:59:59.9999999'), (4, NULL);
 INSERT INTO datetime2_pk_table VALUES ('2022-08-05 08:23:11.1234567', '2022-08-05 08:23:11.1234567'), ('0001-01-01 00:00:00.0000000', '0001-01-01 00:00:00.0000000'), ('9999-12-31 23:59:59.9999999', '9999-12-31 23:59:59.9999999');
@@ -619,6 +623,8 @@ INSERT INTO datetimeoffset_table VALUES (1, '2022-08-05 08:23:11.1234567 +00:00'
 INSERT INTO datetimeoffset_to_string_table VALUES (1, '2022-08-05 08:23:11.1234567 +00:00'), (2, '1900-01-01 00:00:00.0000000 +00:00'), (3, '2200-12-31 23:59:59.9999999 +00:00'), (4, NULL);
 INSERT INTO datetimeoffset_pk_table VALUES ('2022-08-05 08:23:11.1234567 +00:00', '2022-08-05 08:23:11.1234567 +00:00'), ('1900-01-01 00:00:00.0000000 +00:00', '1900-01-01 00:00:00.0000000 +00:00');
 
+-- datetime has 1/300s precision (values are rounded to .000/.003/.007), so the upper bound is
+-- '9999-12-31 23:59:59.997'. See the datetime2 note above for the Datastream RECORD encoding.
 INSERT INTO datetime_table VALUES (1, '1998-01-23 12:45:56.000'), (2, '1753-01-01 00:00:00.000'), (3, '9999-12-31 23:59:59.997'), (4, NULL);
 INSERT INTO datetime_to_string_table VALUES (1, '1998-01-23 12:45:56.000'), (2, '1753-01-01 00:00:00.000'), (3, '9999-12-31 23:59:59.997'), (4, NULL);
 INSERT INTO datetime_pk_table VALUES ('1998-01-23 12:45:56.000', '1998-01-23 12:45:56.000'), ('1753-01-01 00:00:00.000', '1753-01-01 00:00:00.000'), ('9999-12-31 23:59:59.997', '9999-12-31 23:59:59.997');

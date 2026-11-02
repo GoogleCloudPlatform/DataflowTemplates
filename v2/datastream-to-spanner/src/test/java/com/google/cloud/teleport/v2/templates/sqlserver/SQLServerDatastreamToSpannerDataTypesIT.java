@@ -66,9 +66,9 @@ import org.slf4j.LoggerFactory;
  *   <li>Datastream maps SQL Server {@code datetime}, {@code datetime2} and {@code smalldatetime} to
  *       a {@code DatetimeUnifiedType}, serialised as an Avro RECORD named {@code datetime} with
  *       fields {@code {date, time}} (epoch days and microseconds of day). {@code
- *       ChangeEventTypeConvertor} converts that record as a UTC wall-clock value, so these columns
- *       are asserted as TIMESTAMP, STRING (ISO-8601) and primary keys; {@code datetime2} values are
- *       truncated to microsecond precision by Datastream.
+ *       FormatDatastreamRecordToJson} renders that record as an ISO-8601 UTC wall-clock string, so
+ *       these columns are asserted as TIMESTAMP, STRING (ISO-8601) and primary keys; {@code
+ *       datetime2} values are truncated to microsecond precision by Datastream.
  *   <li>{@code FormatDatastreamRecordToJson} converts {@code datetimeoffset} via {@code micros *
  *       1000} into a nanosecond {@code long}, which overflows outside ~1677..2262, and ignores the
  *       record's offset (Datastream encodes the local wall-clock plus the offset), so non-UTC

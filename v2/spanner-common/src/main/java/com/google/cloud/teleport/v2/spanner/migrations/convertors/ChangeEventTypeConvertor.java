@@ -27,10 +27,7 @@ import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -197,12 +194,7 @@ public class ChangeEventTypeConvertor {
       return null;
     }
     try {
-      JsonNode node = changeEvent.get(key);
-      Instant datetime = parseDatetimeRecord(node);
-      if (datetime != null) {
-        return datetime.toString();
-      }
-      return node.asText();
+      return changeEvent.get(key).asText();
     } catch (Exception e) {
       // Throw an exception as all conversion options are exhausted.
       throw new ChangeEventConvertorException("Unable to convert field " + key + " to string ", e);
@@ -269,13 +261,8 @@ public class ChangeEventTypeConvertor {
       return null;
     }
     try {
-      JsonNode node = changeEvent.get(key);
-      Instant datetime = parseDatetimeRecord(node);
-      if (datetime != null) {
-        return Timestamp.ofTimeSecondsAndNanos(datetime.getEpochSecond(), datetime.getNano());
-      }
-      String timeString = node.asText();
-      if (timeString.isEmpty() || timeString.equalsIgnoreCase("NULL")) {
+      String timeString = changeEvent.get(key).asText();
+      if (timeString.equalsIgnoreCase("NULL")) {
         return null;
       }
       Instant instant = parseTimestamp(timeString);
@@ -293,38 +280,14 @@ public class ChangeEventTypeConvertor {
       return null;
     }
     try {
-      JsonNode node = changeEvent.get(key);
-      Instant datetime = parseDatetimeRecord(node);
-      if (datetime != null) {
-        LocalDate localDate = LocalDate.ofInstant(datetime, ZoneOffset.UTC);
-        return Date.fromYearMonthDay(
-            localDate.getYear(), localDate.getMonthValue(), localDate.getDayOfMonth());
-      }
-      String dateString = node.asText();
-      if (dateString.isEmpty() || dateString.equalsIgnoreCase("NULL")) {
+      String dateString = changeEvent.get(key).asText();
+      if (dateString.equalsIgnoreCase("NULL")) {
         return null;
       }
       return Date.fromJavaUtilDate(parseLenientDate(dateString));
     } catch (Exception e) {
       throw new ChangeEventConvertorException("Unable to convert field " + key + " to Date", e);
     }
-  }
-
-  /**
-   * Parses the Datastream {@code datetime} Avro RECORD used for SQL Server {@code datetime}, {@code
-   * datetime2} and {@code smalldatetime} columns, serialised by {@code
-   * FormatDatastreamRecordToJson} as {@code {"date": <epoch days>, "time": <micros of day>}}.
-   *
-   * @return the wall-clock value as a UTC instant, or {@code null} if the node is not such a
-   *     record.
-   */
-  private static Instant parseDatetimeRecord(JsonNode node) {
-    if (node == null || !node.isObject() || !node.has("date") || !node.has("time")) {
-      return null;
-    }
-    LocalDate localDate = LocalDate.ofEpochDay(node.get("date").asLong());
-    LocalTime localTime = LocalTime.ofNanoOfDay(node.get("time").asLong() * 1000L);
-    return LocalDateTime.of(localDate, localTime).toInstant(ZoneOffset.UTC);
   }
 
   public static byte[] hexStringToByteArray(String s) {
