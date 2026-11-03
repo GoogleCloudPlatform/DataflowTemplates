@@ -112,16 +112,18 @@ public class DatastreamToDMLTest {
   public void testMySqlTimestampLiterals() {
     DatastreamToDML dml = DatastreamToMySQLDML.of(null);
     Map<String, String> tableSchema = new HashMap<>();
-    tableSchema.put("created_at", "TIMESTAMP");
     String[][] timestamps = {
       {"2025-08-01T09:15:00Z", "2025-08-01 09:15:00"},
       {"2025-08-01T09:15:00.000123Z", "2025-08-01 09:15:00.000123"},
       {"2025-08-01T09:15:00.123Z", "2025-08-01 09:15:00.123"},
       {"2025-08-01T00:15:00+02:00", "2025-07-31 22:15:00"}
     };
-    for (String[] timestamp : timestamps) {
-      JsonNode rowObj = getRowObj("{\"created_at\":\"" + timestamp[0] + "\"}");
-      assertEquals("'" + timestamp[1] + "'", dml.getValueSql(rowObj, "created_at", tableSchema));
+    for (String type : Arrays.asList("TIMESTAMP", "DATETIME")) {
+      tableSchema.put("created_at", type);
+      for (String[] timestamp : timestamps) {
+        JsonNode rowObj = getRowObj("{\"created_at\":\"" + timestamp[0] + "\"}");
+        assertEquals("'" + timestamp[1] + "'", dml.getValueSql(rowObj, "created_at", tableSchema));
+      }
     }
   }
 

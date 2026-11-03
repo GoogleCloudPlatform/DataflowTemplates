@@ -86,7 +86,8 @@ public class DatastreamToMySQLDML extends DatastreamToDML {
   @Override
   public String cleanDataTypeValueSql(
       String columnValue, String columnName, Map<String, String> tableSchema) {
-    if (!"TIMESTAMP".equalsIgnoreCase(tableSchema.get(columnName))
+    String dataType = tableSchema.get(columnName);
+    if (!("TIMESTAMP".equalsIgnoreCase(dataType) || "DATETIME".equalsIgnoreCase(dataType))
         || columnValue.length() < 2
         || !columnValue.startsWith("'")
         || !columnValue.endsWith("'")) {
