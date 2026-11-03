@@ -30,7 +30,12 @@ import org.apache.beam.sdk.options.Validation;
         "The Pub/Sub subscription to Pub/Sub topic template is a streaming pipeline that reads messages from a Pub/Sub subscription and writes them to another Pub/Sub topic.",
     flexContainerName = "pipeline-yaml",
     yamlTemplateFile = "PubSubSubscriptionToPubSubTopic.yaml",
-    filesToCopy = {"main.py", "requirements.txt", "options/pubsub_options.yaml"},
+    filesToCopy = {
+      "main.py",
+      "requirements.txt",
+      "options/pubsub_options.yaml",
+      "options/windowing_options.yaml"
+    },
     documentation = "",
     contactInformation = "https://cloud.google.com/support",
     requirements = {
@@ -190,4 +195,25 @@ public interface PubSubSubscriptionToPubSubTopicYaml {
           "If set, will set an attribute for each Cloud Pub/Sub message with the given name and the message's publish time as the value.",
       example = "timestamp")
   String getOutputTimestampAttribute();
+
+  @TemplateParameter.Text(
+      order = 16,
+      name = "type",
+      optional = true,
+      description = "The type of windowing to apply.",
+      helpText =
+          "The type of windowing to apply (e.g., fixed, sliding, sessions, global). Defaults to fixed.",
+      example = "fixed")
+  @Default.String("fixed")
+  String getType();
+
+  @TemplateParameter.Integer(
+      order = 17,
+      name = "size",
+      optional = true,
+      description = "The window size in seconds.",
+      helpText = "The window size in seconds. Defaults to 60.",
+      example = "60")
+  @Default.Integer(60)
+  Integer getSize();
 }
