@@ -299,6 +299,8 @@ public class CopyDbIT extends SpannerTemplateITBase {
     }
   }
 
+  // TODO(b/550212069): Add integration test for Foreign Key ON DELETE SET NULL action after
+  // the feature release.
   @Test
   public void testAllSchemaAndDataGsql() throws Exception {
     createAndPopulate(

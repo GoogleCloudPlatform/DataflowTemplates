@@ -257,9 +257,12 @@ public class AvroSchemaToDdlConverterTest {
             + "  \"ALTER TABLE `Users` ADD CONSTRAINT `fk_odc` FOREIGN KEY (`last_name`) "
             + "  REFERENCES `AllowedNames` (`last_name`) ON DELETE CASCADE\","
             + "  \"spannerForeignKey_2\" : "
+            + "  \"ALTER TABLE `Users` ADD CONSTRAINT `fk_odsn` FOREIGN KEY (`last_name`) "
+            + "  REFERENCES `AllowedNames` (`last_name`) ON DELETE SET NULL\","
+            + "  \"spannerForeignKey_3\" : "
             + "  \"ALTER TABLE `Users` ADD CONSTRAINT `fk_not_enforced_no_action` FOREIGN KEY (`last_name`) "
             + "  REFERENCES `AllowedNames` (`last_name`) ON DELETE NO ACTION NOT ENFORCED\","
-            + "  \"spannerForeignKey_3\" : "
+            + "  \"spannerForeignKey_4\" : "
             + "  \"ALTER TABLE `Users` ADD CONSTRAINT `fk_enforced` FOREIGN KEY (`last_name`) "
             + "  REFERENCES `AllowedNames` (`last_name`) ENFORCED\","
             + "  \"spannerCheckConstraint_0\" : "
@@ -327,6 +330,9 @@ public class AvroSchemaToDdlConverterTest {
                 + " ALTER TABLE `Users` ADD CONSTRAINT `fk_odc`"
                 + " FOREIGN KEY (`last_name`) REFERENCES "
                 + "`AllowedNames` (`last_name`) ON DELETE CASCADE"
+                + " ALTER TABLE `Users` ADD CONSTRAINT `fk_odsn`"
+                + " FOREIGN KEY (`last_name`) REFERENCES "
+                + "`AllowedNames` (`last_name`) ON DELETE SET NULL"
                 + " ALTER TABLE `Users` ADD CONSTRAINT `fk_not_enforced_no_action`"
                 + " FOREIGN KEY (`last_name`) REFERENCES "
                 + "`AllowedNames` (`last_name`) ON DELETE NO ACTION NOT ENFORCED"
@@ -553,6 +559,9 @@ public class AvroSchemaToDdlConverterTest {
             + " \"spannerForeignKey_1\" :   \"ALTER TABLE \\\"Users\\\" ADD CONSTRAINT "
             + "\\\"fk_odc\\\" FOREIGN KEY (\\\"last_name\\\")   REFERENCES \\\"AllowedNames\\\""
             + " (\\\"last_name\\\") ON DELETE CASCADE\", "
+            + " \"spannerForeignKey_2\" :   \"ALTER TABLE \\\"Users\\\" ADD CONSTRAINT "
+            + "\\\"fk_odsn\\\" FOREIGN KEY (\\\"last_name\\\")   REFERENCES \\\"AllowedNames\\\""
+            + " (\\\"last_name\\\") ON DELETE SET NULL\", "
             + " \"spannerCheckConstraint_0\" :   \"CONSTRAINT \\\"ck\\\""
             + " CHECK(\\\"first_name\\\" != \\\"last_name\\\")\"}";
 
@@ -615,7 +624,9 @@ public class AvroSchemaToDdlConverterTest {
                 + " ALTER TABLE \"Users\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"first_name\")"
                 + " REFERENCES \"AllowedNames\" (\"first_name\")"
                 + " ALTER TABLE \"Users\" ADD CONSTRAINT \"fk_odc\" FOREIGN KEY (\"last_name\")"
-                + " REFERENCES \"AllowedNames\" (\"last_name\") ON DELETE CASCADE"));
+                + " REFERENCES \"AllowedNames\" (\"last_name\") ON DELETE CASCADE"
+                + " ALTER TABLE \"Users\" ADD CONSTRAINT \"fk_odsn\" FOREIGN KEY (\"last_name\")"
+                + " REFERENCES \"AllowedNames\" (\"last_name\") ON DELETE SET NULL"));
   }
 
   @Test
