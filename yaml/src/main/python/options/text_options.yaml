@@ -1,4 +1,14 @@
 options:
+  - name: "text_read_options"
+    parameters:
+      - order: 1
+        name: "inputPath"
+        description: "Cloud Storage text path"
+        help: "The Cloud Storage path or file pattern to the text file(s) to read."
+        example: "gs://my-bucket/path/*.txt"
+        required: true
+        type: text
+
   - name: "text_write_options"
     parameters:
       - order: 1
