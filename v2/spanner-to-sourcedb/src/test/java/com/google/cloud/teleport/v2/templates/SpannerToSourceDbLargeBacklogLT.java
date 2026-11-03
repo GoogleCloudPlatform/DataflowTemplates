@@ -29,6 +29,7 @@ import com.google.cloud.spanner.InstanceInfo.InstanceField;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
+import com.google.cloud.teleport.v2.options.SpannerToSourceDbOptions;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.gson.Gson;
@@ -78,8 +79,9 @@ public class SpannerToSourceDbLargeBacklogLT extends SpannerToSourceDbLTBase {
   private static final String SESSION_FILE_RESOURCE =
       "SpannerToSourceDbLargeBacklogLT/session.json";
   private static final String TABLE = "MigrationLoadTest";
-  // The template's default shadowTablePrefix is "rev_shadow_"; this test does not override it.
-  private static final String SHADOW_TABLE = "rev_shadow_" + TABLE;
+  // This test does not override shadowTablePrefix, so the template uses its default.
+  private static final String SHADOW_TABLE =
+      SpannerToSourceDbOptions.DEFAULT_SHADOW_TABLE_PREFIX + TABLE;
 
   private static final String DEFAULT_PHYSICAL_SHARD_1 = "nokill-high-resources-backlog-shard1";
   private static final String DEFAULT_PHYSICAL_SHARD_2 = "nokill-high-resources-backlog-shard2";
@@ -294,9 +296,9 @@ public class SpannerToSourceDbLargeBacklogLT extends SpannerToSourceDbLTBase {
     // reaches the expected count.
     // The shadow row of a record is written in the same Spanner transaction as its MySQL write
     // and commits after it, so every shadow row means its MySQL write committed. The
-    // "success_record_count" metric is only logged: it can permanently fall short of the real
-    // count (for example, increments are lost when workers are removed), so it can NOT act as a
-    // reliable source of truth.
+    // "success_record_count" metric is not used: it can permanently fall short of the real count
+    // (for example, increments are lost when workers are removed), so it can NOT act as a reliable
+    // source of truth.
 
     long expectedShardCount =
         Long.parseLong(
@@ -321,14 +323,6 @@ public class SpannerToSourceDbLargeBacklogLT extends SpannerToSourceDbLTBase {
                 "Time Elapsed: {} minutes / {} minutes",
                 (System.currentTimeMillis() - startTimeMillis) / 60000,
                 reverseTimeoutMinutes);
-            try {
-              Double successRecordsCount =
-                  pipelineLauncher.getMetric(
-                      project, region, reverseJobInfo.jobId(), "success_record_count");
-              LOG.info("Polled success_record_count (informational): {}", successRecordsCount);
-            } catch (Exception e) {
-              LOG.warn("Failed to retrieve success_record_count: {}", e.getMessage());
-            }
             try {
               long queryStartMillis = System.currentTimeMillis();
               long shadowRows = spannerMetadataResourceManager.getRowCount(SHADOW_TABLE);
