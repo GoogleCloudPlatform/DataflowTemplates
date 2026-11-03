@@ -135,9 +135,10 @@ public class OracleDataWriter implements DataWriter {
                 + connectionKey
                 + ")");
       }
+      List<DataGeneratorColumn> boundColumns = resolveBoundColumns(table, operation);
       try (PreparedStatement statement = connection.prepareStatement(sql)) {
         for (Row row : rows) {
-          setStatementParameters(statement, row, table, operation);
+          setStatementParameters(statement, row, boundColumns);
           statement.addBatch();
         }
         statement.executeBatch();
@@ -160,13 +161,20 @@ public class OracleDataWriter implements DataWriter {
     }
     if (shardsByLogicalId == null) {
       List<Shard> shards =
-          oracleSinkConfig != null ? oracleSinkConfig.getShards() : Collections.emptyList();
+          oracleSinkConfig != null && oracleSinkConfig.getShards() != null
+              ? oracleSinkConfig.getShards()
+              : Collections.emptyList();
       if (shards.isEmpty()) {
         throw new RuntimeException("No shards found in the provided Oracle sink configuration.");
       }
       Map<String, Shard> byId = new LinkedHashMap<>();
       for (Shard shard : shards) {
-        byId.put(shard.getLogicalShardId(), shard);
+        if (byId.put(shard.getLogicalShardId(), shard) != null) {
+          throw new IllegalArgumentException(
+              "Duplicate logicalShardId '"
+                  + shard.getLogicalShardId()
+                  + "' found in Oracle sink configuration.");
+        }
       }
       this.shardsByLogicalId = Collections.unmodifiableMap(byId);
     }
@@ -187,7 +195,7 @@ public class OracleDataWriter implements DataWriter {
 
   @VisibleForTesting
   Shard resolveShard(String shardId) {
-    if (shardsByLogicalId == null || shardsByLogicalId.isEmpty()) {
+    if (shardsByLogicalId == null) {
       throw new IllegalStateException("Shard configuration has not been loaded.");
     }
     if (shardId == null || shardId.isEmpty()) {
@@ -239,9 +247,25 @@ public class OracleDataWriter implements DataWriter {
           "Table " + table.name() + " has no writable columns for INSERT / UPDATE.");
     }
     List<String> pkNames = table.primaryKeys();
-    if (pkNames == null || pkNames.isEmpty()) {
+    if (pkNames.isEmpty()) {
       throw new IllegalStateException(
           "Table " + table.name() + " has no primary key; cannot build MERGE upsert.");
+    }
+    for (String pkName : pkNames) {
+      boolean foundInWritable = false;
+      for (DataGeneratorColumn col : cols) {
+        if (col.name().equals(pkName)) {
+          foundInWritable = true;
+          break;
+        }
+      }
+      if (!foundInWritable) {
+        throw new IllegalStateException(
+            "Primary key column '"
+                + pkName
+                + "' not found in writable columns on table "
+                + table.name());
+      }
     }
 
     StringBuilder sql = new StringBuilder("MERGE INTO ");
@@ -262,7 +286,7 @@ public class OracleDataWriter implements DataWriter {
     }
     sql.append(") ");
 
-    List<DataGeneratorColumn> setCols = nonPrimaryKeyWritableColumns(table);
+    List<DataGeneratorColumn> setCols = nonPrimaryKeyWritableColumns(cols, pkNames);
     if (!setCols.isEmpty()) {
       sql.append("WHEN MATCHED THEN UPDATE SET ");
       for (int i = 0; i < setCols.size(); i++) {
@@ -301,7 +325,7 @@ public class OracleDataWriter implements DataWriter {
   @VisibleForTesting
   static String buildDeleteSql(DataGeneratorTable table, String namespace) {
     List<String> pkNames = table.primaryKeys();
-    if (pkNames == null || pkNames.isEmpty()) {
+    if (pkNames.isEmpty()) {
       throw new IllegalStateException(
           "Table " + table.name() + " has no primary key; cannot build DELETE.");
     }
@@ -332,8 +356,7 @@ public class OracleDataWriter implements DataWriter {
     ImmutableList.Builder<DataGeneratorColumn> builder = ImmutableList.builder();
     List<String> pkNames = table.primaryKeys();
     for (DataGeneratorColumn col : table.columns()) {
-      if (col.isSkipped()
-          || (col.isGenerated() && (pkNames == null || !pkNames.contains(col.name())))) {
+      if (col.isSkipped() || (col.isGenerated() && !pkNames.contains(col.name()))) {
         continue;
       }
       builder.add(col);
@@ -341,11 +364,11 @@ public class OracleDataWriter implements DataWriter {
     return builder.build();
   }
 
-  private static List<DataGeneratorColumn> nonPrimaryKeyWritableColumns(DataGeneratorTable table) {
-    List<String> pkNames = table.primaryKeys();
+  private static List<DataGeneratorColumn> nonPrimaryKeyWritableColumns(
+      List<DataGeneratorColumn> writableCols, List<String> pkNames) {
     ImmutableList.Builder<DataGeneratorColumn> builder = ImmutableList.builder();
-    for (DataGeneratorColumn col : writableColumns(table)) {
-      if (pkNames != null && pkNames.contains(col.name())) {
+    for (DataGeneratorColumn col : writableCols) {
+      if (pkNames.contains(col.name())) {
         continue;
       }
       builder.add(col);
@@ -363,23 +386,33 @@ public class OracleDataWriter implements DataWriter {
         "Primary key column '" + name + "' not found on table " + table.name());
   }
 
+  private static List<DataGeneratorColumn> resolveBoundColumns(
+      DataGeneratorTable table, MutationType operation) {
+    if (operation == MutationType.DELETE) {
+      ImmutableList.Builder<DataGeneratorColumn> builder = ImmutableList.builder();
+      for (String pkName : table.primaryKeys()) {
+        builder.add(findColumn(table, pkName));
+      }
+      return builder.build();
+    }
+    // INSERT and UPDATE both use the MERGE statement built by buildUpsertSql(...), which binds
+    // all writable columns in table order once in the USING subquery.
+    return writableColumns(table);
+  }
+
   @VisibleForTesting
   void setStatementParameters(
       PreparedStatement statement, Row row, DataGeneratorTable table, MutationType operation)
       throws SQLException {
-    if (operation == MutationType.DELETE) {
-      int idx = 1;
-      for (String pkName : table.primaryKeys()) {
-        DataGeneratorColumn pkCol = findColumn(table, pkName);
-        setParameter(statement, idx++, pkCol, fetchFromRow(row, pkName));
-      }
-    } else {
-      // INSERT and UPDATE both use the MERGE statement built by buildUpsertSql(...), which binds
-      // all writable columns in table order once in the USING subquery.
-      int idx = 1;
-      for (DataGeneratorColumn col : writableColumns(table)) {
-        setParameter(statement, idx++, col, fetchFromRow(row, col.name()));
-      }
+    setStatementParameters(statement, row, resolveBoundColumns(table, operation));
+  }
+
+  private void setStatementParameters(
+      PreparedStatement statement, Row row, List<DataGeneratorColumn> boundColumns)
+      throws SQLException {
+    int idx = 1;
+    for (DataGeneratorColumn col : boundColumns) {
+      setParameter(statement, idx++, col, fetchFromRow(row, col.name()));
     }
   }
 
@@ -445,26 +478,24 @@ public class OracleDataWriter implements DataWriter {
 
   private static int jdbcTypeFor(LogicalType type) {
     switch (type) {
-      case STRING:
-      case JSON:
-      case UUID:
-        return Types.VARCHAR;
       case INT64:
         return Types.BIGINT;
       case FLOAT64:
         return Types.DOUBLE;
       case BOOLEAN:
+      case NUMERIC:
         return Types.NUMERIC;
       case BYTES:
         return Types.VARBINARY;
-      case NUMERIC:
-        return Types.NUMERIC;
       case DATE:
         return Types.DATE;
       case TIMESTAMP:
         return Types.TIMESTAMP;
+      case STRING:
+      case JSON:
+      case UUID:
       default:
-        return Types.OTHER;
+        return Types.VARCHAR;
     }
   }
 

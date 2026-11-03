@@ -228,6 +228,16 @@ public class OracleDataWriterTest {
 
     String deleteSql = OracleDataWriter.buildDeleteSql(simpleTable(), " \"customSchema\" ");
     assertThat(deleteSql).isEqualTo("DELETE FROM \"customSchema\".\"users\" WHERE \"id\" = ?");
+
+    String blankNamespaceSql = OracleDataWriter.buildDeleteSql(simpleTable(), "   ");
+    assertThat(blankNamespaceSql).isEqualTo("DELETE FROM \"users\" WHERE \"id\" = ?");
+
+    String singleQuoteCharSql = OracleDataWriter.buildDeleteSql(simpleTable(), "\"");
+    assertThat(singleQuoteCharSql).isEqualTo("DELETE FROM \"\"\"\".\"users\" WHERE \"id\" = ?");
+
+    String unclosedQuoteSql = OracleDataWriter.buildDeleteSql(simpleTable(), "\"unclosed");
+    assertThat(unclosedQuoteSql)
+        .isEqualTo("DELETE FROM \"\"\"UNCLOSED\".\"users\" WHERE \"id\" = ?");
   }
 
   @Test
@@ -280,6 +290,35 @@ public class OracleDataWriterTest {
   @Test
   public void testBuildUpsertSql_noPkThrows() {
     DataGeneratorTable table = simpleTable().toBuilder().primaryKeys(ImmutableList.of()).build();
+    assertThrows(IllegalStateException.class, () -> OracleDataWriter.buildUpsertSql(table));
+  }
+
+  @Test
+  public void testBuildUpsertSql_missingPkColumnThrows() {
+    DataGeneratorTable table =
+        simpleTable().toBuilder().primaryKeys(ImmutableList.of("nonexistent_pk")).build();
+    assertThrows(IllegalStateException.class, () -> OracleDataWriter.buildUpsertSql(table));
+  }
+
+  @Test
+  public void testBuildUpsertSql_skippedPkColumnThrows() {
+    DataGeneratorColumn skippedPk =
+        DataGeneratorColumn.builder()
+            .name("id")
+            .logicalType(LogicalType.INT64)
+            .isNullable(false)
+            .isGenerated(false)
+            .isSkipped(true)
+            .size(null)
+            .precision(null)
+            .scale(null)
+            .build();
+    DataGeneratorColumn nameCol = col("name", LogicalType.STRING);
+    DataGeneratorTable table =
+        simpleTable().toBuilder()
+            .columns(ImmutableList.of(skippedPk, nameCol))
+            .primaryKeys(ImmutableList.of("id"))
+            .build();
     assertThrows(IllegalStateException.class, () -> OracleDataWriter.buildUpsertSql(table));
   }
 
@@ -549,6 +588,11 @@ public class OracleDataWriterTest {
         simpleTable(),
         "shardA",
         Constants.DEFAULT_JDBC_POOL_SIZE);
+    w.insert(
+        ImmutableList.of(simpleRow(2L, "b")),
+        simpleTable(),
+        "shardA",
+        Constants.DEFAULT_JDBC_POOL_SIZE);
     verify(mockConnectionHelper, never()).init(any());
   }
 
@@ -557,6 +601,12 @@ public class OracleDataWriterTest {
     OracleDataWriter w = new OracleDataWriter((OracleSinkConfig) null, mockConnectionHelper);
     assertThrows(
         RuntimeException.class, () -> w.ensureInitialized(Constants.DEFAULT_JDBC_POOL_SIZE));
+
+    OracleDataWriter wNullShards =
+        new OracleDataWriter(new OracleSinkConfig(null), mockConnectionHelper);
+    assertThrows(
+        RuntimeException.class,
+        () -> wNullShards.ensureInitialized(Constants.DEFAULT_JDBC_POOL_SIZE));
   }
 
   @Test
@@ -565,6 +615,16 @@ public class OracleDataWriterTest {
         new OracleDataWriter(new OracleSinkConfig(Collections.emptyList()), mockConnectionHelper);
     assertThrows(
         RuntimeException.class, () -> w.ensureInitialized(Constants.DEFAULT_JDBC_POOL_SIZE));
+  }
+
+  @Test
+  public void testLoadShards_duplicateLogicalShardIdThrows() {
+    OracleDataWriter w =
+        new OracleDataWriter(
+            new OracleSinkConfig(ImmutableList.of(shardA(), shardA())), mockConnectionHelper);
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> w.ensureInitialized(Constants.DEFAULT_JDBC_POOL_SIZE));
   }
 
   @Test
@@ -586,7 +646,9 @@ public class OracleDataWriterTest {
 
   @Test
   public void testConstructor_defaultsToJdbcConnectionHelper() {
-    OracleDataWriter w = new OracleDataWriter(new OracleSinkConfig(ImmutableList.of(shardA())));
+    OracleDataWriter w = new OracleDataWriter(new OracleSinkConfig(Collections.emptyList()));
+    assertThrows(
+        RuntimeException.class, () -> w.ensureInitialized(Constants.DEFAULT_JDBC_POOL_SIZE));
     w.close();
   }
 

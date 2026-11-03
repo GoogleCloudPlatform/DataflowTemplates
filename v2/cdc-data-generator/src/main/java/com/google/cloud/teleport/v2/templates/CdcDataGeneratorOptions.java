@@ -45,7 +45,7 @@ public interface CdcDataGeneratorOptions
       description = "Sink Options JSON File Path",
       helpText =
           "GCS Path to a file containing JSON Options for the sink. For Spanner: {\"projectId\": \"...\", \"instanceId\": \"...\", \"databaseId\": \"...\"}. "
-              + "For MySQL: {\"driverClassName\": \"...\", \"connectionUrl\": \"...\", \"username\": \"...\", \"password\": \"...\"} or {\"shardFilePath\": \"gs://...\"}",
+              + "For MySQL/Oracle: {\"driverClassName\": \"...\", \"connectionUrl\": \"...\", \"username\": \"...\", \"password\": \"...\"} or {\"shardFilePath\": \"gs://...\"}",
       example = "gs://your-bucket/path/to/sink_options.json")
   String getSinkOptions();
 
@@ -97,7 +97,7 @@ public interface CdcDataGeneratorOptions
       optional = true,
       description = "JDBC Connection Pool Size per Shard",
       helpText =
-          "The maximum number of connections to open per logical shard for JDBC (MySQL) sink. Default is 10.")
+          "The maximum number of connections to open per logical shard for JDBC (MySQL, Oracle) sinks. Default is 10.")
   @Default.Integer(10)
   Integer getJdbcPoolSize();
 

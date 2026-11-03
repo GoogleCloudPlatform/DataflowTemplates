@@ -95,6 +95,65 @@ public class OracleSourceConnectorTest {
   }
 
   @Test
+  public void testParseConfig_avoidsDefaultShardIdCollision() throws Exception {
+    String oracleJson =
+        "[\n"
+            + "  {\n"
+            + "    \"logicalShardId\": \"shard0\",\n"
+            + "    \"host\": \"localhost\",\n"
+            + "    \"port\": \"1521\",\n"
+            + "    \"user\": \"c##datastream\",\n"
+            + "    \"password\": \"datastream\",\n"
+            + "    \"dbName\": \"XEPDB1\"\n"
+            + "  },\n"
+            + "  {\n"
+            + "    \"logicalShardId\": \"\",\n"
+            + "    \"host\": \"localhost\",\n"
+            + "    \"port\": \"1521\",\n"
+            + "    \"user\": \"c##datastream\",\n"
+            + "    \"password\": \"datastream\",\n"
+            + "    \"dbName\": \"XEPDB2\"\n"
+            + "  }\n"
+            + "]";
+    File file = tempFolder.newFile("oracle_shards_collision.json");
+    FileUtils.writeStringToFile(file, oracleJson, StandardCharsets.UTF_8);
+
+    OracleSinkConfig oracleConfig =
+        (OracleSinkConfig) connector.parseConfig(file.getAbsolutePath());
+    assertThat(oracleConfig.getShards()).hasSize(2);
+    assertThat(oracleConfig.getShards().get(0).getLogicalShardId()).isEqualTo("shard1");
+    assertThat(oracleConfig.getShards().get(1).getLogicalShardId()).isEqualTo("shard0");
+  }
+
+  @Test
+  public void testParseConfig_duplicateExplicitShardIdsThrows() throws Exception {
+    String oracleJson =
+        "[\n"
+            + "  {\n"
+            + "    \"logicalShardId\": \"shardA\",\n"
+            + "    \"host\": \"localhost\",\n"
+            + "    \"port\": \"1521\",\n"
+            + "    \"user\": \"c##datastream\",\n"
+            + "    \"password\": \"datastream\",\n"
+            + "    \"dbName\": \"XEPDB1\"\n"
+            + "  },\n"
+            + "  {\n"
+            + "    \"logicalShardId\": \"shardA\",\n"
+            + "    \"host\": \"localhost\",\n"
+            + "    \"port\": \"1521\",\n"
+            + "    \"user\": \"c##datastream\",\n"
+            + "    \"password\": \"datastream\",\n"
+            + "    \"dbName\": \"XEPDB2\"\n"
+            + "  }\n"
+            + "]";
+    File file = tempFolder.newFile("oracle_shards_duplicate.json");
+    FileUtils.writeStringToFile(file, oracleJson, StandardCharsets.UTF_8);
+
+    assertThrows(
+        IllegalArgumentException.class, () -> connector.parseConfig(file.getAbsolutePath()));
+  }
+
+  @Test
   public void testGetSchemaFetcherAndTypeMapper() {
     assertThat(connector.getSchemaFetcher()).isInstanceOf(OracleSchemaFetcher.class);
     assertThat(connector.getTypeMapper()).isInstanceOf(OracleTypeMapper.class);

@@ -50,6 +50,21 @@ public class SourceConnectorFactoryTest {
   }
 
   @Test
+  public void testGetSourceConnector_byString() {
+    assertThat(SourceConnectorFactory.getSourceConnector("SPANNER"))
+        .isInstanceOf(SpannerSourceConnector.class);
+    assertThat(SourceConnectorFactory.getSourceConnector("MYSQL"))
+        .isInstanceOf(MySqlSourceConnector.class);
+    assertThat(SourceConnectorFactory.getSourceConnector("ORACLE"))
+        .isInstanceOf(OracleSourceConnector.class);
+    assertThat(SourceConnectorFactory.getSourceConnector("oracle"))
+        .isInstanceOf(OracleSourceConnector.class);
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> SourceConnectorFactory.getSourceConnector((String) null));
+  }
+
+  @Test
   public void testGetSourceConnector_byOptions() {
     CdcDataGeneratorOptions options = PipelineOptionsFactory.as(CdcDataGeneratorOptions.class);
     options.setSinkType(SinkType.SPANNER);

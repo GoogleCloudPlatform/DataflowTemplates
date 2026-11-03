@@ -26,7 +26,9 @@ import com.google.cloud.teleport.v2.templates.sink.SinkSchemaFetcher;
 import com.google.cloud.teleport.v2.templates.sink.TypeMapper;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,14 +56,30 @@ public class OracleSourceConnector implements ISourceConnector {
 
     ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
     List<Shard> shards = shardFileReader.getOrderedShardDetails(sinkOptionsPath);
-    if (shards == null || shards.isEmpty()) {
+    if (shards.isEmpty()) {
       throw new RuntimeException("No shards found in shard configuration: " + sinkOptionsPath);
     }
 
+    Set<String> usedShardIds = new HashSet<>();
+    for (Shard shard : shards) {
+      String id = shard.getLogicalShardId();
+      if (id != null && !id.isEmpty() && !usedShardIds.add(id)) {
+        throw new IllegalArgumentException(
+            "Duplicate logicalShardId '"
+                + id
+                + "' found in shard configuration: "
+                + sinkOptionsPath);
+      }
+    }
+
+    int nextDefaultIndex = 0;
     for (int i = 0; i < shards.size(); i++) {
       Shard shard = shards.get(i);
       if (shard.getLogicalShardId() == null || shard.getLogicalShardId().isEmpty()) {
-        String defaultId = "shard" + i;
+        String defaultId;
+        do {
+          defaultId = "shard" + nextDefaultIndex++;
+        } while (!usedShardIds.add(defaultId));
         shard.setLogicalShardId(defaultId);
         LOG.info("Assigned default logicalShardId '{}' to shard index {}", defaultId, i);
       }
