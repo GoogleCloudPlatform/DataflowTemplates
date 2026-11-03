@@ -64,6 +64,9 @@ public class RangePreparedStatementSetter implements PreparedStatementSetter<Ran
    * Convert raw byte[] to java.util.UUID to prevent PostgreSQL JDBC type mismatch (BYTEA vs UUID),
    * convert String to PGobject for PostgreSQL BIT types, and convert LocalTime.MAX (and OffsetTime
    * at LocalTime.MAX) to "24:00:00" to match PostgreSQL's end-of-day time format.
+   *
+   * <p>TODO(#4489): The uniqueidentifier branches are dialect-specific; route them through a
+   * SQLServer connector.
    */
   private static Object convertSpecialTypes(Object val, PartitionColumn pc) {
     if (val instanceof byte[] bytes

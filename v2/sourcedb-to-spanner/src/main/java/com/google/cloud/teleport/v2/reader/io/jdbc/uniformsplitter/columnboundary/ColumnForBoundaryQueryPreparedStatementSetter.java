@@ -60,6 +60,9 @@ public class ColumnForBoundaryQueryPreparedStatementSetter
    * mismatch), and a canonical UUID string for SQL Server {@code uniqueidentifier} (whose bytes are
    * held in SQL Server comparison order, see {@link
    * BoundaryExtractorFactory#sqlServerSortableBytesToUuidString}).
+   *
+   * <p>TODO(#4489): The uniqueidentifier branches are dialect-specific; route them through a
+   * SQLServer connector.
    */
   private static Object convertIfUuid(Object val, PartitionColumn pc) {
     if (val instanceof byte[] bytes

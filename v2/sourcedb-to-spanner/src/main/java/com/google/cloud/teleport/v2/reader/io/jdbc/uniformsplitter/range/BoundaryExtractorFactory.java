@@ -276,6 +276,9 @@ public class BoundaryExtractorFactory {
    * {@code g2} (7, 6), {@code g1} (5, 4) and {@code g0} (3, 2, 1, 0) from least to most
    * significant. For example, in SQL Server {@code '01000000-0000-0000-0000-000000000000'} sorts
    * before {@code '00000001-0000-0000-0000-000000000000'}.
+   *
+   * <p>TODO(#4489): The SQL Server UNIQUEIDENTIFIER handling below is dialect-specific and should
+   * move into SQLServer connector.
    */
   public static final int[] SQL_SERVER_UUID_BYTE_ORDER = {
     10, 11, 12, 13, 14, 15, 8, 9, 7, 6, 5, 4, 3, 2, 1, 0
