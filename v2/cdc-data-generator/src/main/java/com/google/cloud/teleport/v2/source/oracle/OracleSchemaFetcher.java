@@ -270,8 +270,11 @@ public class OracleSchemaFetcher implements SinkSchemaFetcher {
       // digits followed by |s| trailing zeros before the decimal point). Since DataGeneratorUtils
       // requires scale >= 0 on DataGeneratorColumn, synthesize p significant digits followed by
       // |s| trailing zeros via regexify with scale 0.
-      int trailingZeros = Math.min(-rawScale, 10);
-      int sigDigits = (rawPrecision != null && rawPrecision > 0) ? Math.min(rawPrecision, 10) : 10;
+      int trailingZeros = -rawScale;
+      int sigDigits =
+          (rawPrecision != null && rawPrecision > 0)
+              ? rawPrecision
+              : Constants.DEFAULT_NUMERIC_PRECISION;
       String digitPattern = sigDigits <= 1 ? "[1-9]" : "[1-9][0-9]{" + (sigDigits - 1) + "}";
       builder
           .precision(sigDigits + trailingZeros)
@@ -281,7 +284,7 @@ public class OracleSchemaFetcher implements SinkSchemaFetcher {
     }
     if (rawScale != null && rawPrecision != null && rawPrecision > 0 && rawScale > rawPrecision) {
       int leadingZeros = rawScale - rawPrecision;
-      int sigDigits = Math.min(rawPrecision, 10);
+      int sigDigits = rawPrecision;
       String digitPattern = sigDigits <= 1 ? "[1-9]" : "[1-9][0-9]{" + (sigDigits - 1) + "}";
       builder
           .precision(rawScale)
@@ -290,14 +293,15 @@ public class OracleSchemaFetcher implements SinkSchemaFetcher {
       return;
     }
     if (rawScale != null) {
-      int rawPrec =
-          (rawPrecision != null && rawPrecision > 0) ? rawPrecision : Math.max(10, rawScale + 5);
-      int effectivePrec = Math.min(rawPrec, Math.max(10, rawScale + 5));
+      int effectivePrec =
+          (rawPrecision != null && rawPrecision > 0)
+              ? rawPrecision
+              : Math.max(Constants.DEFAULT_NUMERIC_PRECISION, rawScale + 5);
       builder.precision(effectivePrec).scale(rawScale);
       return;
     }
     if (rawPrecision != null && rawPrecision > 0) {
-      builder.precision(Math.min(rawPrecision, 10)).scale(0);
+      builder.precision(rawPrecision).scale(0);
     }
   }
 

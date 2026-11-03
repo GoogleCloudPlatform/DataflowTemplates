@@ -262,7 +262,7 @@ public class OracleSchemaFetcherTest {
     DataGeneratorSchema schema = fetcher.getSchema();
     DataGeneratorTable actualTable = schema.tables().get("SpecialTable");
     assertThat(actualTable).isNotNull();
-    assertThat(actualTable.columns().get(0).precision()).isEqualTo(10);
+    assertThat(actualTable.columns().get(0).precision()).isEqualTo(38);
     assertThat(actualTable.columns().get(0).scale()).isEqualTo(0);
     assertThat(actualTable.columns().get(1).precision()).isEqualTo(4);
     assertThat(actualTable.columns().get(1).scale()).isEqualTo(4);
