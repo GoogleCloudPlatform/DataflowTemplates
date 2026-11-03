@@ -308,10 +308,6 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
    */
   @After
   public void cleanUp() throws IOException {
-    // Cancel the Dataflow job before deleting the resources it writes to. LoadTestBase also cancels
-    // jobs, but its @After runs after this one, so the job would keep running against a dropped
-    // database.
-    pipelineLauncher.cleanupAll();
     ResourceManagerUtils.cleanResources(
         secretClient,
         spannerResourceManager,
