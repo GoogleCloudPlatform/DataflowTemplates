@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range;
 
 import static com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.BoundaryExtractorFactory.BYTE_ARRAY_CLASS;
 import static com.google.common.truth.Truth.assertThat;
+import static com.google.common.truth.Truth.assertWithMessage;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -28,6 +29,7 @@ import static org.mockito.Mockito.when;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationMapper;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
+import com.google.common.collect.ImmutableList;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Date;
@@ -37,7 +39,9 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.LocalTime;
 import java.time.OffsetTime;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.io.jdbc.JdbcIO.PoolableDataSourceProvider;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
@@ -611,6 +615,121 @@ public class BoundaryExtractorFactoryTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> BoundaryExtractorFactory.sqlServerSortableBytesToUuidString(new byte[17]));
+  }
+
+  /**
+   * Verifies that the extracted bytes sort exactly like SQL Server sorts {@code UNIQUEIDENTIFIER}.
+   *
+   * <p>The expected order below is the result of {@code ORDER BY} on a real SQL Server instance for
+   * 16 GUIDs that each have a single {@code 0x01} byte at a different position. Within {@code g0},
+   * {@code g1} and {@code g2} SQL Server compares the least-significant (right-most in the string)
+   * byte first, while {@code g3} and {@code g4} are compared left to right.
+   */
+  @Test
+  public void testSqlServerUniqueIdentifierSortOrderMatchesSqlServer() throws SQLException {
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnTypeName("uniqueidentifier")
+            .setColumnName("Id")
+            .setColumnClass(BYTE_ARRAY_CLASS)
+            .build();
+    BoundaryExtractor<byte[]> extractor = BoundaryExtractorFactory.create(BYTE_ARRAY_CLASS);
+    TableIdentifier tableId =
+        TableIdentifier.builder().setDataSourceId("ds").setTableName("testTable").build();
+
+    ImmutableList<String> sqlServerAscendingOrder =
+        ImmutableList.of(
+            "01000000-0000-0000-0000-000000000000",
+            "00010000-0000-0000-0000-000000000000",
+            "00000100-0000-0000-0000-000000000000",
+            "00000001-0000-0000-0000-000000000000",
+            "00000000-0100-0000-0000-000000000000",
+            "00000000-0001-0000-0000-000000000000",
+            "00000000-0000-0100-0000-000000000000",
+            "00000000-0000-0001-0000-000000000000",
+            "00000000-0000-0000-0001-000000000000",
+            "00000000-0000-0000-0100-000000000000",
+            "00000000-0000-0000-0000-000000000001",
+            "00000000-0000-0000-0000-000000000100",
+            "00000000-0000-0000-0000-000000010000",
+            "00000000-0000-0000-0000-000001000000",
+            "00000000-0000-0000-0000-000100000000",
+            "00000000-0000-0000-0000-010000000000");
+
+    List<byte[]> extracted = new ArrayList<>();
+    for (String guid : sqlServerAscendingOrder) {
+      when(mockResultSet.next()).thenReturn(true);
+      when(mockResultSet.getString(1)).thenReturn(guid);
+      when(mockResultSet.getString(2)).thenReturn(guid);
+      Boundary<byte[]> boundary =
+          extractor.getBoundary(partitionColumn, mockResultSet, null, tableId);
+      extracted.add(boundary.start());
+      // Round trip must be lossless.
+      assertThat(BoundaryExtractorFactory.sqlServerSortableBytesToUuidString(boundary.start()))
+          .isEqualTo(guid);
+    }
+
+    // Unsigned big-endian comparison of extracted bytes must be strictly increasing, i.e. the
+    // extracted bytes sort in the same order as SQL Server.
+    for (int i = 1; i < extracted.size(); i++) {
+      BigInteger prev = new BigInteger(1, extracted.get(i - 1));
+      BigInteger curr = new BigInteger(1, extracted.get(i));
+      assertWithMessage(
+              "%s must sort before %s",
+              sqlServerAscendingOrder.get(i - 1), sqlServerAscendingOrder.get(i))
+          .that(curr)
+          .isGreaterThan(prev);
+    }
+
+    // Explicit within-group precedence checks (little-endian g0, g1, g2).
+    assertSqlServerLessThan(
+        extractor,
+        partitionColumn,
+        tableId,
+        "01000000-0000-0000-0000-000000000000",
+        "00000001-0000-0000-0000-000000000000");
+    assertSqlServerLessThan(
+        extractor,
+        partitionColumn,
+        tableId,
+        "00000000-0100-0000-0000-000000000000",
+        "00000000-0001-0000-0000-000000000000");
+    assertSqlServerLessThan(
+        extractor,
+        partitionColumn,
+        tableId,
+        "00000000-0000-0100-0000-000000000000",
+        "00000000-0000-0001-0000-000000000000");
+    // Big-endian g3 and g4.
+    assertSqlServerLessThan(
+        extractor,
+        partitionColumn,
+        tableId,
+        "00000000-0000-0000-0001-000000000000",
+        "00000000-0000-0000-0100-000000000000");
+    assertSqlServerLessThan(
+        extractor,
+        partitionColumn,
+        tableId,
+        "00000000-0000-0000-0000-000000000001",
+        "00000000-0000-0000-0000-010000000000");
+  }
+
+  private void assertSqlServerLessThan(
+      BoundaryExtractor<byte[]> extractor,
+      PartitionColumn partitionColumn,
+      TableIdentifier tableId,
+      String smaller,
+      String larger)
+      throws SQLException {
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getString(1)).thenReturn(smaller);
+    when(mockResultSet.getString(2)).thenReturn(larger);
+    Boundary<byte[]> boundary =
+        extractor.getBoundary(partitionColumn, mockResultSet, null, tableId);
+    assertWithMessage("%s must sort before %s", smaller, larger)
+        .that(new BigInteger(1, boundary.end()))
+        .isGreaterThan(new BigInteger(1, boundary.start()));
   }
 
   @Test

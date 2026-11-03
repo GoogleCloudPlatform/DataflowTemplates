@@ -72,7 +72,8 @@ public class RangePreparedStatementSetter implements PreparedStatementSetter<Ran
       return new UUID(bb.getLong(), bb.getLong());
     }
 
-    if (val instanceof byte[] bytes && "uniqueidentifier".equalsIgnoreCase(pc.columnTypeName())) {
+    if (val instanceof byte[] bytes
+        && JdbcCommonConstants.UNIQUEIDENTIFIER_TYPE.equalsIgnoreCase(pc.columnTypeName())) {
       return BoundaryExtractorFactory.sqlServerSortableBytesToUuidString(bytes);
     }
 

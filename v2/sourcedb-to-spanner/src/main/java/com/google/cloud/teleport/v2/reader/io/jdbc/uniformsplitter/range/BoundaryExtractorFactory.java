@@ -16,6 +16,8 @@
 package com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range;
 
 import static com.google.cloud.teleport.v2.reader.io.jdbc.JdbcCommonConstants.BIT_TYPE;
+import static com.google.cloud.teleport.v2.reader.io.jdbc.JdbcCommonConstants.UNIQUEIDENTIFIER_TYPE;
+import static com.google.cloud.teleport.v2.reader.io.jdbc.JdbcCommonConstants.UUID_TYPE;
 
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.common.annotations.VisibleForTesting;
@@ -238,11 +240,9 @@ public class BoundaryExtractorFactory {
       throws SQLException {
     Preconditions.checkArgument(partitionColumn.columnClass().equals(BYTE_ARRAY_CLASS));
     resultSet.next();
-    boolean isUuid =
-        partitionColumn != null && "uuid".equalsIgnoreCase(partitionColumn.columnTypeName());
+    boolean isUuid = UUID_TYPE.equalsIgnoreCase(partitionColumn.columnTypeName());
     boolean isSqlServerUniqueIdentifier =
-        partitionColumn != null
-            && "uniqueidentifier".equalsIgnoreCase(partitionColumn.columnTypeName());
+        UNIQUEIDENTIFIER_TYPE.equalsIgnoreCase(partitionColumn.columnTypeName());
     byte[] start =
         isUuid
             ? extractUuidBytes(resultSet, 1)
@@ -266,9 +266,27 @@ public class BoundaryExtractorFactory {
   }
 
   /**
-   * Extracts a SQL Server `UNIQUEIDENTIFIER` column (`g0-g1-g2-g3-g4`) into a 16-byte array ordered
-   * by SQL Server's `UNIQUEIDENTIFIER` comparison precedence: `g4` (bytes 10..15), `g3` (bytes
-   * 8..9), `g2` (bytes 6..7), `g1` (bytes 4..5), `g0` (bytes 0..3).
+   * Permutation mapping Java big-endian UUID bytes {@code raw[0..15]} to SQL Server's {@code
+   * UNIQUEIDENTIFIER} comparison order.
+   *
+   * <p>SQL Server stores a {@code UNIQUEIDENTIFIER} {@code g0-g1-g2-g3-g4} in mixed-endian form
+   * ({@code g0}, {@code g1} and {@code g2} little-endian, {@code g3} and {@code g4} big-endian) and
+   * compares the stored bytes in group order {@code g4, g3, g2, g1, g0}. Relative to the canonical
+   * big-endian byte layout this yields: {@code g4} (10..15), {@code g3} (8, 9), and the bytes of
+   * {@code g2} (7, 6), {@code g1} (5, 4) and {@code g0} (3, 2, 1, 0) from least to most
+   * significant. For example, in SQL Server {@code '01000000-0000-0000-0000-000000000000'} sorts
+   * before {@code '00000001-0000-0000-0000-000000000000'}.
+   */
+  public static final int[] SQL_SERVER_UUID_BYTE_ORDER = {
+    10, 11, 12, 13, 14, 15, 8, 9, 7, 6, 5, 4, 3, 2, 1, 0
+  };
+
+  /**
+   * Extracts a SQL Server {@code UNIQUEIDENTIFIER} column into a 16-byte array ordered by SQL
+   * Server's {@code UNIQUEIDENTIFIER} comparison precedence, so that unsigned big-endian comparison
+   * of the returned bytes matches SQL Server's {@code <}, {@code >} and {@code ORDER BY} semantics.
+   *
+   * @see #SQL_SERVER_UUID_BYTE_ORDER
    */
   private static byte[] extractSqlServerUniqueIdentifierBytes(ResultSet rs, int colIndex)
       throws SQLException {
@@ -281,26 +299,24 @@ public class BoundaryExtractorFactory {
     bb.putLong(uuid.getMostSignificantBits()).putLong(uuid.getLeastSignificantBits());
     byte[] raw = bb.array();
     byte[] sorted = new byte[16];
-    System.arraycopy(raw, 10, sorted, 0, 6); // g4
-    System.arraycopy(raw, 8, sorted, 6, 2); // g3
-    System.arraycopy(raw, 6, sorted, 8, 2); // g2
-    System.arraycopy(raw, 4, sorted, 10, 2); // g1
-    System.arraycopy(raw, 0, sorted, 12, 4); // g0
+    for (int i = 0; i < 16; i++) {
+      sorted[i] = raw[SQL_SERVER_UUID_BYTE_ORDER[i]];
+    }
     return sorted;
   }
 
   /**
-   * Converts a 16-byte array in SQL Server's `UNIQUEIDENTIFIER` comparison order (`g4, g3, g2, g1,
-   * g0`) back to a canonical UUID string.
+   * Converts a 16-byte array in SQL Server's {@code UNIQUEIDENTIFIER} comparison order back to a
+   * canonical UUID string. Inverse of {@link #extractSqlServerUniqueIdentifierBytes}.
+   *
+   * @see #SQL_SERVER_UUID_BYTE_ORDER
    */
-  static String sqlServerSortableBytesToUuidString(byte[] sorted) {
+  public static String sqlServerSortableBytesToUuidString(byte[] sorted) {
     Preconditions.checkArgument(sorted != null && sorted.length == 16);
     byte[] raw = new byte[16];
-    System.arraycopy(sorted, 0, raw, 10, 6); // g4
-    System.arraycopy(sorted, 6, raw, 8, 2); // g3
-    System.arraycopy(sorted, 8, raw, 6, 2); // g2
-    System.arraycopy(sorted, 10, raw, 4, 2); // g1
-    System.arraycopy(sorted, 12, raw, 0, 4); // g0
+    for (int i = 0; i < 16; i++) {
+      raw[SQL_SERVER_UUID_BYTE_ORDER[i]] = sorted[i];
+    }
     ByteBuffer bb = ByteBuffer.wrap(raw);
     return new UUID(bb.getLong(), bb.getLong()).toString();
   }
