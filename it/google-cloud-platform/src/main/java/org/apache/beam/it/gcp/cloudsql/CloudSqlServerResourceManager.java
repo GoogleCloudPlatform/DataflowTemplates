@@ -34,6 +34,14 @@ public class CloudSqlServerResourceManager extends CloudSqlResourceManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(CloudSqlServerResourceManager.class);
 
+  /**
+   * Serializes CDC enablement across all resource managers in the JVM. The first {@code
+   * sp_cdc_enable_table} in a database creates the capture/cleanup jobs in {@code msdb}; when
+   * several test databases on the same instance do this concurrently, the {@code sp_add_job} calls
+   * deadlock with each other (SQL Server error 1205).
+   */
+  private static final Object CDC_ENABLE_LOCK = new Object();
+
   private CloudSqlServerResourceManager(Builder builder) {
     super(builder);
   }
@@ -106,27 +114,29 @@ public class CloudSqlServerResourceManager extends CloudSqlResourceManager {
             + "END; "
             + "CLOSE table_cursor; "
             + "DEALLOCATE table_cursor;";
-    runSQLUpdate(enableCdcQuery);
-    try {
-      String startJobQuery =
-          "DECLARE @job_id UNIQUEIDENTIFIER; "
-              + "SELECT @job_id = job_id FROM msdb.dbo.cdc_jobs"
-              + " WHERE database_id = DB_ID() AND job_type = N'capture'; "
-              + "IF @job_id IS NOT NULL AND NOT EXISTS ( "
-              + "    SELECT 1 FROM msdb.dbo.sysjobactivity "
-              + "    WHERE job_id = @job_id "
-              + "      AND session_id = (SELECT MAX(session_id) FROM msdb.dbo.syssessions) "
-              + "      AND start_execution_date IS NOT NULL "
-              + "      AND stop_execution_date IS NULL "
-              + ") "
-              + "BEGIN "
-              + "    EXEC sys.sp_cdc_start_job @job_type = N'capture'; "
-              + "END;";
-      runSQLUpdate(startJobQuery);
-    } catch (Exception e) {
-      LOG.info(
-          "Capture job start check encountered an issue (job is likely already running): {}",
-          e.getMessage());
+    synchronized (CDC_ENABLE_LOCK) {
+      runSQLUpdate(enableCdcQuery);
+      try {
+        String startJobQuery =
+            "DECLARE @job_id UNIQUEIDENTIFIER; "
+                + "SELECT @job_id = job_id FROM msdb.dbo.cdc_jobs"
+                + " WHERE database_id = DB_ID() AND job_type = N'capture'; "
+                + "IF @job_id IS NOT NULL AND NOT EXISTS ( "
+                + "    SELECT 1 FROM msdb.dbo.sysjobactivity "
+                + "    WHERE job_id = @job_id "
+                + "      AND session_id = (SELECT MAX(session_id) FROM msdb.dbo.syssessions) "
+                + "      AND start_execution_date IS NOT NULL "
+                + "      AND stop_execution_date IS NULL "
+                + ") "
+                + "BEGIN "
+                + "    EXEC sys.sp_cdc_start_job @job_type = N'capture'; "
+                + "END;";
+        runSQLUpdate(startJobQuery);
+      } catch (Exception e) {
+        LOG.info(
+            "Capture job start check encountered an issue (job is likely already running): {}",
+            e.getMessage());
+      }
     }
   }
 
