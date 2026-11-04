@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates.transforms;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.DataChangeRecord;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
 import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
@@ -29,6 +30,10 @@ public class PreprocessRecordsFn extends DoFn<DataChangeRecord, TrimmedShardedDa
   public void processElement(ProcessContext c) {
 
     DataChangeRecord record = c.element();
+    // DIAG (temporary, LargeBacklogLT investigation): count mods by type. An insert-only backlog
+    // that shows UPDATE mods means rows were written more than once upstream.
+    Metrics.counter(PreprocessRecordsFn.class, "diag_mod_type_" + record.getModType())
+        .inc(record.getMods().size());
     // A single record can have multiple modifications. We create a separate record for each mod
     // while also trimming away the unnecessary fields.
     for (Mod mod : record.getMods()) {

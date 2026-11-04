@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.transforms;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -66,15 +67,19 @@ import com.google.cloud.teleport.v2.templates.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
+import java.io.Closeable;
 import java.sql.SQLDataException;
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLSyntaxErrorException;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.beam.runners.core.metrics.MetricsContainerImpl;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
+import org.apache.beam.sdk.metrics.MetricName;
+import org.apache.beam.sdk.metrics.MetricsEnvironment;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -1537,5 +1542,165 @@ public class SourceWriterFnTest {
             .endTable()
             .build();
     return ddl;
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // TEMPORARY DIAGNOSTICS tests (LargeBacklogLT investigation). Remove with the DIAG code.
+  // ---------------------------------------------------------------------------------------------
+
+  private SourceWriterFn newDiagSourceWriterFn() {
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testSourceSchema,
+            "shadow_",
+            "skip",
+            500,
+            "mysql",
+            null,
+            mockDdlView,
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSourceProcessor(sourceProcessor);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+    return sourceWriterFn;
+  }
+
+  private static long diagCounter(MetricsContainerImpl container, String name) {
+    return container.getCounter(MetricName.named(SourceWriterFn.class, name)).getCumulative();
+  }
+
+  @Test
+  public void testDiagCountersForWrittenFirstAttempt() throws Exception {
+    // The default mock runner drops the callable's result; return it so the record counts.
+    when(mockTransactionRunner.run(any(TransactionRunner.TransactionCallable.class)))
+        .thenAnswer(
+            invocation -> {
+              TransactionRunner.TransactionCallable<Boolean> callable = invocation.getArgument(0);
+              return callable.run(Mockito.mock(com.google.cloud.spanner.TransactionContext.class));
+            });
+    TrimmedShardedDataChangeRecord record = getParent1TrimmedDataChangeRecord("shardA");
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    MetricsContainerImpl container = new MetricsContainerImpl("diag");
+    try (Closeable ignored = MetricsEnvironment.scopedMetricsContainer(container)) {
+      newDiagSourceWriterFn().processElement(processContext);
+    }
+    assertEquals(1, diagCounter(container, "diag_marker_rr_diag_v1"));
+    assertEquals(1, diagCounter(container, "diag_input_first_attempt"));
+    assertEquals(1, diagCounter(container, "diag_outcome_written_first_attempt"));
+    assertEquals(1, diagCounter(container, "success_record_count"));
+  }
+
+  @Test
+  public void testDiagCountersForRetryOfAlreadyAppliedRecord() throws Exception {
+    // The shadow row holds exactly this record: an earlier attempt committed it.
+    when(mockSpannerDao.readShadowTableRecordWithExclusiveLock(
+            eq("shadow_child11"), any(), any(), any()))
+        .thenReturn(new ShadowTableRecord(Timestamp.parseTimestamp("2025-02-02T00:00:00Z"), 0));
+    TrimmedShardedDataChangeRecord record =
+        getChild11TrimmedDataChangeRecordWithSameCommitTimestamp("shardA");
+    record.setShard("shardA");
+    record.setRetryRecord(true);
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    MetricsContainerImpl container = new MetricsContainerImpl("diag");
+    try (Closeable ignored = MetricsEnvironment.scopedMetricsContainer(container)) {
+      newDiagSourceWriterFn().processElement(processContext);
+    }
+    assertEquals(1, diagCounter(container, "diag_input_retry"));
+    assertEquals(1, diagCounter(container, "diag_outcome_already_applied_retry"));
+    assertEquals(0, diagCounter(container, "success_record_count"));
+    assertEquals(-1, diagCounter(container, "retryable_record_count"));
+  }
+
+  @Test
+  public void testDiagCountersForNewerRecordInShadowTable() throws Exception {
+    // Shadow row has the same commit timestamp but a greater record sequence.
+    TrimmedShardedDataChangeRecord record =
+        getChild11TrimmedDataChangeRecordWithSameCommitTimestamp("shardA");
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    MetricsContainerImpl container = new MetricsContainerImpl("diag");
+    try (Closeable ignored = MetricsEnvironment.scopedMetricsContainer(container)) {
+      newDiagSourceWriterFn().processElement(processContext);
+    }
+    assertEquals(1, diagCounter(container, "diag_outcome_source_ahead_newer_first_attempt"));
+    assertEquals(0, diagCounter(container, "success_record_count"));
+  }
+
+  @Test
+  public void testDiagCountersForCommitFailureAfterSourceWrite() throws Exception {
+    // The callable (source write + shadow buffer) completes, then the commit fails.
+    when(mockTransactionRunner.run(any(TransactionRunner.TransactionCallable.class)))
+        .thenAnswer(
+            invocation -> {
+              TransactionRunner.TransactionCallable<Boolean> callable = invocation.getArgument(0);
+              callable.run(Mockito.mock(com.google.cloud.spanner.TransactionContext.class));
+              throw SpannerExceptionFactory.newSpannerException(
+                  ErrorCode.DEADLINE_EXCEEDED, "commit deadline exceeded");
+            });
+    TrimmedShardedDataChangeRecord record = getParent1TrimmedDataChangeRecord("shardA");
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    MetricsContainerImpl container = new MetricsContainerImpl("diag");
+    try (Closeable ignored = MetricsEnvironment.scopedMetricsContainer(container)) {
+      newDiagSourceWriterFn().processElement(processContext);
+    }
+    verify(mockSqlDao, atLeast(1)).write(any(), any());
+    verify(processContext, atLeast(1)).output(eq(Constants.RETRYABLE_ERROR_TAG), any());
+    assertEquals(1, diagCounter(container, "diag_error_retryable_first_attempt"));
+    assertEquals(1, diagCounter(container, "diag_error_stage_commit"));
+    assertEquals(1, diagCounter(container, "diag_error_code_spanner_DEADLINE_EXCEEDED"));
+    assertEquals(1, diagCounter(container, "diag_error_after_source_write_first_attempt"));
+    assertEquals(1, diagCounter(container, "retryable_record_count"));
+    assertEquals(0, diagCounter(container, "success_record_count"));
+  }
+
+  @Test
+  public void testDiagCountersForSourceWriteFailure() throws Exception {
+    // child_id 2300 makes the mocked source write throw a foreign key error.
+    TrimmedShardedDataChangeRecord record =
+        new TrimmedShardedDataChangeRecord(
+            Timestamp.parseTimestamp("2024-12-01T10:15:30.000Z"),
+            "serverTxnId",
+            "0",
+            "child21",
+            new Mod(
+                "{\"child_id\": \"2300\" , \"parent_id\": \"42\"}",
+                "{}",
+                "{ \"migration_shard_id\": \"shardA\"}"),
+            ModType.valueOf("INSERT"),
+            1,
+            "");
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    MetricsContainerImpl container = new MetricsContainerImpl("diag");
+    try (Closeable ignored = MetricsEnvironment.scopedMetricsContainer(container)) {
+      newDiagSourceWriterFn().processElement(processContext);
+    }
+    assertEquals(1, diagCounter(container, "diag_error_stage_write_source"));
+    assertEquals(0, diagCounter(container, "diag_error_after_source_write_first_attempt"));
+  }
+
+  @Test
+  public void testDiagLogBudget() {
+    int allowed = 0;
+    for (int i = 0; i < 1000; i++) {
+      if (SourceWriterFn.diagShouldLog()) {
+        allowed++;
+      }
+    }
+    // At most two minute-windows can be touched by this loop, each with a budget of 300.
+    assertTrue(allowed <= 600);
+    assertTrue(allowed < 1000);
   }
 }

@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Options;
+import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
@@ -60,6 +61,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.metrics.Counter;
@@ -93,6 +96,23 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       Metrics.distribution(SourceWriterFn.class, "successful_write_to_source_latency_ms");
   private static final Distribution UNSUCCESSFUL_WRITE_LATENCY_MS =
       Metrics.distribution(SourceWriterFn.class, "unsuccessful_write_to_source_latency_ms");
+
+  // ---------------------------------------------------------------------------------------------
+  // TEMPORARY DIAGNOSTICS for the SpannerToSourceDbLargeBacklogLT investigation. Revert this block
+  // and the code that uses it once the root cause is confirmed. All names start with "diag_" or
+  // "RR_DIAG" so they are easy to find and remove.
+  // ---------------------------------------------------------------------------------------------
+  public static final String DIAG_MARKER = "RR_DIAG_V1";
+  // Max diagnostic log lines per JVM per minute, so 1B records cannot flood the logs.
+  private static final int DIAG_LOG_BUDGET_PER_MINUTE = 300;
+  private static final java.util.concurrent.atomic.AtomicLong diagLogWindowStartMs =
+      new java.util.concurrent.atomic.AtomicLong();
+  private static final java.util.concurrent.atomic.AtomicInteger diagLogsInWindow =
+      new java.util.concurrent.atomic.AtomicInteger();
+  private static final Counter DIAG_LOGS_SUPPRESSED =
+      Metrics.counter(SourceWriterFn.class, "diag_logs_suppressed");
+  private transient boolean diagMarkerCounted;
+  private static final AtomicBoolean DIAG_SETUP_LOGGED = new AtomicBoolean(false);
 
   private final String sourceDbTimezoneOffset;
   private final List<Shard> shards;
@@ -207,6 +227,9 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     if (schemaOverridesFilePath != null && !schemaOverridesFilePath.isEmpty()) {
       schemaFileOverridesParser = new SchemaFileOverridesParser(schemaOverridesFilePath);
     }
+    if (DIAG_SETUP_LOGGED.compareAndSet(false, true)) {
+      LOG.info("{} SourceWriterFn setup (logged once per worker JVM)", DIAG_MARKER);
+    }
   }
 
   /** Teardown function disconnects from the Cloud Spanner. */
@@ -233,11 +256,20 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     KV<Long, TrimmedShardedDataChangeRecord> element = c.element();
     TrimmedShardedDataChangeRecord spannerRec = element.getValue();
     String shardId = spannerRec.getShard();
+    // DIAG: count every input record, split by first attempt vs retry from the DLQ.
+    if (!diagMarkerCounted) {
+      diagMarkerCounted = true;
+      Metrics.counter(SourceWriterFn.class, "diag_marker_rr_diag_v1").inc();
+    }
+    String diagAttempt = spannerRec.isRetryRecord() ? "retry" : "first_attempt";
+    Metrics.counter(SourceWriterFn.class, "diag_input_" + diagAttempt).inc();
     if (shardId == null || shardId.equals(Constants.SEVERE_ERROR_SHARD_ID)) {
+      Metrics.counter(SourceWriterFn.class, "diag_severe_shard_sentinel").inc();
       // if no shard or permanent error shard id found, move to permanent error
       outputWithTag(
           c, Constants.PERMANENT_ERROR_TAG, Constants.SHARD_NOT_PRESENT_ERROR_MESSAGE, spannerRec);
     } else if (shardId.equals(Constants.RETRYABLE_ERROR_SHARD_ID)) {
+      Metrics.counter(SourceWriterFn.class, "diag_retryable_shard_sentinel_" + diagAttempt).inc();
       // if retryable error shard id found, move to retryable error
       outputWithTag(
           c, Constants.RETRYABLE_ERROR_TAG, Constants.SHARD_NOT_PRESENT_ERROR_MESSAGE, spannerRec);
@@ -247,6 +279,11 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       outputWithTag(c, Constants.SKIPPED_TAG, Constants.SKIPPED_TAG_MESSAGE, spannerRec);
     } else {
       Stopwatch timer = Stopwatch.createStarted();
+      // DIAG: the transaction step reached, how the record ended, and how often the Spanner client
+      // re-ran the callable (it re-runs it on ABORTED, which repeats the source write).
+      AtomicReference<String> diagStage = new AtomicReference<>("before_transaction");
+      AtomicReference<String> diagOutcome = new AtomicReference<>("none");
+      AtomicInteger diagCallableRuns = new AtomicInteger();
       // Get the latest commit timestamp processed at source
       try {
         JsonNode keysJson = mapper.readTree(spannerRec.getMod().getKeysJson());
@@ -264,6 +301,9 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                 .run(
                     (TransactionRunner.TransactionCallable<Boolean>)
                         shadowTransaction -> {
+                          diagCallableRuns.incrementAndGet();
+                          diagStage.set("read_shadow");
+                          diagOutcome.set("none");
                           boolean isSourceAhead = false;
                           // Boolean reference to capture if the record was written in the
                           // transaction
@@ -288,6 +328,19 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                                           && shadowTableRecord.getRecordSequence()
                                               >= Long.parseLong(spannerRec.getRecordSequence())));
 
+                          if (isSourceAhead) {
+                            // DIAG: "already_applied" means the shadow row holds exactly this
+                            // record, so an earlier attempt for it already committed.
+                            boolean sameRecord =
+                                shadowTableRecord
+                                            .getProcessedCommitTimestamp()
+                                            .compareTo(spannerRec.getCommitTimestamp())
+                                        == 0
+                                    && shadowTableRecord.getRecordSequence()
+                                        == Long.parseLong(spannerRec.getRecordSequence());
+                            diagOutcome.set(sameRecord ? "already_applied" : "source_ahead_newer");
+                          }
+
                           if (!isSourceAhead) {
                             IDao sourceDao = sourceProcessor.getSourceDao(shardId);
                             TransactionalCheck check =
@@ -304,6 +357,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                                         "Shadow table sequence changed during transaction");
                                   }
                                 };
+                            diagStage.set("write_source");
                             boolean isEventFiltered =
                                 InputRecordProcessor.processRecord(
                                     spannerRec,
@@ -318,6 +372,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                                     this.source,
                                     check);
                             isRecordWritten.set(!isEventFiltered);
+                            diagStage.set("buffer_shadow");
+                            diagOutcome.set(isEventFiltered ? "filtered" : "written");
                             if (isEventFiltered) {
                               outputWithTag(
                                   c,
@@ -336,8 +392,13 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                                     ddl),
                                 shadowTransaction);
                           }
+                          // DIAG: anything thrown after this point comes from the Spanner commit.
+                          diagStage.set("commit");
                           return isRecordWritten.get();
                         });
+        diagStage.set("done");
+        diagRecordOutcome(
+            spannerRec, diagAttempt, diagOutcome.get(), diagCallableRuns.get(), timer);
 
         if (Boolean.TRUE.equals(transactionResult)) {
           successRecordCountMetric.inc();
@@ -368,6 +429,15 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         }
         TupleTag<String> errorTag =
             SpannerToSourceDbExceptionClassifier.classify(ex, sourceConnector);
+        diagRecordError(
+            spannerRec,
+            diagAttempt,
+            errorTag,
+            ex,
+            diagStage.get(),
+            diagOutcome.get(),
+            diagCallableRuns.get(),
+            timer);
         outputWithTag(c, errorTag, message, spannerRec);
         UNSUCCESSFUL_WRITE_LATENCY_MS.update(timer.elapsed(TimeUnit.MILLISECONDS));
       }
@@ -401,6 +471,121 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     mutationBuilder.set(Constants.RECORD_SEQ_COLUMN_NAME).to(Long.parseLong(recordSequence));
 
     return mutationBuilder.build();
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // TEMPORARY DIAGNOSTICS helpers (see the DIAG block at the top of the class).
+  // ---------------------------------------------------------------------------------------------
+
+  /** Counts how a record that finished the transaction ended, and logs the unusual endings. */
+  private void diagRecordOutcome(
+      TrimmedShardedDataChangeRecord rec,
+      String attempt,
+      String outcome,
+      int callableRuns,
+      Stopwatch timer) {
+    Metrics.counter(SourceWriterFn.class, "diag_outcome_" + outcome + "_" + attempt).inc();
+    if (callableRuns > 1) {
+      Metrics.counter(SourceWriterFn.class, "diag_tx_callable_reruns").inc(callableRuns - 1);
+    }
+    // Every retry outcome, and first attempts that find their own record already applied, are the
+    // events that can make success_record_count disagree with the rows in the source database.
+    boolean unusual = rec.isRetryRecord() || !outcome.equals("written");
+    if (unusual && diagShouldLog()) {
+      LOG.info(
+          "{} outcome: outcome={} attempt={} key={} table={} shard={} commitTs={} recordSeq={}"
+              + " retryCount={} callableRuns={} elapsedMs={}",
+          DIAG_MARKER,
+          outcome,
+          attempt,
+          rec.getMod().getKeysJson(),
+          rec.getTableName(),
+          rec.getShard(),
+          rec.getCommitTimestamp(),
+          rec.getRecordSequence(),
+          rec.getMetadataRetryCount(),
+          callableRuns,
+          timer.elapsed(TimeUnit.MILLISECONDS));
+    }
+  }
+
+  /** Counts and logs a failed record with everything needed to trace it later. */
+  private void diagRecordError(
+      TrimmedShardedDataChangeRecord rec,
+      String attempt,
+      TupleTag<String> errorTag,
+      Exception ex,
+      String stage,
+      String outcome,
+      int callableRuns,
+      Stopwatch timer) {
+    String kind = Constants.PERMANENT_ERROR_TAG.equals(errorTag) ? "permanent" : "retryable";
+    String code = diagErrorCode(ex);
+    // True when the source write was committed and only the Spanner commit of the shadow table row
+    // failed. The Spanner commit may still have been applied on the server.
+    boolean sourceWriteDone = stage.equals("commit") && outcome.equals("written");
+    Metrics.counter(SourceWriterFn.class, "diag_error_" + kind + "_" + attempt).inc();
+    Metrics.counter(SourceWriterFn.class, "diag_error_stage_" + stage).inc();
+    Metrics.counter(SourceWriterFn.class, "diag_error_code_" + code).inc();
+    if (sourceWriteDone) {
+      Metrics.counter(SourceWriterFn.class, "diag_error_after_source_write_" + attempt).inc();
+    }
+    if (diagShouldLog()) {
+      Throwable cause = ex.getCause();
+      String message = String.valueOf(ex.getMessage());
+      LOG.warn(
+          "{} error: kind={} attempt={} key={} table={} shard={} commitTs={} recordSeq={}"
+              + " retryCount={} stage={} outcomeBeforeError={} sourceWriteDone={} callableRuns={}"
+              + " elapsedMs={} exClass={} code={} message={} causeClass={} causeMessage={}",
+          DIAG_MARKER,
+          kind,
+          attempt,
+          rec.getMod().getKeysJson(),
+          rec.getTableName(),
+          rec.getShard(),
+          rec.getCommitTimestamp(),
+          rec.getRecordSequence(),
+          rec.getMetadataRetryCount(),
+          stage,
+          outcome,
+          sourceWriteDone,
+          callableRuns,
+          timer.elapsed(TimeUnit.MILLISECONDS),
+          ex.getClass().getName(),
+          code,
+          message.length() > 500 ? message.substring(0, 500) : message,
+          cause == null ? "none" : cause.getClass().getName(),
+          cause == null ? "none" : String.valueOf(cause.getMessage()));
+    }
+  }
+
+  /** Spanner error code, else the SQL error code of the cause, else the exception class name. */
+  static String diagErrorCode(Exception ex) {
+    if (ex instanceof SpannerException) {
+      Throwable cause = ex.getCause();
+      if (cause instanceof java.sql.SQLException) {
+        return "spanner_"
+            + ((SpannerException) ex).getErrorCode()
+            + "_sql_"
+            + ((java.sql.SQLException) cause).getErrorCode();
+      }
+      return "spanner_" + ((SpannerException) ex).getErrorCode();
+    }
+    return ex.getClass().getSimpleName();
+  }
+
+  /** Allows at most DIAG_LOG_BUDGET_PER_MINUTE diagnostic log lines per minute per JVM. */
+  static boolean diagShouldLog() {
+    long now = System.currentTimeMillis();
+    long windowStart = diagLogWindowStartMs.get();
+    if (now - windowStart >= 60_000 && diagLogWindowStartMs.compareAndSet(windowStart, now)) {
+      diagLogsInWindow.set(0);
+    }
+    if (diagLogsInWindow.incrementAndGet() <= DIAG_LOG_BUDGET_PER_MINUTE) {
+      return true;
+    }
+    DIAG_LOGS_SUPPRESSED.inc();
+    return false;
   }
 
   void outputWithTag(

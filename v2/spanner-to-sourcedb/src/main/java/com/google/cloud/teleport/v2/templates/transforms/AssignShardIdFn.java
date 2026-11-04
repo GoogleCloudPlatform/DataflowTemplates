@@ -302,8 +302,11 @@ public class AssignShardIdFn
       LOG.error("Error fetching shard Id column: {}", e);
       TupleTag<String> errorTag = SpannerToSourceDbExceptionClassifier.classify(e, sourceConnector);
       if (Constants.PERMANENT_ERROR_TAG.equals(errorTag)) {
+        // DIAG (temporary, LargeBacklogLT investigation): make shard assignment errors visible.
+        Metrics.counter(AssignShardIdFn.class, "diag_assign_shard_permanent_error").inc();
         record.setShard(Constants.SEVERE_ERROR_SHARD_ID);
       } else {
+        Metrics.counter(AssignShardIdFn.class, "diag_assign_shard_retryable_error").inc();
         record.setShard(Constants.RETRYABLE_ERROR_SHARD_ID);
       }
       String finalKeyString = record.getTableName() + "_" + keysJsonStr + "_" + skipDirName;

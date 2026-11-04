@@ -21,6 +21,13 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import com.google.api.client.googleapis.util.Utils;
+import com.google.api.services.dataflow.Dataflow;
+import com.google.api.services.dataflow.model.JobMessage;
+import com.google.api.services.dataflow.model.ListJobMessagesResponse;
+import com.google.api.services.dataflow.model.MetricStructuredName;
+import com.google.api.services.dataflow.model.MetricUpdate;
+import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.cloud.spanner.Instance;
 import com.google.cloud.spanner.InstanceAdminClient;
 import com.google.cloud.spanner.InstanceId;
@@ -28,25 +35,35 @@ import com.google.cloud.spanner.InstanceInfo;
 import com.google.cloud.spanner.InstanceInfo.InstanceField;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerOptions;
+import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.regex.Pattern;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.conditions.ConditionCheck;
+import org.apache.beam.it.gcp.artifacts.Artifact;
+import org.apache.beam.it.gcp.artifacts.GcsArtifact;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlShardOrchestrator;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlShardOrchestrator.DatabaseType;
@@ -103,6 +120,21 @@ public class SpannerToSourceDbLargeBacklogLT extends SpannerToSourceDbLTBase {
   private Integer originalSpannerNodeCount = null;
   private Integer originalSpannerMetadataNodeCount = null;
 
+  // ---------------------------------------------------------------------------------------------
+  // TEMPORARY DIAGNOSTICS for the intermittent plateau below 1B. Revert once the root cause is
+  // confirmed. Everything logged by this code starts with "RR_DIAG_LT".
+  // ---------------------------------------------------------------------------------------------
+  private static final String DIAG = "RR_DIAG_LT";
+  private static final String SHADOW_TABLE = "rev_shadow_" + TABLE;
+  private static final String DEFAULT_PLATEAU_POLLS = "2";
+  private static final String DEFAULT_POLL_MINUTES = "15";
+  private static final String DEFAULT_KEEP_RESOURCES_ON_FAILURE = "true";
+  private static final String DIAG_MARKER_METRIC = "diag_marker_rr_diag_v1";
+  // Set as the last statement of the test. When false, teardown keeps every resource.
+  private boolean testPassed = false;
+  private String physicalShard1Name;
+  private String physicalShard2Name;
+
   @Before
   public void setup() throws IOException {
     setupResourceManagers(SPANNER_DDL_RESOURCE, SESSION_FILE_RESOURCE);
@@ -120,6 +152,8 @@ public class SpannerToSourceDbLargeBacklogLT extends SpannerToSourceDbLTBase {
         getProperty("physicalShard1", DEFAULT_PHYSICAL_SHARD_1, TestProperties.Type.PROPERTY);
     String physicalShard2 =
         getProperty("physicalShard2", DEFAULT_PHYSICAL_SHARD_2, TestProperties.Type.PROPERTY);
+    physicalShard1Name = physicalShard1;
+    physicalShard2Name = physicalShard2;
 
     Map<String, List<String>> shardMap = new HashMap<>();
     shardMap.put(physicalShard1, List.of("shard0", "shard1"));
@@ -143,10 +177,21 @@ public class SpannerToSourceDbLargeBacklogLT extends SpannerToSourceDbLTBase {
     originalSpannerNodeCount = getSpannerNodeCount(spannerResourceManager.getInstanceId());
     originalSpannerMetadataNodeCount =
         getSpannerNodeCount(spannerMetadataResourceManager.getInstanceId());
+    logResources();
   }
 
   @After
   public void tearDown() {
+    if (!testPassed && keepResourcesOnFailure()) {
+      LOG.warn(
+          "{} TEST DID NOT PASS: skipping ALL cleanup (job, Spanner DBs, node counts, GCS, Cloud"
+              + " SQL DBs). Original node counts: main={} metadata={}. Clean up manually.",
+          DIAG,
+          originalSpannerNodeCount,
+          originalSpannerMetadataNodeCount);
+      logResources();
+      return;
+    }
     LOG.info("Cleaning up resources...");
 
     // Reset Spanner instance to its original node count if it was modified
@@ -171,6 +216,26 @@ public class SpannerToSourceDbLargeBacklogLT extends SpannerToSourceDbLTBase {
     if (orchestrator != null) {
       orchestrator.cleanup();
     }
+  }
+
+  /** DIAG: keeps the reverse job running when the test did not pass (the base class cancels it). */
+  @Override
+  @After
+  public void tearDownLoadTestBase() throws IOException {
+    if (!testPassed && keepResourcesOnFailure()) {
+      LOG.warn("{} TEST DID NOT PASS: leaving the Dataflow job(s) running.", DIAG);
+      monitoringClient.cleanupAll();
+      return;
+    }
+    super.tearDownLoadTestBase();
+  }
+
+  private static boolean keepResourcesOnFailure() {
+    return Boolean.parseBoolean(
+        getProperty(
+            "keepResourcesOnFailure",
+            DEFAULT_KEEP_RESOURCES_ON_FAILURE,
+            TestProperties.Type.PROPERTY));
   }
 
   @Test
@@ -304,6 +369,18 @@ public class SpannerToSourceDbLargeBacklogLT extends SpannerToSourceDbLTBase {
 
     long startTimeMillis = System.currentTimeMillis();
     int numShards = 4;
+    // DIAG: stop waiting once success_record_count has not moved for plateauPolls polls.
+    int plateauPolls =
+        Integer.parseInt(
+            getProperty("plateauPolls", DEFAULT_PLATEAU_POLLS, TestProperties.Type.PROPERTY));
+    int pollMinutes =
+        Integer.parseInt(
+            getProperty("pollMinutes", DEFAULT_POLL_MINUTES, TestProperties.Type.PROPERTY));
+    long[] lastPolledCount = {-1};
+    int[] unchangedPolls = {0};
+    int[] markerMisses = {0};
+    boolean[] plateauDetected = {false};
+    String[] markerError = {null};
 
     ConditionCheck successRecordsCheck =
         new ConditionCheck() {
@@ -330,8 +407,41 @@ public class SpannerToSourceDbLargeBacklogLT extends SpannerToSourceDbLTBase {
                   "Polled success_record_count: {} / Target: {}", polledCount, metricThreshold);
               LOG.info("---------------------------------");
 
+              // DIAG: once records are flowing, the diagnostic template must report its marker.
+              if (polledCount > 0) {
+                Double marker =
+                    pipelineLauncher.getMetric(
+                        project, region, reverseJobInfo.jobId(), DIAG_MARKER_METRIC);
+                if (marker == null) {
+                  markerMisses[0]++;
+                  LOG.error(
+                      "{} metric {} is missing ({} times). The job may NOT be running the"
+                          + " diagnostic template.",
+                      DIAG,
+                      DIAG_MARKER_METRIC,
+                      markerMisses[0]);
+                  if (markerMisses[0] >= 2) {
+                    markerError[0] = "Diagnostic template marker metric missing; wrong template?";
+                    return new CheckResult(true, markerError[0]);
+                  }
+                } else {
+                  markerMisses[0] = 0;
+                }
+              }
+
               if (polledCount >= metricThreshold) {
                 return new CheckResult(true, String.format("Threshold reached: %d", polledCount));
+              }
+              unchangedPolls[0] = polledCount == lastPolledCount[0] ? unchangedPolls[0] + 1 : 0;
+              lastPolledCount[0] = polledCount;
+              if (polledCount > 0 && unchangedPolls[0] >= plateauPolls) {
+                plateauDetected[0] = true;
+                LOG.warn(
+                    "{} PLATEAU: success_record_count stuck at {} for {} polls",
+                    DIAG,
+                    polledCount,
+                    unchangedPolls[0]);
+                return new CheckResult(true, String.format("Plateau at %d", polledCount));
               }
               return new CheckResult(
                   false, String.format("Current progress: %d rows", polledCount));
@@ -346,13 +456,25 @@ public class SpannerToSourceDbLargeBacklogLT extends SpannerToSourceDbLTBase {
             createConfig(
                 reverseJobInfo,
                 Duration.ofMinutes(reverseTimeoutMinutes), // total timeout
-                Duration.ofMinutes(
-                    15)), // Poll every 15 minutes. Since the test runs for 7-8 hours, 15-minute
-            // intervals
-            // print exactly 4 logs per hour, preventing clutter and API call costs.
+                Duration.ofMinutes(pollMinutes)), // Poll every 15 minutes by default.
             successRecordsCheck);
 
-    assertThatResult(result).meetsConditions();
+    if (markerError[0] != null) {
+      throw new AssertionError(DIAG + " " + markerError[0]);
+    }
+    boolean thresholdReached =
+        !plateauDetected[0] && result == PipelineOperator.Result.CONDITION_MET;
+    // DIAG: collect everything in one place, on the passing path too.
+    collectDiagnostics(
+        thresholdReached ? "THRESHOLD_REACHED" : (plateauDetected[0] ? "PLATEAU" : "TIMEOUT"),
+        reverseJobInfo,
+        expectedSpannerCount);
+    assertTrue(
+        String.format(
+            "%s success_record_count did not reach %d (plateau=%s, result=%s). Resources were kept;"
+                + " see the %s lines above.",
+            DIAG, metricThreshold, plateauDetected[0], result, DIAG),
+        thresholdReached);
 
     // Verify database parity on MySQL shards with a retry loop to handle minor replication
     // synchronization lag
@@ -438,6 +560,7 @@ public class SpannerToSourceDbLargeBacklogLT extends SpannerToSourceDbLTBase {
         pipelineOperator.cancelJobAndFinish(createConfig(reverseJobInfo, Duration.ofMinutes(20)));
     assertThatResult(cancelResult).isLaunchFinished();
     exportMetrics(reverseJobInfo, numShards);
+    testPassed = true;
   }
 
   private void createLogicalTableSchema(CloudSqlResourceManager manager, String dbName) {
@@ -523,8 +646,14 @@ public class SpannerToSourceDbLargeBacklogLT extends SpannerToSourceDbLTBase {
     params.put("sessionFilePath", getGcsPath(SESSION_FILE_NAME, gcsResourceManager));
     params.put("workerMachineType", machineType);
 
+    String specPath = getTemplateSpecPath();
+    LOG.info(
+        "{} Launching reverse job with template spec path: {} (published default would be"
+            + " gs://dataflow-templates/latest/flex/Spanner_to_SourceDb)",
+        DIAG,
+        specPath);
     PipelineLauncher.LaunchConfig.Builder options =
-        PipelineLauncher.LaunchConfig.builder(getClass().getSimpleName(), getTemplateSpecPath());
+        PipelineLauncher.LaunchConfig.builder(getClass().getSimpleName(), specPath);
     options
         .addEnvironment("maxWorkers", maxWorkers)
         .addEnvironment("numWorkers", numWorkers)
@@ -533,7 +662,421 @@ public class SpannerToSourceDbLargeBacklogLT extends SpannerToSourceDbLTBase {
             "additionalExperiments", java.util.Collections.singletonList("use_runner_v2"));
 
     options.setParameters(params);
-    return pipelineLauncher.launch(project, region, options.build());
+    PipelineLauncher.LaunchInfo launchInfo =
+        pipelineLauncher.launch(project, region, options.build());
+    LOG.info(
+        "{} Reverse job id: {} (https://console.cloud.google.com/dataflow/jobs/{}/{}?project={})",
+        DIAG,
+        launchInfo.jobId(),
+        region,
+        launchInfo.jobId(),
+        project);
+    return launchInfo;
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // TEMPORARY DIAGNOSTICS helpers. Every step is best effort: a failing step is logged and the
+  // next one still runs.
+  // ---------------------------------------------------------------------------------------------
+
+  private interface DiagStep {
+    void run() throws Exception;
+  }
+
+  private void runDiagStep(String name, DiagStep step) {
+    long start = System.currentTimeMillis();
+    LOG.info("{} step '{}' started", DIAG, name);
+    try {
+      step.run();
+    } catch (Throwable e) {
+      LOG.warn("{} step '{}' failed", DIAG, name, e);
+    }
+    LOG.info("{} step '{}' took {} s", DIAG, name, (System.currentTimeMillis() - start) / 1000);
+  }
+
+  private void logResources() {
+    try {
+      LOG.info(
+          "{} RESOURCES: main Spanner instance={} database={} table={}",
+          DIAG,
+          spannerResourceManager.getInstanceId(),
+          spannerResourceManager.getDatabaseId(),
+          TABLE);
+      LOG.info(
+          "{} RESOURCES: metadata Spanner instance={} database={} shadowTable={}",
+          DIAG,
+          spannerMetadataResourceManager.getInstanceId(),
+          spannerMetadataResourceManager.getDatabaseId(),
+          SHADOW_TABLE);
+      LOG.info(
+          "{} RESOURCES: GCS run folder=gs://{}/{} dlq={}",
+          DIAG,
+          gcsResourceManager.getBucket(),
+          gcsResourceManager.getPathForArtifact(""),
+          getGcsPath("dlq", gcsResourceManager));
+      LOG.info(
+          "{} RESOURCES: Cloud SQL {} (host {}) DBs shard0,shard1; {} (host {}) DBs"
+              + " shard2,shard3; orchestrator DBs nokill__* on both",
+          DIAG,
+          physicalShard1Name,
+          manager1 == null ? "?" : manager1.getHost(),
+          physicalShard2Name,
+          manager2 == null ? "?" : manager2.getHost());
+    } catch (Exception e) {
+      LOG.warn("{} could not log all resources", DIAG, e);
+    }
+  }
+
+  private void collectDiagnostics(
+      String reason, PipelineLauncher.LaunchInfo jobInfo, long expectedRows) {
+    LOG.info("{} ===== DIAGNOSTICS START reason={} job={} =====", DIAG, reason, jobInfo.jobId());
+    logResources();
+    runDiagStep("all job metrics", () -> logAllJobMetrics(jobInfo.jobId()));
+    runDiagStep("worker pool job messages", () -> logWorkerPoolMessages(jobInfo.jobId()));
+    long[] shadowRows = {-1};
+    runDiagStep("shadow table row count", () -> shadowRows[0] = logShadowCounts(expectedRows));
+    List<String[]> dlqKeys = new ArrayList<>();
+    runDiagStep("DLQ files", () -> dlqKeys.addAll(logDlqFiles()));
+    runDiagStep("DLQ key spot checks", () -> spotCheckKeys("DLQ", dlqKeys));
+    // Samples key windows from the main table and diffs them against the shadow table. This finds
+    // concrete missing keys (if any) without a full scan, and checks MySQL for a few present keys.
+    runDiagStep(
+        "main vs shadow key windows", () -> spotCheckKeys("WINDOW", diffKeyWindows(shadowRows[0])));
+    LOG.info("{} ===== DIAGNOSTICS END reason={} =====", DIAG, reason);
+  }
+
+  /**
+   * Logs job messages about the worker pool. In past failures the autoscaler removed ~199 of 200
+   * workers right before the counter stopped moving.
+   */
+  private void logWorkerPoolMessages(String jobId) throws IOException {
+    Dataflow dataflow =
+        new Dataflow(
+            Utils.getDefaultTransport(),
+            Utils.getDefaultJsonFactory(),
+            new HttpCredentialsAdapter(CREDENTIALS));
+    String pageToken = null;
+    int logged = 0;
+    do {
+      ListJobMessagesResponse response =
+          dataflow
+              .projects()
+              .locations()
+              .jobs()
+              .messages()
+              .list(project, region, jobId)
+              .setMinimumImportance("JOB_MESSAGE_BASIC")
+              .setPageToken(pageToken)
+              .execute();
+      if (response.getJobMessages() != null) {
+        for (JobMessage message : response.getJobMessages()) {
+          String text = String.valueOf(message.getMessageText());
+          if (text.contains("worker") || text.contains("Worker") || text.contains("utoscal")) {
+            logged++;
+            LOG.info("{} JOBMSG time={} text={}", DIAG, message.getTime(), text);
+          }
+        }
+      }
+      pageToken = response.getNextPageToken();
+    } while (pageToken != null && logged < 500);
+  }
+
+  /** Logs every user metric entry as returned by the Dataflow API, tentative and committed. */
+  private void logAllJobMetrics(String jobId) throws IOException {
+    Dataflow dataflow =
+        new Dataflow(
+            Utils.getDefaultTransport(),
+            Utils.getDefaultJsonFactory(),
+            new HttpCredentialsAdapter(CREDENTIALS));
+    List<MetricUpdate> metrics =
+        dataflow
+            .projects()
+            .locations()
+            .jobs()
+            .getMetrics(project, region, jobId)
+            .execute()
+            .getMetrics();
+    if (metrics == null) {
+      LOG.warn("{} METRIC: no metrics returned", DIAG);
+      return;
+    }
+    int index = 0;
+    for (MetricUpdate m : metrics) {
+      index++;
+      MetricStructuredName name = m.getName();
+      if (!"user".equalsIgnoreCase(name.getOrigin())) {
+        continue;
+      }
+      LOG.info(
+          "{} METRIC #{} name={} context={} scalar={} distribution={}",
+          DIAG,
+          index,
+          name.getName(),
+          name.getContext(),
+          m.getScalar(),
+          m.getDistribution());
+    }
+    LOG.info("{} METRIC: {} entries in total (system metrics not logged)", DIAG, metrics.size());
+  }
+
+  /** Logs shadow-table rows per logical shard. Every shadow row means its MySQL write committed. */
+  private long logShadowCounts(long expectedRows) {
+    long total = 0;
+    for (Struct row :
+        spannerMetadataResourceManager.runQuery(
+            "SELECT migration_shard_id, COUNT(*) FROM "
+                + SHADOW_TABLE
+                + " GROUP BY migration_shard_id ORDER BY migration_shard_id")) {
+      long count = row.getLong(1);
+      total += count;
+      LOG.info(
+          "{} SHADOW: shard={} rows={} (250,000,000 expected for this LT's data)",
+          DIAG,
+          row.isNull(0) ? "null" : row.getString(0),
+          count);
+    }
+    LOG.info(
+        "{} SHADOW: total rows={} expected={} missing={}",
+        DIAG,
+        total,
+        expectedRows,
+        expectedRows - total);
+    return total;
+  }
+
+  /** Lists the DLQ folder, logs error message counts, and returns sampled keys from it. */
+  private List<String[]> logDlqFiles() {
+    List<Artifact> files = gcsResourceManager.listArtifacts("dlq", Pattern.compile(".*"));
+    Map<String, long[]> perFolder = new TreeMap<>();
+    Map<String, List<GcsArtifact>> samplesPerFolder = new TreeMap<>();
+    for (Artifact file : files) {
+      String name = file.name();
+      int dlqIndex = name.indexOf("/dlq/");
+      String relative = dlqIndex >= 0 ? name.substring(dlqIndex + 5) : name;
+      String folder = relative.contains("/") ? relative.substring(0, relative.indexOf('/')) : "";
+      long[] stats = perFolder.computeIfAbsent(folder, k -> new long[2]);
+      stats[0]++;
+      GcsArtifact gcsFile = (GcsArtifact) file;
+      stats[1] += gcsFile.getBlob().getSize() == null ? 0 : gcsFile.getBlob().getSize();
+      List<GcsArtifact> samples = samplesPerFolder.computeIfAbsent(folder, k -> new ArrayList<>());
+      if (samples.size() < 10 && gcsFile.getBlob().getSize() != null) {
+        samples.add(gcsFile);
+      }
+    }
+    for (Map.Entry<String, long[]> e : perFolder.entrySet()) {
+      LOG.info(
+          "{} DLQ: folder={} files={} bytes={}",
+          DIAG,
+          e.getKey(),
+          e.getValue()[0],
+          e.getValue()[1]);
+    }
+    List<String[]> keys = new ArrayList<>();
+    for (Map.Entry<String, List<GcsArtifact>> e : samplesPerFolder.entrySet()) {
+      if (e.getKey().startsWith("tmp")) {
+        continue;
+      }
+      Map<String, Integer> errorCounts = new TreeMap<>();
+      int logged = 0;
+      for (GcsArtifact file : e.getValue()) {
+        String[] lines = new String(file.contents(), StandardCharsets.UTF_8).split("\n");
+        for (int i = 0; i < lines.length && i < 1000; i++) {
+          if (lines[i].isBlank()) {
+            continue;
+          }
+          try {
+            JsonObject line = JsonParser.parseString(lines[i]).getAsJsonObject();
+            String error =
+                !line.has("error_message")
+                    ? "none"
+                    : line.get("error_message").isJsonPrimitive()
+                        ? line.get("error_message").getAsString()
+                        : line.get("error_message").toString();
+            errorCounts.merge(
+                error.length() > 200 ? error.substring(0, 200) : error, 1, Integer::sum);
+            JsonObject message = line.getAsJsonObject("message");
+            JsonObject keysJson =
+                JsonParser.parseString(message.getAsJsonObject("mod").get("keysJson").getAsString())
+                    .getAsJsonObject();
+            String[] key = {
+              keysJson.get("migration_shard_id").getAsString(),
+              keysJson.get("Id").getAsString(),
+              String.valueOf(message.get("commitTimestamp")),
+              String.valueOf(message.get("_metadata_retry_count"))
+            };
+            if (keys.size() < 20) {
+              keys.add(key);
+            }
+            if (logged < 5) {
+              logged++;
+              LOG.info(
+                  "{} DLQ SAMPLE folder={} file={} shard={} id={} commitTs={} retryCount={}"
+                      + " error={}",
+                  DIAG,
+                  e.getKey(),
+                  file.name(),
+                  key[0],
+                  key[1],
+                  key[2],
+                  key[3],
+                  error.length() > 1000 ? error.substring(0, 1000) : error);
+            }
+          } catch (Exception parseError) {
+            LOG.warn("{} DLQ: could not parse a line of {}", DIAG, file.name(), parseError);
+          }
+        }
+      }
+      for (Map.Entry<String, Integer> error : errorCounts.entrySet()) {
+        LOG.info(
+            "{} DLQ ERRORS folder={} count={} error={}",
+            DIAG,
+            e.getKey(),
+            error.getValue(),
+            error.getKey());
+      }
+    }
+    return keys;
+  }
+
+  /**
+   * Reads windows of consecutive keys from the main table, diffs them against the shadow table, and
+   * returns up to 20 missing keys plus a few present keys for MySQL spot checks.
+   */
+  private List<String[]> diffKeyWindows(long shadowRows) {
+    int windowRows =
+        Integer.parseInt(getProperty("diagWindowRows", "50000", TestProperties.Type.PROPERTY));
+    Random random = new Random();
+    List<String[]> keysToCheck = new ArrayList<>();
+    long sampled = 0;
+    long missing = 0;
+    for (String shard : List.of("shard_0", "shard_1", "shard_2", "shard_3")) {
+      for (int w = 0; w < 2; w++) {
+        String start = String.format("%08x", random.nextInt());
+        List<String> mainIds = readMainIds(shard, start, windowRows);
+        if (mainIds.isEmpty()) {
+          // The random start was past the last key; fall back to the first keys of the shard.
+          start = "";
+          mainIds = readMainIds(shard, start, windowRows);
+        }
+        if (mainIds.isEmpty()) {
+          LOG.info("{} WINDOW shard={} start={} returned no rows", DIAG, shard, start);
+          continue;
+        }
+        Set<String> shadowIds = new HashSet<>();
+        for (Struct row :
+            spannerMetadataResourceManager.runQuery(
+                String.format(
+                    "SELECT Id FROM %s WHERE migration_shard_id = '%s' AND Id >= '%s' AND Id <="
+                        + " '%s'",
+                    SHADOW_TABLE, shard, mainIds.get(0), mainIds.get(mainIds.size() - 1)))) {
+          shadowIds.add(row.getString(0));
+        }
+        List<String> missingIds = new ArrayList<>();
+        for (String id : mainIds) {
+          if (!shadowIds.contains(id)) {
+            missingIds.add(id);
+          }
+        }
+        sampled += mainIds.size();
+        missing += missingIds.size();
+        LOG.info(
+            "{} WINDOW shard={} range=[{}, {}] mainRows={} shadowRows={} missingFromShadow={}"
+                + " firstMissing={}",
+            DIAG,
+            shard,
+            mainIds.get(0),
+            mainIds.get(mainIds.size() - 1),
+            mainIds.size(),
+            shadowIds.size(),
+            missingIds.size(),
+            missingIds.subList(0, Math.min(5, missingIds.size())));
+        for (String id : missingIds) {
+          if (keysToCheck.size() < 20) {
+            keysToCheck.add(new String[] {shard, id, "missing-from-shadow", ""});
+          }
+        }
+        // Also check one present key per window, to confirm that shadow row implies MySQL row.
+        keysToCheck.add(
+            new String[] {shard, mainIds.get(random.nextInt(mainIds.size())), "in-window", ""});
+      }
+    }
+    LOG.info(
+        "{} WINDOW SUMMARY sampled={} missingFromShadow={} (shadow total rows={})",
+        DIAG,
+        sampled,
+        missing,
+        shadowRows);
+    return keysToCheck;
+  }
+
+  private List<String> readMainIds(String shard, String start, int limit) {
+    List<String> ids = new ArrayList<>();
+    for (Struct row :
+        spannerResourceManager.runQuery(
+            String.format(
+                "SELECT Id FROM %s WHERE migration_shard_id = '%s' AND Id >= '%s' ORDER BY Id"
+                    + " LIMIT %d",
+                TABLE, shard, start, limit))) {
+      ids.add(row.getString(0));
+    }
+    return ids;
+  }
+
+  /** For each key, logs whether it exists in the main table, the shadow table and MySQL. */
+  private void spotCheckKeys(String label, List<String[]> keys) {
+    Set<String> seen = new HashSet<>();
+    for (String[] key : keys) {
+      String shard = key[0];
+      String id = key[1].replace("'", "''");
+      if (!seen.add(shard + "|" + id)) {
+        continue;
+      }
+      try {
+        long mainRows =
+            spannerResourceManager
+                .runQuery(
+                    String.format(
+                        "SELECT COUNT(*) FROM %s WHERE migration_shard_id = '%s' AND Id = '%s'",
+                        TABLE, shard, id))
+                .get(0)
+                .getLong(0);
+        List<Struct> shadow =
+            spannerMetadataResourceManager.runQuery(
+                String.format(
+                    "SELECT processed_commit_ts, record_seq FROM %s WHERE migration_shard_id ="
+                        + " '%s' AND Id = '%s'",
+                    SHADOW_TABLE, shard, id));
+        String shadowValue =
+            shadow.isEmpty()
+                ? "absent"
+                : shadow.get(0).getTimestamp(0) + "/seq=" + shadow.get(0).getLong(1);
+        String mysqlValue;
+        try {
+          String mysqlDb = "shard" + shard.substring(shard.lastIndexOf('_') + 1);
+          CloudSqlResourceManager manager =
+              mysqlDb.equals("shard0") || mysqlDb.equals("shard1") ? manager1 : manager2;
+          List<Map<String, Object>> mysqlRows =
+              manager.runSQLQuery(
+                  String.format("SELECT Id FROM %s.%s WHERE Id = '%s'", mysqlDb, TABLE, id));
+          mysqlValue = mysqlRows == null || mysqlRows.isEmpty() ? "absent" : "present";
+        } catch (Exception e) {
+          mysqlValue = "error:" + e.getClass().getSimpleName();
+        }
+        LOG.info(
+            "{} SPOTCHECK[{}] shard={} id={} info={} retryCount={} main={} shadow={} mysql={}",
+            DIAG,
+            label,
+            shard,
+            key[1],
+            key[2],
+            key[3],
+            mainRows,
+            shadowValue,
+            mysqlValue);
+      } catch (Exception e) {
+        LOG.warn("{} SPOTCHECK[{}] failed for shard={} id={}", DIAG, label, shard, key[1], e);
+      }
+    }
   }
 
   private long getLogicalDatabaseRowCount(CloudSqlResourceManager manager, String dbName) {
