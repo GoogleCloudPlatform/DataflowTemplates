@@ -24,6 +24,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.sql.Types;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -209,6 +210,34 @@ public final class DataGeneratorUtils {
   /** Convenience overload accepting the full column — kept so callers don't branch at callsite. */
   public static Schema.FieldType mapToBeamFieldType(DataGeneratorColumn column) {
     return mapToBeamFieldType(column.logicalType());
+  }
+
+  /**
+   * Maps a {@link LogicalType} to the corresponding {@link java.sql.Types} constant for binding
+   * typed SQL {@code NULL}s via {@link java.sql.PreparedStatement#setNull(int, int)}.
+   */
+  public static int jdbcTypeFor(LogicalType type) {
+    switch (type) {
+      case INT64:
+        return Types.BIGINT;
+      case FLOAT64:
+        return Types.DOUBLE;
+      case BOOLEAN:
+        return Types.BOOLEAN;
+      case BYTES:
+        return Types.VARBINARY;
+      case NUMERIC:
+        return Types.NUMERIC;
+      case DATE:
+        return Types.DATE;
+      case TIMESTAMP:
+        return Types.TIMESTAMP;
+      case STRING:
+      case JSON:
+      case UUID:
+      default:
+        return Types.VARCHAR;
+    }
   }
 
   /**

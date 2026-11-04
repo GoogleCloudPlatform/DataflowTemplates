@@ -25,6 +25,7 @@ import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.cloud.teleport.v2.templates.model.LogicalType;
 import com.google.cloud.teleport.v2.templates.sink.DataWriter;
 import com.google.cloud.teleport.v2.templates.utils.Constants;
+import com.google.cloud.teleport.v2.templates.utils.DataGeneratorUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import java.math.BigDecimal;
@@ -429,11 +430,17 @@ public class OracleDataWriter implements DataWriter {
   private static void setParameter(
       PreparedStatement statement, int index, DataGeneratorColumn column, Object value)
       throws SQLException {
+    LogicalType type = column.logicalType();
     if (value == null) {
-      statement.setNull(index, jdbcTypeFor(column.logicalType()));
+      // Oracle SQL (prior to 23ai) does not have a native BOOLEAN column type (booleans are
+      // stored as NUMBER(1)), and calling setNull(index, Types.BOOLEAN) in a SQL statement
+      // (such as SELECT ? FROM DUAL) fails in ojdbc with ORA-17004: Invalid column type: 16.
+      int jdbcType =
+          type == LogicalType.BOOLEAN ? Types.NUMERIC : DataGeneratorUtils.jdbcTypeFor(type);
+      statement.setNull(index, jdbcType);
       return;
     }
-    switch (column.logicalType()) {
+    switch (type) {
       case INT64:
         statement.setLong(index, ((Number) value).longValue());
         break;
@@ -441,6 +448,7 @@ public class OracleDataWriter implements DataWriter {
         statement.setDouble(index, ((Number) value).doubleValue());
         break;
       case BOOLEAN:
+        // Oracle represents boolean columns as NUMBER(1), so bind 1 for true and 0 for false.
         statement.setInt(index, Boolean.TRUE.equals(value) ? 1 : 0);
         break;
       case BYTES:
@@ -474,29 +482,6 @@ public class OracleDataWriter implements DataWriter {
 
   private static java.sql.Timestamp toSqlTimestamp(Object value) {
     return new java.sql.Timestamp(((ReadableInstant) value).getMillis());
-  }
-
-  private static int jdbcTypeFor(LogicalType type) {
-    switch (type) {
-      case INT64:
-        return Types.BIGINT;
-      case FLOAT64:
-        return Types.DOUBLE;
-      case BOOLEAN:
-      case NUMERIC:
-        return Types.NUMERIC;
-      case BYTES:
-        return Types.VARBINARY;
-      case DATE:
-        return Types.DATE;
-      case TIMESTAMP:
-        return Types.TIMESTAMP;
-      case STRING:
-      case JSON:
-      case UUID:
-      default:
-        return Types.VARCHAR;
-    }
   }
 
   private static String quote(String identifier) {
