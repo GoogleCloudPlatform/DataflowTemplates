@@ -47,12 +47,12 @@ graph TD
 | `backfillCursorBatchSize` | Integer | Number of documents fetched per MongoDB cursor `getMore` round-trip during backfill. | No | 5000 |
 | `backfillMaxDocsPerSlice` | Integer | Maximum documents emitted per Splittable DoFn continuation slice before checkpointing. | No | 25000 |
 | `numChangeStreamSplits` | Integer | Number of parallel change stream cursors per collection for CDC. | No | 1 |
-| `changeStreamFullDocument` | String | Change stream full document strategy (updateLookup or whenAvailable). | No | updateLookup |
+| `changeStreamFullDocument` | String | Change stream full document strategy (updateLookup, whenAvailable, required, or default). | No | updateLookup |
 | `startAtOperationTime` | String | Optional starting clusterTime (epoch seconds or ISO-8601). | No | |
 | `initialWriteRatePerWorker` | Integer | Initial maximum documents/second per worker during ramp-up (<=0 disables). | No | 5000 |
-| `maxWriteRatePerWorker` | Integer | Maximum target documents/second per worker after completing ramp-up. | No | 25000 |
+| `maxWriteRatePerWorker` | Integer | Maximum target documents/second per worker after completing ramp-up (<=0 warms up exponentially over `writeRateRampUpMinutes` and then runs uncapped). | No | 25000 |
 | `writeRateRampUpMinutes` | Integer | Duration in minutes for write rate ramp-up. | No | 5 |
-| `writeRateRampUpSteps` | Integer | Number of discrete linear step increases over ramp-up. | No | 5 |
+| `writeRateRampUpSteps` | Integer | Number of discrete step increases over ramp-up. | No | 5 |
 | `dlqDirectory` | String | Base path to store failed events. | No | `tempLocation`/tmp |
 | `dlqMaxRetries` | Integer | Maximum number of times to retry events from DLQ. | No | 3 |
 | `readFromDlq` | Boolean | If true, reads only from DLQ for retry. If false, reads from MongoDB. | No | false |

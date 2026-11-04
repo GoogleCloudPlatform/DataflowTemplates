@@ -43,6 +43,8 @@ import com.mongodb.client.model.Updates;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator.Result;
@@ -409,5 +411,125 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
     String permanentDlqJson = env.readDlqContents("dlq-backfill", backfillDlqDir, "permanent");
     assertThat(permanentDlqJson).contains("dlq_permanent_reject_doc");
     assertThat(permanentDlqJson).contains("PERMANENT");
+  }
+
+  /**
+   * Suite 5: Exercises shared-rank {@code String}/{@code Symbol} split discovery across all 4
+   * mixed-rank layouts, same-second 24-bit {@code ObjectId} counter wraparound split probing,
+   * bounded rate-limiter capping ({@code maxWriteRatePerWorker < initialWriteRatePerWorker} with
+   * {@code writeRateRampUpMinutes=0}), streaming-windowed {@code WriteToDlq} output ({@code
+   * streaming=true}), and {@code Pattern} (BSON regex) {@code _id} batch coalescing.
+   */
+  @Test
+  @Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
+  public void
+      backfillAndStreaming_sharedRankSplitsWraparoundBoundedRateRegexAndStreamingDlq_preservesAll()
+          throws Exception {
+    MongoDatabase srcDb = env.sourceDb();
+
+    String wrapCol = "col_oid_wraparound";
+    List<RawBsonDocument> wrapDocs = MongoDbTestHelper.createSameSecondWraparoundObjectIdDocs();
+    srcDb.getCollection(wrapCol, RawBsonDocument.class).insertMany(wrapDocs);
+
+    Map<String, List<RawBsonDocument>> sharedRankCollections =
+        MongoDbTestHelper.createSharedRankStringSymbolCollections();
+    if (!env.isFirestoreTarget()) {
+      for (Map.Entry<String, List<RawBsonDocument>> entry : sharedRankCollections.entrySet()) {
+        srcDb.getCollection(entry.getKey(), RawBsonDocument.class).insertMany(entry.getValue());
+      }
+    }
+
+    LaunchConfig.Builder backfillOpts =
+        env.baseLaunchConfig(testName + "_backfill")
+            .addParameter("targetBackfillChunkSize", "1")
+            .addParameter("maxBackfillSplits", "16")
+            .addParameter("writeBatchSize", "4")
+            .addParameter("initialWriteRatePerWorker", "5000")
+            .addParameter("maxWriteRatePerWorker", "1000")
+            .addParameter("writeRateRampUpMinutes", "0");
+
+    LaunchInfo backfillInfo = launchTemplate(backfillOpts);
+    Result backfillResult =
+        pipelineOperator().waitUntilDone(createConfig(backfillInfo, PIPELINE_TIMEOUT));
+    assertThatResult(backfillResult).isLaunchFinished();
+
+    env.assertCollectionParity(wrapCol, wrapDocs.size());
+    if (!env.isFirestoreTarget()) {
+      for (Map.Entry<String, List<RawBsonDocument>> entry : sharedRankCollections.entrySet()) {
+        env.assertCollectionParity(entry.getKey(), entry.getValue().size());
+      }
+    }
+
+    // Exercise WriteToDlq under streaming=true (windowed writes + near-maxTimestamp clamping) for
+    // both retryable UDF failures and permanent target write rejections.
+    String udfPath = env.stageUdfFile("input/stream_dlq_udf.js", TRANSFORM_UDF_SCRIPT);
+    String streamDlqDir = env.resolveDlqDirectory("dlq-streaming-engine-backfill");
+    String dlqCol = "col_streaming_engine_dlq";
+    RawBsonDocument permanentRejectDoc = env.prepareBackfillDlqTargetAndGetRejectDoc(dlqCol);
+    srcDb
+        .getCollection(dlqCol, RawBsonDocument.class)
+        .insertMany(ImmutableList.of(DLQ_VALID_DOC, DLQ_UDF_POISON_DOC, permanentRejectDoc));
+
+    LaunchConfig.Builder streamDlqOpts =
+        env.baseLaunchConfig(testName + "_stream_dlq")
+            .addParameter("sourceCollection", dlqCol)
+            .addParameter("migrationMode", "BACKFILL")
+            .addParameter("streaming", "true")
+            .addParameter("javascriptTextTransformGcsPath", udfPath)
+            .addParameter("javascriptTextTransformFunctionName", "transform")
+            .addParameter("dlqDirectory", streamDlqDir);
+
+    LaunchInfo streamDlqInfo = launchTemplate(streamDlqOpts);
+    Result streamDlqResult =
+        pipelineOperator().waitUntilDone(createConfig(streamDlqInfo, PIPELINE_TIMEOUT));
+    assertThatResult(streamDlqResult).isLaunchFinished();
+
+    MongoCollection<Document> tgtDlqCol = env.targetDb().getCollection(dlqCol);
+    assertThat(tgtDlqCol.countDocuments()).isEqualTo(1L);
+    assertThat(tgtDlqCol.find(Filters.eq("_id", "dlq_valid_doc")).first()).isNotNull();
+
+    String retryableDlqJson =
+        env.readDlqContents("dlq-streaming-engine-backfill", streamDlqDir, "retryable");
+    assertThat(retryableDlqJson).contains("dlq_udf_poison_doc");
+    assertThat(retryableDlqJson).contains("RETRYABLE");
+
+    String permanentDlqJson =
+        env.readDlqContents("dlq-streaming-engine-backfill", streamDlqDir, "permanent");
+    assertThat(permanentDlqJson).contains("dlq_permanent_reject_doc");
+    assertThat(permanentDlqJson).contains("PERMANENT");
+
+    if (!env.isFirestoreTarget()) {
+      String regexColName = "col_regex_stream";
+      MongoDbTestHelper.createCollectionWithPreAndPostImages(srcDb, regexColName);
+      BsonTimestamp t0 = env.captureSourceClusterTime();
+      MongoCollection<Document> srcRegexCol = srcDb.getCollection(regexColName);
+
+      LaunchConfig.Builder regexStreamOpts =
+          env.baseLaunchConfig(testName + "_regex_stream")
+              .addParameter("sourceCollection", regexColName)
+              .addParameter("migrationMode", "STREAMING_CDC")
+              .addParameter("startAtOperationTime", String.valueOf(t0.getTime()))
+              .addParameter("writeBatchSize", "10")
+              .addParameter("maxBufferingDurationMs", "300");
+
+      LaunchInfo regexInfo = launchTemplate(regexStreamOpts);
+      assertThatPipeline(regexInfo).isRunning();
+
+      Document caseInsensitiveId =
+          new Document("re", Pattern.compile("^abc", Pattern.CASE_INSENSITIVE));
+      Document caseSensitiveId = new Document("re", Pattern.compile("^abc"));
+      srcRegexCol.insertOne(new Document("_id", caseInsensitiveId).append("v", 1));
+      srcRegexCol.updateOne(Filters.eq("_id", caseInsensitiveId), Updates.set("v", 2));
+      srcRegexCol.updateOne(Filters.eq("_id", caseInsensitiveId), Updates.set("v", 3));
+      srcRegexCol.insertOne(new Document("_id", caseSensitiveId).append("v", 10));
+
+      Result regexResult =
+          pipelineOperator()
+              .waitForConditionAndCancel(
+                  createConfig(regexInfo, PIPELINE_TIMEOUT),
+                  env.collectionParityCheck(regexColName, 2));
+      assertThatResult(regexResult).meetsConditions();
+      env.assertCollectionParity(regexColName, 2);
+    }
   }
 }

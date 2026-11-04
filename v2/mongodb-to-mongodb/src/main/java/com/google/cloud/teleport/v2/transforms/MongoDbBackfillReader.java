@@ -629,7 +629,25 @@ public class MongoDbBackfillReader {
       if (shouldStop || (currentRestriction != null && currentRestriction.isDone())) {
         return false;
       }
-      this.currentRestriction = position;
+      int effectiveEnd =
+          currentRestriction != null
+              ? Math.min(
+                  currentRestriction.getEndPartitionIndexInSlot(),
+                  position.getEndPartitionIndexInSlot())
+              : position.getEndPartitionIndexInSlot();
+      if (!position.isDone() && position.getPartitionIndexInSlot() >= effectiveEnd) {
+        this.currentRestriction =
+            new BackfillSlotRestriction(
+                position.getPartitionIndexInSlot(), effectiveEnd, 0L, null, true);
+        return false;
+      }
+      this.currentRestriction =
+          new BackfillSlotRestriction(
+              position.getPartitionIndexInSlot(),
+              effectiveEnd,
+              position.getOffsetInCurrentPartition(),
+              position.getLastSeenIdJson(),
+              position.isDone());
       return true;
     }
 
@@ -782,19 +800,15 @@ public class MongoDbBackfillReader {
       if (currentRestriction.isDone() || !tracker.tryClaim(currentRestriction)) {
         return ProcessContinuation.stop();
       }
+      currentRestriction = tracker.currentRestriction();
 
       List<BackfillPartition> partitions = slotTask.getPartitions();
-      if (partitions.isEmpty()) {
-        return ProcessContinuation.stop();
-      }
-
       int partitionIdx = currentRestriction.getPartitionIndexInSlot();
       int endPartitionIdx =
           Math.min(partitions.size(), currentRestriction.getEndPartitionIndexInSlot());
-      if (partitionIdx >= endPartitionIdx) {
+      if (partitions.isEmpty() || partitionIdx >= endPartitionIdx) {
         tracker.tryClaim(
-            new BackfillSlotRestriction(
-                partitionIdx, currentRestriction.getEndPartitionIndexInSlot(), 0L, null, true));
+            new BackfillSlotRestriction(partitionIdx, endPartitionIdx, 0L, null, true));
         return ProcessContinuation.stop();
       }
 
@@ -896,25 +910,18 @@ public class MongoDbBackfillReader {
             int currentEndIdx =
                 Math.min(
                     partitions.size(), tracker.currentRestriction().getEndPartitionIndexInSlot());
-            if (nextPartitionIdx < currentEndIdx) {
-              tracker.tryClaim(
-                  new BackfillSlotRestriction(
-                      nextPartitionIdx,
-                      tracker.currentRestriction().getEndPartitionIndexInSlot(),
-                      0L,
-                      null,
-                      false));
-              return ProcessContinuation.resume();
-            } else {
-              tracker.tryClaim(
-                  new BackfillSlotRestriction(
-                      nextPartitionIdx,
-                      tracker.currentRestriction().getEndPartitionIndexInSlot(),
-                      0L,
-                      null,
-                      true));
+            if (!tracker.tryClaim(
+                new BackfillSlotRestriction(
+                    nextPartitionIdx,
+                    currentEndIdx,
+                    0L,
+                    null,
+                    nextPartitionIdx >= currentEndIdx))) {
               return ProcessContinuation.stop();
             }
+            return tracker.currentRestriction().isDone()
+                ? ProcessContinuation.stop()
+                : ProcessContinuation.resume();
           }
 
           Document doc = cursor.next();

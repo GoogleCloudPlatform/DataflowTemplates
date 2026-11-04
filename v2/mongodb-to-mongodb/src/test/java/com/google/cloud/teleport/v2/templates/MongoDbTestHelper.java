@@ -78,6 +78,7 @@ import org.bson.BsonNull;
 import org.bson.BsonObjectId;
 import org.bson.BsonRegularExpression;
 import org.bson.BsonString;
+import org.bson.BsonSymbol;
 import org.bson.BsonTimestamp;
 import org.bson.BsonType;
 import org.bson.BsonValue;
@@ -770,6 +771,81 @@ final class MongoDbTestHelper {
       docs.add(new Document("_id", "burst_" + i).append("v", 1).append("idx", i));
     }
     return docs;
+  }
+
+  static List<RawBsonDocument> createSameSecondWraparoundObjectIdDocs() {
+    String sameSecondMachinePrefix = "6ae245919e6b535a76";
+    List<RawBsonDocument> docs = new ArrayList<>(24);
+    for (int c = 1; c <= 12; c++) {
+      String hex = String.format("%s%06x", sameSecondMachinePrefix, c);
+      docs.add(
+          rawDoc(
+              new BsonDocument("_id", new BsonObjectId(new ObjectId(hex)))
+                  .append("segment", new BsonString("post_wrap_low"))
+                  .append("counter", new BsonInt32(c))));
+    }
+    for (int c = 0xfffff4; c <= 0xffffff; c++) {
+      String hex = String.format("%s%06x", sameSecondMachinePrefix, c);
+      docs.add(
+          rawDoc(
+              new BsonDocument("_id", new BsonObjectId(new ObjectId(hex)))
+                  .append("segment", new BsonString("pre_wrap_high"))
+                  .append("counter", new BsonInt32(c))));
+    }
+    return docs;
+  }
+
+  static Map<String, List<RawBsonDocument>> createSharedRankStringSymbolCollections() {
+    Map<String, List<RawBsonDocument>> layouts = new LinkedHashMap<>();
+    layouts.put(
+        "col_str_sym_str",
+        ImmutableList.of(
+            rawDoc(
+                new BsonDocument("_id", new BsonString("a_str"))
+                    .append("layout", new BsonString("str_sym_str"))),
+            rawDoc(
+                new BsonDocument("_id", new BsonSymbol("m_sym"))
+                    .append("layout", new BsonString("str_sym_str"))),
+            rawDoc(
+                new BsonDocument("_id", new BsonString("z_str"))
+                    .append("layout", new BsonString("str_sym_str")))));
+    layouts.put(
+        "col_sym_str_sym",
+        ImmutableList.of(
+            rawDoc(
+                new BsonDocument("_id", new BsonSymbol("a_sym"))
+                    .append("layout", new BsonString("sym_str_sym"))),
+            rawDoc(
+                new BsonDocument("_id", new BsonString("m_str"))
+                    .append("layout", new BsonString("sym_str_sym"))),
+            rawDoc(
+                new BsonDocument("_id", new BsonSymbol("z_sym"))
+                    .append("layout", new BsonString("sym_str_sym")))));
+    layouts.put(
+        "col_int_sym_str",
+        ImmutableList.of(
+            rawDoc(
+                new BsonDocument("_id", new BsonInt32(1))
+                    .append("layout", new BsonString("int_sym_str"))),
+            rawDoc(
+                new BsonDocument("_id", new BsonSymbol("a_sym"))
+                    .append("layout", new BsonString("int_sym_str"))),
+            rawDoc(
+                new BsonDocument("_id", new BsonString("z_str"))
+                    .append("layout", new BsonString("int_sym_str")))));
+    layouts.put(
+        "col_sym_str_oid",
+        ImmutableList.of(
+            rawDoc(
+                new BsonDocument("_id", new BsonSymbol("a_sym"))
+                    .append("layout", new BsonString("sym_str_oid"))),
+            rawDoc(
+                new BsonDocument("_id", new BsonString("z_str"))
+                    .append("layout", new BsonString("sym_str_oid"))),
+            rawDoc(
+                new BsonDocument("_id", new BsonObjectId(new ObjectId("507f1f77bcf86cd799439011")))
+                    .append("layout", new BsonString("sym_str_oid")))));
+    return layouts;
   }
 
   static void createCollectionWithPreAndPostImages(MongoDatabase db, String collectionName) {

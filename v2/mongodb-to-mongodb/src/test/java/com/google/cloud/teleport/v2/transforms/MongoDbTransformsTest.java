@@ -50,22 +50,31 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.metrics.MetricResult;
 import org.apache.beam.sdk.metrics.MetricsFilter;
+import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
+import org.apache.beam.sdk.testing.TestStream;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.util.SerializableUtils;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TimestampedValue;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.sdk.values.TypeDescriptor;
@@ -78,6 +87,8 @@ import org.bson.codecs.DocumentCodec;
 import org.bson.codecs.EncoderContext;
 import org.bson.io.BasicOutputBuffer;
 import org.bson.types.Binary;
+import org.joda.time.Duration;
+import org.joda.time.Instant;
 import org.junit.Before;
 import org.junit.FixMethodOrder;
 import org.junit.Rule;
@@ -1361,6 +1372,165 @@ public class MongoDbTransformsTest {
     assertThat(permanentContents).contains("from_write");
   }
 
+  @Test
+  @SuppressWarnings("unchecked")
+  public void writeBatchesFn_abortedBundle_quiescesPriorAsyncWriteAndIsolatesDlq()
+      throws Exception {
+    CountDownLatch batch1Started = new CountDownLatch(1);
+    CountDownLatch allowBatch1ToFinish = new CountDownLatch(1);
+    AtomicBoolean batch1InFlight = new AtomicBoolean(false);
+    AtomicBoolean concurrentSameKeyWrite = new AtomicBoolean(false);
+    List<String> completionOrder = Collections.synchronizedList(new ArrayList<>());
+
+    MongoClient mockClient = mock(MongoClient.class);
+    MongoDatabase mockDb = mock(MongoDatabase.class);
+    MongoCollection<Document> mockCol = mock(MongoCollection.class);
+    when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
+    when(mockDb.getCollection(anyString())).thenReturn(mockCol);
+    when(mockCol.bulkWrite(anyList(), any(BulkWriteOptions.class)))
+        .thenAnswer(
+            inv -> {
+              List<WriteModel<Document>> ops = inv.getArgument(0);
+              if (ops.get(0) instanceof ReplaceOneModel) {
+                batch1InFlight.set(true);
+                batch1Started.countDown();
+                allowBatch1ToFinish.await(5, TimeUnit.SECONDS);
+                completionOrder.add("bundle1_replace");
+                batch1InFlight.set(false);
+                BulkWriteError permErr =
+                    new BulkWriteError(11000, "E11000 duplicate key", new BsonDocument(), 0);
+                throw new MongoBulkWriteException(
+                    BulkWriteResult.acknowledged(
+                        0, 0, 0, 0, Collections.emptyList(), Collections.emptyList()),
+                    Collections.singletonList(permErr),
+                    null,
+                    new ServerAddress("localhost", 27017),
+                    Collections.emptySet());
+              }
+              if (batch1InFlight.get()) {
+                concurrentSameKeyWrite.set(true);
+              }
+              completionOrder.add("bundle2_delete");
+              return BulkWriteResult.acknowledged(
+                  0, 0, 1, 0, Collections.emptyList(), Collections.emptyList());
+            });
+
+    TupleTag<DocumentWithMetadata> failureTag = new TupleTag<>();
+    MongoDbTransforms.WriteBatchesFn fn =
+        MongoDbTransforms.WriteBatchesFn.builder()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withInitialWriteRatePerWorker(0)
+            .withClientFactory(uri -> mockClient)
+            .withFailureTag(failureTag)
+            .build();
+    fn.setup();
+
+    fn.startBundle();
+    DocumentWithMetadata b1Insert =
+        DocumentWithMetadata.cdcEvent(
+            new Document("_id", "doc-1").append("v", 1),
+            null,
+            "users",
+            "users",
+            DocumentWithMetadata.OperationType.INSERT,
+            TimestampSortKey.cdc(100, 1),
+            "{\"_id\": \"doc-1\"}");
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.ProcessContext ctx1 =
+        mock(DoFn.ProcessContext.class);
+    when(ctx1.element()).thenReturn(KV.of("users#0", Collections.singletonList(b1Insert)));
+    fn.processElement(ctx1);
+    assertTrue(batch1Started.await(5, TimeUnit.SECONDS));
+
+    // Release Bundle 1's blocked RPC shortly after Bundle 2 enters startBundle() quiescence
+    Thread releaser =
+        new Thread(
+            () -> {
+              try {
+                Thread.sleep(40L);
+              } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+              }
+              allowBatch1ToFinish.countDown();
+            });
+    releaser.setDaemon(true);
+    releaser.start();
+
+    // Bundle 1 aborts without finishBundle(); Bundle 2 starts on the same DoFn instance
+    fn.startBundle();
+    DocumentWithMetadata b2Delete =
+        DocumentWithMetadata.cdcEvent(
+            null,
+            null,
+            "users",
+            "users",
+            DocumentWithMetadata.OperationType.DELETE,
+            TimestampSortKey.cdc(101, 1),
+            "{\"_id\": \"doc-1\"}");
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.ProcessContext ctx2 =
+        mock(DoFn.ProcessContext.class);
+    when(ctx2.element()).thenReturn(KV.of("users#0", Collections.singletonList(b2Delete)));
+    fn.processElement(ctx2);
+
+    List<DocumentWithMetadata> bundle2Dlq = new ArrayList<>();
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.FinishBundleContext
+        finishCtx2 = mock(DoFn.FinishBundleContext.class);
+    org.mockito.Mockito.doAnswer(
+            inv -> {
+              bundle2Dlq.add(inv.getArgument(1));
+              return null;
+            })
+        .when(finishCtx2)
+        .output(any(), any(), any(), any());
+    fn.finishBundle(finishCtx2);
+    fn.teardown();
+
+    assertThat(concurrentSameKeyWrite.get()).isFalse();
+    assertThat(completionOrder).containsExactly("bundle1_replace", "bundle2_delete").inOrder();
+    assertThat(bundle2Dlq).isEmpty();
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void writeBatchesFn_regexPatternIds_coalescesSameFlagsAndSeparatesDistinctFlags()
+      throws Exception {
+    DocumentWithMetadata r1 =
+        DocumentWithMetadata.cdcEvent(
+            new Document("_id", Pattern.compile("^abc", Pattern.CASE_INSENSITIVE)).append("v", 1),
+            null,
+            "regex_col",
+            "regex_col",
+            DocumentWithMetadata.OperationType.INSERT,
+            TimestampSortKey.cdc(100, 1),
+            null);
+    DocumentWithMetadata r2 =
+        DocumentWithMetadata.cdcEvent(
+            new Document("_id", Pattern.compile("^abc", Pattern.CASE_INSENSITIVE)).append("v", 2),
+            null,
+            "regex_col",
+            "regex_col",
+            DocumentWithMetadata.OperationType.UPDATE,
+            TimestampSortKey.cdc(101, 1),
+            null);
+    DocumentWithMetadata r3CaseSensitive =
+        DocumentWithMetadata.cdcEvent(
+            new Document("_id", Pattern.compile("^abc")).append("v", 3),
+            null,
+            "regex_col",
+            "regex_col",
+            DocumentWithMetadata.OperationType.INSERT,
+            TimestampSortKey.cdc(102, 1),
+            null);
+
+    List<WriteModel<Document>> regexModels =
+        runWriteBatchesFn("regex_col#0", Arrays.asList(r1, r2, r3CaseSensitive));
+    assertEquals(2, regexModels.size());
+    ReplaceOneModel<Document> firstReplace = (ReplaceOneModel<Document>) regexModels.get(0);
+    ReplaceOneModel<Document> secondReplace = (ReplaceOneModel<Document>) regexModels.get(1);
+    assertEquals(2, firstReplace.getReplacement().get("v"));
+    assertEquals(3, secondReplace.getReplacement().get("v"));
+  }
+
   @SuppressWarnings("unchecked")
   private static List<WriteModel<Document>> runWriteBatchesFn(
       String shardKey, List<DocumentWithMetadata> items) throws Exception {
@@ -1398,10 +1568,93 @@ public class MongoDbTransformsTest {
     return captor.getValue();
   }
 
+  @Test
+  public void writeToDlq_streamingNearMaxTimestampAndLateRecords_preservesAllDlqEvents()
+      throws Exception {
+    Path retryableDir = tempFolder.newFolder("stream-dlq-retryable").toPath();
+    Path permanentDir = tempFolder.newFolder("stream-dlq-permanent").toPath();
+    String tempDir = tempFolder.newFolder("stream-dlq-temp").getAbsolutePath();
+
+    PipelineOptions opts = TestPipeline.testingPipelineOptions();
+    opts.as(StreamingOptions.class).setStreaming(true);
+    org.apache.beam.sdk.Pipeline streamingPipeline = org.apache.beam.sdk.Pipeline.create(opts);
+
+    DocumentWithMetadata nearMaxFailure =
+        DocumentWithMetadata.of(new Document("_id", "near_max_ts_doc"), "src", "tgt")
+            .withFailure(
+                "Permanent write error",
+                DocumentWithMetadata.ErrorType.PERMANENT,
+                DocumentWithMetadata.FailureStage.WRITE);
+    DocumentWithMetadata nearMaxMinusOneHourFailure =
+        DocumentWithMetadata.of(new Document("_id", "near_max_minus_1h_doc"), "src", "tgt")
+            .withFailure(
+                "Permanent write error near window GC limit",
+                DocumentWithMetadata.ErrorType.PERMANENT,
+                DocumentWithMetadata.FailureStage.WRITE);
+    DocumentWithMetadata lateRetryableFailure =
+        DocumentWithMetadata.of(new Document("_id", "late_retry_doc"), "src", "tgt")
+            .withFailure(
+                "Transient UDF failure",
+                DocumentWithMetadata.ErrorType.RETRYABLE,
+                DocumentWithMetadata.FailureStage.UDF);
+    DocumentWithMetadata endOfGlobalWindowFlushFailure =
+        DocumentWithMetadata.of(new Document("_id", "eof_global_window_flush_doc"), "src", "tgt")
+            .withFailure(
+                "End-of-GlobalWindow GroupIntoBatches write failure",
+                DocumentWithMetadata.ErrorType.PERMANENT,
+                DocumentWithMetadata.FailureStage.WRITE);
+
+    Instant now = Instant.now();
+    Instant baseWatermark = now.plus(Duration.standardMinutes(5));
+    TestStream<DocumentWithMetadata> stream =
+        TestStream.create(DocumentWithMetadataCoder.of())
+            .advanceWatermarkTo(baseWatermark)
+            .addElements(
+                TimestampedValue.of(nearMaxFailure, GlobalWindow.INSTANCE.maxTimestamp()),
+                TimestampedValue.of(
+                    nearMaxMinusOneHourFailure,
+                    GlobalWindow.INSTANCE.maxTimestamp().minus(Duration.standardHours(1))),
+                TimestampedValue.of(lateRetryableFailure, now.minus(Duration.standardMinutes(1))))
+            .advanceWatermarkTo(GlobalWindow.INSTANCE.maxTimestamp())
+            .addElements(TimestampedValue.of(endOfGlobalWindowFlushFailure, now))
+            .advanceWatermarkToInfinity();
+
+    streamingPipeline
+        .apply("DlqEventStream", stream)
+        .apply(
+            "WriteToDlqStreaming",
+            new MongoDbTransforms.WriteToDlq(
+                "write", retryableDir.toString(), permanentDir.toString(), tempDir));
+
+    streamingPipeline.run().waitUntilFinish();
+
+    String permanentContents = readDirectoryContents(permanentDir);
+    assertThat(permanentContents).contains("near_max_ts_doc");
+    assertThat(permanentContents).contains("near_max_minus_1h_doc");
+    assertThat(permanentContents).contains("eof_global_window_flush_doc");
+
+    String retryableContents = readDirectoryContents(retryableDir);
+    assertThat(retryableContents).contains("late_retry_doc");
+  }
+
+  @Test
+  public void workerRateLimiter_maxBelowInitialAndZeroRampUp_respectsConfiguredBounds() {
+    MongoDbTransforms.WorkerRateLimiter cappedBelowDefault =
+        new MongoDbTransforms.WorkerRateLimiter(5000, 1000, 5, 5);
+    assertEquals(1000.0, cappedBelowDefault.getRate(), 0.01);
+    long nowMs = 1_000_000L;
+    cappedBelowDefault.setStartTimeMs(nowMs);
+    assertEquals(1000.0, cappedBelowDefault.updateRate(nowMs + 600_000L), 0.01);
+
+    MongoDbTransforms.WorkerRateLimiter immediateTarget =
+        new MongoDbTransforms.WorkerRateLimiter(5000, 25000, 0, 5);
+    assertEquals(25000.0, immediateTarget.getRate(), 0.01);
+  }
+
   private static String readDirectoryContents(Path directory) throws IOException {
     StringBuilder contents = new StringBuilder();
     try (Stream<Path> files = Files.list(directory)) {
-      for (Path path : files.sorted().collect(Collectors.toList())) {
+      for (Path path : files.filter(Files::isRegularFile).sorted().collect(Collectors.toList())) {
         contents.append(Files.readString(path, StandardCharsets.UTF_8));
       }
     }

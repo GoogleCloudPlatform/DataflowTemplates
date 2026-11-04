@@ -305,15 +305,22 @@ public final class ReadSplitGenerator {
         return Collections.emptyList();
       }
 
-      // Case A: Homogeneous collection (min and max have the same BSON type)
-      // Because B-tree index stores keys in canonical BSON order, no other type can exist!
+      // Case A: Homogeneous global bounds (min and max belong to the same TypeBucket).
+      // Because "string" and "symbol" share the same canonical BSON sort rank and interleave
+      // lexicographically in the _id index, probe the shared-rank sibling when applicable.
       if (minBucket.getName().equals(maxBucket.getName())) {
-        return Collections.singletonList(new ProbedTypeBounds(minBucket, minVal, maxVal));
+        List<ProbedTypeBounds> bounds = new ArrayList<>(2);
+        bounds.add(new ProbedTypeBounds(minBucket, minVal, maxVal));
+        if (!probeAndAppendCandidate(col, getSharedRankSibling(minBucket), bounds)) {
+          return Collections.emptyList();
+        }
+        return bounds;
       }
 
       // Case B: Mixed collection
       // Note: "string" (idx 3) and "symbol" (idx 4) share the same canonical BSON sort rank,
-      // so a collection with min=Symbol("a") and max=String("z") has minIdx=4 and maxIdx=3.
+      // so a collection with min=Symbol("a") and max=String("z") has minIdx=4 and maxIdx=3, and
+      // a collection bounded on one end by "string" or "symbol" can still contain its sibling.
       int minIdx = KNOWN_TYPE_BUCKETS.indexOf(minBucket);
       int maxIdx = KNOWN_TYPE_BUCKETS.indexOf(maxBucket);
       boolean isSymbolToStringSharedRank =
@@ -331,16 +338,16 @@ public final class ReadSplitGenerator {
       }
       activeBounds.add(new ProbedTypeBounds(minBucket, minVal, minBucketMax));
 
+      if ("symbol".equals(minBucket.getName()) && !"string".equals(maxBucket.getName())) {
+        if (!probeAndAppendCandidate(col, getSharedRankSibling(minBucket), activeBounds)) {
+          return Collections.emptyList();
+        }
+      }
+
       // 2. Intermediate candidate buckets: probe existence and min bound in one sorted query
       for (int i = minIdx + 1; i < maxIdx; i++) {
-        TypeBucket candidate = KNOWN_TYPE_BUCKETS.get(i);
-        BsonValue candMin = probeBucketBound(col, candidate, /* direction= */ 1);
-        if (candMin != null) {
-          BsonValue candMax = probeBucketBound(col, candidate, /* direction= */ -1);
-          if (candMax == null) {
-            return Collections.emptyList();
-          }
-          activeBounds.add(new ProbedTypeBounds(candidate, candMin, candMax));
+        if (!probeAndAppendCandidate(col, KNOWN_TYPE_BUCKETS.get(i), activeBounds)) {
+          return Collections.emptyList();
         }
       }
 
@@ -350,6 +357,12 @@ public final class ReadSplitGenerator {
         return Collections.emptyList();
       }
       activeBounds.add(new ProbedTypeBounds(maxBucket, maxBucketMin, maxVal));
+
+      if ("string".equals(maxBucket.getName()) && !"symbol".equals(minBucket.getName())) {
+        if (!probeAndAppendCandidate(col, getSharedRankSibling(maxBucket), activeBounds)) {
+          return Collections.emptyList();
+        }
+      }
 
       return activeBounds;
     } catch (Exception e) {
@@ -369,6 +382,34 @@ public final class ReadSplitGenerator {
   private static BsonValue probeBucketBound(
       MongoCollection<BsonDocument> col, TypeBucket bucket, int direction) {
     return firstIdFromFind(col.find(bucket.query()), direction);
+  }
+
+  private static TypeBucket getSharedRankSibling(TypeBucket bucket) {
+    if ("string".equals(bucket.getName())) {
+      return KNOWN_TYPE_BUCKETS.get(4);
+    }
+    if ("symbol".equals(bucket.getName())) {
+      return KNOWN_TYPE_BUCKETS.get(3);
+    }
+    return null;
+  }
+
+  private static boolean probeAndAppendCandidate(
+      MongoCollection<BsonDocument> col,
+      TypeBucket candidate,
+      List<ProbedTypeBounds> activeBounds) {
+    if (candidate == null) {
+      return true;
+    }
+    BsonValue candMin = probeBucketBound(col, candidate, /* direction= */ 1);
+    if (candMin != null) {
+      BsonValue candMax = probeBucketBound(col, candidate, /* direction= */ -1);
+      if (candMax == null) {
+        return false;
+      }
+      activeBounds.add(new ProbedTypeBounds(candidate, candMin, candMax));
+    }
+    return true;
   }
 
   private static BsonValue firstIdFromFind(FindIterable<BsonDocument> iterable, int direction) {
@@ -713,16 +754,12 @@ public final class ReadSplitGenerator {
       return Collections.emptyList();
     }
 
-    // Refine any wide multi-second gaps (such as the top B-tree tail missed by $sample) using
-    // lightweight O(1) index seeks at 1-second timestamp boundaries (capped at 64 seeks).
+    // Refine any wide multi-second gaps (such as the top B-tree tail missed by $sample) and
+    // bound same-second 24-bit counter wraparound gaps using lightweight O(1) index seeks.
     if (col != null) {
       long initialSpan = 0L;
       for (int i = 0; i < hexKeys.size() - 1; i++) {
-        initialSpan +=
-            Math.max(
-                1L,
-                (parseOidCounter(hexKeys.get(i + 1)) - parseOidCounter(hexKeys.get(i)))
-                    & 0xFFFFFFL);
+        initialSpan += oidIntervalWeight(hexKeys.get(i), hexKeys.get(i + 1));
       }
       long gapThreshold = Math.max(1000L, initialSpan / Math.max(2L, splits * 2L));
       int remainingProbes = 64;
@@ -734,7 +771,26 @@ public final class ReadSplitGenerator {
         long curTs = parseOidTimestamp(cur);
         long nextTs = parseOidTimestamp(next);
         long delta = (parseOidCounter(next) - parseOidCounter(cur)) & 0xFFFFFFL;
-        if (nextTs > curTs && delta > gapThreshold && remainingProbes > 0) {
+        if (curTs == nextTs && isSameSecondCounterWraparound(cur, next) && remainingProbes >= 2) {
+          String midHex = String.format("%08x%s7fffff", curTs, procHex);
+          if (cur.compareTo(midHex) < 0 && midHex.compareTo(next) < 0) {
+            remainingProbes -= 2;
+            String postWrapMax = probeObjectIdBoundInRange(col, cur, midHex, /* direction= */ -1);
+            if (postWrapMax != null
+                && procHex.equals(postWrapMax.substring(8, 18))
+                && postWrapMax.compareTo(cur) > 0
+                && postWrapMax.compareTo(next) < 0) {
+              refined.add(postWrapMax);
+            }
+            String preWrapMin = probeObjectIdBoundInRange(col, midHex, next, /* direction= */ 1);
+            if (preWrapMin != null
+                && procHex.equals(preWrapMin.substring(8, 18))
+                && preWrapMin.compareTo(refined.get(refined.size() - 1)) > 0
+                && preWrapMin.compareTo(next) < 0) {
+              refined.add(preWrapMin);
+            }
+          }
+        } else if (nextTs > curTs && delta > gapThreshold && remainingProbes > 0) {
           long secSpan = nextTs - curTs;
           long stepSec = Math.max(1L, (secSpan + remainingProbes - 1L) / remainingProbes);
           String prevInserted = cur;
@@ -758,9 +814,8 @@ public final class ReadSplitGenerator {
     int n = hexKeys.size();
     long[] cumulativeWeight = new long[n];
     for (int i = 0; i < n - 1; i++) {
-      long delta =
-          (parseOidCounter(hexKeys.get(i + 1)) - parseOidCounter(hexKeys.get(i))) & 0xFFFFFFL;
-      cumulativeWeight[i + 1] = cumulativeWeight[i] + Math.max(1L, delta);
+      cumulativeWeight[i + 1] =
+          cumulativeWeight[i] + oidIntervalWeight(hexKeys.get(i), hexKeys.get(i + 1));
     }
     long totalWeight = cumulativeWeight[n - 1];
     if (totalWeight < splits) {
@@ -780,18 +835,23 @@ public final class ReadSplitGenerator {
       long offset = Math.max(0L, targetW - cumulativeWeight[intervalIdx]);
       long span = Math.max(1L, cumulativeWeight[intervalIdx + 1] - cumulativeWeight[intervalIdx]);
 
-      long lowTs = parseOidTimestamp(lowHex);
-      long highTs = parseOidTimestamp(highHex);
-      long lowCtr = parseOidCounter(lowHex);
-      long interpCtr = (lowCtr + offset) & 0xFFFFFFL;
-      long interpTs =
-          (lowTs == highTs)
-              ? lowTs
-              : lowTs + Math.round(((double) offset / span) * (highTs - lowTs));
-
-      String candHex = String.format("%08x%s%06x", interpTs, procHex, interpCtr);
-      if (candHex.compareTo(lowHex) < 0 || candHex.compareTo(highHex) > 0) {
+      String candHex;
+      if (isSameSecondCounterWraparound(lowHex, highHex)) {
         candHex = (offset * 2 < span) ? lowHex : highHex;
+      } else {
+        long lowTs = parseOidTimestamp(lowHex);
+        long highTs = parseOidTimestamp(highHex);
+        long lowCtr = parseOidCounter(lowHex);
+        long interpCtr = (lowCtr + offset) & 0xFFFFFFL;
+        long interpTs =
+            (lowTs == highTs)
+                ? lowTs
+                : lowTs + Math.round(((double) offset / span) * (highTs - lowTs));
+
+        candHex = String.format("%08x%s%06x", interpTs, procHex, interpCtr);
+        if (candHex.compareTo(lowHex) < 0 || candHex.compareTo(highHex) > 0) {
+          candHex = (offset * 2 < span) ? lowHex : highHex;
+        }
       }
       if (candHex.compareTo(prevBoundaryHex) > 0 && candHex.compareTo(lowerMax) < 0) {
         boundaries.add(new BsonObjectId(new ObjectId(candHex)));
@@ -801,12 +861,45 @@ public final class ReadSplitGenerator {
     return boundaries;
   }
 
+  private static final long HALF_OID_COUNTER_SPACE = 0x800000L;
+
+  private static boolean isSameSecondCounterWraparound(String lowHex, String highHex) {
+    return parseOidTimestamp(lowHex) == parseOidTimestamp(highHex)
+        && ((parseOidCounter(highHex) - parseOidCounter(lowHex)) & 0xFFFFFFL)
+            > HALF_OID_COUNTER_SPACE;
+  }
+
+  private static long oidIntervalWeight(String lowHex, String highHex) {
+    if (isSameSecondCounterWraparound(lowHex, highHex)) {
+      return 1L;
+    }
+    long delta = (parseOidCounter(highHex) - parseOidCounter(lowHex)) & 0xFFFFFFL;
+    return Math.max(1L, delta);
+  }
+
   private static long parseOidTimestamp(String hex24) {
     return Long.parseLong(hex24.substring(0, 8), 16);
   }
 
   private static long parseOidCounter(String hex24) {
     return Long.parseLong(hex24.substring(18, 24), 16);
+  }
+
+  private static String probeObjectIdBoundInRange(
+      MongoCollection<BsonDocument> col, String lowExclusiveHex, String highInclusiveHex, int dir) {
+    try {
+      BsonDocument range =
+          new BsonDocument(
+              "_id",
+              new BsonDocument("$gt", new BsonObjectId(new ObjectId(lowExclusiveHex)))
+                  .append("$lte", new BsonObjectId(new ObjectId(highInclusiveHex))));
+      BsonValue val = firstIdFromFind(col.find(range), dir);
+      if (val != null && val.isObjectId()) {
+        return val.asObjectId().getValue().toHexString().toLowerCase();
+      }
+    } catch (Exception ignored) {
+    }
+    return null;
   }
 
   private static String probeMaxObjectIdInSecond(MongoCollection<BsonDocument> col, long epochSec) {

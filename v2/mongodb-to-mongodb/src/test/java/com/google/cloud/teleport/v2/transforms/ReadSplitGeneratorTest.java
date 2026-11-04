@@ -759,6 +759,125 @@ public class ReadSplitGeneratorTest {
         "6ae24591" + proc + "0002ee", boundaries.get(2).asObjectId().getValue().toHexString());
   }
 
+  @Test
+  public void probeActiveTypeBounds_sharedRankStringAndSymbol_discoversSiblingAcrossAllLayouts() {
+    // 1. Homogeneous String global bounds [String('a'), Symbol('m'), String('z')]
+    @SuppressWarnings("unchecked")
+    MongoCollection<BsonDocument> strWrappedCol = mock(MongoCollection.class);
+    FindIterable<BsonDocument> strGlobalFind = mockChainedFind();
+    FindIterable<BsonDocument> strBucketFind = mockChainedFind();
+    when(strWrappedCol.find()).thenReturn(strGlobalFind);
+    when(strWrappedCol.find(any(BsonDocument.class))).thenReturn(strBucketFind);
+    when(strGlobalFind.first())
+        .thenReturn(new BsonDocument("_id", new BsonString("a")))
+        .thenReturn(new BsonDocument("_id", new BsonString("z")));
+    when(strBucketFind.first())
+        .thenReturn(new BsonDocument("_id", new BsonSymbol("m")))
+        .thenReturn(new BsonDocument("_id", new BsonSymbol("m")));
+
+    List<ReadSplitGenerator.ProbedTypeBounds> strWrappedBounds =
+        ReadSplitGenerator.probeActiveTypeBounds(strWrappedCol);
+    assertEquals(2, strWrappedBounds.size());
+    assertEquals("string", strWrappedBounds.get(0).getBucket().getName());
+    assertEquals("symbol", strWrappedBounds.get(1).getBucket().getName());
+
+    // 2. Homogeneous Symbol global bounds [Symbol('a'), String('m'), Symbol('z')]
+    @SuppressWarnings("unchecked")
+    MongoCollection<BsonDocument> symWrappedCol = mock(MongoCollection.class);
+    FindIterable<BsonDocument> symGlobalFind = mockChainedFind();
+    FindIterable<BsonDocument> symBucketFind = mockChainedFind();
+    when(symWrappedCol.find()).thenReturn(symGlobalFind);
+    when(symWrappedCol.find(any(BsonDocument.class))).thenReturn(symBucketFind);
+    when(symGlobalFind.first())
+        .thenReturn(new BsonDocument("_id", new BsonSymbol("a")))
+        .thenReturn(new BsonDocument("_id", new BsonSymbol("z")));
+    when(symBucketFind.first())
+        .thenReturn(new BsonDocument("_id", new BsonString("m")))
+        .thenReturn(new BsonDocument("_id", new BsonString("m")));
+
+    List<ReadSplitGenerator.ProbedTypeBounds> symWrappedBounds =
+        ReadSplitGenerator.probeActiveTypeBounds(symWrappedCol);
+    assertEquals(2, symWrappedBounds.size());
+    assertEquals("symbol", symWrappedBounds.get(0).getBucket().getName());
+    assertEquals("string", symWrappedBounds.get(1).getBucket().getName());
+
+    // 3. Mixed Number..String global bounds [Int32(1), Symbol('a'), String('z')]
+    @SuppressWarnings("unchecked")
+    MongoCollection<BsonDocument> numToStrCol = mock(MongoCollection.class);
+    FindIterable<BsonDocument> numStrGlobal = mockChainedFind();
+    FindIterable<BsonDocument> numStrBucket = mockChainedFind();
+    when(numToStrCol.find()).thenReturn(numStrGlobal);
+    when(numToStrCol.find(any(BsonDocument.class))).thenReturn(numStrBucket);
+    when(numStrGlobal.first())
+        .thenReturn(new BsonDocument("_id", new BsonInt32(1)))
+        .thenReturn(new BsonDocument("_id", new BsonString("z")));
+    when(numStrBucket.first())
+        .thenReturn(new BsonDocument("_id", new BsonInt32(1))) // number max
+        .thenReturn(new BsonDocument("_id", new BsonString("z"))) // string min
+        .thenReturn(new BsonDocument("_id", new BsonSymbol("a"))) // symbol min
+        .thenReturn(new BsonDocument("_id", new BsonSymbol("a"))); // symbol max
+
+    List<ReadSplitGenerator.ProbedTypeBounds> numToStrBounds =
+        ReadSplitGenerator.probeActiveTypeBounds(numToStrCol);
+    assertEquals(3, numToStrBounds.size());
+    assertEquals("number", numToStrBounds.get(0).getBucket().getName());
+    assertEquals("string", numToStrBounds.get(1).getBucket().getName());
+    assertEquals("symbol", numToStrBounds.get(2).getBucket().getName());
+
+    // 4. Mixed Symbol..ObjectId global bounds [Symbol('a'), String('z'), ObjectId]
+    @SuppressWarnings("unchecked")
+    MongoCollection<BsonDocument> symToOidCol = mock(MongoCollection.class);
+    FindIterable<BsonDocument> symOidGlobal = mockChainedFind();
+    FindIterable<BsonDocument> symOidBucket = mockChainedFind();
+    BsonObjectId oid = new BsonObjectId(new ObjectId("600000000000000000000001"));
+    when(symToOidCol.find()).thenReturn(symOidGlobal);
+    when(symToOidCol.find(any(BsonDocument.class))).thenReturn(symOidBucket);
+    when(symOidGlobal.first())
+        .thenReturn(new BsonDocument("_id", new BsonSymbol("a")))
+        .thenReturn(new BsonDocument("_id", oid));
+    when(symOidBucket.first())
+        .thenReturn(new BsonDocument("_id", new BsonSymbol("a"))) // symbol max
+        .thenReturn(new BsonDocument("_id", new BsonString("z"))) // string sibling min
+        .thenReturn(new BsonDocument("_id", new BsonString("z"))) // string sibling max
+        .thenReturn(null) // object min
+        .thenReturn(null) // binData min
+        .thenReturn(new BsonDocument("_id", oid)); // objectId min
+
+    List<ReadSplitGenerator.ProbedTypeBounds> symToOidBounds =
+        ReadSplitGenerator.probeActiveTypeBounds(symToOidCol);
+    assertEquals(3, symToOidBounds.size());
+    assertEquals("symbol", symToOidBounds.get(0).getBucket().getName());
+    assertEquals("string", symToOidBounds.get(1).getBucket().getName());
+    assertEquals("objectId", symToOidBounds.get(2).getBucket().getName());
+  }
+
+  @Test
+  public void generateCounterWeightedObjectIdBoundaries_sameSecondWraparound_avoidsEmptyGap() {
+    String proc = "9e6b535a76";
+    // Counter initialized at 0xfffff0 wraps past 0xffffff to 0x000100 within the same second.
+    String minHex = "6ae24591" + proc + "000000";
+    String maxHex = "6ae24591" + proc + "ffffff";
+    List<BsonValue> sample =
+        Arrays.asList(
+            new BsonObjectId(new ObjectId("6ae24591" + proc + "000080")),
+            new BsonObjectId(new ObjectId("6ae24591" + proc + "000100")),
+            new BsonObjectId(new ObjectId("6ae24591" + proc + "fffff0")),
+            new BsonObjectId(new ObjectId("6ae24591" + proc + "fffff8")));
+
+    List<BsonValue> boundaries =
+        ReadSplitGenerator.generateCounterWeightedObjectIdBoundaries(
+            null, minHex, maxHex, 4, sample);
+
+    assertEquals(3, boundaries.size());
+    for (BsonValue b : boundaries) {
+      String hex = b.asObjectId().getValue().toHexString();
+      long ctr = Long.parseLong(hex.substring(18, 24), 16);
+      assertTrue(
+          "Boundary must not fall inside unoccupied wraparound gap (0x000100, 0xfffff0): " + hex,
+          ctr <= 0x000100L || ctr >= 0xfffff0L);
+    }
+  }
+
   @SuppressWarnings("unchecked")
   private static FindIterable<BsonDocument> mockChainedFind() {
     FindIterable<BsonDocument> mockFind = mock(FindIterable.class);
