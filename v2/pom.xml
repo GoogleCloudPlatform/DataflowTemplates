@@ -670,6 +670,7 @@
         <module>googlecloud-to-elasticsearch</module>
         <module>googlecloud-to-googlecloud</module>
         <module>googlecloud-and-jms</module>
+        <module>googlecloud-and-kafka</module>
         <module>googlecloud-and-mongodb</module>
         <module>googlecloud-to-neo4j</module>
         <module>googlecloud-to-splunk</module>
@@ -677,10 +678,6 @@
         <module>jdbc-common</module>
         <module>jdbc-and-googlecloud</module>
         <module>kafka-common</module>
-        <module>kafka-to-bigquery</module>
-        <module>kafka-to-gcs</module>
-        <module>kafka-to-kafka</module>
-        <module>kafka-to-pubsub</module>
         <module>kinesis-to-pubsub</module>
         <module>kudu-to-bigquery</module>
         <module>managed-io-to-managed-io</module>
@@ -691,7 +688,6 @@
         <module>postgresql-to-googlecloud</module>
         <module>pubsub-binary-to-bigquery</module>
         <module>pubsub-cdc-to-bigquery</module>
-        <module>pubsub-to-kafka</module>
         <module>pubsub-to-redis</module>
         <module>sourcedb-to-spanner</module>
         <module>spanner-change-streams-to-sharded-file-sink</module>

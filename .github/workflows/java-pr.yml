@@ -41,10 +41,7 @@ on:
       - '!v2/spanner-to-sourcedb/**'
       - '!v2/gcs-spanner-dv/**'
       # Exclude kafka paths from global run (covered in kafka-pr.yml)
-      - '!v2/kafka-to-bigquery/**'
-      - '!v2/kafka-to-gcs/**'
-      - '!v2/kafka-to-kafka/**'
-      - '!v2/pubsub-to-kafka/**'
+      - '!v2/googlecloud-and-kafka/**'
       # Exclude yaml and python paths from global run (covered in yaml-pr.yml)
       - '!yaml/**'
       - '!python/**'
