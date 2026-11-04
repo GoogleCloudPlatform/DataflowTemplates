@@ -781,13 +781,13 @@ public class OracleDataWriterTest {
   }
 
   @Test
-  public void testSetParameter_uuidType_callsSetObject() throws Exception {
+  public void testSetParameter_uuidType() throws Exception {
     DataGeneratorColumn c = col("u", LogicalType.UUID);
     Row row = singleValueRow("u", Schema.FieldType.STRING, "550e8400-e29b-41d4-a716-446655440000");
     writer()
         .setStatementParameters(
             mockStatement, row, singleColumnTable(c), OracleDataWriter.MutationType.INSERT);
-    verify(mockStatement).setObject(1, "550e8400-e29b-41d4-a716-446655440000");
+    verify(mockStatement).setString(1, "550e8400-e29b-41d4-a716-446655440000");
   }
 
   @Test

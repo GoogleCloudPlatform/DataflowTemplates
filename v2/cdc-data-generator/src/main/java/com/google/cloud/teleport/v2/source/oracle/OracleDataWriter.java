@@ -434,10 +434,6 @@ public class OracleDataWriter implements DataWriter {
       return;
     }
     switch (column.logicalType()) {
-      case STRING:
-      case JSON:
-        statement.setString(index, value.toString());
-        break;
       case INT64:
         statement.setLong(index, ((Number) value).longValue());
         break;
@@ -463,8 +459,12 @@ public class OracleDataWriter implements DataWriter {
       case TIMESTAMP:
         statement.setTimestamp(index, toSqlTimestamp(value));
         break;
+      case STRING:
+      case JSON:
+      case UUID:
       default:
-        statement.setObject(index, value);
+        statement.setString(index, value.toString());
+        break;
     }
   }
 
