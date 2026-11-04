@@ -19,9 +19,9 @@ import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import java.io.IOException;
 import java.text.ParseException;
+import java.time.Duration;
 import java.util.HashMap;
 import org.apache.beam.it.gcp.datastream.JDBCSource;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -31,8 +31,13 @@ import org.junit.runners.JUnit4;
 @Category(TemplateLoadTest.class)
 @TemplateLoadTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
-@Ignore("Disabling LT because it is consistently failing due to timeout")
 public class DataStreamToSpannerTallTableLT extends DataStreamToSpannerLTBase {
+
+  @Override
+  protected Duration getLoadTestTimeout() {
+    return Duration.ofHours(7);
+  }
+
   @Test
   public void backfill100GbTallTable() throws IOException, ParseException, InterruptedException {
     setUpResourceManagers("DataStreamToSpanner100GbLT/spanner-schema-tall-table.sql");
