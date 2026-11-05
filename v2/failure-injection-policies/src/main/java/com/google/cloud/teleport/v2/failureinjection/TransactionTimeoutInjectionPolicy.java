@@ -49,6 +49,8 @@ public class TransactionTimeoutInjectionPolicy implements ErrorInjectionPolicy, 
   private static final String TRANSACTION_DELAY_DURATION_FIELD = "transactionDelayDuration";
   // The JSON field name for the probability of injecting the delay.
   private static final String TRANSACTION_DELAY_PROBABILITY_FIELD = "transactionDelayProbability";
+  // The JSON field name for the job start time.
+  private static final String JOB_START_TIME_FIELD = "jobStartTime";
 
   private final Duration injectionWindowDuration;
   private final Duration delayDuration;
@@ -85,6 +87,26 @@ public class TransactionTimeoutInjectionPolicy implements ErrorInjectionPolicy, 
                   .get(TRANSACTION_DELAY_PROBABILITY_FIELD)
                   .asDouble(delayProbabilityVal)
               : delayProbabilityVal;
+      // The jobStartTime parameter allows specifying a consistent start time for the failure
+      // injection window across all Dataflow workers. If not provided, the policy defaults to
+      // lazy initialization on the first call to shouldInjectionError() on each worker.
+      // Passing a fixed jobStartTime is critical when simulating long delays (e.g., transaction
+      // timeouts) because Dataflow may detect worker threads as stuck and restart the worker.
+      // With lazy initialization, a restarted worker would reset the failure window, potentially
+      // causing an infinite loop of restarts or incorrect test behavior.
+      if (inputParameter.has(JOB_START_TIME_FIELD)) {
+        try {
+          this.startTime = Instant.parse(inputParameter.get(JOB_START_TIME_FIELD).asText());
+          LOG.info("Job start time provided: {}", this.startTime);
+        } catch (DateTimeParseException e) {
+          throw new IllegalArgumentException(
+              "Failed to parse "
+                  + JOB_START_TIME_FIELD
+                  + ". Expected ISO-8601 format. Value: "
+                  + inputParameter.get(JOB_START_TIME_FIELD).asText(),
+              e);
+        }
+      }
     }
 
     this.injectionWindowDuration =

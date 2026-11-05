@@ -17,11 +17,14 @@ package com.google.cloud.teleport.v2.neo4j.database;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import com.google.cloud.teleport.v2.neo4j.model.sources.InlineTextSource;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.junit.Test;
 import org.neo4j.importer.v1.ImportSpecification;
+import org.neo4j.importer.v1.pipeline.NodeTargetStep;
+import org.neo4j.importer.v1.pipeline.RelationshipTargetStep;
 import org.neo4j.importer.v1.targets.NodeExistenceConstraint;
 import org.neo4j.importer.v1.targets.NodeFullTextIndex;
 import org.neo4j.importer.v1.targets.NodeKeyConstraint;
@@ -62,7 +65,8 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
             + "MERGE (start)-[r:`LINKS` {`id1`: row.`rel_id_1`, `id2`: row.`rel_id_2`}]->(end) "
             + "SET r.`ts` = row.`timestamp`";
 
-    assertImportStatementOf(importSpecificationOf(SINGLE_TARGET_WITH_KEYS), expectedCypher);
+    assertImportOfSingleRelationship(
+        importSpecificationOf(SINGLE_TARGET_WITH_KEYS), expectedCypher);
   }
 
   @Test
@@ -74,7 +78,8 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
             + "MERGE (start)-[r:`LINKS`]->(end) "
             + "SET r.`ts` = row.`timestamp`";
 
-    assertImportStatementOf(importSpecificationOf(SINGLE_TARGET_WITHOUT_KEYS), expectedCypher);
+    assertImportOfSingleRelationship(
+        importSpecificationOf(SINGLE_TARGET_WITHOUT_KEYS), expectedCypher);
   }
 
   @Test
@@ -85,7 +90,8 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
             + "MERGE (end:`Target` {`tgt_id`: row.`target`}) "
             + "MERGE (start)-[r:`LINKS`]->(end) SET r.`ts` = row.`timestamp`";
 
-    assertImportStatementOf(importSpecificationOf(SINGLE_TARGET_MERGE_ALL), expectedCypher);
+    assertImportOfSingleRelationship(
+        importSpecificationOf(SINGLE_TARGET_MERGE_ALL), expectedCypher);
   }
 
   @Test
@@ -96,7 +102,7 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
             + "MERGE (end:`Target` {`tgt_id`: row.`target`}) "
             + "CREATE (start)-[r:`LINKS`]->(end) SET r.`ts` = row.`timestamp`";
 
-    assertImportStatementOf(
+    assertImportOfSingleRelationship(
         importSpecificationOf(SINGLE_TARGET_CREATE_RELS_MERGE_NODES), expectedCypher);
   }
 
@@ -108,7 +114,7 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
             + "MATCH (end:`Topic` {`id`: row.`topic_id`}) "
             + "CREATE (start)-[r:`LIKES`]->(end)";
 
-    assertImportStatementOf(
+    assertImportOfSingleRelationship(
         importSpecificationOf(SINGLE_RELATIONSHIP_TARGET_WITH_NODE_KEY_MAPPING_OVERRIDES),
         expectedCypher);
   }
@@ -116,46 +122,56 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
   @Test
   public void specifies_keys_in_relationship_merge_pattern_cypher_prefix() {
     var expectedCypherPrefix = "CYPHER 5 UNWIND $rows AS row";
-    assertCypherPrefixOf(importSpecificationOf(SINGLE_TARGET_WITH_KEYS), expectedCypherPrefix);
+    assertCypherPrefixOfSingleRelationship(
+        importSpecificationOf(SINGLE_TARGET_WITH_KEYS), expectedCypherPrefix);
   }
 
   @Test
   public void specifies_only_type_in_keyless_relationship_merge_pattern_cypher_prefix() {
     var expectedCypherPrefix = "CYPHER 5 UNWIND $rows AS row";
-    assertCypherPrefixOf(importSpecificationOf(SINGLE_TARGET_WITHOUT_KEYS), expectedCypherPrefix);
+    assertCypherPrefixOfSingleRelationship(
+        importSpecificationOf(SINGLE_TARGET_WITHOUT_KEYS), expectedCypherPrefix);
   }
 
   @Test
   public void merges_edges_as_well_as_their_start_and_end_nodes_cypher_prefix() {
     var expectedCypherPrefix = "CYPHER 5 UNWIND $rows AS row";
-    assertCypherPrefixOf(importSpecificationOf(SINGLE_TARGET_MERGE_ALL), expectedCypherPrefix);
+    assertCypherPrefixOfSingleRelationship(
+        importSpecificationOf(SINGLE_TARGET_MERGE_ALL), expectedCypherPrefix);
   }
 
   @Test
   public void creates_edges_and_merges_their_start_and_end_nodes_cypher_prefix() {
     var expectedCypherPrefix = "CYPHER 5 UNWIND $rows AS row";
-    assertCypherPrefixOf(
+    assertCypherPrefixOfSingleRelationship(
         importSpecificationOf(SINGLE_TARGET_CREATE_RELS_MERGE_NODES), expectedCypherPrefix);
   }
 
   @Test
   public void does_not_generate_constraints_for_edge_without_schema() {
-    var relationshipTarget =
-        importSpecificationOf(SINGLE_TARGET_MERGE_ALL)
-            .getTargets()
-            .getRelationships()
-            .iterator()
-            .next();
+    var spec = importSpecificationOf(SINGLE_TARGET_MERGE_ALL);
+    var relationshipTarget = spec.getTargets().getRelationships().iterator().next();
 
     var statements =
         CypherGenerator.getSchemaStatements(
-            relationshipTarget, capabilitiesFor("5.20", "enterprise"));
+            matchingStep(spec, relationshipTarget), capabilitiesFor("5.20", "enterprise"));
 
     assertThat(statements).isEmpty();
   }
 
   @Test
   public void generates_relationship_key_statement() {
+    var node =
+        new NodeTarget(
+            true,
+            "node-target",
+            "a-source",
+            null,
+            WriteMode.MERGE,
+            List.of(),
+            List.of("Placeholder"),
+            List.of(new PropertyMapping("source-field", "property", PropertyType.INTEGER)),
+            null);
     var relationship =
         new RelationshipTarget(
             true,
@@ -166,8 +182,8 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
             WriteMode.MERGE,
             NodeMatchMode.MERGE,
             List.of(),
-            new NodeReference("node-target"),
-            new NodeReference("node-target"),
+            new NodeReference(node.getName()),
+            new NodeReference(node.getName()),
             List.of(new PropertyMapping("source_field", "targetRelProperty", null)),
             new RelationshipSchema(
                 null,
@@ -180,9 +196,16 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
                 null,
                 null,
                 null));
+    var relationshipStep =
+        new RelationshipTargetStep(
+            relationship,
+            new NodeTargetStep(node, Set.of()),
+            new NodeTargetStep(node, Set.of()),
+            Set.of());
 
     Set<String> schemaStatements =
-        CypherGenerator.getSchemaStatements(relationship, capabilitiesFor("5.20", "enterprise"));
+        CypherGenerator.getSchemaStatements(
+            relationshipStep, capabilitiesFor("5.20", "enterprise"));
 
     assertThat(schemaStatements)
         .isEqualTo(
@@ -264,7 +287,11 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
         new ImportSpecification(
             "1.0",
             null,
-            null,
+            List.of(
+                new InlineTextSource(
+                    "a-source",
+                    List.of(List.of("n1", "r1")),
+                    List.of("source_field", "source_node_field"))),
             new Targets(List.of(startNode, endNode), List.of(relationship), null),
             null);
 
@@ -274,7 +301,7 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
             + "MATCH (end:`EndNode` {`targetNodeProperty`: row.`source_node_field`}) "
             + "MERGE (start)-[r:`LINKS_TO` {`targetRelProperty`: row.`source_field`}]->(end)";
 
-    assertImportStatementOf(importSpecification, expectedCypher);
+    assertImportOfSingleRelationship(importSpecification, expectedCypher);
   }
 
   @Test
@@ -340,7 +367,8 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
                         Map.of("indexConfig", Map.of("vector.dimensions", 1536))))));
 
     var statements =
-        CypherGenerator.getSchemaStatements(target, capabilitiesFor("5.20", "enterprise"));
+        CypherGenerator.getSchemaStatements(
+            new NodeTargetStep(target, Set.of()), capabilitiesFor("5.20", "enterprise"));
 
     assertThat(statements)
         .isEqualTo(
@@ -419,7 +447,8 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
                         Map.of("indexConfig", Map.of("vector.dimensions", 1536))))));
 
     var statements =
-        CypherGenerator.getSchemaStatements(target, capabilitiesFor("4.4.0", "community"));
+        CypherGenerator.getSchemaStatements(
+            new NodeTargetStep(target, Set.of()), capabilitiesFor("4.4.0", "community"));
 
     assertThat(statements)
         .isEqualTo(
@@ -433,7 +462,19 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
 
   @Test
   public void generates_schema_statements_for_relationship_target() {
-    var target =
+    var node =
+        new NodeTarget(
+            true,
+            "a-node-target",
+            "a-source",
+            null,
+            WriteMode.MERGE,
+            List.of(),
+            List.of("Placeholder"),
+            List.of(new PropertyMapping("prop1", "prop1", null)),
+            null);
+
+    var relationship =
         new RelationshipTarget(
             true,
             "a-target",
@@ -443,8 +484,8 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
             WriteMode.CREATE,
             NodeMatchMode.MERGE,
             List.of(),
-            new NodeReference("a-start-node-target"),
-            new NodeReference("an-end-node-target"),
+            new NodeReference(node.getName()),
+            new NodeReference(node.getName()),
             List.of(
                 new PropertyMapping("prop1", "prop1", PropertyType.LOCAL_DATETIME_ARRAY),
                 new PropertyMapping("prop2", "prop2", null),
@@ -487,9 +528,16 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
                         "vector-index-1",
                         "prop9",
                         Map.of("indexConfig", Map.of("vector.dimensions", 1536))))));
+    var relationshipStep =
+        new RelationshipTargetStep(
+            relationship,
+            new NodeTargetStep(node, Set.of()),
+            new NodeTargetStep(node, Set.of()),
+            Set.of());
 
     var statements =
-        CypherGenerator.getSchemaStatements(target, capabilitiesFor("5.20", "enterprise"));
+        CypherGenerator.getSchemaStatements(
+            relationshipStep, capabilitiesFor("5.20", "enterprise"));
 
     assertThat(statements)
         .isEqualTo(
@@ -507,7 +555,18 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
 
   @Test
   public void generates_schema_statements_for_relationship_target_against_Neo4j_44_CE() {
-    var target =
+    var node =
+        new NodeTarget(
+            true,
+            "a-node-target",
+            "a-source",
+            null,
+            WriteMode.MERGE,
+            List.of(),
+            List.of("Placeholder"),
+            List.of(new PropertyMapping("prop1", "prop1", null)),
+            null);
+    var relationship =
         new RelationshipTarget(
             true,
             "a-target",
@@ -517,8 +576,8 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
             WriteMode.CREATE,
             NodeMatchMode.MERGE,
             List.of(),
-            new NodeReference("a-start-node-target"),
-            new NodeReference("an-end-node-target"),
+            new NodeReference(node.getName()),
+            new NodeReference(node.getName()),
             List.of(
                 new PropertyMapping("prop1", "prop1", PropertyType.LOCAL_DATETIME_ARRAY),
                 new PropertyMapping("prop2", "prop2", null),
@@ -561,9 +620,16 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
                         "vector-index-1",
                         "prop9",
                         Map.of("indexConfig", Map.of("vector.dimensions", 1536))))));
+    var relationshipStep =
+        new RelationshipTargetStep(
+            relationship,
+            new NodeTargetStep(node, Set.of()),
+            new NodeTargetStep(node, Set.of()),
+            Set.of());
 
     var statements =
-        CypherGenerator.getSchemaStatements(target, capabilitiesFor("4.4.0", "community"));
+        CypherGenerator.getSchemaStatements(
+            relationshipStep, capabilitiesFor("4.4.0", "community"));
 
     assertThat(statements)
         .isEqualTo(
@@ -576,7 +642,18 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
 
   @Test
   public void does_not_generate_schema_statements_for_relationship_target_without_schema() {
-    var target =
+    var node =
+        new NodeTarget(
+            true,
+            "a-node-target",
+            "a-source",
+            null,
+            WriteMode.MERGE,
+            List.of(),
+            List.of("Placeholder"),
+            List.of(new PropertyMapping("prop1", "prop1", null)),
+            null);
+    var relationship =
         new RelationshipTarget(
             true,
             "a-target",
@@ -586,13 +663,20 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
             WriteMode.CREATE,
             NodeMatchMode.MERGE,
             List.of(),
-            new NodeReference("a-start-node-target"),
-            new NodeReference("an-end-node-target"),
+            new NodeReference(node.getName()),
+            new NodeReference(node.getName()),
             null,
             null);
+    var relationshipStep =
+        new RelationshipTargetStep(
+            relationship,
+            new NodeTargetStep(node, Set.of()),
+            new NodeTargetStep(node, Set.of()),
+            Set.of());
 
     var statements =
-        CypherGenerator.getSchemaStatements(target, capabilitiesFor("5.20", "enterprise"));
+        CypherGenerator.getSchemaStatements(
+            relationshipStep, capabilitiesFor("5.20", "enterprise"));
 
     assertThat(statements).isEmpty();
   }

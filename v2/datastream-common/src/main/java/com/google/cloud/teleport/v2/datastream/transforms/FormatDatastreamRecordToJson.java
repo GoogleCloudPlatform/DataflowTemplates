@@ -25,11 +25,14 @@ import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.OffsetTime;
 import java.time.Period;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -147,8 +150,14 @@ public class FormatDatastreamRecordToJson
     if (sourceType.equals("mysql")) {
       // MySQL Specific Metadata
       outputObject.put("_metadata_schema", getMetadataDatabase(record));
-      outputObject.put("_metadata_log_file", getSourceMetadata(record, "log_file"));
-      outputObject.put("_metadata_log_position", getSourceMetadata(record, "log_position"));
+      if (getSourceMetadata(record, "gtid") != null) {
+        // GTID mode
+        outputObject.put("_metadata_log_file", getSourceMetadata(record, "binlog_file"));
+        outputObject.put("_metadata_log_position", getSourceMetadata(record, "binlog_position"));
+      } else {
+        outputObject.put("_metadata_log_file", getSourceMetadata(record, "log_file"));
+        outputObject.put("_metadata_log_position", getSourceMetadata(record, "log_position"));
+      }
     } else if (sourceType.equals("postgresql")) {
       // PostgreSQL Specific Metadata
       outputObject.put("_metadata_schema", getMetadataSchema(record));
@@ -285,13 +294,23 @@ public class FormatDatastreamRecordToJson
 
   private JsonNode getPrimaryKeys(GenericRecord record) {
     GenericRecord sourceMetadata = (GenericRecord) record.get("source_metadata");
-    if (sourceMetadata.getSchema().getField("primary_keys") == null
-        || sourceMetadata.get("primary_keys") == null) {
+    if (sourceMetadata == null) {
       return null;
     }
 
-    JsonNode dataInput = getSourceMetadataJson(record);
-    return dataInput.get("primary_keys");
+    // Try primary_keys first (MySQL, Oracle, PostgreSQL)
+    if (sourceMetadata.getSchema().getField("primary_keys") != null
+        && sourceMetadata.get("primary_keys") != null) {
+      return getSourceMetadataJson(record).get("primary_keys");
+    }
+
+    // Fallback to replication_index for SQL Server
+    if (sourceMetadata.getSchema().getField("replication_index") != null
+        && sourceMetadata.get("replication_index") != null) {
+      return getSourceMetadataJson(record).get("replication_index");
+    }
+
+    return null;
   }
 
   private String getUUID() {
@@ -639,6 +658,70 @@ public class FormatDatastreamRecordToJson
               fullDate
                   .withZoneSameInstant(ZoneId.of("UTC"))
                   .format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
+          break;
+        case "datetime":
+          // Datastream's zone-less datetime (SQL Server datetime, datetime2, smalldatetime):
+          // days since the epoch plus microseconds of day. The wall-clock value is rendered as a
+          // UTC timestamp, consistent with GenericRecordTypeConvertor in bulk migration.
+          long datetimeMicros =
+              TimeUnit.DAYS.toMicros(((Number) element.get("date")).longValue())
+                  + ((Number) element.get("time")).longValue();
+          Instant datetime =
+              Instant.ofEpochSecond(
+                  Math.floorDiv(datetimeMicros, TimeUnit.SECONDS.toMicros(1)),
+                  TimeUnit.MICROSECONDS.toNanos(
+                      Math.floorMod(datetimeMicros, TimeUnit.SECONDS.toMicros(1))));
+          jsonObject.put(
+              fieldName,
+              datetime.atOffset(ZoneOffset.UTC).format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
+          break;
+        case "timeTz":
+          long timeTzNanos =
+              ((Number) getOrDefault(element, "time", 0L)).longValue()
+                  * TimeUnit.MICROSECONDS.toNanos(1);
+          int offsetSeconds = ((Number) getOrDefault(element, "offset", 0)).intValue() / 1000;
+
+          ZoneOffset timeTzOffset = ZoneOffset.ofTotalSeconds(offsetSeconds);
+
+          if (timeTzNanos == 86400000000000L) {
+            jsonObject.put(fieldName, "24:00:00" + timeTzOffset.toString());
+            break;
+          }
+
+          LocalTime localTime = LocalTime.ofNanoOfDay(timeTzNanos);
+          OffsetTime offsetTime = OffsetTime.of(localTime, timeTzOffset);
+          jsonObject.put(fieldName, offsetTime.format(DateTimeFormatter.ISO_OFFSET_TIME));
+          break;
+        case "interval":
+          int months = ((Number) getOrDefault(element, "months", 0)).intValue();
+          int hours = ((Number) getOrDefault(element, "hours", 0)).intValue();
+          long micros = ((Number) getOrDefault(element, "micros", 0L)).longValue();
+
+          int days = hours / 24;
+          int remainingHours = hours % 24;
+
+          Period intervalPeriod = Period.ZERO.plusMonths(months).plusDays(days).normalized();
+          Duration intervalDuration =
+              Duration.ZERO.plusHours(remainingHours).plus(micros, ChronoUnit.MICROS);
+
+          if (intervalPeriod.isZero() && intervalDuration.isZero()) {
+            jsonObject.put(fieldName, "PT0S");
+            break;
+          }
+
+          StringBuilder result = new StringBuilder();
+          if (!intervalPeriod.isZero()) {
+            result.append(intervalPeriod.toString());
+          }
+          if (!intervalDuration.isZero()) {
+            if (result.length() == 0) {
+              result.append(intervalDuration.toString());
+            } else {
+              // Remove the 'P' from Duration
+              result.append(intervalDuration.toString().substring(1));
+            }
+          }
+          jsonObject.put(fieldName, result.toString());
           break;
           /*
            * The `intervalNano` maps to nano second precision interval type used by Cassandra Interval.

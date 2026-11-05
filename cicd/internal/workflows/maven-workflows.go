@@ -50,11 +50,13 @@ type MavenFlags interface {
 	SkipSpotlessCheck() string
 	SkipIntegrationTests() string
 	FailAtTheEnd() string
+	RedirectTestOutputToFile(bool) string
 	RunIntegrationTests(bool) string
 	RunIntegrationSmokeTests() string
 	RunSpannerStagingIntegrationTests() string
 	RunLoadTests() string
 	RunLoadTestObserver() string
+	RunFailureInjectionTests() string
 	ThreadCount(int) string
 	IntegrationTestParallelism(int) string
 	StaticBigtableInstance(string) string
@@ -115,6 +117,13 @@ func (*mvnFlags) FailAtTheEnd() string {
 	return "-fae"
 }
 
+func (*mvnFlags) RedirectTestOutputToFile(redirectLog bool) string {
+	if redirectLog {
+		return "-Dmaven.test.redirectTestOutputToFile=true"
+	}
+	return ""
+}
+
 func (*mvnFlags) RunIntegrationTests(skipRunnerV2 bool) string {
 	if skipRunnerV2 {
 		return "-PtemplatesIntegrationRunnerV2Tests"
@@ -136,6 +145,10 @@ func (*mvnFlags) RunLoadTests() string {
 
 func (*mvnFlags) RunLoadTestObserver() string {
 	return "-PtemplatesLoadTestObserve"
+}
+
+func (*mvnFlags) RunFailureInjectionTests() string {
+	return "-PfailureInjectionTest"
 }
 
 // The number of modules Maven is going to build in parallel in a multi-module project.

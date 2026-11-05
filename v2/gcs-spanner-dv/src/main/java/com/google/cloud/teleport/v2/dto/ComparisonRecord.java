@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.dto;
 
 import com.google.auto.value.AutoValue;
 import java.util.List;
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.schemas.AutoValueSchema;
 import org.apache.beam.sdk.schemas.annotations.DefaultSchema;
 
@@ -30,6 +31,12 @@ public abstract class ComparisonRecord {
 
   public abstract String getHash();
 
+  @Nullable
+  public abstract String getSchemaName();
+
+  @Nullable
+  public abstract String getShardId();
+
   public static Builder builder() {
     return new AutoValue_ComparisonRecord.Builder();
   }
@@ -42,6 +49,10 @@ public abstract class ComparisonRecord {
     public abstract Builder setPrimaryKeyColumns(List<Column> primaryKeyColumns);
 
     public abstract Builder setHash(String hash);
+
+    public abstract Builder setSchemaName(String schemaName);
+
+    public abstract Builder setShardId(String shardId);
 
     public abstract ComparisonRecord build();
   }

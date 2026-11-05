@@ -77,6 +77,14 @@ public final class TypesUtilsTest {
   }
 
   @Test
+  public void testIsInformationSchemaTokenlistType() {
+    assertThat(TypesUtils.isInformationSchemaTokenlistType("TOKENLIST")).isTrue();
+    assertThat(TypesUtils.isInformationSchemaTokenlistType("spanner.tokenlist")).isTrue();
+    assertThat(TypesUtils.isInformationSchemaTokenlistType("STRING(MAX)")).isFalse();
+    assertThat(TypesUtils.isInformationSchemaTokenlistType("ARRAY<STRING(MAX)>")).isFalse();
+  }
+
+  @Test
   public void testInformationSchemaPostgreSQLTypeToSpannerType() {
     assertThat(TypesUtils.informationSchemaPostgreSQLTypeToSpannerType("CHARACTER VARYING(256)[]"))
         .isEqualTo(Type.array(Type.string()));
@@ -90,5 +98,29 @@ public final class TypesUtilsTest {
   public void testExtractTypeFromInvalidTypeCode() {
     final JSONObject invalidJsonObject = new JSONObject("{\"type_code\":\"STRING\"}");
     assertThrows(JSONException.class, () -> TypesUtils.extractTypeFromTypeCode(invalidJsonObject));
+  }
+
+  @Test
+  public void testInformationSchemaGoogleSQLTypeToSpannerType_UUID() {
+    assertThat(TypesUtils.informationSchemaGoogleSQLTypeToSpannerType("UUID"))
+        .isEqualTo(Type.uuid());
+  }
+
+  @Test
+  public void testInformationSchemaGoogleSQLTypeToSpannerType_ARRAY_UUID() {
+    assertThat(TypesUtils.informationSchemaGoogleSQLTypeToSpannerType("ARRAY<UUID>"))
+        .isEqualTo(Type.array(Type.uuid()));
+  }
+
+  @Test
+  public void testInformationSchemaPostgreSQLTypeToSpannerType_UUID() {
+    assertThat(TypesUtils.informationSchemaPostgreSQLTypeToSpannerType("UUID"))
+        .isEqualTo(Type.uuid());
+  }
+
+  @Test
+  public void testInformationSchemaPostgreSQLTypeToSpannerType_ARRAY_UUID() {
+    assertThat(TypesUtils.informationSchemaPostgreSQLTypeToSpannerType("UUID[]"))
+        .isEqualTo(Type.array(Type.uuid()));
   }
 }

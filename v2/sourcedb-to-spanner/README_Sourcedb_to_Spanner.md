@@ -18,9 +18,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ## Parameters
 
 #### Required Parameters
-* **sourceConfigURL** (Configuration to connect to the source database): Can be the JDBC URL or the location of the sharding config. (Example: jdbc:mysql://10.10.10.10:3306/testdb or gs://test1/shard.conf)
-* **username** (username of the source database): The username which can be used to connect to the source database.
-* **password** (username of the source database): The username which can be used to connect to the source database.
+* **sourceConfigURL** (Source connection config file URL): The URL of the source connection config file. The file format is dependent on the source type. For Astra, it will point to an Astra connection config file ([sample](src/test/resources/SourceConfig/astra-connection-config.json)). For JDBC, it will point to a JDBC sharding config file ([sample](src/test/resources/SourceConfig/jdbc-shard-config.json)). For Cassandra, it will point to a Cassandra driver config file ([sample](src/test/resources/SourceConfig/cassandra-driver-config.conf)). This parameter is required.
 * **instanceId** (Cloud Spanner Instance Id.): The destination Cloud Spanner instance.
 * **databaseId** (Cloud Spanner Database Id.): The destination Cloud Spanner database.
 * **projectId** (Cloud Spanner Project Id.): This is the name of the Cloud Spanner project.
@@ -126,8 +124,6 @@ export OUTPUT_DIRECTORY=<outputDirectory>
 ### Optional
 export JDBC_DRIVER_JARS=""
 export JDBC_DRIVER_CLASS_NAME=com.mysql.jdbc.Driver
-export USERNAME=""
-export PASSWORD=""
 export TABLES=""
 export NUM_PARTITIONS=0
 export SPANNER_HOST=https://batch-spanner.googleapis.com
@@ -145,8 +141,6 @@ gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --parameters "jdbcDriverJars=$JDBC_DRIVER_JARS" \
   --parameters "jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME" \
   --parameters "sourceConfigURL=$SOURCE_CONFIG_URL" \
-  --parameters "username=$USERNAME" \
-  --parameters "password=$PASSWORD" \
   --parameters "tables=$TABLES" \
   --parameters "numPartitions=$NUM_PARTITIONS" \
   --parameters "instanceId=$INSTANCE_ID" \
@@ -186,8 +180,6 @@ export OUTPUT_DIRECTORY=<outputDirectory>
 ### Optional
 export JDBC_DRIVER_JARS=""
 export JDBC_DRIVER_CLASS_NAME=com.mysql.jdbc.Driver
-export USERNAME=""
-export PASSWORD=""
 export TABLES=""
 export NUM_PARTITIONS=0
 export SPANNER_HOST=https://batch-spanner.googleapis.com
@@ -204,7 +196,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="sourcedb-to-spanner-flex-job" \
 -DtemplateName="Sourcedb_to_Spanner_Flex" \
--Dparameters="jdbcDriverJars=$JDBC_DRIVER_JARS,jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME,sourceConfigURL=$SOURCE_CONFIG_URL,username=$USERNAME,password=$PASSWORD,tables=$TABLES,numPartitions=$NUM_PARTITIONS,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,maxConnections=$MAX_CONNECTIONS,sessionFilePath=$SESSION_FILE_PATH,outputDirectory=$OUTPUT_DIRECTORY,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE,defaultLogLevel=$DEFAULT_LOG_LEVEL" \
+-Dparameters="jdbcDriverJars=$JDBC_DRIVER_JARS,jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME,sourceConfigURL=$SOURCE_CONFIG_URL,tables=$TABLES,numPartitions=$NUM_PARTITIONS,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,maxConnections=$MAX_CONNECTIONS,sessionFilePath=$SESSION_FILE_PATH,outputDirectory=$OUTPUT_DIRECTORY,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE,defaultLogLevel=$DEFAULT_LOG_LEVEL" \
 -f v2/sourcedb-to-spanner
 ```
 
@@ -371,13 +363,7 @@ For bulk data migration from AstraDB to spanner, here are a few prerequisites yo
 2. Ensure that the VPC has network connectivity to your AstraDB instance.
 #### Prerequisite-2: AstraDB credentials and related details
 You will need the following Astra DB details:
-1. AstraDB token.
-   1. The AstraDB token can be generated from the database page.
-   2. Please ensure that the token remains valid till the duration of the migration. Depending on the size of the database, the migration can take a few hours.
-2. AstraDB Database ID
-3. AstraDB Region - Leave it empty for default region.
-4. AstraDB Keyspace - The keyspace you want to migrate to spanner.
-Note that the template will automatically download the security bundle from the database.
+1. AstraDB connection config JSON file uploaded to GCS. See [sample](src/test/resources/SourceConfig/astra-connection-config.json).
 
 #### Prerequisite-3: Active Astra DB database
 Please ensure that the AstraDB instance is active (not hibernated) through the migration.
@@ -419,13 +405,8 @@ eport  MACHINE_TYPE="<WORKER_MACHINE_TYPE>"
 export INSTANCE_ID=<spanner instanceId>
 export DATABASE_ID=<spanner databaseId>
 export PROJECT_ID=<spanner projectId>
-## Either the token directly (starting with `AstraCS`), or URL to gcp secret store.
-ASTRA_DB_APPLICATION_TOKEN="AstraCS:<Your-Astra-DB-Token>"
-## Astra DB database ID.
-ASTRA_DB_ID="<Your-Astra-DB-ID>"
-ASTRA_DB_KEYSPACE="<Your-Astra-DB-Key-Space>"
-## Astra DB region. Leave empty for default region.
-ASTRA_DB_REGION="<Your-Astra-DB-Region>"
+## Path to Astra connection config file in GCS.
+export SOURCE_CONFIG_URL="gs://<your-bucket>/astra-connection-config.json"
 #### Stores DLQ.
 export OUTPUT_DIRECTORY=<outputDirectory>
 
@@ -471,11 +452,8 @@ gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
   --additional-experiments="[\"disable_runner_v2\"]" \
   --parameters "sourceDbDialect=ASTRA_DB" \
+  --parameters "sourceConfigURL=$SOURCE_CONFIG_URL" \
   --parameters "insertOnlyModeForSpannerMutations=$INSERT_ONLY_MODE_FOR_SPANNER_MUTATIONS" \
-  --parameters "astraDBToken=${ASTRA_DB_APPLICATION_TOKEN}" \
-  --parameters "astraDBRegion=${ASTRA_DB_REGION}" \
-  --parameters "astraDBDatabaseId=${ASTRA_DB_ID}" \
-  --parameters "astraDBKeySpace=${ASTRA_DB_KEYSPACE}" \
   --parameters "instanceId=$INSTANCE_ID" \
   --parameters "databaseId=$DATABASE_ID" \
   --parameters "projectId=$PROJECT_ID" \
@@ -519,9 +497,7 @@ resource "google_dataflow_flex_template_job" "sourcedb_to_spanner_flex" {
     instanceId = "<instanceId>"
     databaseId = "<databaseId>"
     projectId = "<projectId>"
-    sourceConfigURL = "jdbc:mysql://some-host:3306/sampledb"
-    username = "<username>"
-    password = "<password>"
+    sourceConfigURL = "gs://your-bucket/source-config.json"
     outputDirectory = "gs://your-bucket/dir"
 
     # jdbcDriverJars = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar"

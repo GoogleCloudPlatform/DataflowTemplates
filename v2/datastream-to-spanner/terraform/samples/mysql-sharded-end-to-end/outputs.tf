@@ -1,18 +1,25 @@
 # Resource IDs (Structured by Shard ID)
 output "resource_ids" {
   description = "IDs of resources created, organized by shard ID."
-  value = {
-    for idx, shard in var.shard_list :
-    (shard.shard_id != null ? shard.shard_id : random_pet.migration_id[idx].id) => {
-      datastream_source_connection_profile = google_datastream_connection_profile.source_mysql[idx].connection_profile_id
-      datastream_target_connection_profile = google_datastream_connection_profile.target_gcs[idx].connection_profile_id
-      datastream_stream                    = google_datastream_stream.mysql_to_gcs[idx].stream_id
-      gcs_bucket                           = google_storage_bucket.datastream_bucket[idx].name
-      pubsub_topic                         = google_pubsub_topic.datastream_topic[idx].name
-      pubsub_subscription                  = google_pubsub_subscription.datastream_subscription[idx].name
-      dataflow_job                         = var.common_params.dataflow_params.skip_dataflow ? "" : google_dataflow_flex_template_job.live_migration_job[idx].job_id
+  value = merge(
+    {
+      for idx, shard in var.shard_list :
+      (shard.shard_id != null ? shard.shard_id : random_pet.migration_id[idx].id) => {
+        datastream_source_connection_profile = google_datastream_connection_profile.source_mysql[idx].connection_profile_id
+        datastream_target_connection_profile = google_datastream_connection_profile.target_gcs[idx].connection_profile_id
+        datastream_stream                    = google_datastream_stream.mysql_to_gcs[idx].stream_id
+        gcs_bucket                           = google_storage_bucket.datastream_bucket[idx].name
+        pubsub_topic                         = google_pubsub_topic.datastream_topic[idx].name
+        pubsub_subscription                  = google_pubsub_subscription.datastream_subscription[idx].name
+        dataflow_job                         = var.common_params.dataflow_params.skip_dataflow ? "" : google_dataflow_flex_template_job.live_migration_job[idx].job_id
+      }
+    },
+    {
+      dlq_poller_function          = var.common_params.create_cutover_monitoring_dashboard && !var.common_params.dataflow_params.skip_dataflow ? google_cloudfunctions2_function.dlq_poller[0].name : ""
+      dlq_poller_scheduler         = var.common_params.create_cutover_monitoring_dashboard && !var.common_params.dataflow_params.skip_dataflow ? google_cloud_scheduler_job.dlq_poller_scheduler[0].name : ""
+      cutover_monitoring_dashboard = var.common_params.create_cutover_monitoring_dashboard && !var.common_params.dataflow_params.skip_dataflow ? basename(google_monitoring_dashboard.cutover_dashboard[0].id) : ""
     }
-  }
+  )
 
   depends_on = [
     random_pet.migration_id,
@@ -22,25 +29,35 @@ output "resource_ids" {
     google_storage_bucket.datastream_bucket,
     google_pubsub_topic.datastream_topic,
     google_pubsub_subscription.datastream_subscription,
-    google_dataflow_flex_template_job.live_migration_job
+    google_dataflow_flex_template_job.live_migration_job,
+    google_cloudfunctions2_function.dlq_poller,
+    google_cloud_scheduler_job.dlq_poller_scheduler,
+    google_monitoring_dashboard.cutover_dashboard
   ]
 }
 
 # Resource URLs (Structured by Shard ID)
 output "resource_urls" {
   description = "URLs to access resources in the Google Cloud Console, organized by shard ID."
-  value = {
-    for idx, shard in var.shard_list :
-    (shard.shard_id != null ? shard.shard_id : random_pet.migration_id[idx].id) => {
-      datastream_source_connection_profile = "https://console.cloud.google.com/datastream/connection-profiles/locations/${var.common_params.region}/instances/${google_datastream_connection_profile.source_mysql[idx].connection_profile_id}?project=${var.common_params.project}"
-      datastream_target_connection_profile = "https://console.cloud.google.com/datastream/connection-profiles/locations/${var.common_params.region}/instances/${google_datastream_connection_profile.target_gcs[idx].connection_profile_id}?project=${var.common_params.project}"
-      datastream_stream                    = "https://console.cloud.google.com/datastream/streams/locations/${var.common_params.region}/instances/${google_datastream_stream.mysql_to_gcs[idx].stream_id}?project=${var.common_params.project}"
-      gcs_bucket                           = "https://console.cloud.google.com/storage/browser/${google_storage_bucket.datastream_bucket[idx].name}?project=${var.common_params.project}"
-      pubsub_topic                         = "https://console.cloud.google.com/cloudpubsub/topic/detail/${google_pubsub_topic.datastream_topic[idx].name}?project=${var.common_params.project}"
-      pubsub_subscription                  = "https://console.cloud.google.com/cloudpubsub/subscription/detail/${google_pubsub_subscription.datastream_subscription[idx].name}?project=${var.common_params.project}"
-      dataflow_job                         = var.common_params.dataflow_params.skip_dataflow ? "" : "https://console.cloud.google.com/dataflow/jobs/${var.common_params.region}/${google_dataflow_flex_template_job.live_migration_job[idx].job_id}?project=${var.common_params.project}"
+  value = merge(
+    {
+      for idx, shard in var.shard_list :
+      (shard.shard_id != null ? shard.shard_id : random_pet.migration_id[idx].id) => {
+        datastream_source_connection_profile = "https://console.cloud.google.com/datastream/connection-profiles/locations/${var.common_params.region}/instances/${google_datastream_connection_profile.source_mysql[idx].connection_profile_id}?project=${var.common_params.project}"
+        datastream_target_connection_profile = "https://console.cloud.google.com/datastream/connection-profiles/locations/${var.common_params.region}/instances/${google_datastream_connection_profile.target_gcs[idx].connection_profile_id}?project=${var.common_params.project}"
+        datastream_stream                    = "https://console.cloud.google.com/datastream/streams/locations/${var.common_params.region}/instances/${google_datastream_stream.mysql_to_gcs[idx].stream_id}?project=${var.common_params.project}"
+        gcs_bucket                           = "https://console.cloud.google.com/storage/browser/${google_storage_bucket.datastream_bucket[idx].name}?project=${var.common_params.project}"
+        pubsub_topic                         = "https://console.cloud.google.com/cloudpubsub/topic/detail/${google_pubsub_topic.datastream_topic[idx].name}?project=${var.common_params.project}"
+        pubsub_subscription                  = "https://console.cloud.google.com/cloudpubsub/subscription/detail/${google_pubsub_subscription.datastream_subscription[idx].name}?project=${var.common_params.project}"
+        dataflow_job                         = var.common_params.dataflow_params.skip_dataflow ? "" : "https://console.cloud.google.com/dataflow/jobs/${var.common_params.region}/${google_dataflow_flex_template_job.live_migration_job[idx].job_id}?project=${var.common_params.project}"
+      }
+    },
+    {
+      dlq_poller_function          = var.common_params.create_cutover_monitoring_dashboard && !var.common_params.dataflow_params.skip_dataflow ? "https://console.cloud.google.com/functions/details/${var.common_params.region}/${google_cloudfunctions2_function.dlq_poller[0].name}?project=${var.common_params.project}" : ""
+      dlq_poller_scheduler         = var.common_params.create_cutover_monitoring_dashboard && !var.common_params.dataflow_params.skip_dataflow ? "https://console.cloud.google.com/cloudscheduler/jobs/edit/${var.common_params.region}/${google_cloud_scheduler_job.dlq_poller_scheduler[0].name}?project=${var.common_params.project}" : ""
+      cutover_monitoring_dashboard = var.common_params.create_cutover_monitoring_dashboard && !var.common_params.dataflow_params.skip_dataflow ? "https://console.cloud.google.com/monitoring/dashboards/builder/${basename(google_monitoring_dashboard.cutover_dashboard[0].id)}?project=${var.common_params.project}" : ""
     }
-  }
+  )
 
   depends_on = [
     random_pet.migration_id,
@@ -50,6 +67,9 @@ output "resource_urls" {
     google_storage_bucket.datastream_bucket,
     google_pubsub_topic.datastream_topic,
     google_pubsub_subscription.datastream_subscription,
-    google_dataflow_flex_template_job.live_migration_job
+    google_dataflow_flex_template_job.live_migration_job,
+    google_cloudfunctions2_function.dlq_poller,
+    google_cloud_scheduler_job.dlq_poller_scheduler,
+    google_monitoring_dashboard.cutover_dashboard
   ]
 }

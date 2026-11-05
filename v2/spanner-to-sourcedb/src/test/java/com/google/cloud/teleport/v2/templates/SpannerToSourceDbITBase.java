@@ -16,14 +16,19 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
+import static com.google.cloud.teleport.v2.templates.constants.Constants.SOURCE_ORACLE;
+import static com.google.cloud.teleport.v2.templates.constants.Constants.SOURCE_POSTGRESQL;
+import static com.google.cloud.teleport.v2.templates.constants.Constants.SOURCE_SQLSERVER;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.cloud.teleport.v2.spanner.oracleutils.SpannerOracleResourceManager;
+import com.google.cloud.teleport.v2.templates.oracle.SharedOracleReverseITContainer;
 import com.google.common.io.Resources;
 import com.google.gson.Gson;
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -47,6 +52,7 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
+import org.apache.beam.it.jdbc.MSSQLResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,6 +60,60 @@ import org.slf4j.LoggerFactory;
 public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbITBase.class);
+  protected String testUsername;
+  protected String testUsernameShardA;
+  protected String testUsernameShardB;
+
+  private static MSSQLResourceManager staticMSSQLResourceManager;
+
+  // mcr.microsoft.com/mssql/server:2025-latest intermittently dies a few seconds after boot with a
+  // SQLPAL assertion ("ASSERT: Expression=(!currentWorker->IsPreemptiveOnEntry())").
+  private static final int MSSQL_STARTUP_ATTEMPTS = 3;
+
+  private static synchronized MSSQLResourceManager getStaticMSSQLResourceManager(String testId) {
+    synchronized (SpannerToSourceDbITBase.class) {
+      if (staticMSSQLResourceManager == null) {
+        staticMSSQLResourceManager = startSharedMssqlResourceManager();
+      }
+      MSSQLResourceManager.Builder builder = MSSQLResourceManager.builder(testId);
+      builder.setUsername(staticMSSQLResourceManager.getUsername());
+      builder.setPassword(staticMSSQLResourceManager.getPassword());
+      builder.setHost(staticMSSQLResourceManager.getHost());
+      builder.setPort(staticMSSQLResourceManager.getPort());
+      builder.useStaticContainer();
+      return builder.build();
+    }
+  }
+
+  private static MSSQLResourceManager startSharedMssqlResourceManager() {
+    RuntimeException lastFailure = null;
+    for (int attempt = 1; attempt <= MSSQL_STARTUP_ATTEMPTS; attempt++) {
+      try {
+        // SQL Server 2025 is required for the native JSON data type exercised by the ITs.
+        MSSQLResourceManager.Builder builder = MSSQLResourceManager.builder("shared");
+        builder.setContainerImageName("mcr.microsoft.com/mssql/server");
+        builder.setContainerImageTag("2025-latest");
+        return builder.build();
+      } catch (RuntimeException e) {
+        // Beam surfaces a container that never came up as ContainerLaunchException, and one that
+        // died between start and CREATE DATABASE as JDBCResourceManagerException; both are
+        // recoverable by starting a new container.
+        lastFailure = e;
+        LOG.warn(
+            "Shared SQL Server container failed to start (attempt {}/{})",
+            attempt,
+            MSSQL_STARTUP_ATTEMPTS,
+            e);
+      }
+    }
+    throw new IllegalStateException(
+        "Shared SQL Server container failed to start after " + MSSQL_STARTUP_ATTEMPTS + " attempts",
+        lastFailure);
+  }
+
+  protected MSSQLResourceManager setUpMSSQLResourceManager(String testId) {
+    return getStaticMSSQLResourceManager(testId);
+  }
 
   protected SpannerResourceManager setUpSpannerResourceManager() {
     return SpannerResourceManager.builder("rr-main-" + testName, PROJECT, REGION)
@@ -95,8 +155,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
         SpannerResourceManager.builder("rr-meta-" + testName, PROJECT, REGION)
             .maybeUseStaticInstance()
             .build();
-    String dummy = "CREATE TABLE IF NOT EXISTS t1(id INT64 ) primary key(id)";
-    spannerMetadataResourceManager.executeDdlStatement(dummy);
+    spannerMetadataResourceManager.ensureUsableAndCreateResources();
     return spannerMetadataResourceManager;
   }
 
@@ -133,34 +192,83 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
   }
 
   protected void createAndUploadShardConfigToGcs(
-      GcsResourceManager gcsResourceManager, JDBCResourceManager jdbcResourceManager)
+      GcsResourceManager gcsResourceManager,
+      Map<String, JDBCResourceManager> shardNameToJdbcResourceManagerMaps)
       throws IOException {
+
+    List<Shard> shards =
+        shardNameToJdbcResourceManagerMaps.entrySet().stream()
+            .map(e -> createShardConfig(e.getValue(), e.getKey()))
+            .toList();
+    JdbcShardConfig jdbcShardConfig = new JdbcShardConfig();
+    jdbcShardConfig.setShardConfigs(shards);
+    JsonObject jsObj = new Gson().toJsonTree(jdbcShardConfig).getAsJsonObject();
+    String shardFileContents = jsObj.toString();
+    LOG.info("Shard file contents: {}", shardFileContents);
+    gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
+  }
+
+  protected void createAndUploadShardConfigToGcs(
+      GcsResourceManager gcsResourceManager, JDBCResourceManager jdbcResourceManagers)
+      throws IOException {
+    List<Shard> shards =
+        Collections.singletonList(createShardConfig(jdbcResourceManagers, "Shard1"));
+    JdbcShardConfig jdbcShardConfig = new JdbcShardConfig();
+    jdbcShardConfig.setShardConfigs(shards);
+    JsonObject jsObj = new Gson().toJsonTree(jdbcShardConfig).getAsJsonObject();
+    String shardFileContents = jsObj.toString();
+    LOG.info("Shard file contents: {}", shardFileContents);
+    gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
+  }
+
+  private Shard createShardConfig(JDBCResourceManager jdbcResourceManager, String shardId) {
     Shard shard = new Shard();
-    shard.setLogicalShardId("Shard1");
+    shard.setLogicalShardId(shardId);
     shard.setUser(jdbcResourceManager.getUsername());
     shard.setPassword(jdbcResourceManager.getPassword());
-    if (jdbcResourceManager instanceof org.apache.beam.it.jdbc.PostgresResourceManager) {
-      org.apache.beam.it.jdbc.PostgresResourceManager pgRm =
-          (org.apache.beam.it.jdbc.PostgresResourceManager) jdbcResourceManager;
+    if (jdbcResourceManager instanceof SpannerOracleResourceManager) {
+      // Oracle ITs write to a per-test isolated user (schema) on the shared Oracle container.
+      if (shardId.equals("Shard1") && testUsername != null) {
+        shard.setNamespace(testUsername);
+        shard.setUser(testUsername);
+        shard.setPassword(SharedOracleReverseITContainer.ISOLATED_USER_PASSWORD);
+      } else if ((shardId.equals("shardA") || shardId.equals("testShardA"))
+          && testUsernameShardA != null) {
+        shard.setNamespace(testUsernameShardA);
+        shard.setUser(testUsernameShardA);
+        shard.setPassword(SharedOracleReverseITContainer.ISOLATED_USER_PASSWORD);
+      } else if ((shardId.equals("shardB") || shardId.equals("testShardB"))
+          && testUsernameShardB != null) {
+        shard.setNamespace(testUsernameShardB);
+        shard.setUser(testUsernameShardB);
+        shard.setPassword(SharedOracleReverseITContainer.ISOLATED_USER_PASSWORD);
+      } else {
+        throw new IllegalStateException(
+            "No isolated Oracle user created for shard "
+                + shardId
+                + "; call SharedOracleReverseITContainer.createIsolatedUser() in setUp.");
+      }
+    }
+    if (jdbcResourceManager instanceof org.apache.beam.it.jdbc.PostgresResourceManager pgRm) {
       shard.setHost(pgRm.getHost());
       shard.setPort(String.valueOf(pgRm.getPort()));
       shard.setDbName(pgRm.getDatabaseName());
-    } else if (jdbcResourceManager instanceof org.apache.beam.it.jdbc.MySQLResourceManager) {
-      org.apache.beam.it.jdbc.MySQLResourceManager mySqlRm =
-          (org.apache.beam.it.jdbc.MySQLResourceManager) jdbcResourceManager;
+    } else if (jdbcResourceManager instanceof MySQLResourceManager mySqlRm) {
       shard.setHost(mySqlRm.getHost());
       shard.setPort(String.valueOf(mySqlRm.getPort()));
       shard.setDbName(mySqlRm.getDatabaseName());
+    } else if (jdbcResourceManager instanceof MSSQLResourceManager msSqlRm) {
+      shard.setHost(msSqlRm.getHost());
+      shard.setPort(String.valueOf(msSqlRm.getPort()));
+      shard.setDbName(msSqlRm.getDatabaseName());
+    } else if (jdbcResourceManager instanceof SpannerOracleResourceManager oracleRm) {
+      shard.setHost(oracleRm.getHost());
+      shard.setPort(String.valueOf(oracleRm.getPort()));
+      shard.setDbName(oracleRm.getDatabaseName());
     } else {
       throw new IllegalArgumentException("Unsupported JDBC resource manager type");
     }
-    JsonObject jsObj = new Gson().toJsonTree(shard).getAsJsonObject();
-    jsObj.remove("secretManagerUri"); // remove field secretManagerUri
-    JsonArray ja = new JsonArray();
-    ja.add(jsObj);
-    String shardFileContents = ja.toString();
-    LOG.info("Shard file contents: {}", shardFileContents);
-    gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
+    return shard;
   }
 
   protected CassandraResourceManager generateKeyspaceAndBuildCassandraResource() {
@@ -217,6 +325,13 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     gcsResourceManager.createArtifact("input/cassandra-config.conf", cassandraConfigContents);
   }
 
+  protected String getSpannerServerTime(
+      SpannerResourceManager spannerResourceManager, Dialect dialect) {
+    String query =
+        dialect == Dialect.POSTGRESQL ? "SELECT CURRENT_TIMESTAMP" : "SELECT CURRENT_TIMESTAMP()";
+    return spannerResourceManager.runQuery(query).get(0).getTimestamp(0).toString();
+  }
+
   public PipelineLauncher.LaunchInfo launchDataflowJob(
       GcsResourceManager gcsResourceManager,
       SpannerResourceManager spannerResourceManager,
@@ -229,6 +344,35 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       CustomTransformation customTransformation,
       String sourceType,
       Map<String, String> jobParameters)
+      throws IOException {
+    return launchDataflowJob(
+        gcsResourceManager,
+        spannerResourceManager,
+        spannerMetadataResourceManager,
+        subscriptionName,
+        identifierSuffix,
+        shardingCustomJarPath,
+        shardingCustomClassName,
+        sourceDbTimezoneOffset,
+        customTransformation,
+        sourceType,
+        jobParameters,
+        Dialect.GOOGLE_STANDARD_SQL);
+  }
+
+  public PipelineLauncher.LaunchInfo launchDataflowJob(
+      GcsResourceManager gcsResourceManager,
+      SpannerResourceManager spannerResourceManager,
+      SpannerResourceManager spannerMetadataResourceManager,
+      String subscriptionName,
+      String identifierSuffix,
+      String shardingCustomJarPath,
+      String shardingCustomClassName,
+      String sourceDbTimezoneOffset,
+      CustomTransformation customTransformation,
+      String sourceType,
+      Map<String, String> jobParameters,
+      Dialect dialect)
       throws IOException {
 
     Map<String, String> params =
@@ -243,10 +387,9 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
                 "sourceShardsFilePath",
                 getGcsPath(
                     (!Objects.equals(sourceType, MYSQL_SOURCE_TYPE)
-                            && !Objects.equals(
-                                sourceType,
-                                com.google.cloud.teleport.v2.templates.constants.Constants
-                                    .SOURCE_POSTGRESQL))
+                            && !Objects.equals(sourceType, SOURCE_POSTGRESQL)
+                            && !Objects.equals(sourceType, SOURCE_SQLSERVER)
+                            && !Objects.equals(sourceType, SOURCE_ORACLE))
                         ? "input/cassandra-config.conf"
                         : "input/shard.json",
                     gcsResourceManager));
@@ -255,8 +398,11 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put("maxShardConnections", "5");
             put("maxNumWorkers", "1");
             put("numWorkers", "1");
-            put("sourceType", sourceType);
             put("workerMachineType", "n2-standard-4");
+            put("sourceType", sourceType);
+            // Query Spanner server time to bypass local clock skew and set as startTimestamp
+            // to ensure the DirectRunner catches all test mutations during initialization.
+            put("startTimestamp", getSpannerServerTime(spannerResourceManager, dialect));
           }
         };
 
@@ -295,8 +441,10 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(jobName, specPath);
     options.setParameters(params);
-    options.addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
+    options.addEnvironment(
+        "additionalExperiments", List.of("use_runner_v2", "enable_streaming_rightfitting"));
     options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
+    options.addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
     // Run
     PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options);
     assertThatPipeline(jobInfo).isRunning();
@@ -333,7 +481,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     }
   }
 
-  protected void createMySQLSchema(MySQLResourceManager jdbcResourceManager, String mySqlSchemaFile)
+  protected void createMySQLSchema(JDBCResourceManager jdbcResourceManager, String mySqlSchemaFile)
       throws IOException {
     HashMap<String, String> columns = new HashMap<>();
     columns.put("id", "INT NOT NULL");
@@ -503,6 +651,22 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       jdbcResourceManager.runSQLUpdate(ddl);
     } catch (Exception e) {
       throw new RuntimeException("Error executing DDL statement: " + ddl, e);
+    }
+  }
+
+  protected void createSQLServerSchema(
+      MSSQLResourceManager jdbcResourceManager, String sqlServerSchemaFile) throws IOException {
+    String ddl =
+        String.join(
+            " ",
+            Resources.readLines(
+                Resources.getResource(sqlServerSchemaFile), StandardCharsets.UTF_8));
+    ddl = ddl.trim();
+    String[] ddls = ddl.split(";");
+    for (String d : ddls) {
+      if (!d.isBlank()) {
+        jdbcResourceManager.runSQLUpdate(d);
+      }
     }
   }
 }

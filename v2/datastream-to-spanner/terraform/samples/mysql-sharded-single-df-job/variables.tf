@@ -6,7 +6,8 @@ variable "common_params" {
     region       = string
     migration_id = optional(string)
     # Will be auto-generated if not specified
-    add_policies_to_service_account = optional(bool, true)
+    add_policies_to_service_account     = optional(bool, true)
+    create_cutover_monitoring_dashboard = optional(bool, false)
     datastream_params = object({
       gcs_bucket_name               = optional(string, "live-migration")
       pubsub_topic_name             = optional(string, "live-migration")
@@ -54,7 +55,7 @@ variable "common_params" {
         transformation_class_name           = optional(string)
         filtered_events_directory           = optional(string)
         run_mode                            = optional(string)
-        local_sharding_context_path         = optional(string)
+        local_source_config_path            = optional(string)
         dead_letter_queue_directory         = optional(string)
         dlq_gcs_pub_sub_subscription        = optional(string)
       })

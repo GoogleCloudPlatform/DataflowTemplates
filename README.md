@@ -68,7 +68,7 @@ follow [GitHub's branch renaming guide](https://docs.github.com/en/repositories/
     - [Pub/Sub Subscription to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20PubSub_to_BigQuery_Flex&type=code)
     - [Pub/Sub Topic to BigQuery](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20PubSub_to_BigQuery&type=code)
     - [Pub/Sub to Avro Files on Cloud Storage](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Cloud_PubSub_to_Avro_Flex&type=code)
-    - [Pub/Sub to BigTable (YAML)](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/yaml/README_PubSub_To_BigTable_Yaml.md)
+    - [Pub/Sub to Bigtable (YAML)](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/yaml/README_PubSub_To_Bigtable_Yaml.md)
     - [Pub/Sub to Datadog](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Cloud_PubSub_to_Datadog&type=code)
     - [Pub/Sub to Elasticsearch](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20PubSub_to_Elasticsearch&type=code)
     - [Pub/Sub to JDBC](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Pubsub_to_Jdbc&type=code)

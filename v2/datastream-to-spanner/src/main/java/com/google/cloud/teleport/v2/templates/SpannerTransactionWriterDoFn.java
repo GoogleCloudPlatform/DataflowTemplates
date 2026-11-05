@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.SHARD_ID_COLUMN_NAME;
 import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.CONVERSION_ERRORS_COUNTER_NAME;
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.DROPPED_TABLE_EXCEPTIONS_COUNTER_NAME;
 import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.OTHER_PERMANENT_ERRORS_COUNTER_NAME;
 import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.RETRYABLE_ERRORS_COUNTER_NAME;
 import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.SKIPPED_EVENTS_COUNTER_NAME;
@@ -38,9 +39,10 @@ import com.google.cloud.teleport.v2.spanner.migrations.exceptions.SpannerExcepti
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.SpannerMigrationException;
 import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
-import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContextFactory;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
-import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceFactory;
+import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
+import com.google.cloud.teleport.v2.templates.source.DatastreamToSpannerSourceConnectorRegistry;
+import com.google.cloud.teleport.v2.templates.source.IDsToSpSourceConnector;
 import com.google.cloud.teleport.v2.templates.spanner.DatastreamToSpannerExceptionClassifier;
 import com.google.cloud.teleport.v2.templates.spanner.DatastreamToSpannerExceptionClassifier.ErrorTag;
 import com.google.cloud.teleport.v2.templates.utils.WatchdogRunnable;
@@ -103,6 +105,8 @@ class SpannerTransactionWriterDoFn
 
   /* SpannerAccessor must be transient so that its value is not serialized at runtime. */
   private transient SpannerAccessor spannerAccessor;
+
+  private transient IDsToSpSourceConnector sourceConnector;
   /* SpannerAccessor for shadow table database must be transient so that its value is not serialized at runtime. */
   private transient SpannerAccessor shadowTableSpannerAccessor;
 
@@ -154,7 +158,7 @@ class SpannerTransactionWriterDoFn
       Metrics.distribution(SpannerTransactionWriterDoFn.class, "spanner_writer_latency_ms");
 
   private final Counter droppedTableExceptions =
-      Metrics.counter(SpannerTransactionWriterDoFn.class, "Dropped table exceptions");
+      Metrics.counter(SpannerTransactionWriterDoFn.class, DROPPED_TABLE_EXCEPTIONS_COUNTER_NAME);
 
   // The max length of tag allowed in Spanner Transaction tags.
   private static final int MAX_TXN_TAG_LENGTH = 50;
@@ -216,6 +220,7 @@ class SpannerTransactionWriterDoFn
             : spannerAccessor;
     mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceConnector = DatastreamToSpannerSourceConnectorRegistry.getSourceConnector(sourceType);
     // Setup and start the watchdog thread.
     transactionAttemptCount = new AtomicLong(0);
     isInTransaction = new AtomicBoolean(false);
@@ -247,6 +252,7 @@ class SpannerTransactionWriterDoFn
     Ddl shadowTableDdl = c.sideInput(shadowTableDdlView);
     Instant startTimestamp = Instant.now();
     String migrationShardId = null;
+    String tableName = null;
     boolean isRetryRecord = false;
     /*
      * Try Catch block to capture any exceptions that might occur while processing
@@ -256,6 +262,21 @@ class SpannerTransactionWriterDoFn
     try {
 
       JsonNode changeEvent = mapper.readTree(msg.getPayload());
+      JsonNode tableNameNode = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY);
+      tableName = tableNameNode != null ? tableNameNode.asText() : null;
+
+      // Validate source type
+      JsonNode eventSourceTypeNode = changeEvent.get(DatastreamConstants.EVENT_SOURCE_TYPE_KEY);
+      String eventSourceType = eventSourceTypeNode != null ? eventSourceTypeNode.asText() : "";
+      if (!eventSourceType.equalsIgnoreCase(sourceType)) {
+        throw new InvalidChangeEventException(
+            "Change event with invalid source. Actual("
+                + eventSourceType
+                + "), Expected("
+                + sourceType
+                + ")");
+      }
+
       migrationShardId =
           Optional.ofNullable(changeEvent.get(SHARD_ID_COLUMN_NAME))
               .map(shardIdNode -> changeEvent.get(shardIdNode.asText()).asText())
@@ -267,13 +288,12 @@ class SpannerTransactionWriterDoFn
         isRetryRecord = true;
       }
       ChangeEventContext changeEventContext =
-          ChangeEventContextFactory.createChangeEventContext(
-              changeEvent, ddl, shadowTableDdl, shadowTablePrefix, sourceType);
+          getSourceConnector()
+              .createChangeEventContext(changeEvent, ddl, shadowTableDdl, shadowTablePrefix);
 
       // Sequence information for the current change event.
       ChangeEventSequence currentChangeEventSequence =
-          ChangeEventSequenceFactory.createChangeEventSequenceFromChangeEventContext(
-              changeEventContext);
+          getSourceConnector().createChangeEventSequenceFromChangeEventContext(changeEventContext);
 
       if (usesSeparateShadowTableDb) {
         processCrossDatabaseTransaction(
@@ -299,10 +319,13 @@ class SpannerTransactionWriterDoFn
       }
 
     } catch (DroppedTableException e) {
-      // Errors when table exists in source but was dropped during conversion. We do not output any
-      // errors to dlq for this.
-      // Note that this is not loogged to DLQ!!
-      LOG.error("Table dropped during migration for changeEventMessage {}", msg, e.getMessage());
+      // Errors when table exists in source but was dropped during conversion.
+      LOG.warn(
+          "Skipping change event for dropped table, tableName={}, changeEventMessage={}, error: {}",
+          tableName,
+          msg,
+          e.getMessage());
+      outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.SKIPPED_TABLE_EVENT_TAG);
       droppedTableExceptions.inc();
     } catch (InvalidChangeEventException e) {
       LOG.error("Invalid Change Exception", e);
@@ -395,8 +418,9 @@ class SpannerTransactionWriterDoFn
                   transactionAttemptCount.incrementAndGet();
                   // Sequence information for the last change event.
                   ChangeEventSequence previousChangeEventSequence =
-                      ChangeEventSequenceFactory.createChangeEventSequenceFromShadowTable(
-                          transaction, changeEventContext, shadowDdl, false);
+                      getSourceConnector()
+                          .createChangeEventSequenceFromShadowTable(
+                              transaction, changeEventContext, shadowDdl, false);
                   /* There was a previous event recorded with a greater sequence information
                    * than current. Hence, skip the current event.
                    */
@@ -463,8 +487,12 @@ class SpannerTransactionWriterDoFn
 
                   // Build lock query based on source type
                   ChangeEventSequence previousChangeEventSequence =
-                      ChangeEventSequenceFactory.createChangeEventSequenceFromShadowTable(
-                          shadowTxn, changeEventContext, shadowDdl, /* useSqlStatments= */ true);
+                      getSourceConnector()
+                          .createChangeEventSequenceFromShadowTable(
+                              shadowTxn,
+                              changeEventContext,
+                              shadowDdl,
+                              /* useSqlStatments= */ true);
 
                   if (previousChangeEventSequence != null
                       && previousChangeEventSequence.compareTo(currentChangeEventSequence) >= 0) {
@@ -493,7 +521,7 @@ class SpannerTransactionWriterDoFn
                                 // this
                                 // thread gets killed.
                                 ChangeEventSequence validationSequence =
-                                    ChangeEventSequenceFactory
+                                    getSourceConnector()
                                         .createChangeEventSequenceFromShadowTable(
                                             shadowTxn,
                                             changeEventContext,
@@ -575,6 +603,17 @@ class SpannerTransactionWriterDoFn
       txnTag = txnTag.substring(0, MAX_TXN_TAG_LENGTH);
     }
     return txnTag;
+  }
+
+  private IDsToSpSourceConnector getSourceConnector() {
+    if (sourceConnector == null) {
+      sourceConnector = DatastreamToSpannerSourceConnectorRegistry.getSourceConnector(sourceType);
+    }
+    return sourceConnector;
+  }
+
+  void setSourceConnector(IDsToSpSourceConnector sourceConnector) {
+    this.sourceConnector = sourceConnector;
   }
 
   public void setMapper(ObjectMapper mapper) {

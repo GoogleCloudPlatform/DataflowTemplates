@@ -48,8 +48,7 @@ import org.apache.beam.sdk.schemas.logicaltypes.Time;
 import org.apache.beam.sdk.values.Row;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.ReadableInstant;
-import org.neo4j.importer.v1.targets.NodeTarget;
-import org.neo4j.importer.v1.targets.Target;
+import org.neo4j.importer.v1.pipeline.TargetStep;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,10 +75,9 @@ public class DataCastingUtils {
    */
   private static final Logger LOG = LoggerFactory.getLogger(DataCastingUtils.class);
 
-  public static List<Object> sourceTextToTargetObjects(
-      Row row, Target target, NodeTarget startNodeTarget, NodeTarget endNodeTarget) {
+  public static List<Object> sourceTextToTargetObjects(Row row, TargetStep step) {
     List<Object> castVals = new ArrayList<>();
-    Schema targetSchema = BeamUtils.toBeamSchema(target, startNodeTarget, endNodeTarget);
+    Schema targetSchema = BeamUtils.toBeamSchema(step);
 
     List<String> missingFields = new ArrayList<>();
 
@@ -139,31 +137,25 @@ public class DataCastingUtils {
             }
           case LOGICAL_TYPE:
             {
-              switch (type.getLogicalType().getIdentifier()) {
-                case NanosDuration.IDENTIFIER:
-                  castVals.add(asDuration(objVal));
-                  break;
-                case org.apache.beam.sdk.schemas.logicaltypes.Date.IDENTIFIER:
-                  castVals.add(asDate(objVal));
-                  break;
-                case org.apache.beam.sdk.schemas.logicaltypes.DateTime.IDENTIFIER:
-                  castVals.add(asDateTime(objVal, LocalDateTime::from));
-                  break;
-                case IsoDateTime.IDENTIFIER:
-                  castVals.add(asDateTime(objVal));
-                  break;
-                case Time.IDENTIFIER:
-                  castVals.add(asTime(objVal));
-                  break;
-                default:
-                  {
-                    var message =
-                        String.format(
-                            "Mapping '%s' types from text sources is not supported.", typeName);
-                    LOG.warn(message);
-                    castVals.add(null);
-                    break;
-                  }
+              String identifier = type.getLogicalType().getIdentifier();
+              if (NanosDuration.IDENTIFIER.equals(identifier)) {
+                castVals.add(asDuration(objVal));
+              } else if (org.apache.beam.sdk.schemas.logicaltypes.Date.IDENTIFIER.equals(
+                  identifier)) {
+                castVals.add(asDate(objVal));
+              } else if (org.apache.beam.sdk.schemas.logicaltypes.DateTime.IDENTIFIER.equals(
+                  identifier)) {
+                castVals.add(asDateTime(objVal, LocalDateTime::from));
+              } else if (IsoDateTime.IDENTIFIER.equals(identifier)) {
+                castVals.add(asDateTime(objVal));
+              } else if (Time.IDENTIFIER.equals(identifier)) {
+                castVals.add(asTime(objVal));
+              } else {
+                var message =
+                    String.format(
+                        "Mapping '%s' types from text sources is not supported.", typeName);
+                LOG.warn(message);
+                castVals.add(null);
               }
 
               break;
@@ -189,7 +181,7 @@ public class DataCastingUtils {
     return castVals;
   }
 
-  public static Map<String, Object> rowToNeo4jDataMap(Row row, Target target) {
+  public static Map<String, Object> rowToNeo4jDataMap(Row row) {
     Map<String, Object> map = new HashMap<>();
     for (Schema.Field field : row.getSchema().getFields()) {
       String fieldName = field.getName();

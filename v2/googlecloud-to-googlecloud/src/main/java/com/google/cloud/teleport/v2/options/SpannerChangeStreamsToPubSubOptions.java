@@ -250,4 +250,30 @@ public interface SpannerChangeStreamsToPubSubOptions extends DataflowPipelineOpt
   Boolean getUseSpannerEmulatorHost();
 
   void setUseSpannerEmulatorHost(Boolean value);
+
+  @TemplateParameter.Text(
+      order = 20,
+      optional = true,
+      groupName = "Source",
+      description =
+          "Semicolon-separated list of Spanner Change Stream TVF names to query and union.",
+      helpText = "Semicolon-separated list of Spanner Change Stream TVF names to query and union.")
+  @Default.String("")
+  String getSpannerChangeStreamTvfNameList();
+
+  void setSpannerChangeStreamTvfNameList(String value);
+
+  @TemplateParameter.Text(
+      order = 21,
+      optional = true,
+      groupName = "Source",
+      description = "Cloud Spanner directed read options",
+      helpText =
+          "Directed read options for Cloud Spanner Change Stream reads. The value must be a JSON string format of"
+              + " DirectedReadOptions (e.g. {\"includeReplicas\":{\"replicaSelections\":[{\"location\":\"us-central1\",\"type\":\"READ_ONLY\"}]}})."
+              + " For more information, see Directed reads (https://docs.cloud.google.com/spanner/docs/directed-reads).")
+  @Default.String("")
+  String getSpannerDirectedReadOptions();
+
+  void setSpannerDirectedReadOptions(String value);
 }

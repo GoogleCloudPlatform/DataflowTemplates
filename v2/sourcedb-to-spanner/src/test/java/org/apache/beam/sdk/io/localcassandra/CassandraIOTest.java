@@ -34,7 +34,7 @@ import com.datastax.driver.mapping.annotations.Column;
 import com.datastax.driver.mapping.annotations.Computed;
 import com.datastax.driver.mapping.annotations.PartitionKey;
 import com.datastax.driver.mapping.annotations.Table;
-import com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.EmbeddedCassandra;
+import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.testutils.EmbeddedCassandra;
 import java.io.Serializable;
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
@@ -83,6 +83,8 @@ import org.slf4j.LoggerFactory;
 })
 public class CassandraIOTest implements Serializable {
   private static final long NUM_ROWS = 22L;
+  private static final int MAX_RETRIES = 3;
+  private static final int RETRY_DELAY_MS = 1000;
   private static final String CASSANDRA_KEYSPACE = "beam_ks";
   private static String cassandraHost = "127.0.0.1";
   private static InetSocketAddress cassandraInetSocketAddress;
@@ -111,7 +113,19 @@ public class CassandraIOTest implements Serializable {
    */
   @BeforeClass
   public static void beforeClass() throws Exception {
-    embeddedCassandra = new EmbeddedCassandra("/CassandraUT/beamUTConfig.yaml", null, false);
+    for (int i = 0; i < MAX_RETRIES; i++) {
+      try {
+        embeddedCassandra = new EmbeddedCassandra("/CassandraUT/beamUTConfig.yaml", null, false);
+        break;
+      } catch (Exception e) {
+        if (i == MAX_RETRIES - 1) {
+          LOG.error("Failed to start Embedded Cassandra on final attempt.", e);
+          throw e;
+        }
+        LOG.warn("Failed to start Embedded Cassandra on attempt {}. Retrying...", i + 1, e);
+        Thread.sleep(RETRY_DELAY_MS);
+      }
+    }
     jmxPort = NetworkTestHelper.getAvailableLocalPort();
     cassandraInetSocketAddress = embeddedCassandra.getContactPoints().get(0);
     cassandraHost = cassandraInetSocketAddress.getHostString();

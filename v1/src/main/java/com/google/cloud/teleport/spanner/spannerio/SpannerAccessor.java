@@ -28,6 +28,7 @@ import com.google.cloud.spanner.BatchClient;
 import com.google.cloud.spanner.DatabaseAdminClient;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.DatabaseId;
+import com.google.cloud.spanner.InstanceAdminClient;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.spanner.v1.stub.SpannerStubSettings;
@@ -291,6 +292,10 @@ public class SpannerAccessor implements AutoCloseable {
 
   public DatabaseAdminClient getDatabaseAdminClient() {
     return databaseAdminClient;
+  }
+
+  public InstanceAdminClient getInstanceAdminClient() {
+    return spanner.getInstanceAdminClient();
   }
 
   public String getInstanceConfigId() {

@@ -16,16 +16,17 @@
 package com.google.cloud.teleport.v2.templates.sink;
 
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
+import com.google.cloud.teleport.v2.templates.model.SinkConfig;
 import java.io.IOException;
 
 public interface SinkSchemaFetcher {
 
   /**
-   * Initializes the fetcher with the given JSON configuration.
+   * Initializes the fetcher with the given parsed configuration.
    *
-   * @param jsonData The JSON string containing configuration options specific to the sink.
+   * @param sinkConfig The parsed configuration object specific to the sink.
    */
-  void init(String sinkConfigPath);
+  void init(SinkConfig sinkConfig);
 
   /**
    * Fetches the schema definition from the sink.

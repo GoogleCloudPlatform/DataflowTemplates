@@ -54,4 +54,21 @@ public class CloudMySQLResourceManagerTest {
   public void testGetJDBCPrefixReturnsCorrectValue() {
     assertThat(testManager.getJDBCPrefix()).isEqualTo("mysql");
   }
+
+  @Test
+  public void testBuilder() {
+    CloudMySQLResourceManager.Builder builder = CloudMySQLResourceManager.builder(TEST_ID);
+
+    com.google.auth.oauth2.GoogleCredentials credentials =
+        org.mockito.Mockito.mock(com.google.auth.oauth2.GoogleCredentials.class);
+    builder
+        .setProjectId("test-project")
+        .setRegion("test-region")
+        .setCredentials(credentials)
+        .maybeUseStaticInstance("1.1.1.1", 3306, "u", "p");
+
+    assertThat(builder.projectId).isEqualTo("test-project");
+    assertThat(builder.region).isEqualTo("test-region");
+    assertThat(builder.credentials).isEqualTo(credentials);
+  }
 }

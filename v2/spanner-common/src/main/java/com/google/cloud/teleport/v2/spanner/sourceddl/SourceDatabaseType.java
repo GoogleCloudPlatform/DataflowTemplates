@@ -22,5 +22,6 @@ public enum SourceDatabaseType {
   CASSANDRA,
   ORACLE,
   SQLSERVER,
+  SPANNER,
   // Add more database types as needed
 }

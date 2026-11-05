@@ -171,7 +171,7 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(15)),
                 () -> getRowCount(CUSTOMER_TABLE) == 1);
 
     /*

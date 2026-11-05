@@ -43,11 +43,15 @@ import net.sf.jsqlparser.statement.select.OrderByElement;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.commons.lang3.StringUtils;
+import org.neo4j.importer.v1.pipeline.CustomQueryTargetStep;
+import org.neo4j.importer.v1.pipeline.EntityTargetStep;
+import org.neo4j.importer.v1.pipeline.NodeTargetStep;
+import org.neo4j.importer.v1.pipeline.RelationshipTargetStep;
+import org.neo4j.importer.v1.pipeline.TargetStep;
 import org.neo4j.importer.v1.targets.EntityTarget;
 import org.neo4j.importer.v1.targets.NodeTarget;
 import org.neo4j.importer.v1.targets.PropertyMapping;
 import org.neo4j.importer.v1.targets.RelationshipTarget;
-import org.neo4j.importer.v1.targets.Target;
 import org.neo4j.importer.v1.targets.TargetType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,12 +61,12 @@ public class ModelUtils {
   private static final Pattern variablePattern = Pattern.compile("(\\$([a-zA-Z0-9_]+))");
   private static final Logger LOG = LoggerFactory.getLogger(ModelUtils.class);
 
-  public static boolean targetHasTransforms(Target target) {
-    if (target.getTargetType() == TargetType.QUERY) {
+  public static boolean targetHasTransforms(TargetStep step) {
+    if (step instanceof CustomQueryTargetStep) {
       return false;
     }
     Optional<SourceTransformations> sourceTransformations =
-        ((EntityTarget) target).getExtension(SourceTransformations.class);
+        ((EntityTargetStep) step).extension(SourceTransformations.class);
     if (sourceTransformations.isEmpty()) {
       return false;
     }
@@ -77,47 +81,48 @@ public class ModelUtils {
     return new HashSet<>(schema.getFieldNames());
   }
 
-  public static String getTargetSql(
-      Target target,
-      NodeTarget startNodeTarget,
-      NodeTarget endNodeTarget,
-      Set<String> fieldNameMap,
-      boolean generateSqlSort) {
-    return getTargetSql(
-        target, startNodeTarget, endNodeTarget, fieldNameMap, generateSqlSort, null);
+  // note: use scarcely - instanceof is usually better suited
+  public static TargetType targetType(TargetStep step) {
+    if (step instanceof NodeTargetStep) {
+      return TargetType.NODE;
+    }
+    if (step instanceof RelationshipTargetStep) {
+      return TargetType.RELATIONSHIP;
+    }
+    if (step instanceof CustomQueryTargetStep) {
+      return TargetType.QUERY;
+    }
+    throw new IllegalArgumentException(
+        "Could not infer target type from: %s".formatted(step.getClass().getName()));
   }
 
   public static String getTargetSql(
-      Target target,
-      NodeTarget startNodeTarget,
-      NodeTarget endNodeTarget,
-      Set<String> fieldNameMap,
-      boolean generateSqlSort,
-      String baseSql) {
+      TargetStep target, Set<String> fieldNameMap, boolean generateSqlSort) {
+    return getTargetSql(target, fieldNameMap, generateSqlSort, null);
+  }
 
-    TargetType targetType = target.getTargetType();
-    if (targetType != TargetType.NODE && targetType != TargetType.RELATIONSHIP) {
+  public static String getTargetSql(
+      TargetStep target, Set<String> fieldNameMap, boolean generateSqlSort, String baseSql) {
+
+    if (!(target instanceof EntityTargetStep)) {
       throw new IllegalArgumentException(
-          String.format("Expected node or relationship target, got %s", targetType));
+          String.format(
+              "Expected node or relationship target, got %s", target.getClass().getName()));
     }
 
-    var transformations = ((EntityTarget) target).getExtension(SourceTransformations.class);
+    Optional<SourceTransformations> transformations =
+        ((EntityTargetStep) target).extension(SourceTransformations.class);
     try {
       var statement = new PlainSelect();
       statement.withFromItem(new Table("PCOLLECTION"));
       if (generateSqlSort) {
         List<OrderByElement> sqlOrderBy = new ArrayList<>();
-        if (targetType == TargetType.RELATIONSHIP) {
-          var reversedMappings =
-              endNodeTarget.getProperties().stream()
-                  .collect(
-                      Collectors.toMap(
-                          PropertyMapping::getTargetProperty, PropertyMapping::getSourceField));
-          for (String key : getKeyProperties(endNodeTarget)) {
-            String keyField = reversedMappings.get(key);
-            String field = CypherPatterns.sanitize(keyField);
+        if (target instanceof RelationshipTargetStep relationshipStep) {
+          for (var keyMapping : relationshipStep.endNode().keyProperties()) {
+            var escapedSourceField = "`%s`".formatted(keyMapping.getSourceField());
             sqlOrderBy.add(
-                new OrderByElement().withExpression(CCJSqlParserUtil.parseExpression(field)));
+                new OrderByElement()
+                    .withExpression(CCJSqlParserUtil.parseExpression(escapedSourceField)));
           }
         }
         if (sqlOrderBy.isEmpty() && transformations.isPresent()) {
@@ -140,19 +145,18 @@ public class ModelUtils {
         var transforms = transformations.get();
         List<Aggregation> aggregations = transforms.aggregations();
         if (transforms.enableGrouping() || aggregations != null && !aggregations.isEmpty()) {
-          Set<PropertyMapping> allProperties =
-              getAllPropertyMappings((EntityTarget) target, startNodeTarget, endNodeTarget);
+          var allProperties = getAllPropertyMappings(target);
           Column[] groupByFields =
               allProperties.stream()
                   .map(PropertyMapping::getSourceField)
                   .filter(fieldNameMap::contains)
-                  .map(field -> new Column(CypherPatterns.sanitize(field)))
+                  .map(field -> new Column("`%s`".formatted(field)))
                   .toArray(Column[]::new);
           if (groupByFields.length == 0) {
             throw new RuntimeException(
                 String.format(
                     "Could not find mapped fields for target: %s. Please verify that target fields exist in source query.",
-                    target.getName()));
+                    target.name()));
           }
           statement.addSelectItems(groupByFields);
           if (aggregations != null) {
@@ -192,18 +196,26 @@ public class ModelUtils {
     }
   }
 
-  public static Set<PropertyMapping> getAllPropertyMappings(EntityTarget entityTarget) {
-    return getAllPropertyMappings(entityTarget, null, null);
+  public static List<PropertyMapping> getAllPropertyMappings(TargetStep step) {
+    if (!(step instanceof RelationshipTargetStep relationshipTargetStep)) {
+      return getPropertyMappings(step);
+    }
+
+    Set<PropertyMapping> result = new LinkedHashSet<>(relationshipTargetStep.keyProperties());
+    result.addAll(relationshipTargetStep.nonKeyProperties());
+    result.addAll(relationshipTargetStep.startNode().keyProperties());
+    result.addAll(relationshipTargetStep.endNode().keyProperties());
+    return new ArrayList<>(result);
   }
 
-  public static Set<PropertyMapping> getAllPropertyMappings(
-      EntityTarget entityTarget, NodeTarget startNodeTarget, NodeTarget endNodeTarget) {
-    Set<PropertyMapping> result = new LinkedHashSet<>(entityTarget.getProperties());
-    if (startNodeTarget != null && endNodeTarget != null) {
-      result.addAll(startNodeTarget.getProperties());
-      result.addAll(endNodeTarget.getProperties());
+  public static List<PropertyMapping> getPropertyMappings(TargetStep step) {
+    if (!(step instanceof EntityTargetStep entityTargetStep)) {
+      return List.of();
     }
-    return result;
+
+    Set<PropertyMapping> result = new LinkedHashSet<>(entityTargetStep.keyProperties());
+    result.addAll(entityTargetStep.nonKeyProperties());
+    return new ArrayList<>(result);
   }
 
   public static String replaceVariableTokens(String text, Map<String, String> replacements) {

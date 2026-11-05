@@ -32,6 +32,9 @@ public abstract class DataGeneratorColumn implements Serializable {
   /** Whether the column is nullable. */
   public abstract boolean isNullable();
 
+  /** Whether the column is a primary key. */
+  public abstract boolean isPrimaryKey();
+
   /** Whether the column is skipped. */
   public abstract boolean isSkipped();
 
@@ -50,12 +53,15 @@ public abstract class DataGeneratorColumn implements Serializable {
   @Nullable
   public abstract Integer scale();
 
-  // TODO: Add fields for generation rule configuration here once data config is
-  // supported.
+  /** The custom generator for this column (e.g., Faker expression). */
+  @Nullable
+  public abstract Object fakerExpression();
 
   public static Builder builder() {
-    return new AutoValue_DataGeneratorColumn.Builder().isSkipped(false);
+    return new AutoValue_DataGeneratorColumn.Builder().isSkipped(false).isPrimaryKey(false);
   }
+
+  public abstract Builder toBuilder();
 
   @AutoValue.Builder
   public abstract static class Builder {
@@ -74,6 +80,10 @@ public abstract class DataGeneratorColumn implements Serializable {
     public abstract Builder precision(Integer precision);
 
     public abstract Builder scale(Integer scale);
+
+    public abstract Builder fakerExpression(Object fakerExpression);
+
+    public abstract Builder isPrimaryKey(boolean isPrimaryKey);
 
     public abstract DataGeneratorColumn build();
   }

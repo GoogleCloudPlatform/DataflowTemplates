@@ -94,6 +94,7 @@ public final class SpannerResourceManagerTest {
   @Captor private ArgumentCaptor<Iterable<String>> statementCaptor;
   @Captor private ArgumentCaptor<String> instanceIdCaptor;
   @Captor private ArgumentCaptor<String> databaseIdCaptor;
+  @Captor private ArgumentCaptor<Database> databaseCaptor;
   @Captor private ArgumentCaptor<String> projectIdCaptor;
 
   @Before
@@ -153,7 +154,10 @@ public final class SpannerResourceManagerTest {
     // arrange
     prepareCreateInstanceMock();
     prepareCreateDatabaseMock();
-    when(spanner.getDatabaseAdminClient().updateDatabaseDdl(any(), any(), any(), any()).get())
+    when(spanner
+            .getDatabaseAdminClient()
+            .updateDatabaseDdl(any(Database.class), any(), any())
+            .get())
         .thenThrow(InterruptedException.class);
     String statement =
         "CREATE TABLE Singers (\n"
@@ -190,14 +194,10 @@ public final class SpannerResourceManagerTest {
     verify(spanner.getInstanceAdminClient(), times(2)).createInstance(any());
     verify(spanner.getDatabaseAdminClient(), times(2)).createDatabase(any(), any());
     verify(spanner.getDatabaseAdminClient(), times(2))
-        .updateDatabaseDdl(
-            instanceIdCaptor.capture(),
-            databaseIdCaptor.capture(),
-            statementCaptor.capture(),
-            any());
+        .updateDatabaseDdl(databaseCaptor.capture(), statementCaptor.capture(), any());
 
-    String actualInstanceId = instanceIdCaptor.getValue();
-    String actualDatabaseId = databaseIdCaptor.getValue();
+    String actualInstanceId = testManager.getInstanceId();
+    String actualDatabaseId = testManager.getDatabaseId();
     Iterable<String> actualStatement = statementCaptor.getValue();
 
     assertThat(actualInstanceId).matches(TEST_ID + "-\\d{8}-\\d{6}-[a-zA-Z0-9]{6}");
@@ -222,7 +222,10 @@ public final class SpannerResourceManagerTest {
     RuntimeException resourceExhaustedException =
         new RuntimeException(
             "com.google.cloud.spanner.SpannerException: RESOURCE_EXHAUSTED: io.grpc.StatusRuntimeException: RESOURCE_EXHAUSTED: CPU overload detected");
-    when(spanner.getDatabaseAdminClient().updateDatabaseDdl(any(), any(), any(), any()).get())
+    when(spanner
+            .getDatabaseAdminClient()
+            .updateDatabaseDdl(any(Database.class), any(), any())
+            .get())
         .thenThrow(resourceExhaustedException)
         .thenReturn(null);
 
@@ -234,14 +237,10 @@ public final class SpannerResourceManagerTest {
     verify(spanner.getInstanceAdminClient(), times(2)).createInstance(any());
     verify(spanner.getDatabaseAdminClient(), times(2)).createDatabase(any(), any());
     verify(spanner.getDatabaseAdminClient(), times(3))
-        .updateDatabaseDdl(
-            instanceIdCaptor.capture(),
-            databaseIdCaptor.capture(),
-            statementCaptor.capture(),
-            any());
+        .updateDatabaseDdl(databaseCaptor.capture(), statementCaptor.capture(), any());
 
-    String actualInstanceId = instanceIdCaptor.getValue();
-    String actualDatabaseId = databaseIdCaptor.getValue();
+    String actualInstanceId = testManager.getInstanceId();
+    String actualDatabaseId = testManager.getDatabaseId();
     Iterable<String> actualStatement = statementCaptor.getValue();
 
     assertThat(actualInstanceId).matches(TEST_ID + "-\\d{8}-\\d{6}-[a-zA-Z0-9]{6}");
@@ -772,6 +771,69 @@ public final class SpannerResourceManagerTest {
   }
 
   @Test
+  public void testUseStaticDatabaseThrowsExceptionWhenDatabaseIdNotSet() {
+    assertThrows(
+        SpannerResourceManagerException.class,
+        () ->
+            new SpannerResourceManager(
+                SpannerResourceManager.builder(TEST_ID, PROJECT_ID, REGION, DIALECT)
+                    .setInstanceId("existing-instance")
+                    .useStaticDatabase(),
+                spanner));
+  }
+
+  @Test
+  public void testCleanupAllShouldNotDropDatabaseOrDeleteInstanceWhenStaticDatabase() {
+    when(spanner.getInstanceAdminClient()).thenReturn(instanceAdminClient);
+    when(spanner.getDatabaseAdminClient()).thenReturn(databaseAdminClient);
+    testManager =
+        new SpannerResourceManager(
+            SpannerResourceManager.builder(TEST_ID, PROJECT_ID, REGION, DIALECT)
+                .setInstanceId("existing-instance")
+                .setDatabaseId("existing-database")
+                .useStaticDatabase(),
+            spanner);
+
+    // act
+    testManager.cleanupAll();
+
+    // assert
+    assertThat(testManager.getProjectId()).isEqualTo(PROJECT_ID);
+    assertThat(testManager.getInstanceId()).isEqualTo("existing-instance");
+    assertThat(testManager.getDatabaseId()).isEqualTo("existing-database");
+    verify(spanner.getDatabaseAdminClient(), never()).dropDatabase(any(), any());
+    verify(spanner.getInstanceAdminClient(), never()).deleteInstance(any());
+    verify(spanner).close();
+  }
+
+  @Test
+  public void testCollectMetricsShouldWorkWithStaticDatabaseWithoutDdl() {
+    when(monitoringClient.getAggregatedMetric(any(), any(), any(), any())).thenReturn(0.75);
+    SpannerResourceManager staticDbManager =
+        new SpannerResourceManager(
+            SpannerResourceManager.builder(TEST_ID, PROJECT_ID, REGION, DIALECT)
+                .setInstanceId("existing-instance")
+                .setDatabaseId("existing-database")
+                .useStaticDatabase()
+                .setMonitoringClient(monitoringClient),
+            spanner);
+
+    Map<String, Double> metrics = new HashMap<>();
+    staticDbManager.collectMetrics(metrics);
+
+    assertEquals(2, metrics.size());
+    assertEquals(0.75, metrics.get("Spanner_AverageCpuUtilization"), 0.0);
+    assertEquals(0.75, metrics.get("Spanner_MaxCpuUtilization"), 0.0);
+    ArgumentCaptor<String> filterCaptor = ArgumentCaptor.forClass(String.class);
+    verify(monitoringClient, times(2))
+        .getAggregatedMetric(projectIdCaptor.capture(), filterCaptor.capture(), any(), any());
+    assertThat(projectIdCaptor.getValue()).isEqualTo(PROJECT_ID);
+    assertThat(filterCaptor.getValue())
+        .contains("resource.label.instance_id=\"existing-instance\"");
+    assertThat(filterCaptor.getValue()).contains("metric.label.database=\"existing-database\"");
+  }
+
+  @Test
   public void testCollectMetricsThrowsExceptionWhenMonitoringClientIsNotInitialized() {
     assertThrows(
         SpannerResourceManagerException.class, () -> testManager.collectMetrics(new HashMap<>()));
@@ -826,7 +888,11 @@ public final class SpannerResourceManagerTest {
 
   private void prepareUpdateDatabaseMock() throws ExecutionException, InterruptedException {
     Mockito.lenient()
-        .when(spanner.getDatabaseAdminClient().updateDatabaseDdl(any(), any(), any(), any()).get())
+        .when(
+            spanner
+                .getDatabaseAdminClient()
+                .updateDatabaseDdl(any(Database.class), any(), any())
+                .get())
         .thenReturn(null);
   }
 

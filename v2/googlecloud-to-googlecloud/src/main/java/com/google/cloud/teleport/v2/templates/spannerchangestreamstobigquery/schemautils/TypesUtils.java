@@ -47,6 +47,8 @@ public class TypesUtils {
         return Type.string();
       case "TIMESTAMP":
         return Type.timestamp();
+      case "UUID":
+        return Type.uuid();
       default:
         if (type.startsWith("ARRAY")) {
           // Get array type, e.g. "ARRAY<STRING>" -> "STRING".
@@ -57,6 +59,16 @@ public class TypesUtils {
 
         throw new IllegalArgumentException(String.format("Unsupported Spanner type: %s", type));
     }
+  }
+
+  /**
+   * Returns whether the information schema type is a TOKENLIST type, which is used by full-text
+   * search indexes. TOKENLIST columns are not tracked by change streams and can't be written to
+   * BigQuery, so they should be skipped.
+   */
+  public static boolean isInformationSchemaTokenlistType(String type) {
+    String cleanedType = cleanInformationSchemaType(type);
+    return cleanedType.equals("TOKENLIST") || cleanedType.equals("SPANNER.TOKENLIST");
   }
 
   public static Type informationSchemaPostgreSQLTypeToSpannerType(String type) {
@@ -93,6 +105,8 @@ public class TypesUtils {
         return Type.timestamp();
       case "SPANNER.COMMIT_TIMESTAMP":
         return Type.timestamp();
+      case "UUID":
+        return Type.uuid();
       default:
         throw new IllegalArgumentException(
             String.format("Unsupported Spanner PostgreSQL type: %s", type));

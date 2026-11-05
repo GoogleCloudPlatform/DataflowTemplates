@@ -216,6 +216,10 @@ class PromoteHelper {
    */
   @VisibleForTesting
   String getDigestFromTag(String tag) {
+    return getDigestFromTag(targetPath, targetSpec, tag);
+  }
+
+  static String getDigestFromTag(String targetPath, ArtifactRegImageSpec targetSpec, String tag) {
     String[] command;
     String imageReference = String.format("%s:%s", targetPath, tag);
 

@@ -22,6 +22,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
@@ -125,7 +126,8 @@ public class SpannerToMySqlDataTypesPGDialectIT extends SpannerToSourceDbITBase 
             null,
             null,
             MYSQL_SOURCE_TYPE,
-            jobParameters);
+            jobParameters,
+            Dialect.POSTGRESQL);
   }
 
   @After
@@ -148,7 +150,7 @@ public class SpannerToMySqlDataTypesPGDialectIT extends SpannerToSourceDbITBase 
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(15)),
                 buildConditionCheck(spannerTableData));
     assertThatResult(result).meetsConditions();
 

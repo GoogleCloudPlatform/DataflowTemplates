@@ -294,4 +294,23 @@ public class DockerfileGeneratorTest {
     assertThrows(IllegalArgumentException.class, () -> dockerfileBuilder.setWorkingDirectory(null));
     assertThrows(IllegalArgumentException.class, () -> dockerfileBuilder.setWorkingDirectory(""));
   }
+
+  @Test
+  public void testGenerateDockerfileWithBaseImageTag() throws IOException, TemplateException {
+    new File(outputFolder.getAbsolutePath() + "/" + containerName).mkdirs();
+    createDockerfileGeneratorBuilder(Template.TemplateType.YAML, outputFolder)
+        .setBasePythonContainerImage(":dev-image-latest")
+        .setBaseJavaContainerImage(":dev-image-latest")
+        .build()
+        .generate();
+    File outputFile =
+        new File(outputFolder.getAbsolutePath() + "/" + containerName + "/Dockerfile");
+
+    assertTrue(outputFile.exists());
+    String fileContents = Files.asCharSource(outputFile, StandardCharsets.UTF_8).read();
+    assertThat(fileContents)
+        .contains("FROM " + BASE_PYTHON_CONTAINER_IMAGE.split(":")[0] + ":dev-image-latest");
+    assertThat(fileContents)
+        .contains("FROM " + BASE_CONTAINER_IMAGE.split(":")[0] + ":dev-image-latest");
+  }
 }

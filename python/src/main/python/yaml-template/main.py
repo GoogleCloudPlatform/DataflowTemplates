@@ -15,13 +15,59 @@
 
 
 import argparse
+import tempfile
 
 from apache_beam.yaml import main
+
+import ml_dependencies
+
+# A list of default runtime dependencies that will be installed when running jobs using the
+# YAML template. These will only be installed if the caller do not provide a
+# `requirements_file` option.
+DEFAULT_DEPENDENCIES = [
+    # Packages for AWS S3.
+    'boto3',
+    'botocore',
+    # Packages for Azure Blob Storage.
+    'azure-storage-blob',
+    'azure-core',
+    'azure-identity',
+    # Customer transforms used by Job builder.
+    # When updating this, also update the container dependency in `python/default_base_yaml_requirements.txt`
+    'https://storage.googleapis.com/dataflow-templates/extra-python-packages/2026-08-20/job_builder_util_transforms-0.2.2.tar.gz',
+]
+
+
+def _get_runtime_dependencies(args):
+  """Returns the runtime dependencies to be installed for a pipeline."""
+  dependencies = (
+      DEFAULT_DEPENDENCIES + ml_dependencies.get_runtime_dependencies(args))
+  # dict.fromkeys() removes duplicates, while keeping the order.
+  return list(dict.fromkeys(dependencies))
 
 
 def run(argv=None):
   parser = argparse.ArgumentParser()
   _, args = parser.parse_known_args(argv)
+
+  has_req_file = False
+  for arg in args:
+    if arg == '--requirements_file' or arg.startswith('--requirements_file='):
+      has_req_file = True
+      break
+
+  if not has_req_file:
+    # Default dependencies, and any additional dependencies needed by ML
+    # transforms used by the pipeline.
+    dependencies = _get_runtime_dependencies(args)
+    # Create a temporary requirements.txt file with these dependencies.
+    # We use delete=False because the file needs to exist during pipeline execution.
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', prefix='requirements_', delete=False) as f:
+      for dep in dependencies:
+        f.write(f'{dep}\n')
+      temp_requirements_path = f.name
+    args.append(f'--requirements_file={temp_requirements_path}')
+
   main.run(args)
 
 

@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import com.google.cloud.teleport.v2.source.reader.io.IoWrapper;
+import com.google.cloud.teleport.v2.reader.io.IoWrapper;
 import java.util.List;
 import org.apache.beam.sdk.transforms.Wait;
 

@@ -44,12 +44,23 @@ public class CassandraConfigFileReader {
       LOG.info("Reading Cassandra configuration from: {}", cassandraConfigFilePath);
       OptionsMap optionsMap =
           CassandraDriverConfigLoader.getOptionsMapFromFile(cassandraConfigFilePath);
-      CassandraShard shard = new CassandraShard(optionsMap);
-      LOG.info("Successfully created CassandraShard: {}", shard);
-      return Collections.singletonList(shard);
+      return getCassandraShard(optionsMap);
     } catch (FileNotFoundException e) {
       throw new IllegalArgumentException(
           "Configuration file not found: " + cassandraConfigFilePath, e);
     }
+  }
+
+  /**
+   * Reads the Cassandra configuration file from the specified GCS path and converts it into a list
+   * of CassandraShard objects.
+   *
+   * @param cassandraConfigFilePath the GCS path of the Cassandra configuration file.
+   * @return a list containing the parsed CassandraShard.
+   */
+  public List<Shard> getCassandraShard(OptionsMap optionsMap) {
+    CassandraShard shard = new CassandraShard(optionsMap);
+    LOG.info("Successfully created CassandraShard: {}", shard);
+    return Collections.singletonList(shard);
   }
 }

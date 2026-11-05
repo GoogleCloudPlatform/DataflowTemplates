@@ -35,7 +35,7 @@ public final class BigQuerySchemas {
                   new TableFieldSchema()
                       .setName(MismatchedRecord.SCHEMA_NAME)
                       .setType("STRING")
-                      .setMode("REQUIRED"),
+                      .setMode("NULLABLE"),
                   new TableFieldSchema()
                       .setName(MismatchedRecord.TABLE_NAME_COLUMN_NAME)
                       .setType("STRING")
@@ -55,7 +55,11 @@ public final class BigQuerySchemas {
                   new TableFieldSchema()
                       .setName(MismatchedRecord.HASH_COLUMN_NAME)
                       .setType("STRING")
-                      .setMode("REQUIRED")));
+                      .setMode("REQUIRED"),
+                  new TableFieldSchema()
+                      .setName(MismatchedRecord.SHARD_ID_COLUMN_NAME)
+                      .setType("STRING")
+                      .setMode("NULLABLE")));
 
   public static final TableSchema TABLE_VALIDATION_STATS_SCHEMA =
       new TableSchema()
@@ -68,7 +72,7 @@ public final class BigQuerySchemas {
                   new TableFieldSchema()
                       .setName(TableValidationStats.SCHEMA_NAME)
                       .setType("STRING")
-                      .setMode("REQUIRED"),
+                      .setMode("NULLABLE"),
                   new TableFieldSchema()
                       .setName(TableValidationStats.TABLE_NAME_COLUMN_NAME)
                       .setType("STRING")

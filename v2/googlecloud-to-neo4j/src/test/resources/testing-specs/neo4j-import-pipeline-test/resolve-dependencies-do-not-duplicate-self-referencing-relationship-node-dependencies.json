@@ -1,0 +1,48 @@
+{
+  "version": "1",
+  "sources": [
+    {
+      "type": "text",
+      "name": "inline-source",
+      "format": "excel",
+      "header": ["id"],
+      "data": [["a"]]
+    }
+  ],
+  "targets": {
+    "nodes": [
+      {
+        "name": "a-node-target",
+        "source": "inline-source",
+        "write_mode": "merge",
+        "labels": ["Entity"],
+        "properties": [
+          {
+            "source_field": "id",
+            "target_property": "id"
+          }
+        ],
+        "schema": {
+          "key_constraints": [
+            {
+              "name": "entity_key",
+              "label": "Entity",
+              "properties": ["id"]
+            }
+          ]
+        }
+      }
+    ],
+    "relationships": [
+      {
+        "name": "self-link-target",
+        "source": "inline-source",
+        "type": "SELF_LINKS",
+        "write_mode": "create",
+        "node_match_mode": "match",
+        "start_node_reference": "a-node-target",
+        "end_node_reference": "a-node-target"
+      }
+    ]
+  }
+}

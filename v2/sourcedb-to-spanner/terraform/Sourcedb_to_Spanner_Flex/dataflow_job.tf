@@ -45,23 +45,13 @@ variable "jdbcDriverClassName" {
   default     = null
 }
 
-variable "sourceDbURL" {
+variable "sourceConfigURL" {
   type        = string
-  description = "The JDBC connection URL string. For example, `jdbc:mysql://127.4.5.30:3306/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8`."
+  description = "Source connection config file URL. The file format is dependent on the source type."
 
 }
 
-variable "username" {
-  type        = string
-  description = "The username to be used for the JDBC connection. Defaults to empty."
-  default     = null
-}
 
-variable "password" {
-  type        = string
-  description = "The password to be used for the JDBC connection. Defaults to empty."
-  default     = null
-}
 
 variable "tables" {
   type        = string
@@ -262,9 +252,7 @@ resource "google_dataflow_flex_template_job" "generated" {
   parameters = {
     jdbcDriverJars      = var.jdbcDriverJars
     jdbcDriverClassName = var.jdbcDriverClassName
-    sourceDbURL         = var.sourceDbURL
-    username            = var.username
-    password            = var.password
+    sourceConfigURL     = var.sourceConfigURL
     tables              = var.tables
     numPartitions       = tostring(var.numPartitions)
     instanceId          = var.instanceId

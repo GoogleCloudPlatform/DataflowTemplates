@@ -26,20 +26,26 @@ on:
         description: 'Specific Load Test (passed to -Dtest=)'
         required: false
         type: string
+      spec_path:
+        description: 'Custom template spec GCS path (passed to -DspecPath=). Leave blank to build and stage templates from the checked out (mainline) code.'
+        required: false
+        type: string
 
-permissions: write-all
+permissions:
+  contents: read
 
 jobs:
   load_tests:
     name: Spanner Dataflow Templates Load tests
-    timeout-minutes: 1440 # 1 day
+    timeout-minutes: 2100 # 35 hours
     # Run on any runner that matches all the specified runs-on values.
     runs-on: [ self-hosted, perf ]
     steps:
     - name: Checkout code
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         fetch-depth: 0
+        persist-credentials: false
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
@@ -47,6 +53,9 @@ jobs:
       id: date
       run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
     - name: Run Load Tests
+      env:
+        SPECIFIC_TEST: ${{ github.event.inputs.specific_test }}
+        SPEC_PATH: ${{ github.event.inputs.spec_path }}
       run: |
         ./cicd/run-load-tests \
         --modules-to-build="SPANNER" \
@@ -57,8 +66,10 @@ jobs:
         --lt-export-project="cloud-teleport-testing" \
         --lt-export-dataset="performance_tests" \
         --lt-export-table="template_performance_metrics" \
+        --lt-spec-path="$SPEC_PATH" \
+        --test="$SPECIFIC_TEST"
     - name: Upload Load Tests Report
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       if: always() # always run even if the previous step fails
       with:
         name: surefire-load-test-results
@@ -68,7 +79,7 @@ jobs:
             **/surefire-reports/html/**
         retention-days: 30
     - name: Load Test report on GitHub
-      uses: dorny/test-reporter@v3
+      uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
       if: always()
       with:
         name: Load Test report on GitHub
@@ -89,9 +100,10 @@ jobs:
     runs-on: [ self-hosted, perf ]
     steps:
     - name: Checkout code
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         fetch-depth: 0
+        persist-credentials: false
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
@@ -99,6 +111,8 @@ jobs:
       id: date
       run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
     - name: Run Load Test Observers
+      env:
+        SPECIFIC_TEST: ${{ github.event.inputs.specific_test }}
       run: |
         ./cicd/run-load-test-observer \
         --modules-to-build="lt/observability" \
@@ -108,9 +122,9 @@ jobs:
         --lt-export-project="cloud-teleport-testing" \
         --lt-export-dataset="performance_tests" \
         --lt-export-table="template_performance_metrics" \
-        --test="${{ github.event.inputs.specific_test }}"
+        --test="$SPECIFIC_TEST"
     - name: Upload Load Test Observer Report
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       if: always() # always run even if the previous step fails
       with:
         name: surefire-observer-test-results

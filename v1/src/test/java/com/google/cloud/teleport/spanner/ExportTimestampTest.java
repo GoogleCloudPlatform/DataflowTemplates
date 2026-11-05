@@ -461,7 +461,8 @@ public class ExportTimestampTest {
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(30),
-            ValueProvider.StaticValueProvider.of(40)));
+            ValueProvider.StaticValueProvider.of(40),
+            ValueProvider.StaticValueProvider.of(false)));
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();
   }

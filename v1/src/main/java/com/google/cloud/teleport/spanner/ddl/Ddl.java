@@ -628,7 +628,7 @@ public class Ddl implements Serializable {
     public Udf.Builder createUdf(String specificName) {
       Udf udf = udfs.get(specificName.toLowerCase());
       if (udf == null) {
-        return Udf.builder().specificName(specificName).ddlBuilder(this);
+        return Udf.builder(dialect).specificName(specificName).ddlBuilder(this);
       }
       return udf.toBuilder().ddlBuilder(this);
     }

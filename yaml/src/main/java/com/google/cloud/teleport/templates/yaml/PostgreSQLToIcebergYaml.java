@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Google LLC
+ * Copyright (C) 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -197,15 +197,6 @@ public interface PostgreSQLToIcebergYaml {
 
   @TemplateParameter.Text(
       order = 17,
-      name = "filter",
-      optional = true,
-      description = "An optional filter expression to apply to the input records.",
-      helpText = "A filter expression to apply to records from the Iceberg table.",
-      example = "age > 18")
-  String getFilter();
-
-  @TemplateParameter.Text(
-      order = 18,
       name = "keep",
       optional = true,
       description = "A list of field names to keep in the input record.",
@@ -214,7 +205,7 @@ public interface PostgreSQLToIcebergYaml {
   String getKeep();
 
   @TemplateParameter.Text(
-      order = 19,
+      order = 18,
       name = "only",
       optional = true,
       description = "The name of a single record field that should be written.",
@@ -223,7 +214,7 @@ public interface PostgreSQLToIcebergYaml {
   String getOnly();
 
   @TemplateParameter.Text(
-      order = 20,
+      order = 19,
       name = "partitionFields",
       optional = true,
       description = "Fields used to create a partition spec for new tables.",
@@ -232,7 +223,7 @@ public interface PostgreSQLToIcebergYaml {
   String getPartitionFields();
 
   @TemplateParameter.Text(
-      order = 21,
+      order = 20,
       name = "tableProperties",
       optional = true,
       description = "Iceberg table properties to be set on table creation.",

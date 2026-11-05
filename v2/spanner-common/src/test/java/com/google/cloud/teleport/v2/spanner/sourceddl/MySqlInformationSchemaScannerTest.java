@@ -54,7 +54,7 @@ public class MySqlInformationSchemaScannerTest {
 
     // Mock column query
     when(stmt.executeQuery(
-            "SELECT column_name, data_type, character_maximum_length, "
+            "SELECT column_name, data_type, column_type, character_maximum_length, "
                 + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
                 + "FROM information_schema.columns "
                 + "WHERE table_schema = 'testdb' AND table_name = 'users' "
@@ -144,7 +144,7 @@ public class MySqlInformationSchemaScannerTest {
     when(tableRs.getString(2)).thenReturn("testdb");
 
     when(stmt.executeQuery(
-            "SELECT column_name, data_type, character_maximum_length, "
+            "SELECT column_name, data_type, column_type, character_maximum_length, "
                 + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
                 + "FROM information_schema.columns "
                 + "WHERE table_schema = 'testdb' AND table_name = 'empty_table' "
@@ -208,7 +208,7 @@ public class MySqlInformationSchemaScannerTest {
     when(tableRs.getString(2)).thenReturn("testdb");
 
     when(stmt.executeQuery(
-            "SELECT column_name, data_type, character_maximum_length, "
+            "SELECT column_name, data_type, column_type, character_maximum_length, "
                 + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
                 + "FROM information_schema.columns "
                 + "WHERE table_schema = 'testdb' AND table_name = 'user$#@!' "
@@ -301,7 +301,7 @@ public class MySqlInformationSchemaScannerTest {
 
     // Simulate SQLException when scanning columns
     when(stmt.executeQuery(
-            "SELECT column_name, data_type, character_maximum_length, "
+            "SELECT column_name, data_type, column_type, character_maximum_length, "
                 + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
                 + "FROM information_schema.columns "
                 + "WHERE table_schema = 'testdb' AND table_name = 'users' "
@@ -339,7 +339,7 @@ public class MySqlInformationSchemaScannerTest {
 
     // users table
     when(stmt.executeQuery(
-            "SELECT column_name, data_type, character_maximum_length, "
+            "SELECT column_name, data_type, column_type, character_maximum_length, "
                 + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
                 + "FROM information_schema.columns "
                 + "WHERE table_schema = 'testdb' AND table_name = 'users' "
@@ -385,7 +385,7 @@ public class MySqlInformationSchemaScannerTest {
 
     // orders table
     when(stmt.executeQuery(
-            "SELECT column_name, data_type, character_maximum_length, "
+            "SELECT column_name, data_type, column_type, character_maximum_length, "
                 + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
                 + "FROM information_schema.columns "
                 + "WHERE table_schema = 'testdb' AND table_name = 'orders' "
@@ -459,7 +459,7 @@ public class MySqlInformationSchemaScannerTest {
 
     // Mock column query
     when(stmt.executeQuery(
-            "SELECT column_name, data_type, character_maximum_length, "
+            "SELECT column_name, data_type, column_type, character_maximum_length, "
                 + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
                 + "FROM information_schema.columns "
                 + "WHERE table_schema = 'testdb' AND table_name = 'generated_table' "
@@ -550,7 +550,7 @@ public class MySqlInformationSchemaScannerTest {
 
     // Columns
     when(stmt.executeQuery(
-            "SELECT column_name, data_type, character_maximum_length, "
+            "SELECT column_name, data_type, column_type, character_maximum_length, "
                 + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
                 + "FROM information_schema.columns "
                 + "WHERE table_schema = 'testdb' AND table_name = 'child_table' "
@@ -633,7 +633,7 @@ public class MySqlInformationSchemaScannerTest {
 
     // Columns
     when(stmt.executeQuery(
-            "SELECT column_name, data_type, character_maximum_length, "
+            "SELECT column_name, data_type, column_type, character_maximum_length, "
                 + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
                 + "FROM information_schema.columns "
                 + "WHERE table_schema = 'testdb' AND table_name = 'users' "
@@ -701,5 +701,82 @@ public class MySqlInformationSchemaScannerTest {
     assertEquals("users", nonUniqueIndex.tableName());
     assertEquals("age", nonUniqueIndex.columns().get(0));
     assertEquals(false, nonUniqueIndex.isUnique());
+  }
+
+  @Test
+  public void testScanTinyInt1Column() throws SQLException {
+    Connection connection = mock(Connection.class);
+    Statement stmt = mock(Statement.class);
+    ResultSet tableRs = mock(ResultSet.class);
+    ResultSet columnRs = mock(ResultSet.class);
+    ResultSet pkRs = mock(ResultSet.class);
+    ResultSet idxRs = mock(ResultSet.class);
+    ResultSet fkRs = mock(ResultSet.class);
+
+    when(connection.createStatement()).thenReturn(stmt);
+    when(stmt.executeQuery(
+            "SELECT table_name, table_schema "
+                + "FROM information_schema.tables "
+                + "WHERE table_schema = 'testdb' "
+                + "AND table_type = 'BASE TABLE'"))
+        .thenReturn(tableRs);
+    when(tableRs.next()).thenReturn(true, false);
+    when(tableRs.getString(1)).thenReturn("flags");
+    when(tableRs.getString(2)).thenReturn("testdb");
+
+    when(stmt.executeQuery(
+            "SELECT column_name, data_type, column_type, character_maximum_length, "
+                + "numeric_precision, numeric_scale, is_nullable, column_key, generation_expression "
+                + "FROM information_schema.columns "
+                + "WHERE table_schema = 'testdb' AND table_name = 'flags' "
+                + "ORDER BY ordinal_position"))
+        .thenReturn(columnRs);
+    when(columnRs.next()).thenReturn(true, false);
+    when(columnRs.getString("column_name")).thenReturn("is_active");
+    when(columnRs.getString("data_type")).thenReturn("TINYINT");
+    when(columnRs.getString("column_type")).thenReturn("tinyint(1)");
+    when(columnRs.getString("is_nullable")).thenReturn("NO");
+    when(columnRs.getString("column_key")).thenReturn("");
+    when(columnRs.getString("character_maximum_length")).thenReturn(null);
+    when(columnRs.getString("numeric_precision")).thenReturn(null);
+    when(columnRs.getString("numeric_scale")).thenReturn(null);
+    when(columnRs.getString("generation_expression")).thenReturn("");
+
+    when(stmt.executeQuery(
+            "SELECT column_name "
+                + "FROM information_schema.key_column_usage "
+                + "WHERE table_schema = 'testdb' AND table_name = 'flags' "
+                + "AND constraint_name = 'PRIMARY' "
+                + "ORDER BY ordinal_position"))
+        .thenReturn(pkRs);
+    when(pkRs.next()).thenReturn(false);
+
+    when(stmt.executeQuery(
+            "SELECT index_name, column_name, non_unique "
+                + "FROM information_schema.statistics "
+                + "WHERE table_schema = 'testdb' AND table_name = 'flags' "
+                + "AND index_name != 'PRIMARY' "
+                + "ORDER BY index_name, seq_in_index"))
+        .thenReturn(idxRs);
+    when(idxRs.next()).thenReturn(false);
+
+    when(stmt.executeQuery(
+            "SELECT constraint_name, table_name, column_name, referenced_table_name, referenced_column_name "
+                + "FROM information_schema.key_column_usage "
+                + "WHERE table_schema = 'testdb' AND table_name = 'flags' "
+                + "AND referenced_table_name IS NOT NULL "
+                + "ORDER BY constraint_name, ordinal_position"))
+        .thenReturn(fkRs);
+    when(fkRs.next()).thenReturn(false);
+
+    MySqlInformationSchemaScanner scanner = new MySqlInformationSchemaScanner(connection, "testdb");
+    SourceSchema schema = scanner.scan();
+
+    SourceTable table = schema.tables().get("flags");
+    assertEquals(1, table.columns().size());
+    SourceColumn column = table.columns().get(0);
+    assertEquals("is_active", column.name());
+    assertEquals("TINYINT", column.type());
+    assertEquals(Long.valueOf(1L), column.size());
   }
 }

@@ -311,6 +311,14 @@ def _table_key(table_ref: 'bigquery.TableReference') -> str:
   return f'{table_ref.projectId}.{table_ref.datasetId}.{table_ref.tableId}'
 
 
+def _quote_identifier(name: str) -> str:
+  """Backtick-quote a column name for use in generated SQL.
+  """
+  if '`' in name:
+    raise ValueError(f'Invalid column name (contains backtick): {name!r}')
+  return f'`{name}`'
+
+
 def build_changes_query(
     table: str,
     start: Timestamp,
@@ -346,12 +354,13 @@ def build_changes_query(
   # destination tables with their original names. Rename them so they can
   # be persisted to the temp table for Storage Read API reading.
   pseudo = (
-      f"_CHANGE_TYPE AS {change_type_column}, "
-      f"_CHANGE_TIMESTAMP AS {change_timestamp_column}")
+      f"_CHANGE_TYPE AS {_quote_identifier(change_type_column)}, "
+      f"_CHANGE_TIMESTAMP AS {_quote_identifier(change_timestamp_column)}")
   if columns is None:
     select = f"SELECT * EXCEPT(_CHANGE_TYPE, _CHANGE_TIMESTAMP), {pseudo}"
   else:
-    select = f"SELECT {', '.join(columns)}, {pseudo}"
+    quoted = ', '.join(_quote_identifier(c) for c in columns)
+    select = f"SELECT {quoted}, {pseudo}" if quoted else f"SELECT {pseudo}"
   from_clause = (
       f"FROM {change_function}"
       f"(TABLE `{table}`, "
@@ -394,6 +403,21 @@ def compute_ranges(start: Timestamp, end: Timestamp,
 def _utc(ts: Timestamp) -> str:
   """Format a Beam Timestamp as a concise UTC string for logging."""
   return ts.to_utc_datetime(has_tz=True).strftime('%Y-%m-%dT%H:%M:%S.%f')
+
+
+def _datetime_to_timestamp(dt: datetime.datetime) -> Timestamp:
+  """Convert a timezone-aware datetime to a Beam Timestamp.
+
+  Beam's Timestamp.from_utc_datetime only accepts tzinfo of pytz.utc or
+  datetime.timezone.utc. Depending on the pyarrow version, BigQuery Storage
+  Read API rows may carry other UTC tzinfo implementations (e.g. pyarrow>=25
+  returns zoneinfo.ZoneInfo('UTC')), so normalize to datetime.timezone.utc
+  first. Naive datetimes are passed through unchanged so Beam still rejects
+  them rather than silently interpreting them in local time.
+  """
+  if dt.tzinfo is not None:
+    dt = dt.astimezone(datetime.timezone.utc)
+  return Timestamp.from_utc_datetime(dt)
 
 
 # =============================================================================
@@ -563,6 +587,7 @@ class _PollChangeHistoryFn(beam.DoFn, beam.transforms.core.RestrictionProvider):
 
     if not restriction_tracker.try_claim(current_index):
       return
+
     restriction_tracker.defer_remainder(Timestamp.of(now) + self._poll_interval)
 
     yield from self._emit_query_ranges(start_ts, end_ts, watermark_estimator)
@@ -924,7 +949,7 @@ class _ReadStorageStreamsSDF(beam.DoFn,
                 'Row missing %r column. Row keys: %s' %
                 (self._change_timestamp_column, list(row.keys())))
           if isinstance(ts, datetime.datetime):
-            ts = Timestamp.from_utc_datetime(ts)
+            ts = _datetime_to_timestamp(ts)
 
           yield TimestampedValue(row, ts)
           stream_rows += 1
@@ -1089,7 +1114,7 @@ class _DecompressArrowBatchesFn(beam.DoFn):
             'Row missing %r column. Row keys: %s' %
             (self._change_timestamp_column, list(row.keys())))
       if isinstance(ts, datetime.datetime):
-        ts = Timestamp.from_utc_datetime(ts)
+        ts = _datetime_to_timestamp(ts)
       yield TimestampedValue(row, ts)
     Metrics.counter('BigQueryChangeHistory', 'rows_emitted').inc(len(rows))
 
@@ -1111,7 +1136,6 @@ class _CleanupTempTablesFn(beam.DoFn):
   """
   STREAMS_READ = beam.transforms.userstate.CombiningValueStateSpec(
       'streams_read', sum)
-
   def setup(self) -> None:
     _LOGGER.info('[Cleanup] setup: creating BigQueryWrapper')
     self._bq_wrapper = bigquery_tools.BigQueryWrapper()

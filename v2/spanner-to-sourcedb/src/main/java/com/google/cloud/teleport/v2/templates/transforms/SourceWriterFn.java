@@ -27,18 +27,22 @@ import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSpannerConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesParser;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CustomTransformationImplFetcher;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.templates.changestream.ChangeStreamErrorRecord;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
+import com.google.cloud.teleport.v2.templates.dbutils.SpannerDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheck;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheckException;
-import com.google.cloud.teleport.v2.templates.dbutils.dao.spanner.SpannerDao;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.ISpToSrcSourceConnector;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.InputRecordProcessor;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessor;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessorFactory;
@@ -100,6 +104,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   private final int maxThreadPerDataflowWorker;
   private final String source;
   private transient SourceProcessor sourceProcessor;
+  private transient ISpToSrcSourceConnector sourceConnector;
   private final CustomTransformation customTransformation;
   private transient ISpannerMigrationTransformer spannerToSourceTransformer;
 
@@ -110,6 +115,9 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   private final String schemaOverridesFilePath;
   private final String tableOverrides;
   private final String columnOverrides;
+
+  private transient Schema schema;
+  private transient SchemaFileOverridesParser schemaFileOverridesParser;
 
   public SourceWriterFn(
       List<Shard> shards,
@@ -143,6 +151,11 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     this.schemaOverridesFilePath = schemaOverridesFilePath;
     this.tableOverrides = tableOverrides;
     this.columnOverrides = columnOverrides;
+    try {
+      this.sourceConnector = SourceProcessorFactory.getSource(source);
+    } catch (com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   // for unit testing purposes
@@ -166,6 +179,16 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     this.spannerToSourceTransformer = spannerToSourceTransformer;
   }
 
+  // for unit testing purposes
+  public void setSchema(Schema schema) {
+    this.schema = schema;
+  }
+
+  // for unit testing purposes
+  public void setSchemaFileOverridesParser(SchemaFileOverridesParser schemaFileOverridesParser) {
+    this.schemaFileOverridesParser = schemaFileOverridesParser;
+  }
+
   /** Setup function connects to Cloud Spanner. */
   @Setup
   public void setup() throws UnsupportedSourceException {
@@ -173,9 +196,17 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceProcessor =
         SourceProcessorFactory.createSourceProcessor(source, shards, maxThreadPerDataflowWorker);
+    sourceConnector = SourceProcessorFactory.getSource(source);
     spannerDao = new SpannerDao(spannerConfig);
     spannerToSourceTransformer =
         CustomTransformationImplFetcher.getCustomTransformationLogicImpl(customTransformation);
+
+    if (sessionFilePath != null && !sessionFilePath.isEmpty()) {
+      schema = SessionFileReader.read(sessionFilePath);
+    }
+    if (schemaOverridesFilePath != null && !schemaOverridesFilePath.isEmpty()) {
+      schemaFileOverridesParser = new SchemaFileOverridesParser(schemaOverridesFilePath);
+    }
   }
 
   /** Teardown function disconnects from the Cloud Spanner. */
@@ -197,7 +228,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     // SchemaMapper depends on Ddl side input, which is only available in processElement.
     ISchemaMapper schemaMapper =
         SchemaMapperUtils.getSchemaMapper(
-            sessionFilePath, schemaOverridesFilePath, tableOverrides, columnOverrides, ddl);
+            schema, schemaFileOverridesParser, tableOverrides, columnOverrides, ddl);
 
     KV<Long, TrimmedShardedDataChangeRecord> element = c.element();
     TrimmedShardedDataChangeRecord spannerRec = element.getValue();
@@ -224,10 +255,12 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
             ChangeEventSpannerConvertor.changeEventToPrimaryKey(
                 tableName, ddl, keysJson, /* convertNameToLowerCase= */ false);
         String shadowTableName = shadowTablePrefix + tableName;
+
         Boolean transactionResult =
             spannerDao
                 .getDatabaseClient()
                 .readWriteTransaction(Options.priority(spannerConfig.getRpcPriority().get()))
+                .allowNestedTransaction()
                 .run(
                     (TransactionRunner.TransactionCallable<Boolean>)
                         shadowTransaction -> {
@@ -305,6 +338,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                           }
                           return isRecordWritten.get();
                         });
+
         if (Boolean.TRUE.equals(transactionResult)) {
           successRecordCountMetric.inc();
           Counter recordsWrittenToSource =
@@ -332,7 +366,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         if (cause != null) {
           message += ", Caused by: " + cause.getMessage();
         }
-        TupleTag<String> errorTag = SpannerToSourceDbExceptionClassifier.classify(ex);
+        TupleTag<String> errorTag =
+            SpannerToSourceDbExceptionClassifier.classify(ex, sourceConnector);
         outputWithTag(c, errorTag, message, spannerRec);
         UNSUCCESSFUL_WRITE_LATENCY_MS.update(timer.elapsed(TimeUnit.MILLISECONDS));
       }

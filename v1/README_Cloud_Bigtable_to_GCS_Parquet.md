@@ -28,6 +28,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **numShards**: The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. The default value is decided by Dataflow.
 * **bigtableAppProfileId**: The ID of the Bigtable application profile to use for the export. If you don't specify an app profile, Bigtable uses the instance's default app profile: https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile.
+* **minRowCountForPageSizeCheck**: The minimum number of rows to buffer before checking if the page size threshold is reached. With large rows, the default (100) can cause excessive memory use; set a lower value (for example, 1) to flush pages more frequently. The default is 100.
 
 
 
@@ -127,6 +128,7 @@ export FILENAME_PREFIX=part
 ### Optional
 export NUM_SHARDS=0
 export BIGTABLE_APP_PROFILE_ID=default
+export MIN_ROW_COUNT_FOR_PAGE_SIZE_CHECK=<minRowCountForPageSizeCheck>
 
 gcloud dataflow jobs run "cloud-bigtable-to-gcs-parquet-job" \
   --project "$PROJECT" \
@@ -138,7 +140,8 @@ gcloud dataflow jobs run "cloud-bigtable-to-gcs-parquet-job" \
   --parameters "outputDirectory=$OUTPUT_DIRECTORY" \
   --parameters "filenamePrefix=$FILENAME_PREFIX" \
   --parameters "numShards=$NUM_SHARDS" \
-  --parameters "bigtableAppProfileId=$BIGTABLE_APP_PROFILE_ID"
+  --parameters "bigtableAppProfileId=$BIGTABLE_APP_PROFILE_ID" \
+  --parameters "minRowCountForPageSizeCheck=$MIN_ROW_COUNT_FOR_PAGE_SIZE_CHECK"
 ```
 
 For more information about the command, please check:
@@ -166,6 +169,7 @@ export FILENAME_PREFIX=part
 ### Optional
 export NUM_SHARDS=0
 export BIGTABLE_APP_PROFILE_ID=default
+export MIN_ROW_COUNT_FOR_PAGE_SIZE_CHECK=<minRowCountForPageSizeCheck>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -174,7 +178,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-bigtable-to-gcs-parquet-job" \
 -DtemplateName="Cloud_Bigtable_to_GCS_Parquet" \
--Dparameters="bigtableProjectId=$BIGTABLE_PROJECT_ID,bigtableInstanceId=$BIGTABLE_INSTANCE_ID,bigtableTableId=$BIGTABLE_TABLE_ID,outputDirectory=$OUTPUT_DIRECTORY,filenamePrefix=$FILENAME_PREFIX,numShards=$NUM_SHARDS,bigtableAppProfileId=$BIGTABLE_APP_PROFILE_ID" \
+-Dparameters="bigtableProjectId=$BIGTABLE_PROJECT_ID,bigtableInstanceId=$BIGTABLE_INSTANCE_ID,bigtableTableId=$BIGTABLE_TABLE_ID,outputDirectory=$OUTPUT_DIRECTORY,filenamePrefix=$FILENAME_PREFIX,numShards=$NUM_SHARDS,bigtableAppProfileId=$BIGTABLE_APP_PROFILE_ID,minRowCountForPageSizeCheck=$MIN_ROW_COUNT_FOR_PAGE_SIZE_CHECK" \
 -f v1
 ```
 
@@ -227,6 +231,7 @@ resource "google_dataflow_job" "cloud_bigtable_to_gcs_parquet" {
     filenamePrefix = "part"
     # numShards = "0"
     # bigtableAppProfileId = "default"
+    # minRowCountForPageSizeCheck = "<minRowCountForPageSizeCheck>"
   }
 }
 ```

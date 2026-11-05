@@ -53,7 +53,7 @@ pipeline:
         connection_properties: {{ connectionProperties }}
         table: {{ postgresTable }}
         batch_size: {{ batchSize }}
-        autosharding: {{ autosharding }}
+        auto_sharding: {{ autoSharding }}
 
 options:
   streaming: false

@@ -29,7 +29,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.AppendFiles;
@@ -272,13 +271,11 @@ public class IcebergResourceManagerTest {
 
   @Test
   public void testCleanupAll() {
-    doReturn(List.of(Namespace.of(NAMESPACE_NAME)))
-        .when((SupportsNamespaces) catalog)
-        .listNamespaces();
     doReturn(List.of(TABLE_IDENTIFIER)).when(catalog).listTables(any(Namespace.class));
     doReturn(true).when((SupportsNamespaces) catalog).dropNamespace(any(Namespace.class));
     doReturn(true).when((SupportsNamespaces) catalog).namespaceExists(any(Namespace.class));
 
+    testManager.createNamespace(NAMESPACE_NAME);
     testManager.cleanupAll();
 
     verify(catalog).listTables(Namespace.of(NAMESPACE_NAME));
@@ -287,13 +284,107 @@ public class IcebergResourceManagerTest {
   }
 
   @Test
-  public void testCleanupAllWhenNoNamespaces() {
-    doReturn(Collections.emptyList()).when((SupportsNamespaces) catalog).listNamespaces();
+  public void testCleanupAllOnlyDropsTrackedNamespaces() {
+    Namespace untracked = Namespace.of("untracked_ns");
+    doReturn(List.of(TABLE_IDENTIFIER)).when(catalog).listTables(any(Namespace.class));
+    doReturn(true).when((SupportsNamespaces) catalog).dropNamespace(any(Namespace.class));
+    doReturn(true).when((SupportsNamespaces) catalog).namespaceExists(any(Namespace.class));
 
+    testManager.createNamespace(NAMESPACE_NAME);
     testManager.cleanupAll();
 
-    verify((SupportsNamespaces) catalog).listNamespaces();
+    verify((SupportsNamespaces) catalog).dropNamespace(Namespace.of(NAMESPACE_NAME));
+    verify((SupportsNamespaces) catalog, never()).dropNamespace(untracked);
+  }
+
+  @Test
+  public void testCleanupAllWhenNoNamespaces() {
+    testManager.cleanupAll();
+
+    verify((SupportsNamespaces) catalog, never()).listNamespaces();
     verify(catalog, never()).listTables(any(Namespace.class));
     verify((SupportsNamespaces) catalog, never()).dropNamespace(any(Namespace.class));
+  }
+
+  @Test
+  public void testCleanupAllClosesCatalogWhenAutoCloseable() throws Exception {
+    Catalog closeableCatalog =
+        mock(
+            Catalog.class,
+            Mockito.withSettings().extraInterfaces(SupportsNamespaces.class, AutoCloseable.class));
+    catalogUtilMock
+        .when(() -> CatalogUtil.buildIcebergCatalog(any(), any(), any()))
+        .thenReturn(closeableCatalog);
+
+    testManager.catalog();
+    testManager.cleanupAll();
+
+    verify((AutoCloseable) closeableCatalog).close();
+  }
+
+  @Test
+  public void testCleanupAllClearsCachedCatalog() {
+    testManager.catalog();
+    testManager.cleanupAll();
+    testManager.catalog();
+
+    catalogUtilMock.verify(() -> CatalogUtil.buildIcebergCatalog(any(), any(), any()), times(2));
+  }
+
+  @Test
+  public void testCleanupAllHandlesCloseExceptionGracefully() throws Exception {
+    Catalog closeableCatalog =
+        mock(
+            Catalog.class,
+            Mockito.withSettings().extraInterfaces(SupportsNamespaces.class, AutoCloseable.class));
+    doThrow(new RuntimeException("Error closing catalog"))
+        .when((AutoCloseable) closeableCatalog)
+        .close();
+    catalogUtilMock
+        .when(() -> CatalogUtil.buildIcebergCatalog(any(), any(), any()))
+        .thenReturn(closeableCatalog);
+
+    testManager.catalog();
+    testManager.cleanupAll();
+
+    verify((AutoCloseable) closeableCatalog).close();
+  }
+
+  @Test
+  public void testCleanupAllWhenCatalogNotAutoCloseable() {
+    testManager.catalog();
+    testManager.cleanupAll();
+
+    // Verify cleanup completes and cache was cleared
+    testManager.catalog();
+    catalogUtilMock.verify(() -> CatalogUtil.buildIcebergCatalog(any(), any(), any()), times(2));
+  }
+
+  @Test
+  public void testCleanupAllClosesCatalogEvenWhenDropNamespaceFails() throws Exception {
+    Catalog closeableCatalog =
+        mock(
+            Catalog.class,
+            Mockito.withSettings().extraInterfaces(SupportsNamespaces.class, AutoCloseable.class));
+    catalogUtilMock
+        .when(() -> CatalogUtil.buildIcebergCatalog(any(), any(), any()))
+        .thenReturn(closeableCatalog);
+
+    doThrow(new RuntimeException("Drop failed"))
+        .when((SupportsNamespaces) closeableCatalog)
+        .dropNamespace(any(Namespace.class));
+    doReturn(true)
+        .when((SupportsNamespaces) closeableCatalog)
+        .namespaceExists(any(Namespace.class));
+
+    testManager.createNamespace(NAMESPACE_NAME);
+
+    assertThrows(RuntimeException.class, () -> testManager.cleanupAll());
+
+    verify((AutoCloseable) closeableCatalog).close();
+
+    // Verify cache was cleared
+    testManager.catalog();
+    catalogUtilMock.verify(() -> CatalogUtil.buildIcebergCatalog(any(), any(), any()), times(2));
   }
 }

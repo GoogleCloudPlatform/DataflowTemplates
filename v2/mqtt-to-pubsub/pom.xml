@@ -41,6 +41,7 @@
             <groupId>org.testcontainers</groupId>
             <artifactId>hivemq</artifactId>
             <version>${testcontainers.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.hivemq</groupId>

@@ -1,0 +1,138 @@
+/*
+ * Copyright (C) 2024 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter;
+
+import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertThrows;
+
+import com.google.cloud.teleport.v2.reader.io.datasource.DataSource;
+import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcValueMappingsProvider;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceSchemaReference;
+import com.google.cloud.teleport.v2.reader.io.schema.SourceTableSchema;
+import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.iowrapper.CassandraDataSource;
+import com.google.cloud.teleport.v2.source.cassandra.reader.io.cassandra.schema.CassandraSchemaReference;
+import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
+import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.junit.MockitoJUnitRunner;
+
+@RunWith(MockitoJUnitRunner.class)
+public class DialectAdapterTest {
+  @Mock CassandraSchemaReference mockCassandraSchemaReference;
+  @Mock CassandraDataSource mockCassandraDataSource;
+
+  @Test
+  public void testGenerateInClause() {
+    assertThat(DialectAdapter.generateInClause(1)).isEqualTo("(?)");
+    assertThat(DialectAdapter.generateInClause(2)).isEqualTo("(?,?)");
+    assertThat(DialectAdapter.generateInClause(5)).isEqualTo("(?,?,?,?,?)");
+  }
+
+  @Test
+  public void testGenerateInClause_invalidSize() {
+    assertThrows(IllegalArgumentException.class, () -> DialectAdapter.generateInClause(0));
+    assertThrows(IllegalArgumentException.class, () -> DialectAdapter.generateInClause(-1));
+  }
+
+  @Test
+  public void testMismatchedSource() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+                .discoverTableSchema(
+                    DataSource.ofCassandra(mockCassandraDataSource),
+                    SourceSchemaReference.ofCassandra(mockCassandraSchemaReference),
+                    ImmutableList.of()));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+                .discoverTables(
+                    DataSource.ofCassandra(mockCassandraDataSource),
+                    SourceSchemaReference.ofCassandra(mockCassandraSchemaReference)));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new MysqlDialectAdapter(MySqlVersion.DEFAULT)
+                .discoverTableIndexes(
+                    DataSource.ofCassandra(mockCassandraDataSource),
+                    SourceSchemaReference.ofCassandra(mockCassandraSchemaReference),
+                    ImmutableList.of()));
+  }
+
+  @Test
+  public void testEstimateRowSize() {
+    // Create a mock for the interface and call real methods for default
+    // implementations
+    DialectAdapter dialectAdapter = Mockito.mock(DialectAdapter.class);
+    Mockito.doCallRealMethod()
+        .when(dialectAdapter)
+        .estimateRowSize(
+            ArgumentMatchers.any(SourceTableSchema.class),
+            ArgumentMatchers.any(JdbcValueMappingsProvider.class));
+    Mockito.doCallRealMethod()
+        .when(dialectAdapter)
+        .estimateRowSize(
+            ArgumentMatchers.anyMap(), ArgumentMatchers.any(JdbcValueMappingsProvider.class));
+
+    // Mock SourceTableSchema
+    SourceTableSchema mockSourceTableSchema = Mockito.mock(SourceTableSchema.class);
+    SourceColumnType col1 = new SourceColumnType("col1", new Long[] {10L}, null);
+    SourceColumnType col2 = new SourceColumnType("col2", new Long[] {20L}, null);
+
+    Mockito.when(mockSourceTableSchema.sourceColumnNameToSourceColumnType())
+        .thenReturn(ImmutableMap.of("col1", col1, "col2", col2));
+
+    // Mock JdbcValueMappingsProvider
+    JdbcValueMappingsProvider mockProvider = Mockito.mock(JdbcValueMappingsProvider.class);
+    Mockito.when(mockProvider.estimateColumnSize(col1)).thenReturn(100);
+    Mockito.when(mockProvider.estimateColumnSize(col2)).thenReturn(200);
+
+    // Verify
+    long expectedSize = 300L;
+    org.junit.Assert.assertEquals(
+        expectedSize, dialectAdapter.estimateRowSize(mockSourceTableSchema, mockProvider));
+  }
+
+  @Test
+  public void testEstimateRowSize_Overflow() {
+    DialectAdapter dialectAdapter = Mockito.mock(DialectAdapter.class);
+    Mockito.doCallRealMethod()
+        .when(dialectAdapter)
+        .estimateRowSize(
+            ArgumentMatchers.anyMap(), ArgumentMatchers.any(JdbcValueMappingsProvider.class));
+
+    SourceColumnType col1 = new SourceColumnType("col1", null, null);
+    SourceColumnType col2 = new SourceColumnType("col2", null, null);
+
+    JdbcValueMappingsProvider mockProvider = Mockito.mock(JdbcValueMappingsProvider.class);
+    Mockito.when(mockProvider.estimateColumnSize(col1)).thenReturn(Integer.MAX_VALUE);
+    Mockito.when(mockProvider.estimateColumnSize(col2)).thenReturn(10);
+
+    long size =
+        dialectAdapter.estimateRowSize(ImmutableMap.of("col1", col1, "col2", col2), mockProvider);
+    org.junit.Assert.assertEquals((long) Integer.MAX_VALUE + 10, size);
+  }
+}

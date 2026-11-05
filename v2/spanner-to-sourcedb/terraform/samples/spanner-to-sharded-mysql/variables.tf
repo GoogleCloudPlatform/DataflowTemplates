@@ -1,13 +1,14 @@
 variable "common_params" {
   description = "Parameters that are common to multiple resources"
   type = object({
-    project                         = string
-    host_project                    = optional(string)
-    region                          = string
-    migration_id                    = optional(string)
-    replication_bucket              = optional(string, "rr-bucket")
-    add_policies_to_service_account = optional(bool, true)
-    target_tags                     = optional(list(string))
+    project                             = string
+    host_project                        = optional(string)
+    region                              = string
+    migration_id                        = optional(string)
+    replication_bucket                  = optional(string, "rr-bucket")
+    add_policies_to_service_account     = optional(bool, true)
+    create_cutback_monitoring_dashboard = optional(bool, false)
+    target_tags                         = optional(list(string))
   })
 }
 
@@ -52,7 +53,7 @@ variable "dataflow_params" {
       kms_key_name                 = optional(string)
       labels                       = optional(map(string))
       launcher_machine_type        = optional(string)
-      machine_type                 = optional(string, "n2-standard-2")
+      machine_type                 = optional(string, "n2-standard-4")
       max_workers                  = number
       job_name                     = optional(string, "reverse-replication-job")
       network                      = optional(string)

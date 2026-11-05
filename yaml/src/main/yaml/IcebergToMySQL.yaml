@@ -27,6 +27,7 @@ template:
     - mysql_common_options
     - mysql_write_options
     - iceberg_common_options
+    - iceberg_read_options
 
 pipeline:
   type: chain
@@ -48,7 +49,7 @@ pipeline:
         url: "{{ jdbcUrl }}"
         username: "{{ username }}"
         password: "{{ password }}"
-        auto_sharding: {{ autosharding }}
+        auto_sharding: {{ autoSharding }}
         connection_init_sql: {{ connectionInitSql }}
         connection_properties: {{ connectionProperties }}
         query: {{ insertQuery }}

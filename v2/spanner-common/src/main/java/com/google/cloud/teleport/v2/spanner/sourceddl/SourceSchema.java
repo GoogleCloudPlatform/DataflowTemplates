@@ -33,6 +33,9 @@ public abstract class SourceSchema implements Serializable {
   public abstract ImmutableMap<String, SourceTable> tables();
 
   @Nullable
+  public abstract Object rawDdl();
+
+  @Nullable
   public abstract String version();
 
   public static Builder builder(SourceDatabaseType sourceType) {
@@ -51,6 +54,8 @@ public abstract class SourceSchema implements Serializable {
     public abstract Builder tables(ImmutableMap<String, SourceTable> tables);
 
     public abstract Builder version(String version);
+
+    public abstract Builder rawDdl(@Nullable Object rawDdl);
 
     public abstract SourceSchema build();
   }

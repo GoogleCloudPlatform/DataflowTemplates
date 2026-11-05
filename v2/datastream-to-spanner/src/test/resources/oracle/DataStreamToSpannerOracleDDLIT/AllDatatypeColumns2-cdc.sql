@@ -1,0 +1,24 @@
+UPDATE "AllDatatypeColumns2" SET
+  "tinyint_column" = 15,
+  "date_column" = DATE '2024-02-08',
+  "smallint_column" = 50,
+  "mediumint_column" = 1000,
+  "int_column" = 50000,
+  "bigint_column" = 987654321,
+  "float_column" = 45.67,
+  "double_column" = 123.789,
+  "decimal_column" = 456.12,
+  "datetime_column" = TIMESTAMP '2024-02-08 08:15:30 +00:00',
+  "timestamp_column" = TIMESTAMP '2024-02-08 08:15:30 +00:00',
+  "time_column" = '08:15:30',
+  "year_column" = 2022,
+  "char_column" = 'char_1',
+  "tinyblob_column" = HEXTORAW('74696e79626c6f625f646174615f31'),
+  "tinytext_column" = 'tinytext_data_1',
+  "enum_column" = '2',
+  "bool_column" = 0,
+  "binary_column" = HEXTORAW('62696e6172795f646174615f3100000000000000'),
+  "varbinary_column" = HEXTORAW('76617262696e6172795f646174615f31'),
+  "bit_column" = HEXTORAW('66')
+WHERE "varchar_column" = 'value1';
+DELETE FROM "AllDatatypeColumns2" WHERE "varchar_column" = 'value2';

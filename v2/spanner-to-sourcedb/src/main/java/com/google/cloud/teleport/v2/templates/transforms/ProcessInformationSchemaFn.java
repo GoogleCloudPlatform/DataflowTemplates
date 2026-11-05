@@ -43,6 +43,8 @@ public class ProcessInformationSchemaFn extends DoFn<Void, Ddl> {
   private transient SpannerAccessor shadowTableSpannerAccessor;
   private transient Dialect dialect;
   private transient Dialect shadowTableDialect;
+  private transient Ddl mainDdl;
+  private transient Ddl shadowTableDdl;
 
   public ProcessInformationSchemaFn(
       SpannerConfig spannerConfig,
@@ -72,6 +74,18 @@ public class ProcessInformationSchemaFn extends DoFn<Void, Ddl> {
                 shadowTableSpannerConfig.getInstanceId().get(),
                 shadowTableSpannerConfig.getDatabaseId().get())
             .getDialect();
+
+    this.mainDdl =
+        getInformationSchemaAsDdl(spannerAccessor, dialect, spannerConfig.getDatabaseId().get());
+    ShadowTableCreator shadowTableCreator =
+        new ShadowTableCreator(
+            shadowTableSpannerConfig, shadowTableDialect, shadowTablePrefix, mainDdl);
+    shadowTableCreator.createShadowTablesInSpanner();
+    this.shadowTableDdl =
+        getInformationSchemaAsDdl(
+            shadowTableSpannerAccessor,
+            shadowTableDialect,
+            shadowTableSpannerConfig.getDatabaseId().get());
   }
 
   @Teardown
@@ -86,28 +100,22 @@ public class ProcessInformationSchemaFn extends DoFn<Void, Ddl> {
 
   @ProcessElement
   public void processElement(ProcessContext c) {
-
-    // 1. Create Shadow Tables if needed
-    ShadowTableCreator shadowTableCreator =
-        new ShadowTableCreator(
-            spannerConfig, shadowTableSpannerConfig, shadowTableDialect, shadowTablePrefix);
-
-    // This method internally fetches DDLs and creates tables.
-    shadowTableCreator.createShadowTablesInSpanner();
-
-    // 2. Fetch DDLs
-    Ddl mainDdl = getInformationSchemaAsDdl(spannerAccessor, dialect);
-    Ddl shadowTableDdl = getInformationSchemaAsDdl(shadowTableSpannerAccessor, shadowTableDialect);
-
     c.output(MAIN_DDL_TAG, mainDdl);
     c.output(SHADOW_TABLE_DDL_TAG, shadowTableDdl);
   }
 
-  private Ddl getInformationSchemaAsDdl(SpannerAccessor accessor, Dialect dialect) {
+  private Ddl getInformationSchemaAsDdl(SpannerAccessor accessor, Dialect dialect, String dbName) {
     BatchClient batchClient = accessor.getBatchClient();
     BatchReadOnlyTransaction context =
         batchClient.batchReadOnlyTransaction(TimestampBound.strong());
     InformationSchemaScanner scanner = new InformationSchemaScanner(context, dialect);
-    return scanner.scan();
+    LOG.info("Scanning information schema for {}...", dbName);
+    long startTime = System.currentTimeMillis();
+    Ddl ddl = scanner.scan();
+    LOG.info(
+        "Scanned information schema for {} in {} ms",
+        dbName,
+        System.currentTimeMillis() - startTime);
+    return ddl;
   }
 }

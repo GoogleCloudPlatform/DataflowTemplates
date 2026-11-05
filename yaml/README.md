@@ -10,6 +10,12 @@ More detailed instructions on how to run the template can be found in the associ
 1. **Add YAML Blueprint:** Create the YAML blueprint file that defines the template's structure and parameters.
 Place this file in [here](https://github.com/GoogleCloudPlatform/DataflowTemplates/tree/main/yaml/src/main/yaml).
 
+    #### Blueprint Naming Conventions:
+    * **File Name**: Name the file using UpperCamelCase: `<Source>To<Target>.yaml` (e.g., `PubSubToIceberg.yaml`).
+    * **`template.name`**: Use `<Source>_To_<Target>_Yaml` (e.g., `PubSub_To_Iceberg_Yaml`).
+    * **`template.yamlTemplateFile`**: Must match the exact filename, including case (e.g., `PubSubToIceberg.yaml`).
+    * **`template.display_name`**: Provide the user-facing display name with proper product branding and casing, ending with `(YAML)` (e.g., `display_name: "Pub/Sub to Iceberg (YAML)"` or `display_name: "SQL Server to Iceberg (YAML)"`). The release plugin extracts this value and automatically strips the `(YAML)` suffix when generating the blueprints manifest.
+
 1.  **Generate YAML Template:**
 
     Create the YAML template in Java and place it under yaml/src/main/java/com/google/cloud/teleport/templates/yaml.

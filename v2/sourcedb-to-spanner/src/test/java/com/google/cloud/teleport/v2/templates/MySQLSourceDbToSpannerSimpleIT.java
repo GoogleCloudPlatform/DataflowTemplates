@@ -21,6 +21,9 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -32,7 +35,7 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
-import org.apache.beam.it.jdbc.MySQLResourceManager;
+import org.apache.beam.it.jdbc.SSLMySQLResourceManager;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -42,7 +45,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
 /**
  * An integration test for {@link SourceDbToSpanner} Flex template which tests a basic migration on
@@ -56,7 +58,7 @@ public class MySQLSourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
   private static HashSet<MySQLSourceDbToSpannerSimpleIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
 
-  public static MySQLResourceManager mySQLResourceManager;
+  public static SSLMySQLResourceManager mySQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
 
   private static final String SPANNER_DDL_RESOURCE = "SourceDbToSpannerSimpleIT/spanner-schema.sql";
@@ -68,6 +70,8 @@ public class MySQLSourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
   private static final String ID = "id";
 
   private static final String NAME = "name";
+
+  private Map<String, String> sslJobParameters = new HashMap<>();
 
   private JDBCResourceManager.JDBCSchema getMySQLSchema(String idCol) {
     HashMap<String, String> columns = new HashMap<>();
@@ -92,8 +96,24 @@ public class MySQLSourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
    */
   @Before
   public void setUp() {
-    mySQLResourceManager = setUpMySQLResourceManager();
+    mySQLResourceManager = SSLMySQLResourceManager.builder(testName).build();
     spannerResourceManager = setUpSpannerResourceManager();
+
+    String dfUser = "df_user";
+    try (Connection con =
+            DriverManager.getConnection(
+                mySQLResourceManager.getUri(),
+                mySQLResourceManager.getUsername(),
+                mySQLResourceManager.getPassword());
+        Statement stmt = con.createStatement()) {
+      stmt.execute(
+          String.format(
+              "CREATE USER IF NOT EXISTS '%s'@'%%' IDENTIFIED BY '' REQUIRE X509", dfUser));
+      stmt.execute(String.format("GRANT ALL PRIVILEGES ON *.* TO '%s'@'%%'", dfUser));
+      stmt.execute("FLUSH PRIVILEGES");
+    } catch (java.sql.SQLException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   /** Cleanup dataflow job and all the resources and resource managers. */
@@ -110,6 +130,31 @@ public class MySQLSourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
     mySQLResourceManager.write(TABLE1, mySQLData);
     mySQLResourceManager.write(TABLE2, mySQLData);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
+
+    gcsClient.uploadArtifact(
+        "input/truststore_Shard1.jks", mySQLResourceManager.getTruststorePath());
+    String truststoreGcsUrl = getGcsPath("input/truststore_Shard1.jks");
+    String truststoreLocalUrl = "file:///extra_files/truststore_Shard1.jks";
+
+    gcsClient.uploadArtifact("input/keystore_Shard1.jks", mySQLResourceManager.getKeystorePath());
+    String keystoreGcsUrl = getGcsPath("input/keystore_Shard1.jks");
+    String keystoreLocalUrl = "file:///extra_files/keystore_Shard1.jks";
+
+    String props =
+        String.format(
+            "sslMode=VERIFY_CA&allowPublicKeyRetrieval=true&trustCertificateKeyStoreUrl=%s&trustCertificateKeyStorePassword=%s&clientCertificateKeyStoreUrl=%s&clientCertificateKeyStorePassword=%s",
+            java.net.URLEncoder.encode(truststoreLocalUrl, java.nio.charset.StandardCharsets.UTF_8),
+            java.net.URLEncoder.encode(
+                mySQLResourceManager.getPassword(), java.nio.charset.StandardCharsets.UTF_8),
+            java.net.URLEncoder.encode(keystoreLocalUrl, java.nio.charset.StandardCharsets.UTF_8),
+            java.net.URLEncoder.encode(
+                mySQLResourceManager.getPassword(), java.nio.charset.StandardCharsets.UTF_8));
+
+    sslJobParameters.put("extraFilesToStage", truststoreGcsUrl + "," + keystoreGcsUrl);
+    sslJobParameters.put("connectionProperties", props);
+    sslJobParameters.put("dbUser", "df_user");
+    sslJobParameters.put("dbPassword", "");
+
     jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
@@ -117,7 +162,7 @@ public class MySQLSourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
             null,
             mySQLResourceManager,
             spannerResourceManager,
-            null,
+            sslJobParameters,
             null);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
     assertThatResult(result).isLaunchFinished();
@@ -134,6 +179,8 @@ public class MySQLSourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
     mySQLResourceManager.write(TABLE2, updatedMySQLData);
 
     /* Check that the upserts have not happened and records still match the old data.*/
+    Map<String, String> insertOnlyParams = new HashMap<>(sslJobParameters);
+    insertOnlyParams.put("insertOnlyModeForSpannerMutations", "true");
     jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
@@ -141,7 +188,7 @@ public class MySQLSourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
             null,
             mySQLResourceManager,
             spannerResourceManager,
-            ImmutableMap.of("insertOnlyModeForSpannerMutations", "true"),
+            insertOnlyParams,
             null);
     PipelineOperator.Result resultInsertsOnly =
         pipelineOperator().waitUntilDone(createConfig(jobInfo));
@@ -152,6 +199,8 @@ public class MySQLSourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
         .hasRecordsUnorderedCaseInsensitiveColumns(mySQLData);
 
     /* Again run in upsert mode and check that the records get updated */
+    Map<String, String> upsertParams = new HashMap<>(sslJobParameters);
+    upsertParams.put("insertOnlyModeForSpannerMutations", "false");
     jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
@@ -159,7 +208,7 @@ public class MySQLSourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
             null,
             mySQLResourceManager,
             spannerResourceManager,
-            ImmutableMap.of("insertOnlyModeForSpannerMutations", "false"),
+            upsertParams,
             null);
     PipelineOperator.Result resultUpserts = pipelineOperator().waitUntilDone(createConfig(jobInfo));
     assertThatResult(resultUpserts).isLaunchFinished();

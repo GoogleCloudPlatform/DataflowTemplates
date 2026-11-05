@@ -27,8 +27,6 @@
     <artifactId>common</artifactId>
 
     <properties>
-        <commons.version>1.14.1</commons.version>
-        <truth-proto-extension.version>1.4.5</truth-proto-extension.version>
         <skipShade>true</skipShade>
     </properties>
 
@@ -99,12 +97,17 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-csv</artifactId>
-            <version>${commons.version}</version>
+            <version>${commons-csv.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-text</artifactId>
             <version>${commons-text.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-configuration2</artifactId>
+            <version>${commons-configuration2.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.cloud</groupId>
@@ -158,7 +161,7 @@
         <dependency>
             <groupId>com.google.truth.extensions</groupId>
             <artifactId>truth-proto-extension</artifactId>
-            <version>${truth-proto-extension.version}</version>
+            <version>${truth.version}</version>
             <scope>test</scope>
             <exclusions>
               <exclusion>

@@ -1,0 +1,92 @@
+/*
+ * Copyright (C) 2018 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.google.cloud.teleport.v2.templates.source.oracle;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.google.cloud.spanner.Mutation;
+import com.google.cloud.spanner.Value;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.Table;
+import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTypeConvertor;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
+import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
+import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertor;
+import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * Oracle implementation of ChangeEventContext that provides implementation of the
+ * generateShadowTableMutation method.
+ */
+class OracleChangeEventContext extends ChangeEventContext {
+
+  public OracleChangeEventContext(
+      JsonNode changeEvent, Ddl ddl, Ddl shadowTableDdl, String shadowTablePrefix)
+      throws ChangeEventConvertorException, InvalidChangeEventException, DroppedTableException {
+    super(changeEvent, ddl, OracleDsToSpSourceConnector.ORACLE_SORT_ORDER);
+    this.changeEvent = changeEvent;
+    this.shadowTablePrefix = shadowTablePrefix;
+    this.dataTable = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
+    this.shadowTable = shadowTablePrefix + this.dataTable;
+
+    Table dataTable = ddl.table(this.dataTable);
+    Set<String> primaryKeyColNames =
+        dataTable.primaryKeys().stream().map(k -> k.name()).collect(Collectors.toSet());
+
+    convertChangeEventToMutation(ddl, shadowTableDdl);
+  }
+
+  /*
+   * Creates shadow table mutation for Oracle.
+   */
+  @Override
+  protected Mutation generateShadowTableMutation(Ddl ddl, Ddl shadowDdl)
+      throws ChangeEventConvertorException {
+    // Get shadow information from change event mutation context
+    Mutation.WriteBuilder builder =
+        ChangeEventConvertor.changeEventToShadowTableMutationBuilder(
+            shadowDdl, changeEvent, shadowTablePrefix);
+
+    // Add timestamp information to shadow table mutation
+    Long changeEventTimestamp =
+        ChangeEventTypeConvertor.toLong(
+            changeEvent,
+            OracleDsToSpSourceConnector.ORACLE_TIMESTAMP_KEY,
+            /* requiredField= */ true);
+    builder
+        .set(getSafeShadowColumn(OracleDsToSpSourceConnector.ORACLE_TIMESTAMP_KEY))
+        .to(Value.int64(changeEventTimestamp));
+
+    /* Oracle backfill events "can" have SCN value as null.
+     * Set the value to a value smaller than any real value.
+     */
+    Long changeEventSCN =
+        ChangeEventTypeConvertor.toLong(
+            changeEvent, OracleDsToSpSourceConnector.ORACLE_SCN_KEY, /* requiredField= */ false);
+    if (changeEventSCN == null) {
+      changeEventSCN = new Long(-1);
+    }
+    // Add scn information to shadow table mutation
+    builder
+        .set(getSafeShadowColumn(OracleDsToSpSourceConnector.ORACLE_SCN_KEY))
+        .to(Value.int64(changeEventSCN));
+
+    return builder.build();
+  }
+}

@@ -39,7 +39,9 @@ public class ShardedMySQLResourceManager extends AbstractJDBCResourceManager<MyS
   private ShardedMySQLResourceManager(ShardedMySQLResourceManager.Builder builder) {
     this(
         new MySQLContainer<>(
-            DockerImageName.parse(builder.containerImageName).withTag(builder.containerImageTag)),
+                DockerImageName.parse(builder.containerImageName)
+                    .withTag(builder.containerImageTag))
+            .withCommand("--innodb_buffer_pool_size=1G", "--innodb_redo_log_capacity=1G"),
         builder);
   }
 

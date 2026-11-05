@@ -193,6 +193,59 @@ public class WriteDataChangeRecordsToAvroTest {
         null);
   }
 
+  @Test
+  public void testUuidTypePropagation() {
+    DataChangeRecordToAvroFn converter = new DataChangeRecordToAvroFn.Builder().build();
+    final DataChangeRecord dataChangeRecord = createTestUuidDataChangeRecord();
+
+    com.google.cloud.teleport.v2.DataChangeRecord dataChangeRecordAvro =
+        converter.dataChangeRecordToAvro(dataChangeRecord);
+
+    java.util.List<com.google.cloud.teleport.v2.ColumnType> columnTypes =
+        dataChangeRecordAvro.getRowType();
+
+    assertEquals(2, columnTypes.size());
+
+    com.google.cloud.teleport.v2.ColumnType column1 = columnTypes.get(0);
+    assertEquals("column1", column1.getName().toString());
+    assertEquals(com.google.cloud.teleport.v2.TypeCode.UUID, column1.getType());
+    assertEquals(null, column1.getArrayElementType());
+
+    com.google.cloud.teleport.v2.ColumnType column2 = columnTypes.get(1);
+    assertEquals("column2", column2.getName().toString());
+    assertEquals(com.google.cloud.teleport.v2.TypeCode.ARRAY, column2.getType());
+    assertEquals(com.google.cloud.teleport.v2.TypeCode.UUID, column2.getArrayElementType());
+  }
+
+  private DataChangeRecord createTestUuidDataChangeRecord() {
+    return new DataChangeRecord(
+        "partitionToken",
+        Timestamp.ofTimeSecondsAndNanos(10L, 20),
+        "serverTransactionId",
+        true,
+        "1",
+        "tableName",
+        Arrays.asList(
+            new ColumnType("column1", new TypeCode("{\"code\":\"UUID\"}"), true, 1L),
+            new ColumnType(
+                "column2",
+                new TypeCode("{\"code\":\"ARRAY\",\"array_element_type\":{\"code\":\"UUID\"}}"),
+                false,
+                2L)),
+        Collections.singletonList(
+            new Mod(
+                "{\"column1\": \"f47ac10b-58cc-4372-a567-0e02b2c3d479\"}",
+                "{\"oldValue2\": \"[\\\"f47ac10b-58cc-4372-a567-0e02b2c3d479\\\"]\"}",
+                "{\"newValue2\": \"[\\\"550e8400-e29b-41d4-a716-446655440000\\\"]\"}")),
+        ModType.UPDATE,
+        ValueCaptureType.OLD_AND_NEW_VALUES,
+        10L,
+        2L,
+        "transactionTag",
+        /*isSystemTransaction*/ false,
+        null);
+  }
+
   private DataChangeRecord createTestDataChangeRecord() {
     return new DataChangeRecord(
         "partitionToken",

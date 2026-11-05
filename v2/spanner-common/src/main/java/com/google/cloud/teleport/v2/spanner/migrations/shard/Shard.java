@@ -22,17 +22,42 @@ import java.util.Objects;
 
 public class Shard implements Serializable {
 
-  private String logicalShardId;
-  private String host;
-  private String port;
-  private String user;
-  private String password;
-  private String dbName;
-  private String namespace;
-  private String secretManagerUri;
-  private String connectionProperties;
+  private String logicalShardId = "";
+  private String host = "";
+  private String port = "";
+  private String user = "";
+  private String password = null;
+  private String dbName = "";
+  private String namespace = "";
+  private String secretManagerUri = "";
+  private String connectionProperties = "";
+  private String streamId = "";
+  private transient String connectionUrl;
 
   private Map<String, String> dbNameToLogicalShardIdMap = new HashMap<>();
+
+  public Shard(
+      String logicalShardId,
+      String host,
+      String port,
+      String user,
+      String password,
+      String dbName,
+      String namespace,
+      String secretManagerUri,
+      String connectionProperties,
+      String streamId) {
+    this.logicalShardId = logicalShardId;
+    this.host = host;
+    this.port = port;
+    this.user = user;
+    this.password = password;
+    this.dbName = dbName;
+    this.namespace = namespace;
+    this.secretManagerUri = secretManagerUri;
+    this.connectionProperties = connectionProperties;
+    this.streamId = streamId;
+  }
 
   public Shard(
       String logicalShardId,
@@ -53,9 +78,18 @@ public class Shard implements Serializable {
     this.namespace = namespace;
     this.secretManagerUri = secretManagerUri;
     this.connectionProperties = connectionProperties;
+    this.streamId = "";
   }
 
   public Shard() {}
+
+  public String getStreamId() {
+    return streamId;
+  }
+
+  public void setStreamId(String streamId) {
+    this.streamId = streamId;
+  }
 
   public String getLogicalShardId() {
     return logicalShardId;
@@ -129,6 +163,14 @@ public class Shard implements Serializable {
     this.connectionProperties = input;
   }
 
+  public String getConnectionUrl() {
+    return connectionUrl;
+  }
+
+  public void setConnectionUrl(String connectionUrl) {
+    this.connectionUrl = connectionUrl;
+  }
+
   public Map<String, String> getDbNameToLogicalShardIdMap() {
     return dbNameToLogicalShardIdMap;
   }
@@ -157,6 +199,9 @@ public class Shard implements Serializable {
         + ", connectionProperties='"
         + connectionProperties
         + '\''
+        + ", streamId='"
+        + streamId
+        + '\''
         + ", dbNameToLogicalShardIdMap="
         + dbNameToLogicalShardIdMap
         + '}';
@@ -180,6 +225,7 @@ public class Shard implements Serializable {
         && Objects.equals(namespace, shard.namespace)
         && Objects.equals(connectionProperties, shard.connectionProperties)
         && Objects.equals(secretManagerUri, shard.secretManagerUri)
+        && Objects.equals(streamId, shard.streamId)
         && Objects.equals(dbNameToLogicalShardIdMap, shard.dbNameToLogicalShardIdMap);
   }
 
@@ -195,6 +241,7 @@ public class Shard implements Serializable {
         namespace,
         connectionProperties,
         secretManagerUri,
+        streamId,
         dbNameToLogicalShardIdMap);
   }
 }

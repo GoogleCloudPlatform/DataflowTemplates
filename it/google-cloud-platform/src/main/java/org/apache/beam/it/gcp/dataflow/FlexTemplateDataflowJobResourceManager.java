@@ -286,6 +286,15 @@ public class FlexTemplateDataflowJobResourceManager implements ResourceManager {
       mavenCmd.add("-DactivateFailureInjection=true");
     }
 
+    String baseContainerImage = System.getProperty("baseContainerImage");
+    if (baseContainerImage != null && !baseContainerImage.isEmpty()) {
+      mavenCmd.add("-DbaseContainerImage=" + baseContainerImage);
+    }
+    String basePythonContainerImage = System.getProperty("basePythonContainerImage");
+    if (basePythonContainerImage != null && !basePythonContainerImage.isEmpty()) {
+      mavenCmd.add("-DbasePythonContainerImage=" + basePythonContainerImage);
+    }
+
     return mavenCmd.toArray(new String[0]);
   }
 }

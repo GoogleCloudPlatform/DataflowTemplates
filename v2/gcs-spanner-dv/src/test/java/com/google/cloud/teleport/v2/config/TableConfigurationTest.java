@@ -1,0 +1,202 @@
+/*
+ * Copyright (C) 2026 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.google.cloud.teleport.v2.config;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
+
+import com.google.cloud.teleport.v2.options.GCSSpannerDVOptions;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
+public class TableConfigurationTest {
+
+  @Rule public TemporaryFolder tempFolder = new TemporaryFolder();
+
+  private GCSSpannerDVOptions options;
+
+  @Before
+  public void setUp() {
+    options = PipelineOptionsFactory.create().as(GCSSpannerDVOptions.class);
+  }
+
+  @Test
+  public void testEmptyConfig() {
+    TableConfiguration config = TableConfiguration.empty();
+    assertFalse(config.hasTableFilters());
+    assertTrue(config.getSourceTables().isEmpty());
+    assertTrue(config.isSourceTableAllowed("any_table"));
+  }
+
+  @Test
+  public void testParseFromOptionsWithTables() throws IOException {
+    options.setTables("table1, table2,table3 ");
+
+    File inputDir = tempFolder.newFolder("input");
+    options.setGcsInputDirectory(inputDir.getAbsolutePath());
+    new File(inputDir, "table1").mkdirs();
+    new File(inputDir, "table1/data.avro").createNewFile();
+    new File(inputDir, "table2").mkdirs();
+    new File(inputDir, "table2/data.avro").createNewFile();
+    new File(inputDir, "table3").mkdirs();
+    new File(inputDir, "table3/data.avro").createNewFile();
+
+    TableConfiguration config = TableConfiguration.parseFromOptions(options);
+
+    assertTrue(config.hasTableFilters());
+    assertEquals(3, config.getSourceTables().size());
+    assertTrue(config.getSourceTables().contains("table1"));
+    assertTrue(config.getSourceTables().contains("table2"));
+    assertTrue(config.getSourceTables().contains("table3"));
+    assertFalse(config.getSourceTables().contains("table4"));
+  }
+
+  @Test
+  public void testParseFromOptionsWithTableConfigFile() throws IOException {
+    File tableConfigFile = tempFolder.newFile("tables.json");
+    try (FileWriter writer = new FileWriter(tableConfigFile)) {
+      writer.write("{\"tableNames\": [\"tableA\", \" tableB \", \"\", \"tableC\"]}");
+    }
+    options.setTableConfigurationFilePath(tableConfigFile.getAbsolutePath());
+
+    File inputDir = tempFolder.newFolder("input");
+    options.setGcsInputDirectory(inputDir.getAbsolutePath());
+    new File(inputDir, "tableA").mkdirs();
+    new File(inputDir, "tableA/data.avro").createNewFile();
+    new File(inputDir, "tableB").mkdirs();
+    new File(inputDir, "tableB/data.avro").createNewFile();
+    new File(inputDir, "tableC").mkdirs();
+    new File(inputDir, "tableC/data.avro").createNewFile();
+
+    TableConfiguration config = TableConfiguration.parseFromOptions(options);
+
+    assertTrue(config.hasTableFilters());
+    assertEquals(3, config.getSourceTables().size());
+    assertTrue(config.getSourceTables().contains("tableA"));
+    assertTrue(config.getSourceTables().contains("tableB"));
+    assertTrue(config.getSourceTables().contains("tableC"));
+  }
+
+  @Test
+  public void testParseFromOptionsThrowsWhenBothProvided() {
+    options.setTables("table1");
+    options.setTableConfigurationFilePath("gs://dummy/tables.txt");
+
+    IllegalArgumentException thrown =
+        assertThrows(
+            IllegalArgumentException.class, () -> TableConfiguration.parseFromOptions(options));
+    assertTrue(
+        thrown.getMessage().contains("Please configure only one of these parameters at a time."));
+  }
+
+  @Test
+  public void testParseFromOptionsNoGcsInputDirectory() {
+    options.setTables("table1,table2");
+    options.setGcsInputDirectory(null);
+
+    TableConfiguration config = TableConfiguration.parseFromOptions(options);
+    assertTrue(config.hasTableFilters());
+    assertEquals(2, config.getSourceTables().size());
+  }
+
+  @Test
+  public void testIsSourceTableAllowed() {
+    options.setTables("table1,table2");
+    options.setGcsInputDirectory(null);
+    TableConfiguration config = TableConfiguration.parseFromOptions(options);
+
+    assertTrue(config.isSourceTableAllowed("table1"));
+    assertTrue(config.isSourceTableAllowed("table2"));
+    assertFalse(config.isSourceTableAllowed("table3"));
+  }
+
+  @Test
+  public void testParseFromOptionsThrowsWhenTableConfigFileFailsToRead() {
+    options.setTableConfigurationFilePath(
+        tempFolder.getRoot().getAbsolutePath() + "/non_existent_file.json");
+
+    RuntimeException thrown =
+        assertThrows(RuntimeException.class, () -> TableConfiguration.parseFromOptions(options));
+    assertTrue(thrown.getMessage().contains("Failed to read JSON tableConfigurationFilePath"));
+  }
+
+  @Test
+  public void testShardIdsUnsetOrOnlySeparatorsDisablesShardSubsetting() {
+    TableConfiguration unset = TableConfiguration.parseFromOptions(options);
+    options.setShardIds(",, ,");
+    TableConfiguration onlySeparators = TableConfiguration.parseFromOptions(options);
+
+    assertFalse(unset.hasShardFilter());
+    assertTrue(unset.getShardIds().isEmpty());
+    assertFalse(onlySeparators.hasShardFilter());
+    assertTrue(onlySeparators.getShardIds().isEmpty());
+  }
+
+  @Test
+  public void testShardIdsTrimmedBlankEntriesSkippedAndDeduplicated() {
+    options.setShardIds(" b, a ,,b , c ");
+
+    TableConfiguration config = TableConfiguration.parseFromOptions(options);
+
+    assertTrue(config.hasShardFilter());
+    assertEquals(new HashSet<>(Arrays.asList("a", "b", "c")), config.getShardIds());
+    assertThrows(UnsupportedOperationException.class, () -> config.getShardIds().add("d"));
+  }
+
+  @Test
+  public void testGlobCharactersInTablesAndShardIdsAreKept() {
+    options.setTables("Users,Orders[1]");
+    options.setShardIds("shard_1,shard_*");
+
+    TableConfiguration config = TableConfiguration.parseFromOptions(options);
+
+    assertEquals(new HashSet<>(Arrays.asList("Users", "Orders[1]")), config.getSourceTables());
+    assertEquals(new HashSet<>(Arrays.asList("shard_1", "shard_*")), config.getShardIds());
+  }
+
+  @Test
+  public void testTableConfigFileOnlyNonBlankSpannerQueriesAreConfigured() throws IOException {
+    File tableConfigFile = tempFolder.newFile("tables.json");
+    try (FileWriter writer = new FileWriter(tableConfigFile)) {
+      writer.write(
+          "{\"tableNames\":[\"T1\",\"T2\",\"T3\",\"T4\"],\"optionalConfigurations\":{"
+              + "\"T1\":{\"spannerQuery\":\"SELECT * FROM T1 WHERE id < 5\"},"
+              + "\"T2\":{},"
+              + "\"T3\":{\"spannerQuery\":null},"
+              + "\"T4\":{\"spannerQuery\":\"  \"}}}");
+    }
+    options.setTableConfigurationFilePath(tableConfigFile.getAbsolutePath());
+
+    TableConfiguration config = TableConfiguration.parseFromOptions(options);
+
+    assertTrue(config.hasSpannerQueries());
+    assertEquals(
+        Collections.singletonMap("T1", "SELECT * FROM T1 WHERE id < 5"),
+        config.getSpannerQueries());
+    assertEquals(new HashSet<>(Arrays.asList("T1", "T2", "T3", "T4")), config.getSourceTables());
+  }
+}

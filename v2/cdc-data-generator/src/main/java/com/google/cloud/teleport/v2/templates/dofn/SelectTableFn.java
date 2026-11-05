@@ -61,7 +61,7 @@ public class SelectTableFn extends DoFn<Long, DataGeneratorTable> {
     List<Pair<DataGeneratorTable, Double>> pmf =
         schema.tables().values().stream()
             .filter(DataGeneratorTable::isRoot)
-            .map(table -> new Pair<>(table, calculateTotalQps(table, schema)))
+            .map(table -> new Pair<>(table, (double) table.insertQps()))
             .collect(Collectors.toList());
 
     if (pmf.isEmpty()) {
@@ -74,23 +74,10 @@ public class SelectTableFn extends DoFn<Long, DataGeneratorTable> {
     }
 
     LOG.info(
-        "Initialized Table Distribution with {} entries. Total Weight (Root + Children QPS): {}",
+        "Initialized Table Distribution with {} entries. Total Weight (Root QPS): {}",
         pmf.size(),
         totalWeight);
 
     return new EnumeratedDistribution<>(pmf);
-  }
-
-  private static double calculateTotalQps(DataGeneratorTable table, DataGeneratorSchema schema) {
-    double totalQps = table.insertQps();
-    if (table.childTables() != null) {
-      for (String childName : table.childTables()) {
-        DataGeneratorTable childTable = schema.tables().get(childName);
-        if (childTable != null) {
-          totalQps += calculateTotalQps(childTable, schema);
-        }
-      }
-    }
-    return totalQps;
   }
 }

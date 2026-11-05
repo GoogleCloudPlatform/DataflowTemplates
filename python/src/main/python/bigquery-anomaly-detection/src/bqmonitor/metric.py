@@ -79,6 +79,7 @@ Example usage::
 """
 
 import dataclasses
+import logging
 import random
 from enum import Enum
 from typing import Any
@@ -86,11 +87,14 @@ from typing import Optional
 from typing import Tuple
 
 import apache_beam as beam
+from apache_beam.metrics import Metrics
 from apache_beam.transforms import combiners
 from apache_beam.transforms import window as beam_window
 
 from bqmonitor.safe_eval import Expr
 from apache_beam.ml.anomaly.specifiable import specifiable
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class WindowType(Enum):
@@ -546,8 +550,47 @@ class _DerivedFieldsFn:
     return row
 
 
+class _DropNullMeasures(beam.DoFn):
+  """Drops rows where any aggregated measure field is None (BigQuery NULL).
+
+  The combiners cannot fold None, ``None + 0`` / ``None < inf`` raise
+  TypeError, which in streaming Dataflow causes the bundle to be retried
+  indefinitely. Skipping NULLs also matches BigQuery aggregate-function
+  semantics (SUM/MIN/MAX/MEAN/COUNT(col) all ignore NULLs).
+
+  A row is dropped whole: when a spec mixes measures over different
+  fields, a NULL in any non-COUNT measure field removes the row from
+  every measure, including COUNTs. Dropped rows are counted in the
+  ``bqmonitor.metric/rows_dropped_null_measure`` counter.
+  """
+
+  _DROPPED_COUNTER = Metrics.counter(
+      'bqmonitor.metric', 'rows_dropped_null_measure')
+
+  def __init__(self, fields):
+    self._fields = fields
+
+  def process(self, row):
+    for field in self._fields:
+      if row.get(field) is None:
+        self._DROPPED_COUNTER.inc()
+        return
+    yield row
+
+
 class _ApplyMetricExpr(beam.DoFn):
-  """DoFn that evaluates a post-aggregation expression on combined results."""
+  """DoFn that evaluates a post-aggregation expression on combined results.
+
+  Arithmetic errors from the expression (e.g. ZeroDivisionError when a
+  ratio's denominator aggregates to zero) drop that window's metric with
+  a counter instead of crashing — a raising bundle would retry forever
+  in streaming and stall the pipeline. The detector simply sees no data
+  point for the affected window.
+  """
+
+  _EXPR_ERROR_COUNTER = Metrics.counter(
+      'bqmonitor.metric', 'metric_expr_errors')
+
   def __init__(self, measure_combiner, is_keyed):
     self._measure_combiner = measure_combiner
     self._is_keyed = is_keyed
@@ -559,7 +602,15 @@ class _ApplyMetricExpr(beam.DoFn):
       agg_dict = element
 
     if self._measure_combiner is not None:
-      value = float(self._measure_combiner(agg_dict))
+      try:
+        value = float(self._measure_combiner(agg_dict))
+      except (ArithmeticError, ValueError, TypeError) as e:
+        self._EXPR_ERROR_COUNTER.inc()
+        _LOGGER.warning(
+            "Metric expression '%s' failed for window [%s, %s): %s. "
+            "Dropping this window's metric.",
+            self._measure_combiner, window.start, window.end, e)
+        return
     else:
       value = float(next(iter(agg_dict.values())))
 
@@ -605,6 +656,15 @@ class ComputeMetric(beam.PTransform):
     if spec.derived_fields:
       pcoll = pcoll | 'DerivedFields' >> beam.Map(
           _DerivedFieldsFn(spec.derived_fields))
+
+    # Step 1b: Drop rows with NULL measure fields (after derived fields,
+    # so derived measure names are covered). COUNT measures don't read
+    # their field, so they impose no non-NULL requirement.
+    null_checked_fields = sorted(
+        {m.field for m in agg.measures if m.agg != AggOp.COUNT})
+    if null_checked_fields:
+      pcoll = pcoll | 'DropNullMeasures' >> beam.ParDo(
+          _DropNullMeasures(null_checked_fields))
 
     # Step 2: Apply windowing
     if agg.window.type == WindowType.FIXED:

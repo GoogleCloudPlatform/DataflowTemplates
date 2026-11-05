@@ -23,11 +23,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.common.io.Resources;
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.time.Duration;
@@ -103,7 +99,10 @@ public class SpannerToSourceDbCustomShardIT extends SpannerToSourceDbITBase {
         gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadJarToGcs(gcsResourceManager);
 
-        createAndUploadShardConfigToGcs();
+        createAndUploadShardConfigToGcs(
+            gcsResourceManager,
+            Map.of(
+                "testShardA", jdbcResourceManagerShardA, "testShardB", jdbcResourceManagerShardB));
         gcsResourceManager.uploadArtifact(
             "input/session.json",
             Resources.getResource(SpannerToSourceDbCustomShardIT.SESSION_FILE_RESOURCE).getPath());
@@ -210,33 +209,5 @@ public class SpannerToSourceDbCustomShardIT extends SpannerToSourceDbITBase {
             .to(firstName)
             .build();
     spannerResourceManager.write(m);
-  }
-
-  private void createAndUploadShardConfigToGcs() throws IOException {
-    Shard shard = new Shard();
-    shard.setLogicalShardId("testShardA");
-    shard.setUser(jdbcResourceManagerShardA.getUsername());
-    shard.setHost(jdbcResourceManagerShardA.getHost());
-    shard.setPassword(jdbcResourceManagerShardA.getPassword());
-    shard.setPort(String.valueOf(jdbcResourceManagerShardA.getPort()));
-    shard.setDbName(jdbcResourceManagerShardA.getDatabaseName());
-    JsonObject jsObj = (JsonObject) new Gson().toJsonTree(shard).getAsJsonObject();
-    jsObj.remove("secretManagerUri"); // remove field secretManagerUri
-
-    Shard shardB = new Shard();
-    shardB.setLogicalShardId("testShardB");
-    shardB.setUser(jdbcResourceManagerShardB.getUsername());
-    shardB.setHost(jdbcResourceManagerShardB.getHost());
-    shardB.setPassword(jdbcResourceManagerShardB.getPassword());
-    shardB.setPort(String.valueOf(jdbcResourceManagerShardB.getPort()));
-    shardB.setDbName(jdbcResourceManagerShardB.getDatabaseName());
-    JsonObject jsObjB = (JsonObject) new Gson().toJsonTree(shardB).getAsJsonObject();
-    jsObjB.remove("secretManagerUri"); // remove field secretManagerUri
-    JsonArray ja = new JsonArray();
-    ja.add(jsObj);
-    ja.add(jsObjB);
-    String shardFileContents = ja.toString();
-    LOG.info("Shard file contents: {}", shardFileContents);
-    gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
   }
 }

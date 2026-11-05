@@ -1,0 +1,53 @@
+scenarios:
+  # ==================================================================
+  # Bulk Migration (v2/sourcedb-to-spanner)
+  # Curated set of reference ITs to port when onboarding a new source. Scenarios that only
+  # exercise source-agnostic or Spanner-platform behaviour were intentionally removed.
+  # ==================================================================
+  - id: bulk-datatypes
+    type: datatypes
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLDataTypesIT
+    description: "Migrates every source data type (min/max/NULL values, alternate Spanner mappings, each type as primary key) and checks values arrive in Spanner unchanged."
+
+  - id: bulk-datatypes-pg
+    type: datatypes
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLDataTypesPGDialectIT
+    spanner_dialect: POSTGRESQL
+    description: "Migrates every source data type into a PostgreSQL-dialect Spanner database and checks values arrive unchanged."
+
+  - id: bulk-timezone
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.SourceDbToSpannerTimezoneIT
+    description: "Migrates date/time columns with non-UTC source and Spanner time zones and checks no values are shifted."
+
+  - id: bulk-simple
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLSourceDbToSpannerSimpleIT
+    description: "Basic end-to-end migration over SSL for tables with integer and string primary keys, in both upsert and insert-only modes."
+
+  - id: bulk-session-mapper
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLSessionSchemaMapperIT
+    description: "Migrates using an SMT session file (composite primary key, extra source table, ignored view) and checks tables and columns are mapped correctly."
+
+  - id: bulk-reserved-keywords
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLReservedKeywordsIT
+    description: "Migrates tables and columns (including primary keys) named after reserved SQL keywords."
+
+  - id: bulk-widerow-maxcolumns-pertable
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLToSpannerWiderowForMaxColumnsPerTableIT
+    description: "Migrates a table with the maximum number of columns (up to 1024) to check schema discovery and row reading work for very wide tables."
+
+  - id: bulk-ddl
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLDDLIT
+    description: "Migrates generated and auto-increment columns into Spanner identity, sequence and generated columns. Only if the source has such columns."
+
+  - id: bulk-singleshard
+    template: v2/sourcedb-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLSingleShardIT
+    description: "Migrates a single shard and checks the migration_shard_id column is filled from the shard config. Only if sharded migration is supported for the source."

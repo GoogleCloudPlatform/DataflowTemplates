@@ -20,6 +20,9 @@ public final class Constants {
 
   // Default HikariCP pool size per shard when writing to JDBC sinks.
   public static final int DEFAULT_JDBC_POOL_SIZE = 10;
+  public static final int DEFAULT_STRING_LENGTH = 20;
+  public static final int DEFAULT_NUMERIC_PRECISION = 10;
+  public static final int DEFAULT_NUMERIC_SCALE = 2;
 
   // MySQL JDBC driver class name, used when constructing ConnectionHelperRequest.
   public static final String MYSQL_JDBC_DRIVER = "com.mysql.cj.jdbc.Driver";
@@ -29,4 +32,30 @@ public final class Constants {
 
   // Character used to quote identifiers in MySQL (back-tick).
   public static final String MYSQL_IDENTIFIER_QUOTE = "`";
+
+  // Oracle JDBC driver class name, used when constructing ConnectionHelperRequest.
+  public static final String ORACLE_JDBC_DRIVER = "oracle.jdbc.OracleDriver";
+
+  // JDBC URL prefix for Oracle thin service-name connections.
+  public static final String JDBC_ORACLE_URL_PREFIX = "jdbc:oracle:thin:@//";
+
+  // Character used to quote identifiers in Oracle (double-quote).
+  public static final String ORACLE_IDENTIFIER_QUOTE = "\"";
+
+  // Column name used to carry the logical shard id through the pipeline. Prefixed with `_dg_`
+  // so it cannot collide with a user-defined PK column.
+  public static final String SHARD_ID_COLUMN_NAME = "_dg_shard_id";
+
+  // Keys for Spanner sink configuration JSON.
+  public static final String SPANNER_CONFIG_PROJECT_ID_KEY = "projectId";
+  public static final String SPANNER_CONFIG_INSTANCE_ID_KEY = "instanceId";
+  public static final String SPANNER_CONFIG_DATABASE_ID_KEY = "databaseId";
+
+  public static final String SINK_TYPE_MYSQL = "MYSQL";
+  public static final String SINK_TYPE_ORACLE = "ORACLE";
+  public static final String SINK_TYPE_SPANNER = "SPANNER";
+
+  public static final String MUTATION_INSERT = "INSERT";
+  public static final String MUTATION_UPDATE = "UPDATE";
+  public static final String MUTATION_DELETE = "DELETE";
 }

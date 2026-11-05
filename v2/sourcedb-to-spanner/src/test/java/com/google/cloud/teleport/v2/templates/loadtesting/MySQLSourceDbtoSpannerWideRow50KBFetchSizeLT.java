@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.templates.loadtesting;
 
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
 import java.util.HashMap;
 import java.util.Map;

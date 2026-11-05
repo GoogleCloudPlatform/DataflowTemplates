@@ -48,12 +48,13 @@ import java.nio.channels.ReadableByteChannel;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import org.apache.beam.it.common.PipelineLauncher;
@@ -63,7 +64,6 @@ import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.PipelineOperator.Config;
 import org.apache.beam.it.common.TestProperties;
-import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
 import org.apache.beam.it.gcp.dataflow.ClassicTemplateClient;
@@ -106,11 +106,13 @@ public abstract class TemplateTestBase {
   public static final String ADDITIONAL_EXPERIMENTS_ENVIRONMENT = "additionalExperiments";
 
   public String testName;
+  protected Description testDescription;
 
   @Rule
   public TestRule watcher =
       new TestWatcher() {
         protected void starting(Description description) {
+          testDescription = description;
           testName = description.getMethodName();
           // In case of parameterization the testName can contain subscript like testName[paramName]
           // Converting testName from testName[paramName] to testNameParamName since it is used to
@@ -188,18 +190,29 @@ public abstract class TemplateTestBase {
     MultiTemplateIntegrationTest multiAnnotation =
         getClass().getAnnotation(MultiTemplateIntegrationTest.class);
     usingDirectRunner = System.getProperty("directRunnerTest") != null;
-    try {
-      Method testMethod = getClass().getMethod(testName);
-      annotation = testMethod.getAnnotation(TemplateIntegrationTest.class);
-      Category category = testMethod.getAnnotation(Category.class);
-      if (category != null) {
-        usingDirectRunner =
-            Arrays.asList(category.value()).contains(DirectRunnerTest.class) || usingDirectRunner;
-        skipRunnerV2 = Arrays.asList(category.value()).contains(SkipRunnerV2Test.class);
-      }
-    } catch (NoSuchMethodException e) {
-      // ignore error
+
+    Set<Class<?>> categories = new HashSet<>();
+
+    Category classCategory = getClass().getAnnotation(Category.class);
+    if (classCategory != null) {
+      Collections.addAll(categories, classCategory.value());
     }
+
+    if (testDescription != null) {
+      annotation = testDescription.getAnnotation(TemplateIntegrationTest.class);
+      Category methodCategory = testDescription.getAnnotation(Category.class);
+      if (methodCategory != null) {
+        Collections.addAll(categories, methodCategory.value());
+      }
+    }
+
+    if (categories.contains(DirectRunnerTest.class)) {
+      usingDirectRunner = true;
+    }
+    if (categories.contains(SkipRunnerV2Test.class)) {
+      skipRunnerV2 = true;
+    }
+
     if (annotation == null) {
       annotation = getClass().getAnnotation(TemplateIntegrationTest.class);
     }
@@ -307,78 +320,114 @@ public abstract class TemplateTestBase {
     }
   }
 
-  private String getSpecPath(
+  protected String getSpecPath(
       Class<?> dataflowTemplateClass, Template templateMetadata, String pomPath)
       throws ExecutionException {
     if (TestProperties.specPath() != null && !TestProperties.specPath().isEmpty()) {
       LOG.info("A spec path was given, not staging template {}", templateMetadata.name());
       return TestProperties.specPath();
     } else {
-      boolean flex = !Strings.isNullOrEmpty(templateMetadata.flexContainerName());
-
-      // Use bucketName unless only artifactBucket is provided
-      String bucketName;
-      if (TestProperties.hasStageBucket()) {
-        bucketName = TestProperties.stageBucket();
-      } else if (TestProperties.hasArtifactBucket()) {
-        bucketName = TestProperties.artifactBucket();
-        LOG.warn(
-            "-DstageBucket was not specified, using -DartifactBucket ({}) for stage step",
-            bucketName);
-      } else {
-        throw new IllegalArgumentException(
-            "-DstageBucket was not specified, so Template can not be staged. Either give a"
-                + " -DspecPath or provide a proper -DstageBucket for automatic staging.");
-      }
-
-      String blobPath =
-          String.format("%s/%s%s", STAGING_PREFIX, flex ? "flex/" : "", templateMetadata.name());
-      String stagePath = String.format("gs://%s/%s", bucketName, blobPath);
-
-      String identifier = flex ? template.flexContainerName() : templateMetadata.name();
-
-      stagedTemplates.get(
-          identifier,
-          () -> {
-            LOG.info("Preparing test for {} ({})", templateMetadata.name(), dataflowTemplateClass);
-
-            File pom = new File(pomPath).getAbsoluteFile();
-            if (!pom.exists()) {
-              throw new IllegalArgumentException(
-                  "To use tests staging templates, please run in the Maven module directory"
-                      + " containing the template.");
-            }
-
-            // Check template metadata file existence
-            try (Storage storage = ArtifactUtils.createStorageClient(credentials)) {
-              Blob blob =
-                  storage.get(
-                      bucketName, blobPath, Storage.BlobGetOption.fields(Storage.BlobField.SIZE));
-              if (blob != null && blob.exists() && blob.getSize() > 0) {
-                LOG.info("Find templates at {}", stagePath);
-                return stagePath;
-              }
-            }
-
-            String[] mavenCmd = buildMavenStageCommand(STAGING_PREFIX, pom, bucketName, template);
-            LOG.info("Running command to stage templates: {}", String.join(" ", mavenCmd));
-
-            try {
-              Process exec = Runtime.getRuntime().exec(mavenCmd);
-
-              if (exec.waitFor() != 0) {
-                IORedirectUtil.redirectLinesLog(exec.getInputStream(), LOG);
-                IORedirectUtil.redirectLinesLog(exec.getErrorStream(), LOG);
-                throw new RuntimeException("Error staging template, check Maven logs.");
-              }
-
-              return stagePath;
-            } catch (Exception e) {
-              throw new IllegalArgumentException("Error staging template", e);
-            }
-          });
-      return stagePath;
+      LOG.info("Preparing test for {} ({})", templateMetadata.name(), dataflowTemplateClass);
+      return stageTemplate(templateMetadata, pomPath, credentials);
     }
+  }
+
+  /**
+   * Builds and stages the given template from the local source tree (i.e. the checked out code)
+   * using the Templates Maven Plugin, and returns the GCS path of the staged template spec.
+   */
+  public static String stageTemplate(
+      Template templateMetadata, String pomPath, Credentials credentials)
+      throws ExecutionException {
+    boolean flex = !Strings.isNullOrEmpty(templateMetadata.flexContainerName());
+
+    // Use bucketName unless only artifactBucket is provided
+    String bucketName;
+    if (TestProperties.hasStageBucket()) {
+      bucketName = TestProperties.stageBucket();
+    } else if (TestProperties.hasArtifactBucket()) {
+      bucketName = TestProperties.artifactBucket();
+      LOG.warn(
+          "-DstageBucket was not specified, using -DartifactBucket ({}) for stage step",
+          bucketName);
+    } else {
+      throw new IllegalArgumentException(
+          "-DstageBucket was not specified, so Template can not be staged. Either give a"
+              + " -DspecPath or provide a proper -DstageBucket for automatic staging.");
+    }
+
+    String blobPath =
+        String.format("%s/%s%s", STAGING_PREFIX, flex ? "flex/" : "", templateMetadata.name());
+    String stagePath = String.format("gs://%s/%s", bucketName, blobPath);
+
+    String identifier = flex ? templateMetadata.flexContainerName() : templateMetadata.name();
+
+    stagedTemplates.get(
+        identifier,
+        () -> {
+          LOG.info("Staging template {} from source", templateMetadata.name());
+
+          File pom = new File(pomPath).getAbsoluteFile();
+          if (!pom.exists()) {
+            throw new IllegalArgumentException(
+                "To use tests staging templates, please run in the Maven module directory"
+                    + " containing the template.");
+          }
+
+          // Check template metadata file existence
+          try (Storage storage = ArtifactUtils.createStorageClient(credentials)) {
+            Blob blob =
+                storage.get(
+                    bucketName, blobPath, Storage.BlobGetOption.fields(Storage.BlobField.SIZE));
+            if (blob != null && blob.exists() && blob.getSize() > 0) {
+              LOG.info("Find templates at {}", stagePath);
+              return stagePath;
+            }
+          }
+
+          String[] mavenCmd =
+              buildMavenStageCommand(STAGING_PREFIX, pom, bucketName, templateMetadata);
+          LOG.info("Running command to stage templates: {}", String.join(" ", mavenCmd));
+
+          try {
+            ProcessBuilder pb = new ProcessBuilder(mavenCmd);
+            pb.redirectErrorStream(true);
+            Process exec = pb.start();
+
+            List<String> outputLines = Collections.synchronizedList(new ArrayList<>());
+            Thread streamReaderThread =
+                new Thread(
+                    () -> {
+                      try (java.io.BufferedReader reader =
+                          new java.io.BufferedReader(
+                              new java.io.InputStreamReader(exec.getInputStream(), UTF_8))) {
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                          outputLines.add(line);
+                        }
+                      } catch (IOException e) {
+                        LOG.error("Error reading process output", e);
+                      }
+                    });
+            streamReaderThread.start();
+
+            int exitCode = exec.waitFor();
+            streamReaderThread.join();
+
+            if (exitCode != 0) {
+              LOG.error("Error staging template, check Maven logs below:");
+              for (String line : outputLines) {
+                LOG.error(line);
+              }
+              throw new RuntimeException("Error staging template, check Maven logs.");
+            }
+
+            return stagePath;
+          } catch (Exception e) {
+            throw new IllegalArgumentException("Error staging template", e);
+          }
+        });
+    return stagePath;
   }
 
   private Template getTemplateAnnotation(
@@ -415,7 +464,7 @@ public abstract class TemplateTestBase {
    * It identifies whether the template is v1 (Classic) or v2 (Flex) to setup the Maven reactor
    * accordingly.
    */
-  private String[] buildMavenStageCommand(
+  private static String[] buildMavenStageCommand(
       String prefix, File pom, String bucketName, Template templateMetadata) {
     String pomPath = pom.getAbsolutePath();
     String moduleBuild;
@@ -448,36 +497,44 @@ public abstract class TemplateTestBase {
       templateOrContainer = "-DflexContainerName=" + flexContainerName;
     }
 
-    return new String[] {
-      "mvn",
-      "compile",
-      "package",
-      "-q",
-      "-f",
-      pomPath,
-      "-pl",
-      moduleBuild,
-      "-am",
-      "-PtemplatesStage,pluginOutputDir",
-      "-DpluginRunId=" + RandomStringUtils.randomAlphanumeric(16),
-      // Skip shading for now due to flakiness / slowness in the process.
-      "-DskipShade=" + skipShade,
-      "-DskipTests",
-      "-Dmaven.test.skip",
-      "-Dcheckstyle.skip",
-      "-Dmdep.analyze.skip",
-      "-Dspotless.check.skip",
-      "-Denforcer.skip",
-      "-DprojectId=" + TestProperties.project(),
-      "-Dregion=" + TestProperties.region(),
-      "-DbucketName=" + bucketName,
-      "-DgcpTempLocation=" + bucketName,
-      "-DstagePrefix=" + prefix,
-      templateOrContainer,
-      "-DunifiedWorker=" + System.getProperty("unifiedWorker"),
-      // Print stacktrace when command fails
-      "-e"
-    };
+    List<String> mavenCmd =
+        new ArrayList<>(
+            List.of(
+                "mvn",
+                "compile",
+                "package",
+                "-q",
+                "-f",
+                pomPath,
+                "-pl",
+                moduleBuild,
+                "-am",
+                "-PtemplatesStage,pluginOutputDir",
+                "-DpluginRunId=" + RandomStringUtils.randomAlphanumeric(16),
+                // Skip shading for now due to flakiness / slowness in the process.
+                "-DskipShade=" + skipShade,
+                "-DskipTests",
+                "-Dmaven.test.skip",
+                "-Dcheckstyle.skip",
+                "-Dmdep.analyze.skip",
+                "-Dspotless.check.skip",
+                "-Denforcer.skip",
+                "-DprojectId=" + TestProperties.project(),
+                "-Dregion=" + TestProperties.region(),
+                "-DbucketName=" + bucketName,
+                "-DgcpTempLocation=" + bucketName,
+                "-DstagePrefix=" + prefix,
+                templateOrContainer,
+                "-DunifiedWorker=" + System.getProperty("unifiedWorker"),
+                // Print stacktrace when command fails
+                "-e"));
+    if (!Strings.isNullOrEmpty(System.getProperty("baseContainerImage"))) {
+      mavenCmd.add("-DbaseContainerImage=" + System.getProperty("baseContainerImage"));
+    }
+    if (!Strings.isNullOrEmpty(System.getProperty("basePythonContainerImage"))) {
+      mavenCmd.add("-DbasePythonContainerImage=" + System.getProperty("basePythonContainerImage"));
+    }
+    return mavenCmd.toArray(new String[0]);
   }
 
   public GcsResourceManager setUpSpannerITGcsResourceManager() {
@@ -497,7 +554,7 @@ public abstract class TemplateTestBase {
     return spannerTestsGcsClient;
   }
 
-  private List<String> getModulesBuild(String pomPath) {
+  private static List<String> getModulesBuild(String pomPath) {
     List<String> modules = new ArrayList<>();
     modules.add("metadata");
     modules.add("v2/common");

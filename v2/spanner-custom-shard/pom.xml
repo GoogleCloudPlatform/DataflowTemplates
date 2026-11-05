@@ -35,6 +35,12 @@
             <artifactId>spanner-migrations-sdk</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.google.truth</groupId>
+            <artifactId>truth</artifactId>
+            <version>${truth.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
@@ -61,6 +67,7 @@
                         <!-- Excluding auto-generated classes. -->
                         <exclude>**/*AutoValue_*</exclude>
                         <exclude>**/CustomTransformationForCassandraAllDataTypesIT.*</exclude>
+                        <exclude>**/CustomTransformationForDVIT.*</exclude>
                     </excludes>
                 </configuration>
                 <executions>

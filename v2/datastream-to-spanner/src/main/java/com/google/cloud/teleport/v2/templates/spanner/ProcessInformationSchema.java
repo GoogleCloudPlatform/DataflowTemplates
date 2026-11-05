@@ -116,7 +116,10 @@ public class ProcessInformationSchema extends PTransform<PBegin, PCollectionTupl
 
     @Setup
     public void setup() throws Exception {
-      spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
+      // Use injected spannerAccessor if available (primarily for testing)
+      if (this.spannerAccessor == null) {
+        this.spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
+      }
       DatabaseAdminClient databaseAdminClient = spannerAccessor.getDatabaseAdminClient();
       dialect =
           databaseAdminClient
@@ -129,7 +132,10 @@ public class ProcessInformationSchema extends PTransform<PBegin, PCollectionTupl
         shadowTableSpannerAccessor = spannerAccessor;
         useSeparateShadowTableDb = false;
       } else {
-        shadowTableSpannerAccessor = SpannerAccessor.getOrCreate(shadowTableSpannerConfig);
+        // Use injected shadowTableSpannerAccessor if available (primarily for testing)
+        if (this.shadowTableSpannerAccessor == null) {
+          this.shadowTableSpannerAccessor = SpannerAccessor.getOrCreate(shadowTableSpannerConfig);
+        }
         useSeparateShadowTableDb = true;
       }
     }
@@ -203,8 +209,13 @@ public class ProcessInformationSchema extends PTransform<PBegin, PCollectionTupl
       BatchClient batchClient = accessor.getBatchClient();
       BatchReadOnlyTransaction context =
           batchClient.batchReadOnlyTransaction(TimestampBound.strong());
-      InformationSchemaScanner scanner = new InformationSchemaScanner(context, dialect);
+      InformationSchemaScanner scanner = getInformationSchemaScanner(context, dialect);
       return scanner.scan();
+    }
+
+    InformationSchemaScanner getInformationSchemaScanner(
+        BatchReadOnlyTransaction context, Dialect dialect) {
+      return new InformationSchemaScanner(context, dialect);
     }
 
     void createShadowTablesInSpanner(Ddl mainDdl, Ddl shadowTableDdl) {

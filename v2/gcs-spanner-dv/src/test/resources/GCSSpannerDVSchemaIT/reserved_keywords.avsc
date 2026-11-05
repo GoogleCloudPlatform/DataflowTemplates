@@ -1,0 +1,36 @@
+{
+  "type" : "record",
+  "name" : "SourceRowWithMetadata",
+  "fields" : [ {
+    "name" : "tableName",
+    "type" : "string"
+  }, {
+    "name" : "shardId",
+    "type" : [ "string", "null" ]
+  }, {
+    "name" : "primaryKeys",
+    "type" : {
+      "type" : "array",
+      "items" : "string"
+    }
+  }, {
+    "name" : "payload",
+    "type" : {
+      "type" : "record",
+      "name" : "payload",
+      "fields" : [ {
+        "name" : "SELECT",
+        "type" : [ "null", "string" ],
+        "default": null
+      }, {
+        "name" : "GROUP",
+        "type" : [ "null", "string" ],
+        "default": null
+      }, {
+        "name" : "TABLE",
+        "type" : [ "null", "string" ],
+        "default": null
+      } ]
+    }
+  } ]
+}

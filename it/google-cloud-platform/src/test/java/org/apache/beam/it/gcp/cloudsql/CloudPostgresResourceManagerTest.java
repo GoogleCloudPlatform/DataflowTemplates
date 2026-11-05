@@ -155,6 +155,23 @@ public class CloudPostgresResourceManagerTest {
     verify(mockConnection).rollback();
   }
 
+  @Test
+  public void testBuilder() {
+    CloudPostgresResourceManager.Builder builder = CloudPostgresResourceManager.builder(TEST_ID);
+
+    com.google.auth.oauth2.GoogleCredentials credentials =
+        org.mockito.Mockito.mock(com.google.auth.oauth2.GoogleCredentials.class);
+    builder
+        .setProjectId("test-project")
+        .setRegion("test-region")
+        .setCredentials(credentials)
+        .maybeUseStaticInstance("1.1.1.1", 5432, "u", "p");
+
+    assertThat(builder.projectId).isEqualTo("test-project");
+    assertThat(builder.region).isEqualTo("test-region");
+    assertThat(builder.credentials).isEqualTo(credentials);
+  }
+
   /** Helper mock implementation of {@link CloudPostgresResourceManager} for testing. */
   private static class MockCloudPostgresResourceManager extends CloudPostgresResourceManager {
 

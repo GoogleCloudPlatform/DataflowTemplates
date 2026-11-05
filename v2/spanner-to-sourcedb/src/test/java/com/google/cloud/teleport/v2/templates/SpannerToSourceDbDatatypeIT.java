@@ -73,6 +73,7 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
   private static final String TABLE1 = "AllDatatypeColumns";
   private static final String TABLE2 = "AllDatatypePkColumns1";
   private static final String TABLE3 = "AllDatatypePkColumns2";
+  private static final String TABLE4 = "uuid_pk_table";
   private static final String MYSQL_SCHEMA_FILE_RESOURCE =
       "SpannerToSourceDbDatatypeIT/mysql-schema.sql";
 
@@ -172,7 +173,8 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
                 () ->
                     (jdbcResourceManager.getRowCount(TABLE1) == 1)
                         && (jdbcResourceManager.getRowCount(TABLE2) == 1)
-                        && (jdbcResourceManager.getRowCount(TABLE3)
+                        && (jdbcResourceManager.getRowCount(TABLE3) == 1)
+                        && (jdbcResourceManager.getRowCount(TABLE4)
                             == 1)); // only one row is inserted
     assertThatResult(result).meetsConditions();
 
@@ -194,8 +196,17 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
     final long rowCountTable1 = jdbcResourceManager.getRowCount(TABLE1);
     final long rowCountTable2 = jdbcResourceManager.getRowCount(TABLE2);
     final long rowCountTable3 = jdbcResourceManager.getRowCount(TABLE3);
-    LOG.error("Row Counts are {}, {}, {}", rowCountTable1, rowCountTable2, rowCountTable3);
-    return (rowCountTable1 == 0) && (rowCountTable2 == 0) && (rowCountTable3 == 0);
+    final long rowCountTable4 = jdbcResourceManager.getRowCount(TABLE4);
+    LOG.error(
+        "Row Counts are {}, {}, {}, {}",
+        rowCountTable1,
+        rowCountTable2,
+        rowCountTable3,
+        rowCountTable4);
+    return (rowCountTable1 == 0)
+        && (rowCountTable2 == 0)
+        && (rowCountTable3 == 0)
+        && (rowCountTable4 == 0);
   }
 
   private void writeRowsInSpanner() {
@@ -352,6 +363,15 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
             .to(Value.bytes(ByteArray.copyFrom("a")))
             .build();
     spannerResourceManager.write(m3);
+
+    Mutation m4 =
+        Mutation.newInsertOrUpdateBuilder(TABLE4)
+            .set("id")
+            .to("123e4567-e89b-12d3-a456-426614174000")
+            .set("varchar_column")
+            .to("value1")
+            .build();
+    spannerResourceManager.write(m4);
   }
 
   private void deleteRowsInSpanner() {
@@ -366,6 +386,10 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
         Mutation.delete(
             TABLE3, Key.newBuilder().append("a5f27b71-6ffa-444e-abdb-9ce4af318865").build());
     spannerResourceManager.write(m3);
+    Mutation m4 =
+        Mutation.delete(
+            TABLE4, Key.newBuilder().append("123e4567-e89b-12d3-a456-426614174000").build());
+    spannerResourceManager.write(m4);
   }
 
   private List<Throwable> assertionErrors = new ArrayList<>();
@@ -387,11 +411,17 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
     List<Map<String, Object>> rows = jdbcResourceManager.readTable(TABLE1);
     List<Map<String, Object>> rows2 = jdbcResourceManager.readTable(TABLE2);
     List<Map<String, Object>> rows3 = jdbcResourceManager.readTable(TABLE3);
+    List<Map<String, Object>> rows4 = jdbcResourceManager.readTable(TABLE4);
     assertThat(rows).hasSize(1);
+    assertThat(rows4).hasSize(1);
     Map<String, Object> row = rows.get(0);
     assertReadRowInMySQL(row);
     assertReadRowInMySQL(
         ImmutableMap.<String, Object>builder().putAll(rows2.get(0)).putAll(rows3.get(0)).build());
+    Map<String, Object> row4 = rows4.get(0);
+    assertAll(
+        () -> assertThat(row4.get("id")).isEqualTo("123e4567-e89b-12d3-a456-426614174000"),
+        () -> assertThat(row4.get("varchar_column")).isEqualTo("value1"));
   }
 
   private void assertReadRowInMySQL(Map<String, Object> row)

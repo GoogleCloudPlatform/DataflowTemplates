@@ -39,7 +39,7 @@ jobs:
         env:
           CANDIDATE_NAME: ${{ inputs.candidateName }}
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -153,7 +153,7 @@ jobs:
         env:
           CANDIDATE_NAME: ${{ inputs.candidateName }}
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ steps.variables.outputs.releaseBranchName }}
           fetch-depth: 0
@@ -195,7 +195,7 @@ jobs:
         env:
           CANDIDATE_NAME: ${{ inputs.candidateName }}
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ steps.variables.outputs.releaseBranchName }}
           fetch-depth: 0
@@ -213,6 +213,8 @@ jobs:
           --it-spanner-host="https://batch-spanner.googleapis.com" \
           --it-release=true \
           --it-retry-failures=3 \
+          --it-integration-test-parallelism=48 \
+          --redirect-log-to-file='true' \
           --modules-to-build="SPANNER"
       - name: Upload Site Report
         uses: ./.github/actions/publish-site-report
@@ -237,7 +239,7 @@ jobs:
         env:
           CANDIDATE_NAME: ${{ inputs.candidateName }}
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ steps.variables.outputs.releaseBranchName }}
           fetch-depth: 0
@@ -279,7 +281,7 @@ jobs:
         env:
           CANDIDATE_NAME: ${{ inputs.candidateName }}
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ steps.variables.outputs.releaseBranchName }}
           fetch-depth: 0

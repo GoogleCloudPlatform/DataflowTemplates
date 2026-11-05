@@ -19,7 +19,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
-import java.util.Arrays;
+import com.google.common.base.Throwables;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.TupleTag;
 import org.slf4j.Logger;
@@ -39,6 +41,8 @@ public class CreateMongoDbChangeEventContextFn
       new TupleTag<>("failedCreation");
 
   private final String shadowCollectionPrefix;
+  private final Counter contextCreationFailures =
+      Metrics.counter(CreateMongoDbChangeEventContextFn.class, "contextCreationFailures");
 
   public CreateMongoDbChangeEventContextFn(String shadowCollectionPrefix) {
     this.shadowCollectionPrefix = shadowCollectionPrefix;
@@ -48,15 +52,17 @@ public class CreateMongoDbChangeEventContextFn
   public void processElement(ProcessContext context, MultiOutputReceiver out) {
     FailsafeElement<String, String> element = context.element();
     try {
-      JsonNode jsonNode = OBJECT_MAPPER.readTree(element.getOriginalPayload());
+      JsonNode jsonNode = OBJECT_MAPPER.readTree(element.getPayload());
+      JsonNode originalNode = OBJECT_MAPPER.readTree(element.getOriginalPayload());
       MongoDbChangeEventContext changeEventContext =
-          new MongoDbChangeEventContext(jsonNode, shadowCollectionPrefix);
+          new MongoDbChangeEventContext(jsonNode, originalNode, shadowCollectionPrefix);
       out.get(successfulCreationTag).output(changeEventContext);
     } catch (Exception e) {
       LOG.error("Error creating MongoDbChangeEventContext, exception: {}, element: {}", e, element);
       element.setErrorMessage(e.getMessage());
-      element.setStacktrace(Arrays.deepToString(e.getStackTrace()));
+      element.setStacktrace(Throwables.getStackTraceAsString(e));
       out.get(failedCreationTag).output(element);
+      contextCreationFailures.inc();
       LOG.info("Failed element sent to DLQ");
     }
   }

@@ -15,6 +15,9 @@
  */
 package com.google.cloud.teleport.v2.neo4j.transforms;
 
+import static com.google.cloud.teleport.v2.neo4j.utils.ModelUtils.targetType;
+
+import com.google.cloud.teleport.v2.neo4j.database.CypherGenerator;
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
 import com.google.cloud.teleport.v2.neo4j.telemetry.Neo4jTelemetry;
 import com.google.cloud.teleport.v2.neo4j.telemetry.ReportedSourceType;
@@ -30,7 +33,9 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.Row;
 import org.neo4j.driver.TransactionConfig;
 import org.neo4j.driver.summary.ResultSummary;
-import org.neo4j.importer.v1.targets.TargetType;
+import org.neo4j.importer.v1.pipeline.CustomQueryTargetStep;
+import org.neo4j.importer.v1.pipeline.EntityTargetStep;
+import org.neo4j.importer.v1.pipeline.TargetStep;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,29 +43,27 @@ import org.slf4j.LoggerFactory;
 public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Iterable<Row>>, Row> {
 
   private static final Logger LOG = LoggerFactory.getLogger(Neo4jBlockingUnwindFn.class);
-  private final String cypher;
+  private final TargetStep step;
   private final SerializableFunction<Row, Map<String, Object>> parametersFunction;
   private final boolean logCypher;
   private final String unwindMapName;
   private final SerializableSupplier<Neo4jConnection> connectionSupplier;
   private final List<Map<String, Object>> parameters;
   private final ReportedSourceType reportedSourceType;
-  private final TargetType targetType;
+  private transient String cypher;
   private boolean loggingDone;
-  private Neo4jConnection neo4jConnection;
+  private transient Neo4jConnection neo4jConnection;
 
   public Neo4jBlockingUnwindFn(
       ReportedSourceType reportedSourceType,
-      TargetType targetType,
-      String cypher,
+      TargetStep step,
       boolean logCypher,
       String unwindMapName,
       SerializableFunction<Row, Map<String, Object>> parametersFunction,
       SerializableSupplier<Neo4jConnection> connectionSupplier) {
 
     this.reportedSourceType = reportedSourceType;
-    this.targetType = targetType;
-    this.cypher = cypher;
+    this.step = step;
     this.parametersFunction = parametersFunction;
     this.logCypher = logCypher;
     this.unwindMapName = unwindMapName;
@@ -73,6 +76,7 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Iterable<Row>>, Row>
   @Setup
   public void setup() {
     this.neo4jConnection = connectionSupplier.get();
+    this.cypher = resolveCypher();
   }
 
   @ProcessElement
@@ -87,7 +91,9 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Iterable<Row>>, Row>
 
   @Teardown
   public void tearDown() {
-    this.neo4jConnection.close();
+    if (this.neo4jConnection != null) {
+      this.neo4jConnection.close();
+    }
   }
 
   private void executeCypherUnwindStatement() {
@@ -121,7 +127,7 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Iterable<Row>>, Row>
                               "source",
                               reportedSourceType.format(),
                               "target-type",
-                              targetType.name().toLowerCase(Locale.ROOT),
+                              targetType(step).name().toLowerCase(Locale.ROOT),
                               "step",
                               "import")))
                   .build());
@@ -133,13 +139,26 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Iterable<Row>>, Row>
     parameters.clear();
   }
 
+  private String resolveCypher() {
+    if (step instanceof CustomQueryTargetStep queryStep) {
+      var query = queryStep.query();
+      LOG.info("Custom cypher query: {}", query);
+      return query;
+    }
+
+    var capabilities = neo4jConnection.capabilities();
+    var query = CypherGenerator.getImportStatement((EntityTargetStep) step, capabilities);
+    LOG.info("Unwind cypher query: {}", query);
+    return query;
+  }
+
   private static String getParametersString(Map<String, Object> parametersMap) {
     StringBuilder parametersString = new StringBuilder();
     parametersMap
         .keySet()
         .forEach(
             key -> {
-              if (parametersString.length() > 0) {
+              if (!parametersString.isEmpty()) {
                 parametersString.append(',');
               }
               parametersString.append(key).append('=');

@@ -58,6 +58,7 @@ import org.slf4j.LoggerFactory;
           + " <a href=\"https://cloud.google.com/firestore/docs\">Firestore</a> database and writes"
           + " them to another Firestore database. ",
       "It does not support using an Enterprise edition database as the source.",
+      "The datastore.googleapis.com API must be enabled to use this template.",
       "Data consistency is guaranteed only at the end of the pipeline when all data has been"
           + " written to the destination database.\n",
     },
@@ -67,7 +68,8 @@ public class FirestoreToFirestore {
 
   private static final Logger LOG = LoggerFactory.getLogger(FirestoreToFirestore.class);
   private static final int DEFAULT_MAX_NUM_WORKERS = 500;
-  private static final String DEFAULT_DATABASE_ID = "(default)";
+  private static final String FIRESTORE_DEFAULT_DATABASE = "(default)";
+  private static final String DATASTORE_DEFAULT_DATABASE = "";
 
   /**
    * Options supported by the pipeline.
@@ -154,10 +156,6 @@ public class FirestoreToFirestore {
     void setReadTime(String readTime);
   }
 
-  private static String normalizeDatabaseId(String databaseId) {
-    return DEFAULT_DATABASE_ID.equals(databaseId) ? "" : databaseId;
-  }
-
   public static void main(String[] args) {
     try {
       UncaughtExceptionLogger.register();
@@ -172,13 +170,15 @@ public class FirestoreToFirestore {
       LOG.info("Pipeline created.");
 
       String sourceProjectId = options.getSourceProjectId();
-      String sourceDatabaseId = normalizeDatabaseId(options.getSourceDatabaseId());
+      String sourceDatabaseIdForFirestore =
+          normalizeDatabaseIdForFirestore(options.getSourceDatabaseId());
 
       String destinationProjectId =
           options.getDestinationProjectId().isEmpty()
               ? sourceProjectId
               : options.getDestinationProjectId();
-      String destinationDatabaseId = normalizeDatabaseId(options.getDestinationDatabaseId());
+      String destinationDatabaseIdForFirestore =
+          normalizeDatabaseIdForFirestore(options.getDestinationDatabaseId());
 
       int maxNumWorkers =
           options.getMaxNumWorkers() > 0 ? options.getMaxNumWorkers() : DEFAULT_MAX_NUM_WORKERS;
@@ -195,9 +195,9 @@ public class FirestoreToFirestore {
               + "destinationProjectId={}, destinationDatabaseId={}, collectionGroupIds={}, "
               + "maxNumWorkers={}, readTime={}",
           sourceProjectId,
-          sourceDatabaseId,
+          sourceDatabaseIdForFirestore,
           destinationProjectId,
-          destinationDatabaseId,
+          destinationDatabaseIdForFirestore,
           options.getCollectionGroupIds().isEmpty() ? "ALL" : options.getCollectionGroupIds(),
           maxNumWorkers,
           readTime);
@@ -206,7 +206,7 @@ public class FirestoreToFirestore {
       PCollection<PartitionQueryRequest> partitionQueryRequests =
           collectionGroupIds.apply(
               new CreatePartitionQueryRequestFn(
-                  sourceProjectId, sourceDatabaseId, maxNumWorkers, readTime));
+                  sourceProjectId, sourceDatabaseIdForFirestore, maxNumWorkers, readTime));
 
       // 2. Apply FirestoreIO to get partitions (as RunQueryRequests)
       PCollection<RunQueryRequest> partitionedQueries =
@@ -216,7 +216,7 @@ public class FirestoreToFirestore {
                   .read()
                   .partitionQuery()
                   .withProjectId(sourceProjectId)
-                  .withDatabaseId(sourceDatabaseId)
+                  .withDatabaseId(sourceDatabaseIdForFirestore)
                   .withReadTime(readTime)
                   .withRpcQosOptions(rpcQosOptions)
                   .build());
@@ -229,7 +229,7 @@ public class FirestoreToFirestore {
                   .read()
                   .runQuery()
                   .withProjectId(sourceProjectId)
-                  .withDatabaseId(sourceDatabaseId)
+                  .withDatabaseId(sourceDatabaseIdForFirestore)
                   .withReadTime(readTime)
                   .withRpcQosOptions(rpcQosOptions)
                   .build());
@@ -241,7 +241,8 @@ public class FirestoreToFirestore {
       // 5. Prepare documents for writing to the destination database
       PCollection<Write> writes =
           documents.apply(
-              ParDo.of(new PrepareWritesFn(destinationProjectId, destinationDatabaseId)));
+              ParDo.of(
+                  new PrepareWritesFn(destinationProjectId, destinationDatabaseIdForFirestore)));
 
       // 6. Write documents to the destination Firestore database
       writes.apply(
@@ -249,7 +250,7 @@ public class FirestoreToFirestore {
           FirestoreIO.v1()
               .write()
               .withProjectId(destinationProjectId)
-              .withDatabaseId(destinationDatabaseId)
+              .withDatabaseId(destinationDatabaseIdForFirestore)
               .batchWrite()
               .withRpcQosOptions(rpcQosOptions)
               .build());
@@ -283,12 +284,14 @@ public class FirestoreToFirestore {
       LOG.info("No collectionGroupIds provided. Discovering all...");
       Query query =
           Query.newBuilder().addKind(KindExpression.newBuilder().setName("__kind__")).build();
+      String sourceDatabaseIdForDatastore =
+          normalizeDatabaseIdForDatastore(options.getSourceDatabaseId());
       return p.apply(
               "Find All Collection Groups",
               DatastoreIO.v1()
                   .read()
                   .withProjectId(options.getSourceProjectId())
-                  .withDatabaseId(options.getSourceDatabaseId())
+                  .withDatabaseId(sourceDatabaseIdForDatastore)
                   .withQuery(query))
           .apply(
               "Extract Collection Group Names",
@@ -311,5 +314,29 @@ public class FirestoreToFirestore {
             .map(String::trim)
             .collect(Collectors.toList());
     return p.apply("Create Collection Groups", Create.of(collectionGroupIdsList));
+  }
+
+  /**
+   * Normalizes the database ID for use with FirestoreIO methods.
+   *
+   * <p>The default database ID in the Firestore API is "(default)".
+   */
+  private static String normalizeDatabaseIdForFirestore(String databaseId) {
+    if (databaseId.isEmpty() || FIRESTORE_DEFAULT_DATABASE.equals(databaseId)) {
+      return FIRESTORE_DEFAULT_DATABASE;
+    }
+    return databaseId;
+  }
+
+  /**
+   * Normalizes the database ID for use with DatastoreIO methods.
+   *
+   * <p>The default database ID in the Datastore API is an empty string.
+   */
+  private static String normalizeDatabaseIdForDatastore(String databaseId) {
+    if (databaseId.isEmpty() || FIRESTORE_DEFAULT_DATABASE.equals(databaseId)) {
+      return DATASTORE_DEFAULT_DATABASE;
+    }
+    return databaseId;
   }
 }

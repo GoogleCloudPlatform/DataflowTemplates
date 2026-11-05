@@ -7,7 +7,9 @@ options:
         help: >
           The language used to define (and execute) the expressions and/or 
           callables in fields. Defaults to generic.
-        required: true
+        example: "python"
+        default: "generic"
+        required: false
         type: text
       - order: 2
         name: "fields"
@@ -15,6 +17,7 @@ options:
         help: >
           The output fields to compute, each mapping to the expression or callable
           that creates them.
+        example: "{\"key\": {\"expression\": \"key.encode('utf-8')\", \"output_type\": \"bytes\"}}"
         required: true
         type: text
 

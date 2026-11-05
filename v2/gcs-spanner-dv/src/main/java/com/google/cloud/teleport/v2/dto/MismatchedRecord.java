@@ -31,6 +31,7 @@ public abstract class MismatchedRecord {
   public static final String RECORD_KEY_COLUMN_NAME = "record_key";
   public static final String SOURCE_COLUMN_NAME = "source";
   public static final String HASH_COLUMN_NAME = "hash";
+  public static final String SHARD_ID_COLUMN_NAME = "shard_id";
 
   public abstract String getRunId();
 
@@ -46,6 +47,9 @@ public abstract class MismatchedRecord {
   public abstract String getSource();
 
   public abstract String getHash();
+
+  @Nullable
+  public abstract String getShardId();
 
   public static Builder builder() {
     return new AutoValue_MismatchedRecord.Builder();
@@ -66,6 +70,8 @@ public abstract class MismatchedRecord {
     public abstract Builder setSource(String source);
 
     public abstract Builder setHash(String hash);
+
+    public abstract Builder setShardId(String shardId);
 
     public abstract MismatchedRecord build();
   }

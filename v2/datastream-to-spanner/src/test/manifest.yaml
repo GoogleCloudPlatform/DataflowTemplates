@@ -1,0 +1,57 @@
+scenarios:
+  # ==================================================================
+  # Live CDC Replication (v2/datastream-to-spanner)
+  # Curated set of reference ITs to port when onboarding a new source. Scenarios that only
+  # exercise source-agnostic or Spanner-platform behaviour were intentionally removed.
+  # Prerequisite: Datastream must support the new source.
+  # ==================================================================
+  - id: live-it
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DataStreamToSpannerIT
+    description: "End-to-end CDC (insert/update/delete) from the source through a real Datastream stream, for Avro and JSON output and both Spanner dialects."
+
+  - id: live-events
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DataStreamToSpannerEventsIT
+    description: "Replays recorded backfill and CDC events (updates, deletes, child before parent) and checks the final rows, verifying events are applied in the right order."
+
+  - id: live-datatypes
+    type: datatypes
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.MySQLDatastreamToSpannerDataTypesAndExpressionIT
+    description: "Replicates every source data type and generated columns into GoogleSQL and PostgreSQL-dialect Spanner and checks values arrive unchanged."
+
+  - id: live-ddl
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DataStreamToSpannerDDLIT
+    description: "Replicates source columns into non-default Spanner types and through a custom transformation, and checks the converted values."
+
+  - id: live-timezone
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DataStreamToSpannerTimezoneIT
+    description: "Replicates date/time columns with a non-UTC Spanner time zone and checks no values are shifted."
+
+  - id: live-session
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DataStreamToSpannerSessionIT
+    description: "Replicates using an SMT session file with renamed/dropped columns, a dropped table and a generated primary key for a table without one."
+
+  - id: live-dlq-single
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DataStreamToSpannerMySQLRetryDLQIT
+    description: "Sends failing events to the dead-letter queue and checks they are replicated correctly after retry."
+
+  - id: live-shadow-pkfocused
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.SeparateShadowTableDatabasePKFocusedIT
+    description: "Replicates inserts, updates, deletes and primary key changes on tables with every primary key type, using shadow tables in a separate database."
+
+  - id: live-singledf-sharded
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DatastreamToSpannerSingleDFShardedMigrationIT
+    description: "Replicates 4 logical shards from 2 streams in one job and checks migration_shard_id is filled. Only if sharded migration is supported for the source."
+
+  - id: live-reservedkeywords
+    template: v2/datastream-to-spanner
+    context: com.google.cloud.teleport.v2.templates.DatastreamToSpannerReservedKeywordsMySqlIT
+    description: "Replicates tables and columns named after reserved SQL keywords. Only if the source has its own identifier quoting or case rules."

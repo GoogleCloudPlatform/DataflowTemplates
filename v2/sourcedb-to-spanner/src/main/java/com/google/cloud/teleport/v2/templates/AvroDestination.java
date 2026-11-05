@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import java.util.Objects;
+import org.apache.avro.reflect.Nullable;
 import org.apache.beam.sdk.coders.DefaultCoder;
 import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 
@@ -23,7 +24,7 @@ import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 public class AvroDestination {
   public String name;
   public String jsonSchema;
-  public String shardId;
+  @Nullable public String shardId;
 
   // Needed for serialization
   public AvroDestination() {}

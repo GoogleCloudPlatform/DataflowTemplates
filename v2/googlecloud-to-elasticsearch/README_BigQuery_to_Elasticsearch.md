@@ -35,8 +35,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **elasticsearchPassword**: The Elasticsearch password to authenticate with. If specified, the value of `apiKey` is ignored.
 * **batchSize**: The batch size in number of documents. Defaults to `1000`.
 * **batchSizeBytes**: The batch size in number of bytes. Defaults to `5242880` (5mb).
-* **maxRetryAttempts**: The maximum number of retry attempts. Must be greater than zero. Defaults to `no retries`.
-* **maxRetryDuration**: The maximum retry duration in milliseconds. Must be greater than zero. Defaults to `no retries`.
+* **maxRetryAttempts**: The maximum number of retry attempts. Must be greater than zero. Defaults to `5`.
+* **maxRetryDuration**: The maximum retry duration in milliseconds. Must be greater than zero. Defaults to `60000` (1 minute).
 * **propertyAsIndex**: The property in the document being indexed whose value specifies `_index` metadata to include with the document in bulk requests. Takes precedence over an `_index` UDF. Defaults to `none`.
 * **javaScriptIndexFnGcsPath**: The Cloud Storage path to the JavaScript UDF source for a function that specifies `_index` metadata to include with the document in bulk requests. Defaults to `none`.
 * **javaScriptIndexFnName**: The name of the UDF JavaScript function that specifies `_index` metadata to include with the document in bulk requests. Defaults to `none`.
@@ -175,8 +175,8 @@ export ELASTICSEARCH_USERNAME=<elasticsearchUsername>
 export ELASTICSEARCH_PASSWORD=<elasticsearchPassword>
 export BATCH_SIZE=1000
 export BATCH_SIZE_BYTES=5242880
-export MAX_RETRY_ATTEMPTS=<maxRetryAttempts>
-export MAX_RETRY_DURATION=<maxRetryDuration>
+export MAX_RETRY_ATTEMPTS=5
+export MAX_RETRY_DURATION=60000
 export PROPERTY_AS_INDEX=<propertyAsIndex>
 export JAVA_SCRIPT_INDEX_FN_GCS_PATH=<javaScriptIndexFnGcsPath>
 export JAVA_SCRIPT_INDEX_FN_NAME=<javaScriptIndexFnName>
@@ -272,8 +272,8 @@ export ELASTICSEARCH_USERNAME=<elasticsearchUsername>
 export ELASTICSEARCH_PASSWORD=<elasticsearchPassword>
 export BATCH_SIZE=1000
 export BATCH_SIZE_BYTES=5242880
-export MAX_RETRY_ATTEMPTS=<maxRetryAttempts>
-export MAX_RETRY_DURATION=<maxRetryDuration>
+export MAX_RETRY_ATTEMPTS=5
+export MAX_RETRY_DURATION=60000
 export PROPERTY_AS_INDEX=<propertyAsIndex>
 export JAVA_SCRIPT_INDEX_FN_GCS_PATH=<javaScriptIndexFnGcsPath>
 export JAVA_SCRIPT_INDEX_FN_NAME=<javaScriptIndexFnName>
@@ -361,8 +361,8 @@ resource "google_dataflow_flex_template_job" "bigquery_to_elasticsearch" {
     # elasticsearchPassword = "<elasticsearchPassword>"
     # batchSize = "1000"
     # batchSizeBytes = "5242880"
-    # maxRetryAttempts = "<maxRetryAttempts>"
-    # maxRetryDuration = "<maxRetryDuration>"
+    # maxRetryAttempts = "5"
+    # maxRetryDuration = "60000"
     # propertyAsIndex = "<propertyAsIndex>"
     # javaScriptIndexFnGcsPath = "<javaScriptIndexFnGcsPath>"
     # javaScriptIndexFnName = "<javaScriptIndexFnName>"

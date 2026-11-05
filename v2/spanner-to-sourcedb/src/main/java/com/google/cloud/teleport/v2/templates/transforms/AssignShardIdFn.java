@@ -31,6 +31,9 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesParser;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
@@ -41,6 +44,8 @@ import com.google.cloud.teleport.v2.spanner.utils.ShardIdResponse;
 import com.google.cloud.teleport.v2.templates.changestream.DataChangeRecordTypeConvertor;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.ISpToSrcSourceConnector;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessorFactory;
 import com.google.cloud.teleport.v2.templates.utils.SchemaMapperUtils;
 import com.google.cloud.teleport.v2.templates.utils.ShardingLogicImplFetcher;
 import com.google.cloud.teleport.v2.templates.utils.SpannerToSourceDbExceptionClassifier;
@@ -118,6 +123,10 @@ public class AssignShardIdFn
   private final String tableOverrides;
   private final String columnOverrides;
 
+  private transient Schema schema;
+  private transient ISpToSrcSourceConnector sourceConnector;
+  private transient SchemaFileOverridesParser schemaFileOverridesParser;
+
   public AssignShardIdFn(
       SpannerConfig spannerConfig,
       PCollectionView<Ddl> ddlView,
@@ -149,6 +158,11 @@ public class AssignShardIdFn
     this.schemaOverridesFilePath = schemaOverridesFilePath;
     this.tableOverrides = tableOverrides;
     this.columnOverrides = columnOverrides;
+    try {
+      this.sourceConnector = SourceProcessorFactory.getSource(sourceType);
+    } catch (com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   // setSpannerAccessor is added to be used by unit tests
@@ -159,6 +173,16 @@ public class AssignShardIdFn
   // setMapper is added to be used by unit tests
   public void setMapper(ObjectMapper mapper) {
     this.mapper = mapper;
+  }
+
+  // for unit testing purposes
+  public void setSchema(Schema schema) {
+    this.schema = schema;
+  }
+
+  // for unit testing purposes
+  public void setSchemaFileOverridesParser(SchemaFileOverridesParser schemaFileOverridesParser) {
+    this.schemaFileOverridesParser = schemaFileOverridesParser;
   }
 
   /** Setup function connects to Cloud Spanner. */
@@ -187,6 +211,18 @@ public class AssignShardIdFn
         throw e;
       }
     }
+
+    if (sessionFilePath != null && !sessionFilePath.isEmpty()) {
+      schema = SessionFileReader.read(sessionFilePath);
+    }
+    if (schemaOverridesFilePath != null && !schemaOverridesFilePath.isEmpty()) {
+      schemaFileOverridesParser = new SchemaFileOverridesParser(schemaOverridesFilePath);
+    }
+    try {
+      sourceConnector = SourceProcessorFactory.getSource(sourceType);
+    } catch (Exception e) {
+      throw new RuntimeException("Error getting source connector", e);
+    }
   }
 
   /** Teardown function disconnects from the Cloud Spanner. */
@@ -208,7 +244,7 @@ public class AssignShardIdFn
 
     schemaMapper =
         SchemaMapperUtils.getSchemaMapper(
-            sessionFilePath, schemaOverridesFilePath, tableOverrides, columnOverrides, ddl);
+            schema, schemaFileOverridesParser, tableOverrides, columnOverrides, ddl);
 
     shardIdFetcher =
         ShardingLogicImplFetcher.getShardingLogicImpl(
@@ -264,7 +300,7 @@ public class AssignShardIdFn
       c.output(KV.of(finalKey, record));
     } catch (Exception e) {
       LOG.error("Error fetching shard Id column: {}", e);
-      TupleTag<String> errorTag = SpannerToSourceDbExceptionClassifier.classify(e);
+      TupleTag<String> errorTag = SpannerToSourceDbExceptionClassifier.classify(e, sourceConnector);
       if (Constants.PERMANENT_ERROR_TAG.equals(errorTag)) {
         record.setShard(Constants.SEVERE_ERROR_SHARD_ID);
       } else {
@@ -300,8 +336,8 @@ public class AssignShardIdFn
               staleInstant.getEpochSecond(), staleInstant.getNano());
       ModType modType = record.getModType();
 
-      // TODO find a way to not make a special case from Cassandra.
-      boolean updateReadValuesToSpannerRecord = (sourceType != Constants.SOURCE_CASSANDRA);
+      boolean updateReadValuesToSpannerRecord =
+          sourceConnector.shouldUpdateReadValuesToSpannerRecord();
 
       List<String> columns =
           ddl.table(tableName).columns().stream()
@@ -563,6 +599,8 @@ public class AssignShardIdFn
           case STRING:
           case PG_VARCHAR:
           case PG_TEXT:
+          case UUID:
+          case PG_UUID:
             pk.append(
                 DataChangeRecordTypeConvertor.toString(
                     keysJson, keyColName, /* requiredField= */ true));
@@ -622,6 +660,8 @@ public class AssignShardIdFn
         case STRING:
         case PG_VARCHAR:
         case PG_TEXT:
+        case UUID:
+        case PG_UUID:
           return DataChangeRecordTypeConvertor.toString(valuesJson, colName, false);
         case NUMERIC:
         case PG_NUMERIC:
@@ -668,6 +708,9 @@ public class AssignShardIdFn
         case PG_VARCHAR:
         case PG_TEXT:
           return value.getString();
+        case UUID:
+        case PG_UUID:
+          return value.getUuid();
         case NUMERIC:
         case PG_NUMERIC:
           return value.getNumeric();

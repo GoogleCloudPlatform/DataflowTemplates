@@ -253,6 +253,68 @@ public class ShadowTableCreatorTest {
   }
 
   @Test
+  public void canConstructShadowTableForSqlServerWithGsqlDialect() {
+    Ddl testDdl = ProcessInformationSchemaTest.getTestDdlWithGSqlDialect();
+
+    ShadowTableCreator shadowTableCreator =
+        new ShadowTableCreator("sqlserver", "shadow_", Dialect.GOOGLE_STANDARD_SQL);
+    Table shadowTable =
+        shadowTableCreator.constructShadowTable(
+            testDdl, "Users_interleaved", Dialect.GOOGLE_STANDARD_SQL);
+
+    assertEquals(shadowTable.name(), "shadow_Users_interleaved");
+    assertThat(shadowTable.primaryKeys(), is(testDdl.table("Users_interleaved").primaryKeys()));
+    Set<String> columns =
+        shadowTable.columns().stream().map(c -> c.name()).collect(Collectors.toSet());
+    Set<String> expectedColumns =
+        testDdl.table("Users_interleaved").primaryKeys().stream()
+            .map(c -> c.name())
+            .collect(Collectors.toSet());
+    expectedColumns.add("timestamp");
+    expectedColumns.add("change_lsn");
+    assertThat(columns, is(expectedColumns));
+  }
+
+  @Test
+  public void canConstructShadowTableForSqlServerWithPostgresDialect() {
+    Ddl testDdl = ProcessInformationSchemaTest.getTestDdlWithPostgresDialect();
+
+    ShadowTableCreator shadowTableCreator =
+        new ShadowTableCreator("sqlserver", "shadow_", Dialect.POSTGRESQL);
+    Table shadowTable =
+        shadowTableCreator.constructShadowTable(testDdl, "Users_interleaved", Dialect.POSTGRESQL);
+
+    assertEquals(shadowTable.name(), "shadow_Users_interleaved");
+    assertThat(shadowTable.primaryKeys(), is(testDdl.table("Users_interleaved").primaryKeys()));
+    Set<String> columns =
+        shadowTable.columns().stream().map(c -> c.name()).collect(Collectors.toSet());
+    Set<String> expectedColumns =
+        testDdl.table("Users_interleaved").primaryKeys().stream()
+            .map(c -> c.name())
+            .collect(Collectors.toSet());
+    expectedColumns.add("timestamp");
+    expectedColumns.add("change_lsn");
+    assertThat(columns, is(expectedColumns));
+    List<String> columnTypes =
+        shadowTable.columns().stream().map(c -> c.type().toString()).collect(Collectors.toList());
+    List<String> expectedColumnTypes = new ArrayList<>();
+    expectedColumnTypes.add(Type.pgVarchar().toString());
+    expectedColumnTypes.add(Type.pgVarchar().toString());
+    expectedColumnTypes.add(Type.pgInt8().toString());
+    expectedColumnTypes.add(Type.pgBool().toString());
+    expectedColumnTypes.add(Type.pgInt8().toString());
+    expectedColumnTypes.add(Type.pgFloat8().toString());
+    expectedColumnTypes.add(Type.pgVarchar().toString());
+    expectedColumnTypes.add(Type.pgBytea().toString());
+    expectedColumnTypes.add(Type.pgTimestamptz().toString());
+    expectedColumnTypes.add(Type.pgDate().toString());
+    expectedColumnTypes.add(Type.pgInt8().toString());
+    expectedColumnTypes.add(Type.pgInt8().toString());
+    expectedColumnTypes.add(Type.pgVarchar().toString());
+    assertThat(columnTypes, is(expectedColumnTypes));
+  }
+
+  @Test
   public void canHandlePkColumnNameCollision() {
     Ddl ddl =
         Ddl.builder()

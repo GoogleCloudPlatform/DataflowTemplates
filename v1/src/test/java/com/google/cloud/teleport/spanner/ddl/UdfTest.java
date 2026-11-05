@@ -21,6 +21,7 @@ import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.ddl.Udf.SqlSecurity;
+import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 
 /** Unit tests for Udf class. */
@@ -63,6 +64,62 @@ public class UdfTest {
   }
 
   @Test
+  public void testPgUdfWithAllOptions() {
+    Udf udf =
+        Udf.builder()
+            .name("foo")
+            .specificName("s1.foo")
+            .dialect(Dialect.POSTGRESQL)
+            .type("text")
+            .definition("(SELECT 1)")
+            .security(SqlSecurity.INVOKER)
+            .spannerDeterminism("NOT_DETERMINISTIC_VOLATILE")
+            .addParameter(UdfParameter.parse("p1 bigint", "s1.foo", Dialect.POSTGRESQL))
+            .build();
+
+    assertThat(
+        udf.toString(),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION \"foo\"(\"p1\" bigint) RETURNS text VOLATILE SECURITY INVOKER RETURN (SELECT 1)"));
+
+    assertThat(
+        udf.toBuilder().build().toString(),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION \"foo\"(\"p1\" bigint) RETURNS text VOLATILE SECURITY INVOKER RETURN (SELECT 1)"));
+  }
+
+  @Test
+  public void testPgUdfCaseInsensitiveDeterminism() {
+    Udf udf =
+        Udf.builder(Dialect.POSTGRESQL)
+            .name("foo")
+            .specificName("s1.foo")
+            .type("text")
+            .definition("(SELECT 1)")
+            .spannerDeterminism("deterministic")
+            .build();
+
+    assertThat(
+        udf.toString(),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION \"foo\"() RETURNS text IMMUTABLE RETURN (SELECT 1)"));
+  }
+
+  @Test
+  public void testPgUdfUnrecognizedDeterminism() {
+    Udf udf =
+        Udf.builder(Dialect.POSTGRESQL)
+            .name("foo")
+            .specificName("s1.foo")
+            .type("text")
+            .definition("(SELECT 1)")
+            .spannerDeterminism("SOMETIMES_DETERMINISTIC")
+            .build();
+
+    assertThrows(IllegalArgumentException.class, udf::prettyPrint);
+  }
+
+  @Test
   public void testUdfWithInvalidParameter() {
     Udf.Builder udf =
         Udf.builder()
@@ -72,5 +129,74 @@ public class UdfTest {
             .addParameter(UdfParameter.parse("p1 int32", "s1.bar", Dialect.GOOGLE_STANDARD_SQL));
 
     assertThrows(IllegalArgumentException.class, () -> udf.parameter("p1"));
+  }
+
+  @Test
+  public void testRemoteUdf() {
+    Udf udf =
+        Udf.builder()
+            .name("foo")
+            .specificName("s1.foo")
+            .dialect(Dialect.GOOGLE_STANDARD_SQL)
+            .type("string")
+            .language("REMOTE")
+            .addParameter(UdfParameter.parse("p1 int32", "s1.foo", Dialect.GOOGLE_STANDARD_SQL))
+            .options(
+                ImmutableList.of(
+                    "endpoint=\"https://us-central1-myproject.cloudfunctions.net/myfunc\"",
+                    "max_batching_rows=50"))
+            .build();
+
+    assertThat(
+        udf.toString(),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION `foo`(`p1` int32) RETURNS string NOT DETERMINISTIC LANGUAGE REMOTE"
+                + " OPTIONS (endpoint=\"https://us-central1-myproject.cloudfunctions.net/myfunc\", max_batching_rows=50)"));
+
+    assertThat(
+        udf.toBuilder().build().toString(),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION `foo`(`p1` int32) RETURNS string NOT DETERMINISTIC LANGUAGE REMOTE"
+                + " OPTIONS (endpoint=\"https://us-central1-myproject.cloudfunctions.net/myfunc\", max_batching_rows=50)"));
+  }
+
+  @Test
+  public void testPgRemoteUdf() {
+    Udf udf =
+        Udf.builder()
+            .name("foo")
+            .specificName("s1.foo")
+            .dialect(Dialect.POSTGRESQL)
+            .type("TEXT")
+            .language("REMOTE")
+            .addParameter(UdfParameter.parse("p1 BIGINT", "s1.foo", Dialect.POSTGRESQL))
+            .definition(
+                "{\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/'myfunc\"}")
+            .build();
+
+    assertThat(
+        udf.toString(),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION \"foo\"(\"p1\" BIGINT) RETURNS TEXT VOLATILE LANGUAGE REMOTE"
+                + " AS '{\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/''myfunc\"}'"));
+
+    assertThat(
+        udf.toBuilder().build().toString(),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION \"foo\"(\"p1\" BIGINT) RETURNS TEXT VOLATILE LANGUAGE REMOTE"
+                + " AS '{\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/''myfunc\"}'"));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            Udf.builder()
+                .name("bar")
+                .specificName("s1.bar")
+                .dialect(Dialect.POSTGRESQL)
+                .type("TEXT")
+                .language("REMOTE")
+                .options(ImmutableList.of("option = value"))
+                .build()
+                .toString());
   }
 }

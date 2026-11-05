@@ -55,8 +55,10 @@ public class AvroUtil {
   public static final String SPANNER_UDF = "spannerUdf";
   public static final String SPANNER_UDF_NAME = "spannerUdfName";
   public static final String SPANNER_UDF_TYPE = "spannerUdfType";
+  public static final String SPANNER_UDF_LANGUAGE = "spannerUdfLanguage";
   public static final String SPANNER_UDF_DEFINITION = "spannerUdfDefinition";
   public static final String SPANNER_UDF_SECURITY = "spannerUdfSecurity";
+  public static final String SPANNER_UDF_SPANNER_DETERMINISM = "spannerUdfSpannerDeterminism";
   public static final String SPANNER_UDF_PARAMETER = "spannerUdfParameter_";
   public static final String SPANNER_VIEW_QUERY = "spannerViewQuery";
   public static final String SPANNER_VIEW_SECURITY = "spannerViewSecurity";

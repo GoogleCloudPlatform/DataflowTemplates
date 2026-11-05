@@ -17,11 +17,12 @@ package com.google.cloud.teleport.v2.templates.transforms;
 
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -34,6 +35,7 @@ import com.google.cloud.spanner.ErrorCode;
 import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.spanner.SpannerExceptionFactory;
 import com.google.cloud.spanner.TransactionRunner;
+import com.google.cloud.teleport.v2.options.SpannerToSourceDbOptions;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
@@ -46,22 +48,27 @@ import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
-import com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options;
 import com.google.cloud.teleport.v2.templates.changestream.ChangeStreamErrorRecord;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
+import com.google.cloud.teleport.v2.templates.dbutils.SpannerDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
-import com.google.cloud.teleport.v2.templates.dbutils.dao.spanner.SpannerDao;
+import com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheckException;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
-import com.google.cloud.teleport.v2.templates.dbutils.dml.MySQLDMLGenerator;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.InputRecordProcessor;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessor;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
+import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
+import com.google.cloud.teleport.v2.templates.models.SpannerMutationResponse;
+import com.google.cloud.teleport.v2.templates.source.mysql.MySQLDMLGenerator;
 import com.google.cloud.teleport.v2.templates.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import java.sql.SQLDataException;
+import java.sql.SQLIntegrityConstraintViolationException;
+import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLSyntaxErrorException;
 import java.util.HashMap;
 import java.util.Map;
@@ -80,6 +87,8 @@ import org.junit.Test;
 import org.junit.runners.MethodSorters;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
@@ -98,7 +107,7 @@ public class SourceWriterFnTest {
   @Mock private DoFn.ProcessContext processContext;
   @Mock private ISpannerMigrationTransformer mockSpannerMigrationTransformer;
   @Mock private SourceProcessor mockSourceProcessor;
-  @Mock private Options mockOptions;
+  @Mock private SpannerToSourceDbOptions mockOptions;
   @Mock private PCollectionView<Ddl> mockDdlView;
   @Mock private PCollectionView<Ddl> mockShadowTableDdlView;
   @Mock private IDMLGenerator mockDMLGenerator;
@@ -121,6 +130,7 @@ public class SourceWriterFnTest {
     when(mockDaoMap.get(any())).thenReturn(mockSqlDao);
     when(mockSpannerDao.getDatabaseClient()).thenReturn(mockDatabaseClient);
     when(mockDatabaseClient.readWriteTransaction(any())).thenReturn(mockTransactionRunner);
+    when(mockTransactionRunner.allowNestedTransaction()).thenReturn(mockTransactionRunner);
     when(mockTransactionRunner.run(any(TransactionRunner.TransactionCallable.class)))
         .thenAnswer(
             new Answer<Void>() {
@@ -128,7 +138,7 @@ public class SourceWriterFnTest {
               public Void answer(InvocationOnMock invocation) throws Throwable {
                 TransactionRunner.TransactionCallable<Void> callable = invocation.getArgument(0);
                 try {
-                  callable.run(null);
+                  callable.run(Mockito.mock(com.google.cloud.spanner.TransactionContext.class));
                 } catch (Exception e) {
                   throw SpannerExceptionFactory.newSpannerException(
                       ErrorCode.UNKNOWN, e.getMessage(), e);
@@ -156,43 +166,49 @@ public class SourceWriterFnTest {
     when(mockSpannerConfig.getRpcPriority())
         .thenReturn(ValueProvider.StaticValueProvider.of(RpcPriority.HIGH));
     doNothing().when(mockSpannerDao).updateShadowTable(any(), any());
-    doThrow(new java.sql.SQLIntegrityConstraintViolationException("a foreign key constraint fails"))
+    doThrow(new SQLIntegrityConstraintViolationException("a foreign key constraint fails"))
         .when(mockSqlDao)
         .write(
-            contains("2300"),
+            argThat(arg -> arg != null && arg.getDmlStatement().contains("2300")),
             any()); // This is the child_id for which we want to test the foreign key
     // constraint failure.
-    doThrow(
-            new java.sql.SQLNonTransientConnectionException(
-                "transient connection error", "HY000", 1161))
+    doThrow(new SQLNonTransientConnectionException("transient connection error", "HY000", 1161))
         .when(mockSqlDao)
-        .write(contains("1161"), any()); // This is the child_id for which we want to retryable
+        .write(
+            argThat(arg -> arg != null && arg.getDmlStatement().contains("1161")),
+            any()); // This is the child_id for which we want to retryable
     // connection error
-    doThrow(
-            new java.sql.SQLNonTransientConnectionException(
-                "permanent connection error", "HY000", 4242))
+    doThrow(new SQLNonTransientConnectionException("permanent connection error", "HY000", 4242))
         .when(mockSqlDao)
-        .write(contains("4242"), any()); // no retryable error
+        .write(
+            argThat(arg -> arg != null && arg.getDmlStatement().contains("4242")),
+            any()); // no retryable error
     doThrow(new RuntimeException("generic exception"))
         .when(mockSqlDao)
-        .write(contains("12345"), any()); // to test code path of generic exception
+        .write(
+            argThat(arg -> arg != null && arg.getDmlStatement().contains("12345")),
+            any()); // to test code path of generic exception
     doThrow(new SQLSyntaxErrorException("sql syntax error"))
         .when(mockSqlDao)
-        .write(contains("6666"), any());
-    doThrow(new SQLDataException("sql data error")).when(mockSqlDao).write(contains("7777"), any());
+        .write(argThat(arg -> arg != null && arg.getDmlStatement().contains("6666")), any());
+    doThrow(new SQLDataException("sql data error"))
+        .when(mockSqlDao)
+        .write(argThat(arg -> arg != null && arg.getDmlStatement().contains("7777")), any());
     doThrow(new InvalidTransformationException("invalid transformation"))
         .when(mockSqlDao)
-        .write(contains("8888"), any());
+        .write(argThat(arg -> arg != null && arg.getDmlStatement().contains("8888")), any());
     doThrow(new ChangeEventConvertorException("change event convertor error"))
         .when(mockSqlDao)
-        .write(contains("9999"), any());
+        .write(argThat(arg -> arg != null && arg.getDmlStatement().contains("9999")), any());
     doThrow(SpannerExceptionFactory.newSpannerException(ErrorCode.ALREADY_EXISTS, "test spanner"))
         .when(mockSqlDao)
-        .write(contains("1111"), any());
+        .write(argThat(arg -> arg != null && arg.getDmlStatement().contains("1111")), any());
     doThrow(new IllegalArgumentException("illegal argument"))
         .when(mockSqlDao)
-        .write(contains("2222"), any());
-    doNothing().when(mockSqlDao).write(contains("parent1"), any());
+        .write(argThat(arg -> arg != null && arg.getDmlStatement().contains("2222")), any());
+    doNothing()
+        .when(mockSqlDao)
+        .write(argThat(arg -> arg != null && arg.getDmlStatement().contains("parent1")), any());
     testShard = new Shard();
     testShard.setLogicalShardId("shardA");
     testShard.setUser("test");
@@ -229,7 +245,7 @@ public class SourceWriterFnTest {
     // Mock side input access in ProcessContext
     when(processContext.sideInput(mockDdlView)).thenReturn(testDdl);
     when(processContext.sideInput(mockShadowTableDdlView)).thenReturn(shadowTableDdl);
-    when(mockOptions.as(Options.class)).thenReturn(mockOptions);
+    when(mockOptions.as(SpannerToSourceDbOptions.class)).thenReturn(mockOptions);
   }
 
   @Test
@@ -256,6 +272,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
@@ -290,6 +307,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
@@ -297,6 +315,125 @@ public class SourceWriterFnTest {
         .readShadowTableRecordWithExclusiveLock(any(), any(), any(), any());
     verify(mockSqlDao, never()).write(any(), any());
     verify(mockSpannerDao, never()).updateShadowTable(any(), any());
+  }
+
+  @Test
+  public void testProcessElement_spannerSource() throws Exception {
+    org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod mockMod =
+        Mockito.mock(org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod.class);
+    when(mockMod.getKeysJson()).thenReturn("{\"id\":\"42\"}");
+    when(mockMod.getNewValuesJson()).thenReturn("{\"FirstName\":\"John\"}");
+
+    TrimmedShardedDataChangeRecord record =
+        new TrimmedShardedDataChangeRecord(
+            com.google.cloud.Timestamp.now(),
+            "tx1",
+            "100",
+            "parent1",
+            mockMod,
+            org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType.INSERT,
+            1,
+            "");
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+
+    // Mock SpannerTargetDao
+    IDao mockSpannerTargetDao = Mockito.mock(IDao.class);
+    when(mockSourceProcessor.getSourceDao(any())).thenReturn(mockSpannerTargetDao);
+    when(mockSourceProcessor.getDmlGenerator()).thenReturn(mockDMLGenerator);
+    when(mockDMLGenerator.getDMLStatement(any()))
+        .thenReturn(
+            new SpannerMutationResponse(
+                Mockito.mock(com.google.cloud.spanner.Mutation.class), null));
+
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testSourceSchema,
+            "shadow_",
+            "skip",
+            500,
+            Constants.SOURCE_SPANNER,
+            null,
+            mockDdlView,
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
+
+    ObjectMapper mapper = new ObjectMapper();
+    sourceWriterFn.setSchema(testSchema);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSourceProcessor(mockSourceProcessor);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+
+    sourceWriterFn.processElement(processContext);
+
+    verify(mockSpannerTargetDao).write(any(), any());
+  }
+
+  @Test
+  public void testProcessElement_shadowTableRecordExists() throws Exception {
+    org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod mockMod =
+        Mockito.mock(org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod.class);
+    when(mockMod.getKeysJson()).thenReturn("{\"id\":\"42\"}");
+    when(mockMod.getNewValuesJson()).thenReturn("{\"FirstName\":\"John\"}");
+
+    TrimmedShardedDataChangeRecord record =
+        new TrimmedShardedDataChangeRecord(
+            com.google.cloud.Timestamp.now(),
+            "tx1",
+            "100",
+            "parent1",
+            mockMod,
+            org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType.INSERT,
+            1,
+            "");
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+
+    ShadowTableRecord existingRecord =
+        new ShadowTableRecord(com.google.cloud.Timestamp.ofTimeMicroseconds(0), 50L);
+    when(mockSpannerDao.readShadowTableRecordWithExclusiveLock(any(), any(), any(), any()))
+        .thenReturn(existingRecord);
+
+    IDao mockSpannerTargetDao = Mockito.mock(IDao.class);
+    when(mockSourceProcessor.getSourceDao(any())).thenReturn(mockSpannerTargetDao);
+    when(mockSourceProcessor.getDmlGenerator()).thenReturn(mockDMLGenerator);
+    when(mockDMLGenerator.getDMLStatement(any()))
+        .thenReturn(
+            new SpannerMutationResponse(
+                Mockito.mock(com.google.cloud.spanner.Mutation.class), null));
+
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testSourceSchema,
+            "shadow_",
+            "skip",
+            500,
+            Constants.SOURCE_SPANNER,
+            null,
+            mockDdlView,
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
+
+    sourceWriterFn.setSchema(testSchema);
+    sourceWriterFn.setObjectMapper(new ObjectMapper());
+    sourceWriterFn.setSourceProcessor(mockSourceProcessor);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+
+    sourceWriterFn.processElement(processContext);
+
+    verify(mockSpannerTargetDao).write(any(), any());
   }
 
   @Test
@@ -323,6 +460,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -361,6 +499,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -404,16 +543,22 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.setSpannerToSourceTransformer(mockSpannerMigrationTransformer);
     sourceWriterFn.processElement(processContext);
-    ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<DMLGeneratorResponse> argumentCaptor =
+        ArgumentCaptor.forClass(DMLGeneratorResponse.class);
     verify(mockSpannerDao, atLeast(1))
         .readShadowTableRecordWithExclusiveLock(any(), any(), any(), any());
     verify(mockSqlDao, atLeast(1)).write(argumentCaptor.capture(), any());
-    assertTrue(argumentCaptor.getValue().contains("INSERT INTO `parent1`(`id`) VALUES (45)"));
+    assertTrue(
+        argumentCaptor
+            .getValue()
+            .getDmlStatement()
+            .contains("INSERT INTO `parent1`(`id`) VALUES (45)"));
     verify(mockSpannerDao, atLeast(1)).updateShadowTable(any(), any());
   }
 
@@ -445,6 +590,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -484,6 +630,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
@@ -520,6 +667,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
@@ -554,6 +702,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
@@ -589,6 +738,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
@@ -624,6 +774,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -660,6 +811,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -696,6 +848,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -732,6 +885,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -768,6 +922,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -804,6 +959,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -814,6 +970,58 @@ public class SourceWriterFnTest {
     ChangeStreamErrorRecord actualError =
         gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
     assertTrue(actualError.getErrorMessage().contains("sql data error"));
+  }
+
+  @Test
+  public void testProcessElementTransactionalCheckException() throws Exception {
+    TrimmedShardedDataChangeRecord record = getParent1TrimmedDataChangeRecord("shardA");
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testSourceSchema,
+            "shadow_",
+            "skip",
+            500,
+            "mysql",
+            null,
+            mockDdlView,
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSourceProcessor(sourceProcessor);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+
+    try (MockedStatic<InputRecordProcessor> mockedInputRecordProcessor =
+        mockStatic(InputRecordProcessor.class)) {
+      mockedInputRecordProcessor
+          .when(
+              () ->
+                  InputRecordProcessor.processRecord(
+                      any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+          .thenThrow(
+              new TransactionalCheckException("Shadow table sequence changed during transaction"));
+
+      sourceWriterFn.processElement(processContext);
+    }
+
+    ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+    verify(processContext, atLeast(1))
+        .output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
+    ChangeStreamErrorRecord actualError =
+        gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
+    assertTrue(
+        actualError.getErrorMessage().contains("Shadow table sequence changed during transaction"));
   }
 
   @Test
@@ -842,6 +1050,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.processElement(processContext);
 
@@ -874,6 +1083,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.processElement(processContext);
 
@@ -904,6 +1114,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -940,6 +1151,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -976,6 +1188,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -1012,6 +1225,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -1054,6 +1268,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
@@ -1095,12 +1310,15 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.processElement(processContext);
-    verify(mockSqlDao, never()).write(contains("567890"), any());
-    verify(mockSqlDao, never()).write(contains("567890"), any());
+    verify(mockSqlDao, never())
+        .write(argThat(arg -> arg != null && arg.getDmlStatement().contains("567890")), any());
+    verify(mockSqlDao, never())
+        .write(argThat(arg -> arg != null && arg.getDmlStatement().contains("567890")), any());
   }
 
   @Test
@@ -1131,6 +1349,7 @@ public class SourceWriterFnTest {
             "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setSchema(testSchema);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSourceProcessor(mockSourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);

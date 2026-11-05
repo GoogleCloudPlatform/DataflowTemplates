@@ -1,0 +1,7 @@
+{
+  "renamedColumns": {
+    "Users": {
+      "full_name": "name"
+    }
+  }
+}

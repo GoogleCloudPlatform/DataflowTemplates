@@ -35,14 +35,21 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.function.Supplier;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateLoadTestBase;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.JDBCSource;
@@ -50,18 +57,18 @@ import org.apache.beam.it.gcp.datastream.MySQLSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.secretmanager.SecretManagerResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
-import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
 import org.junit.After;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Base class for DataStreamToSpanner Load tests. It provides helper functions related to
  * environment setup and assertConditions.
  */
 public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
-  protected static final String SPEC_PATH =
-      "gs://dataflow-templates/latest/flex/Cloud_Datastream_to_Spanner";
+  private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpannerLTBase.class);
   protected String testRootDir;
   protected final int maxWorkers = 100;
   protected final int numWorkers = 50;
@@ -71,9 +78,24 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
   protected GcsResourceManager gcsResourceManager;
   public DatastreamResourceManager datastreamResourceManager;
   protected SecretManagerResourceManager secretClient;
+  private final ExecutorService rowCountExecutor = Executors.newFixedThreadPool(20);
+
+  public static class RowRange {
+    public final int min;
+    public final int max;
+
+    public RowRange(int min, int max) {
+      this.min = min;
+      this.max = max;
+    }
+  }
 
   public void setUpResourceManagers(String spannerDdlResource) throws IOException {
     setUpResourceManagers(spannerDdlResource, false);
+  }
+
+  protected boolean shouldUsePrivateConnectivity() {
+    return false;
   }
 
   /**
@@ -86,9 +108,10 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     testRootDir = getClass().getSimpleName();
     spannerResourceManager =
         SpannerResourceManager.builder(testName, project, region)
-            .maybeUseStaticInstance()
+            .maybeUseStaticInstance(Optional.of(1))
             .setNodeCount(10)
             .setMonitoringClient(monitoringClient)
+            .setSuppressVerboseLogs(true)
             .build();
     pubsubResourceManager =
         PubsubResourceManager.builder(testName, project, CREDENTIALS_PROVIDER)
@@ -96,19 +119,24 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
             .build();
 
     gcsResourceManager = createSpannerLTGcsResourceManager();
-    datastreamResourceManager =
+    DatastreamResourceManager.Builder datastreamBuilder =
         DatastreamResourceManager.builder(testName, project, region)
-            .setCredentialsProvider(CREDENTIALS_PROVIDER)
-            .build();
+            .setCredentialsProvider(CREDENTIALS_PROVIDER);
+    if (System.getProperty("privateConnectivity") != null && shouldUsePrivateConnectivity()) {
+      datastreamBuilder.setPrivateConnectivity(System.getProperty("privateConnectivity"));
+    }
+
+    datastreamResourceManager = datastreamBuilder.build();
     secretClient = SecretManagerResourceManager.builder(project, CREDENTIALS_PROVIDER).build();
 
     // Initialize shadowTableSpannerResourceManager only if separateShadowTableDb is true
     if (separateShadowTableDb) {
       shadowTableSpannerResourceManager =
           SpannerResourceManager.builder("shadow_" + testName, project, region)
-              .maybeUseStaticInstance()
+              .maybeUseStaticInstance(Optional.of(1))
               .setNodeCount(10)
               .setMonitoringClient(monitoringClient)
+              .setSuppressVerboseLogs(true)
               .build();
       shadowTableSpannerResourceManager.ensureUsableAndCreateResources();
     }
@@ -126,6 +154,16 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
       JDBCSource mySQLSource,
       HashMap<String, String> templateParameters,
       HashMap<String, Object> environmentOptions)
+      throws IOException, ParseException, InterruptedException {
+    runLoadTest(tables, mySQLSource, templateParameters, environmentOptions, null);
+  }
+
+  public void runLoadTest(
+      HashMap<String, Integer> tables,
+      JDBCSource mySQLSource,
+      HashMap<String, String> templateParameters,
+      HashMap<String, Object> environmentOptions,
+      Runnable afterLaunchCallback)
       throws IOException, ParseException, InterruptedException {
     // TestClassName/runId/TestMethodName/cdc
     String gcsPrefix =
@@ -163,7 +201,6 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
             put("dlqGcsPubSubSubscription", dlqSubscription.toString());
             put("datastreamSourceType", "mysql");
             put("inputFileFormat", "avro");
-            put("workerMachineType", "n2-standard-4");
           }
         };
 
@@ -184,8 +221,11 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     // Add all parameters for the template
     params.putAll(templateParameters);
 
-    LaunchConfig.Builder options = LaunchConfig.builder(getClass().getSimpleName(), SPEC_PATH);
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(getClass().getSimpleName(), getTemplateSpecPath());
+
     options.addEnvironment("maxWorkers", maxWorkers).addEnvironment("numWorkers", numWorkers);
+    options.addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
 
     // Set all environment options
     environmentOptions.forEach((key, value) -> options.addEnvironment(key, value));
@@ -195,20 +235,18 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     PipelineLauncher.LaunchInfo jobInfo = pipelineLauncher.launch(project, region, options.build());
     assertThatPipeline(jobInfo).isRunning();
 
-    ConditionCheck[] checks = new ConditionCheck[tables.size()];
-    int iterationCount = 0;
-    for (Map.Entry<String, Integer> entry : tables.entrySet()) {
-      checks[iterationCount] =
-          SpannerRowsCheck.builder(spannerResourceManager, entry.getKey())
-              .setMinRows(entry.getValue())
-              .setMaxRows(entry.getValue())
-              .build();
-      iterationCount++;
+    if (afterLaunchCallback != null) {
+      afterLaunchCallback.run();
     }
 
+    HashMap<String, RowRange> tableRanges = new HashMap<>();
+    for (Map.Entry<String, Integer> entry : tables.entrySet()) {
+      tableRanges.put(entry.getKey(), new RowRange(entry.getValue(), entry.getValue()));
+    }
+    Supplier<Boolean> condition = () -> checkAllTablesRowCounts(tableRanges);
     PipelineOperator.Result result =
         pipelineOperator.waitForCondition(
-            createConfig(jobInfo, Duration.ofHours(4), Duration.ofMinutes(5)), checks);
+            createConfig(jobInfo, getLoadTestTimeout(), Duration.ofMinutes(5)), condition);
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();
@@ -222,6 +260,40 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
 
     // export results
     exportMetricsToBigQuery(jobInfo, metrics);
+  }
+
+  /** Maximum time to wait for all rows to reach Spanner. */
+  protected Duration getLoadTestTimeout() {
+    return Duration.ofHours(4);
+  }
+
+  private boolean checkAllTablesRowCounts(HashMap<String, RowRange> tables) {
+    List<Callable<Boolean>> tasks = new ArrayList<>();
+    for (Map.Entry<String, RowRange> entry : tables.entrySet()) {
+      tasks.add(
+          () -> {
+            try {
+              long rowCount = spannerResourceManager.getRowCount(entry.getKey());
+              RowRange range = entry.getValue();
+              return rowCount >= range.min && rowCount <= range.max;
+            } catch (Exception e) {
+              LOG.warn("Error checking row count for table {}: {}", entry.getKey(), e.getMessage());
+              return false;
+            }
+          });
+    }
+    try {
+      List<Future<Boolean>> futures = rowCountExecutor.invokeAll(tasks);
+      for (Future<Boolean> future : futures) {
+        if (!future.get()) {
+          return false;
+        }
+      }
+      return true;
+    } catch (Exception e) {
+      LOG.warn("Error checking row count in Spanner", e);
+      return false;
+    }
   }
 
   public void getResourceManagerMetrics(Map<String, Double> metrics) {
@@ -243,6 +315,7 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
         pubsubResourceManager,
         gcsResourceManager,
         datastreamResourceManager);
+    rowCountExecutor.shutdown();
   }
 
   public MySQLSource getMySQLSource(String hostIp, String username, String password) {
@@ -293,6 +366,9 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
    */
   public void createSpannerDDL(SpannerResourceManager spannerResourceManager, String resourceName)
       throws IOException {
+    if (resourceName == null) {
+      return;
+    }
     String ddl =
         String.join(
             " ", Resources.readLines(Resources.getResource(resourceName), StandardCharsets.UTF_8));

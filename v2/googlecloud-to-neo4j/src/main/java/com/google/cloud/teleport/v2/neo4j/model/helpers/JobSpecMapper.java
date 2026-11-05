@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.neo4j.model.helpers;
 
-import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
+import com.google.cloud.teleport.v2.neo4j.model.job.OverlayTokens;
 import com.google.cloud.teleport.v2.neo4j.utils.FileSystemUtils;
 import java.io.StringReader;
 import java.util.Collections;
@@ -42,7 +42,7 @@ import org.yaml.snakeyaml.error.YAMLException;
 public class JobSpecMapper {
   private static final Logger LOG = LoggerFactory.getLogger(JobSpecMapper.class);
 
-  public static ImportSpecification parse(String jobSpecUri, OptionsParams options) {
+  public static ImportSpecification parse(String jobSpecUri, OverlayTokens options) {
     String content = fetchContent(jobSpecUri);
     JSONObject spec = getJsonObject(content);
 
@@ -88,7 +88,7 @@ public class JobSpecMapper {
   }
 
   @Deprecated
-  private static ImportSpecification parseLegacyJobSpec(OptionsParams options, JSONObject spec) {
+  private static ImportSpecification parseLegacyJobSpec(OverlayTokens options, JSONObject spec) {
     LOG.debug("Converting legacy JSON job spec to new import specification format");
     var configuration = parseConfig(spec);
     var targets = extractTargets(spec);
@@ -128,7 +128,7 @@ public class JobSpecMapper {
     return json.has("config") ? json.getJSONObject("config").toMap() : Collections.emptyMap();
   }
 
-  private static List<Source> parseSources(JSONObject json, OptionsParams options) {
+  private static List<Source> parseSources(JSONObject json, OverlayTokens options) {
     if (json.has("source")) {
       return List.of(SourceMapper.parse(json.getJSONObject("source"), options));
     }
