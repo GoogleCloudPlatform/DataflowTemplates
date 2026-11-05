@@ -79,10 +79,7 @@ options:
       - order: 1
         name: "subscription"
         description: "Pub/Sub subscription"
-        help: >
-          Pub/Sub subscription to read the input from. Exactly one of
-          subscription or topic must be provided. Use this when you want
-          to read from an existing subscription without creating a new one.
+        help: "Pub/Sub subscription to read the input from."
         example: "projects/your-project-id/subscriptions/your-subscription-name"
         required: false
         type: text
