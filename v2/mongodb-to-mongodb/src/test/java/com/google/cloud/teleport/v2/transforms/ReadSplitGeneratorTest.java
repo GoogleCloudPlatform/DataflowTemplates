@@ -38,11 +38,14 @@ import java.util.List;
 import org.bson.BsonBinary;
 import org.bson.BsonBoolean;
 import org.bson.BsonDateTime;
+import org.bson.BsonDbPointer;
 import org.bson.BsonDecimal128;
 import org.bson.BsonDocument;
 import org.bson.BsonDouble;
 import org.bson.BsonInt32;
 import org.bson.BsonInt64;
+import org.bson.BsonJavaScript;
+import org.bson.BsonJavaScriptWithScope;
 import org.bson.BsonMaxKey;
 import org.bson.BsonMinKey;
 import org.bson.BsonNull;
@@ -51,6 +54,7 @@ import org.bson.BsonRegularExpression;
 import org.bson.BsonString;
 import org.bson.BsonSymbol;
 import org.bson.BsonTimestamp;
+import org.bson.BsonUndefined;
 import org.bson.BsonValue;
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -566,6 +570,7 @@ public class ReadSplitGeneratorTest {
     List<BsonValue> sampleDocs =
         Arrays.asList(
             new BsonMinKey(),
+            new BsonUndefined(),
             new BsonNull(),
             new BsonInt32(10),
             new BsonString("abc"),
@@ -577,6 +582,10 @@ public class ReadSplitGeneratorTest {
             new BsonDateTime(1000L),
             new BsonTimestamp(100, 1),
             new BsonRegularExpression("^a"),
+            new BsonDbPointer("db.col", new ObjectId("600000000000000000000002")),
+            new BsonJavaScript("function() { return 1; }"),
+            new BsonJavaScriptWithScope(
+                "function() { return x; }", new BsonDocument("x", new BsonInt32(1))),
             new BsonMaxKey());
 
     @SuppressWarnings("unchecked")
@@ -594,29 +603,37 @@ public class ReadSplitGeneratorTest {
     // & max; maxBucket (maxKey) min is maxKey
     when(mockBucketFind.first())
         .thenReturn(new BsonDocument("_id", sampleDocs.get(0))) // minBucketMax
-        .thenReturn(new BsonDocument("_id", sampleDocs.get(1))) // null min
-        .thenReturn(new BsonDocument("_id", sampleDocs.get(1))) // null max
-        .thenReturn(new BsonDocument("_id", sampleDocs.get(2))) // number min
+        .thenReturn(new BsonDocument("_id", sampleDocs.get(1))) // undefined min
+        .thenReturn(new BsonDocument("_id", sampleDocs.get(1))) // undefined max
+        .thenReturn(new BsonDocument("_id", sampleDocs.get(2))) // null min
+        .thenReturn(new BsonDocument("_id", sampleDocs.get(2))) // null max
+        .thenReturn(new BsonDocument("_id", sampleDocs.get(3))) // number min
         .thenReturn(new BsonDocument("_id", new BsonInt32(20))) // number max
-        .thenReturn(new BsonDocument("_id", sampleDocs.get(3))) // string min
+        .thenReturn(new BsonDocument("_id", sampleDocs.get(4))) // string min
         .thenReturn(new BsonDocument("_id", new BsonString("xyz"))) // string max
-        .thenReturn(new BsonDocument("_id", sampleDocs.get(4))) // symbol min
-        .thenReturn(new BsonDocument("_id", sampleDocs.get(4))) // symbol max
-        .thenReturn(new BsonDocument("_id", sampleDocs.get(5))) // object min
-        .thenReturn(new BsonDocument("_id", sampleDocs.get(5))) // object max
-        .thenReturn(new BsonDocument("_id", sampleDocs.get(6))) // binData min
-        .thenReturn(new BsonDocument("_id", sampleDocs.get(6))) // binData max
-        .thenReturn(new BsonDocument("_id", sampleDocs.get(7))) // objectId min
-        .thenReturn(new BsonDocument("_id", sampleDocs.get(7))) // objectId max
-        .thenReturn(new BsonDocument("_id", sampleDocs.get(8))) // bool min
+        .thenReturn(new BsonDocument("_id", sampleDocs.get(5))) // symbol min
+        .thenReturn(new BsonDocument("_id", sampleDocs.get(5))) // symbol max
+        .thenReturn(new BsonDocument("_id", sampleDocs.get(6))) // object min
+        .thenReturn(new BsonDocument("_id", sampleDocs.get(6))) // object max
+        .thenReturn(new BsonDocument("_id", sampleDocs.get(7))) // binData min
+        .thenReturn(new BsonDocument("_id", sampleDocs.get(7))) // binData max
+        .thenReturn(new BsonDocument("_id", sampleDocs.get(8))) // objectId min
+        .thenReturn(new BsonDocument("_id", sampleDocs.get(8))) // objectId max
+        .thenReturn(new BsonDocument("_id", sampleDocs.get(9))) // bool min
         .thenReturn(new BsonDocument("_id", new BsonBoolean(true))) // bool max
-        .thenReturn(new BsonDocument("_id", sampleDocs.get(9))) // date min
-        .thenReturn(new BsonDocument("_id", sampleDocs.get(9))) // date max
-        .thenReturn(new BsonDocument("_id", sampleDocs.get(10))) // timestamp min
-        .thenReturn(new BsonDocument("_id", sampleDocs.get(10))) // timestamp max
-        .thenReturn(new BsonDocument("_id", sampleDocs.get(11))) // regex min
-        .thenReturn(new BsonDocument("_id", sampleDocs.get(11))) // regex max
-        .thenReturn(new BsonDocument("_id", sampleDocs.get(12))); // maxBucketMin
+        .thenReturn(new BsonDocument("_id", sampleDocs.get(10))) // date min
+        .thenReturn(new BsonDocument("_id", sampleDocs.get(10))) // date max
+        .thenReturn(new BsonDocument("_id", sampleDocs.get(11))) // timestamp min
+        .thenReturn(new BsonDocument("_id", sampleDocs.get(11))) // timestamp max
+        .thenReturn(new BsonDocument("_id", sampleDocs.get(12))) // regex min
+        .thenReturn(new BsonDocument("_id", sampleDocs.get(12))) // regex max
+        .thenReturn(new BsonDocument("_id", sampleDocs.get(13))) // dbPointer min
+        .thenReturn(new BsonDocument("_id", sampleDocs.get(13))) // dbPointer max
+        .thenReturn(new BsonDocument("_id", sampleDocs.get(14))) // javascript min
+        .thenReturn(new BsonDocument("_id", sampleDocs.get(14))) // javascript max
+        .thenReturn(new BsonDocument("_id", sampleDocs.get(15))) // javascriptWithScope min
+        .thenReturn(new BsonDocument("_id", sampleDocs.get(15))) // javascriptWithScope max
+        .thenReturn(new BsonDocument("_id", sampleDocs.get(16))); // maxBucketMin
 
     MongoClient mockClient = mock(MongoClient.class);
     MongoDatabase mockDb = mock(MongoDatabase.class);
@@ -876,6 +893,74 @@ public class ReadSplitGeneratorTest {
           "Boundary must not fall inside unoccupied wraparound gap (0x000100, 0xfffff0): " + hex,
           ctr <= 0x000100L || ctr >= 0xfffff0L);
     }
+  }
+
+  @Test
+  public void generateTypeIsolatedSplits_singleChunkMixedTypes_isolatesEachActiveType() {
+    @SuppressWarnings("unchecked")
+    MongoCollection<BsonDocument> mockCol = mock(MongoCollection.class);
+    when(mockCol.estimatedDocumentCount()).thenReturn(100_000L);
+    FindIterable<BsonDocument> globalFind = mockChainedFind();
+    FindIterable<BsonDocument> bucketFind = mockChainedFind();
+    when(mockCol.find()).thenReturn(globalFind);
+    when(mockCol.find(any(BsonDocument.class))).thenReturn(bucketFind);
+
+    BsonInt32 numId = new BsonInt32(1);
+    BsonObjectId oid = new BsonObjectId(new ObjectId("600000000000000000000001"));
+    when(globalFind.first())
+        .thenReturn(new BsonDocument("_id", numId))
+        .thenReturn(new BsonDocument("_id", oid));
+    when(bucketFind.first())
+        .thenReturn(new BsonDocument("_id", new BsonInt32(500))) // number max
+        .thenReturn(null) // string
+        .thenReturn(null) // symbol
+        .thenReturn(null) // object
+        .thenReturn(null) // binData
+        .thenReturn(new BsonDocument("_id", oid)); // objectId min
+
+    // Even when estimatedDocs (100k) <= targetChunkSize (200k), mixed-type collections must emit
+    // per-type filters so keyset ($gt) resumption never gets type-bracketed to a single BSON type.
+    List<BsonDocument> splits =
+        ReadSplitGenerator.generateTypeIsolatedSplits(mockCol, 1, 200_000, 256);
+    assertEquals(2, splits.size());
+    assertTrue(splits.get(0).toJson().contains("\"int\""));
+    assertTrue(splits.get(1).toJson().contains("\"objectId\""));
+  }
+
+  @Test
+  public void generateProbedNumberSplits_subnormalAndExtremeDecimal128_handlesWithoutCrash() {
+    List<BsonDocument> subnormalSplits =
+        ReadSplitGenerator.generateProbedNumberSplits(
+            new BsonDecimal128(Decimal128.parse("0")),
+            new BsonDecimal128(Decimal128.parse("1E-6176")),
+            4);
+    assertEquals(1, subnormalSplits.size());
+    assertFalse(subnormalSplits.get(0).toJson().contains("$lt"));
+
+    // Full-range Decimal128 span (-9E6144 to +9E6144, range=1.8E6145 > MAX_DECIMAL128) still
+    // computes valid in-range boundaries (-4.5E6144, 0, +4.5E6144) via BigDecimal without overflow.
+    List<BsonDocument> extremeRangeSplits =
+        ReadSplitGenerator.generateProbedNumberSplits(
+            new BsonDecimal128(Decimal128.parse("-9E6144")),
+            new BsonDecimal128(Decimal128.parse("9E6144")),
+            4);
+    assertEquals(4, extremeRangeSplits.size());
+  }
+
+  @Test
+  public void getBucketForValue_identifiesUndefinedDbPointerAndJavaScriptTypes() {
+    assertEquals("undefined", ReadSplitGenerator.getBucketForValue(new BsonUndefined()).getName());
+    assertEquals(
+        "dbPointer",
+        ReadSplitGenerator.getBucketForValue(
+                new BsonDbPointer("db.col", new ObjectId("600000000000000000000001")))
+            .getName());
+    assertEquals(
+        "javascript", ReadSplitGenerator.getBucketForValue(new BsonJavaScript("f()")).getName());
+    assertEquals(
+        "javascriptWithScope",
+        ReadSplitGenerator.getBucketForValue(new BsonJavaScriptWithScope("f()", new BsonDocument()))
+            .getName());
   }
 
   @SuppressWarnings("unchecked")

@@ -1215,4 +1215,56 @@ public class MongoDbChangeStreamReaderTest {
     verify(mockStream, times(2)).cursor();
     fn.teardown();
   }
+
+  @Test
+  public void mapChangeStreamEvent_unsignedHighBitOrdinal_preservesMonotonicSortOrder() {
+    BsonDocument resumeTok = new BsonDocument("_data", new BsonString("tok"));
+    BsonDocument nsDoc =
+        new BsonDocument("db", new BsonString("testDb")).append("coll", new BsonString("users"));
+    BsonDocument docKey = new BsonDocument("_id", new BsonInt32(1));
+
+    ChangeStreamDocument<Document> lowOrdinalEvent =
+        new ChangeStreamDocument<>(
+            OperationType.UPDATE.getValue(),
+            resumeTok,
+            nsDoc,
+            null,
+            null,
+            new Document("_id", 1).append("v", 1),
+            null,
+            docKey,
+            new BsonTimestamp(1724000000, 0x7FFFFFFF),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
+    ChangeStreamDocument<Document> highOrdinalEvent =
+        new ChangeStreamDocument<>(
+            OperationType.UPDATE.getValue(),
+            resumeTok,
+            nsDoc,
+            null,
+            null,
+            new Document("_id", 1).append("v", 2),
+            null,
+            docKey,
+            new BsonTimestamp(1724000000, 0x80000000),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
+
+    DocumentWithMetadata mappedLow =
+        MongoDbChangeStreamReader.mapChangeStreamEvent(lowOrdinalEvent, "users", "users");
+    DocumentWithMetadata mappedHigh =
+        MongoDbChangeStreamReader.mapChangeStreamEvent(highOrdinalEvent, "users", "users");
+
+    assertEquals(2147483647L, mappedLow.getTimestampSortKey().getSubSeconds());
+    assertEquals(2147483648L, mappedHigh.getTimestampSortKey().getSubSeconds());
+    assertTrue(mappedHigh.getTimestampSortKey().compareTo(mappedLow.getTimestampSortKey()) > 0);
+  }
 }

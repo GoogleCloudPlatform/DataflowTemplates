@@ -1651,6 +1651,299 @@ public class MongoDbTransformsTest {
     assertEquals(25000.0, immediateTarget.getRate(), 0.01);
   }
 
+  @Test
+  public void writeToDlq_liveStreamingMinTimestampAndHeldWatermark_flushesEarlyAndPreservesRecords()
+      throws Exception {
+    Path retryableDir = tempFolder.newFolder("live-dlq-retryable").toPath();
+    Path permanentDir = tempFolder.newFolder("live-dlq-permanent").toPath();
+    String tempDir = tempFolder.newFolder("live-dlq-temp").getAbsolutePath();
+
+    PipelineOptions opts = TestPipeline.testingPipelineOptions();
+    opts.as(StreamingOptions.class).setStreaming(true);
+    org.apache.beam.sdk.Pipeline streamingPipeline = org.apache.beam.sdk.Pipeline.create(opts);
+
+    DocumentWithMetadata minTsRetryFailure =
+        DocumentWithMetadata.of(new Document("_id", "live_min_ts_udf_doc"), "src", "tgt")
+            .withFailure(
+                "UDF failure at TIMESTAMP_MIN_VALUE",
+                DocumentWithMetadata.ErrorType.RETRYABLE,
+                DocumentWithMetadata.FailureStage.UDF);
+    DocumentWithMetadata minTsPermAfterAdvance =
+        DocumentWithMetadata.of(new Document("_id", "min_ts_after_wm_advance_doc"), "src", "tgt")
+            .withFailure(
+                "Validation failure at TIMESTAMP_MIN_VALUE",
+                DocumentWithMetadata.ErrorType.PERMANENT,
+                DocumentWithMetadata.FailureStage.VALIDATE);
+
+    TestStream<DocumentWithMetadata> dlqStream =
+        TestStream.create(DocumentWithMetadataCoder.of())
+            .addElements(
+                TimestampedValue.of(
+                    minTsRetryFailure,
+                    org.apache.beam.sdk.transforms.windowing.BoundedWindow.TIMESTAMP_MIN_VALUE))
+            .advanceProcessingTime(Duration.standardMinutes(2))
+            .advanceWatermarkTo(Instant.now())
+            .addElements(
+                TimestampedValue.of(
+                    minTsPermAfterAdvance,
+                    org.apache.beam.sdk.transforms.windowing.BoundedWindow.TIMESTAMP_MIN_VALUE))
+            .advanceWatermarkToInfinity();
+
+    streamingPipeline
+        .apply("LiveDlqStream", dlqStream)
+        .apply(
+            "WriteToDlqLive",
+            new MongoDbTransforms.WriteToDlq(
+                "udf", retryableDir.toString(), permanentDir.toString(), tempDir));
+
+    streamingPipeline.run().waitUntilFinish();
+
+    List<String> retryableFiles;
+    try (Stream<Path> files = Files.list(retryableDir)) {
+      retryableFiles =
+          files
+              .filter(Files::isRegularFile)
+              .map(p -> p.getFileName().toString())
+              .sorted()
+              .collect(Collectors.toList());
+    }
+    // Early processing-time trigger emits an EARLY pane (pane-0-00000-of-00001.json, without
+    // -last-)
+    // in a valid wall-clock 4-digit year window while watermark was still held at MIN_VALUE.
+    assertEquals(1, retryableFiles.size());
+    assertThat(retryableFiles.get(0))
+        .matches("error-udf\\d{4}-\\d{2}-\\d{2}T.*-pane-0-00000-of-00001\\.json");
+    assertThat(readDirectoryContents(retryableDir)).contains("live_min_ts_udf_doc");
+    // Must also preserve TIMESTAMP_MIN_VALUE records arriving after watermark advances past 1970.
+    assertThat(readDirectoryContents(permanentDir)).contains("min_ts_after_wm_advance_doc");
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void writeBatchesFn_writeConcernErrorWithPermanentWriteError_retriesRemainingDocuments()
+      throws Exception {
+    MongoClient mockClient = mock(MongoClient.class);
+    MongoDatabase mockDb = mock(MongoDatabase.class);
+    MongoCollection<Document> mockCol = mock(MongoCollection.class);
+    when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
+    when(mockDb.getCollection(anyString())).thenReturn(mockCol);
+
+    BulkWriteError permErr =
+        new BulkWriteError(121, "Document failed validation", new BsonDocument(), 0);
+    com.mongodb.bulk.WriteConcernError wcErr =
+        new com.mongodb.bulk.WriteConcernError(
+            189, "PrimarySteppedDown", "Primary stepped down", new BsonDocument());
+    AtomicInteger calls = new AtomicInteger(0);
+    List<Integer> batchSizes = Collections.synchronizedList(new ArrayList<>());
+
+    when(mockCol.bulkWrite(anyList(), any(BulkWriteOptions.class)))
+        .thenAnswer(
+            inv -> {
+              List<WriteModel<Document>> ops = inv.getArgument(0);
+              batchSizes.add(ops.size());
+              if (calls.incrementAndGet() == 1) {
+                throw new MongoBulkWriteException(
+                    BulkWriteResult.acknowledged(
+                        0, 0, 0, 0, Collections.emptyList(), Collections.emptyList()),
+                    Collections.singletonList(permErr),
+                    wcErr,
+                    new ServerAddress("localhost", 27017),
+                    Collections.emptySet());
+              }
+              return BulkWriteResult.acknowledged(
+                  ops.size(),
+                  ops.size(),
+                  0,
+                  ops.size(),
+                  Collections.emptyList(),
+                  Collections.emptyList());
+            });
+
+    TupleTag<DocumentWithMetadata> failureTag = new TupleTag<>();
+    MongoDbTransforms.WriteBatchesFn fn =
+        MongoDbTransforms.WriteBatchesFn.builder()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withMaxWriteRetries(2)
+            .withInitialWriteRatePerWorker(0)
+            .withClientFactory(uri -> mockClient)
+            .withFailureTag(failureTag)
+            .build();
+    fn.setup();
+    fn.startBundle();
+
+    List<DocumentWithMetadata> items = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      items.add(DocumentWithMetadata.of(new Document("_id", "doc_" + i), "src", "tgt"));
+    }
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.ProcessContext ctx =
+        mock(DoFn.ProcessContext.class);
+    when(ctx.element()).thenReturn(KV.of("tgt#0", items));
+    fn.processElement(ctx);
+
+    List<DocumentWithMetadata> dlqOut = new ArrayList<>();
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.FinishBundleContext
+        finishCtx = mock(DoFn.FinishBundleContext.class);
+    org.mockito.Mockito.doAnswer(
+            inv -> {
+              dlqOut.add(inv.getArgument(1));
+              return null;
+            })
+        .when(finishCtx)
+        .output(any(), any(), any(), any());
+    fn.finishBundle(finishCtx);
+    fn.teardown();
+
+    assertEquals(Arrays.asList(5, 4), batchSizes);
+    assertEquals(1, dlqOut.size());
+    assertEquals("doc_0", dlqOut.get(0).getId());
+    assertEquals(DocumentWithMetadata.ErrorType.PERMANENT, dlqOut.get(0).getErrorType());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void writeBatchesFn_exceptionalFutureAndMissingCollection_recoversNextBundleAndTeardown()
+      throws Exception {
+    MongoClient mockClient = mock(MongoClient.class);
+    MongoDatabase mockDb = mock(MongoDatabase.class);
+    MongoCollection<Document> mockCol = mock(MongoCollection.class);
+    when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
+    when(mockDb.getCollection(anyString())).thenReturn(mockCol);
+    when(mockCol.bulkWrite(anyList(), any(BulkWriteOptions.class)))
+        .thenThrow(new AssertionError("Simulated fatal error"))
+        .thenReturn(mock(BulkWriteResult.class));
+
+    TupleTag<DocumentWithMetadata> failureTag = new TupleTag<>();
+    MongoDbTransforms.WriteBatchesFn fn =
+        MongoDbTransforms.WriteBatchesFn.builder()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withInitialWriteRatePerWorker(0)
+            .withClientFactory(uri -> mockClient)
+            .withFailureTag(failureTag)
+            .build();
+    fn.setup();
+    fn.startBundle();
+
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.ProcessContext ctx =
+        mock(DoFn.ProcessContext.class);
+    when(ctx.element())
+        .thenReturn(
+            KV.of(
+                "tgt#0",
+                Collections.singletonList(
+                    DocumentWithMetadata.of(new Document("_id", "k1"), "src", "tgt"))));
+    fn.processElement(ctx);
+
+    DoFn<KV<String, Iterable<DocumentWithMetadata>>, DocumentWithMetadata>.FinishBundleContext
+        finishCtx = mock(DoFn.FinishBundleContext.class);
+    boolean threwOnBundle1 = false;
+    try {
+      fn.finishBundle(finishCtx);
+    } catch (java.util.concurrent.CompletionException expected) {
+      threwOnBundle1 = true;
+    }
+    assertTrue(threwOnBundle1);
+
+    // Subsequent bundle with legacy missing-collection DLQ item + valid {_id: null} item must
+    // succeed cleanly and teardown must close dedicated client without rethrowing stale errors.
+    fn.startBundle();
+    DocumentWithMetadata legacyNoCollection =
+        DocumentWithMetadata.fromDlqJson("{\"data\": {\"_id\": \"legacy_1\", \"v\": 1}}");
+    DocumentWithMetadata validNullId =
+        DocumentWithMetadata.of(new Document("_id", null).append("v", 2), "src", "tgt");
+    when(ctx.element()).thenReturn(KV.of("tgt#0", Arrays.asList(legacyNoCollection, validNullId)));
+    List<DocumentWithMetadata> dlqOut = new ArrayList<>();
+    org.mockito.Mockito.doAnswer(
+            inv -> {
+              dlqOut.add(inv.getArgument(1));
+              return null;
+            })
+        .when(ctx)
+        .output(org.mockito.ArgumentMatchers.eq(failureTag), any());
+    org.mockito.Mockito.doAnswer(
+            inv -> {
+              dlqOut.add(inv.getArgument(1));
+              return null;
+            })
+        .when(finishCtx)
+        .output(any(), any(), any(), any());
+    fn.processElement(ctx);
+    fn.finishBundle(finishCtx);
+    fn.teardown();
+
+    assertEquals(1, dlqOut.size());
+    assertEquals("legacy_1", dlqOut.get(0).getId());
+    verify(mockClient).close();
+  }
+
+  @Test
+  public void writeBatchesCoalescing_byteArrayVsBinaryAndNumericRepresentations_coalescesCleanly()
+      throws Exception {
+    DocumentWithMetadata rawInsert =
+        DocumentWithMetadata.cdcEvent(
+            new Document("_id", new byte[] {1, 2, 3}).append("v", 1),
+            null,
+            "bin_col",
+            "bin_col",
+            DocumentWithMetadata.OperationType.INSERT,
+            TimestampSortKey.cdc(100, 1),
+            "{\"_id\": {\"$binary\": {\"base64\": \"AQID\", \"subType\": \"00\"}}}");
+    DocumentWithMetadata binDelete =
+        DocumentWithMetadata.cdcEvent(
+            null,
+            null,
+            "bin_col",
+            "bin_col",
+            DocumentWithMetadata.OperationType.DELETE,
+            TimestampSortKey.cdc(101, 1),
+            "{\"_id\": {\"$binary\": {\"base64\": \"AQID\", \"subType\": \"00\"}}}");
+    List<WriteModel<Document>> binModels =
+        runWriteBatchesFn("bin_col#0", Arrays.asList(rawInsert, binDelete));
+    assertEquals(1, binModels.size());
+    assertTrue(binModels.get(0) instanceof DeleteOneModel);
+
+    DocumentWithMetadata negZero =
+        DocumentWithMetadata.cdcEvent(
+            new Document("_id", -0.0d).append("v", 1),
+            null,
+            "num_col",
+            "num_col",
+            DocumentWithMetadata.OperationType.INSERT,
+            TimestampSortKey.cdc(100, 1),
+            null);
+    DocumentWithMetadata posZero =
+        DocumentWithMetadata.cdcEvent(
+            new Document("_id", +0.0d).append("v", 2),
+            null,
+            "num_col",
+            "num_col",
+            DocumentWithMetadata.OperationType.UPDATE,
+            TimestampSortKey.cdc(101, 1),
+            null);
+    DocumentWithMetadata dec1 =
+        DocumentWithMetadata.cdcEvent(
+            new Document("_id", org.bson.types.Decimal128.parse("1.0")).append("v", 1),
+            null,
+            "num_col",
+            "num_col",
+            DocumentWithMetadata.OperationType.INSERT,
+            TimestampSortKey.cdc(100, 1),
+            null);
+    DocumentWithMetadata dec100 =
+        DocumentWithMetadata.cdcEvent(
+            new Document("_id", org.bson.types.Decimal128.parse("1.00")).append("v", 2),
+            null,
+            "num_col",
+            "num_col",
+            DocumentWithMetadata.OperationType.UPDATE,
+            TimestampSortKey.cdc(101, 1),
+            null);
+    List<WriteModel<Document>> numModels =
+        runWriteBatchesFn("num_col#0", Arrays.asList(negZero, posZero, dec1, dec100));
+    assertEquals(2, numModels.size());
+  }
+
   private static String readDirectoryContents(Path directory) throws IOException {
     StringBuilder contents = new StringBuilder();
     try (Stream<Path> files = Files.list(directory)) {

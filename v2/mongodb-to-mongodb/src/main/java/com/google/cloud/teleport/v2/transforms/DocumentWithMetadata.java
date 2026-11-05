@@ -161,6 +161,22 @@ public class DocumentWithMetadata implements Serializable {
     return document;
   }
 
+  /** Returns whether this event carries an {@code _id} field (including {@code {_id: null}}). */
+  public boolean hasId() {
+    if (document != null && document.containsKey("_id")) {
+      return true;
+    }
+    if (documentKey != null && !documentKey.isEmpty()) {
+      try {
+        Document keyDoc = Document.parse(documentKey, DOCUMENT_CODEC);
+        return keyDoc.containsKey("_id");
+      } catch (Exception ignored) {
+        return false;
+      }
+    }
+    return false;
+  }
+
   /** Returns the ID of the document. */
   public Object getId() {
     if (document != null && document.containsKey("_id")) {
@@ -531,9 +547,7 @@ public class DocumentWithMetadata implements Serializable {
   }
 
   static String serializeIdDocument(Object id) {
-    return id != null
-        ? new Document("_id", id).toJson(CANONICAL_JSON_SETTINGS, DOCUMENT_CODEC)
-        : null;
+    return new Document("_id", id).toJson(CANONICAL_JSON_SETTINGS, DOCUMENT_CODEC);
   }
 
   /**

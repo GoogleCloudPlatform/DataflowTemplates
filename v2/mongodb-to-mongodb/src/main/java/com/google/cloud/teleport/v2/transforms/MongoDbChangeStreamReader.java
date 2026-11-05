@@ -344,7 +344,8 @@ public class MongoDbChangeStreamReader {
       BsonTimestamp startAtOperationTime,
       String fullDocumentStrategy) {
     List<ChangeStreamPartition> partitions = new ArrayList<>();
-    long startSec = startAtOperationTime != null ? startAtOperationTime.getTime() : 0L;
+    long startSec =
+        startAtOperationTime != null ? Integer.toUnsignedLong(startAtOperationTime.getTime()) : 0L;
     int startInc = startAtOperationTime != null ? startAtOperationTime.getInc() : 0;
 
     if (numSplits <= 1) {
@@ -413,7 +414,8 @@ public class MongoDbChangeStreamReader {
       BsonTimestamp startAtOperationTime,
       String fullDocumentStrategy) {
     List<ChangeStreamPartition> partitions = new ArrayList<>();
-    long startSec = startAtOperationTime != null ? startAtOperationTime.getTime() : 0L;
+    long startSec =
+        startAtOperationTime != null ? Integer.toUnsignedLong(startAtOperationTime.getTime()) : 0L;
     int startInc = startAtOperationTime != null ? startAtOperationTime.getInc() : 0;
 
     if (numSplits <= 1) {
@@ -1386,8 +1388,10 @@ public class MongoDbChangeStreamReader {
 
     BsonTimestamp clusterTime = event.getClusterTime();
     long epochSeconds =
-        clusterTime != null ? clusterTime.getTime() : (System.currentTimeMillis() / 1000);
-    long subSeconds = clusterTime != null ? clusterTime.getInc() : 0L;
+        clusterTime != null
+            ? Integer.toUnsignedLong(clusterTime.getTime())
+            : (System.currentTimeMillis() / 1000);
+    long subSeconds = clusterTime != null ? Integer.toUnsignedLong(clusterTime.getInc()) : 0L;
     TimestampSortKey sortKey = TimestampSortKey.cdc(epochSeconds, subSeconds);
 
     BsonDocument docKeyBson = event.getDocumentKey();

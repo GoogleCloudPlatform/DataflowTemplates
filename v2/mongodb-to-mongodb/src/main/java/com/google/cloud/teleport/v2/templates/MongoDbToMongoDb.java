@@ -634,8 +634,8 @@ public class MongoDbToMongoDb {
       LOG.info(
           "Captured initial cluster time T0: {} (seconds={}, inc={})",
           t0,
-          t0.getTime(),
-          t0.getInc());
+          Integer.toUnsignedLong(t0.getTime()),
+          Integer.toUnsignedLong(t0.getInc()));
     }
 
     if (Boolean.TRUE.equals(options.getReadFromDlq())) {

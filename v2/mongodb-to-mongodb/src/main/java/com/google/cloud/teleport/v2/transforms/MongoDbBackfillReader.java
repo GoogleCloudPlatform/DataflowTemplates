@@ -296,7 +296,8 @@ public class MongoDbBackfillReader {
       int targetChunkSize,
       int maxSplits,
       BsonTimestamp t0) {
-    TimestampSortKey sortKey = t0 != null ? TimestampSortKey.backfill(t0.getTime()) : null;
+    TimestampSortKey sortKey =
+        t0 != null ? TimestampSortKey.backfill(Integer.toUnsignedLong(t0.getTime())) : null;
     int splits = Math.max(1, numSplits);
     List<BsonDocument> filters =
         ReadSplitGenerator.generateIndexSliceFilters(
@@ -383,7 +384,8 @@ public class MongoDbBackfillReader {
       int targetChunkSize,
       int maxSplits,
       BsonTimestamp t0) {
-    TimestampSortKey sortKey = t0 != null ? TimestampSortKey.backfill(t0.getTime()) : null;
+    TimestampSortKey sortKey =
+        t0 != null ? TimestampSortKey.backfill(Integer.toUnsignedLong(t0.getTime())) : null;
     int effectiveSplits = Math.max(1, Math.min(maxSplits, numSplits));
     List<BsonDocument> filters = ReadSplitGenerator.generateIndexSliceFilters(effectiveSplits);
 
@@ -925,7 +927,10 @@ public class MongoDbBackfillReader {
           }
 
           Document doc = cursor.next();
-          String nextIdJson = DocumentWithMetadata.serializeIdDocument(doc.get("_id"));
+          String nextIdJson =
+              doc.containsKey("_id")
+                  ? DocumentWithMetadata.serializeIdDocument(doc.get("_id"))
+                  : null;
 
           if (!tracker.tryClaim(
               new BackfillSlotRestriction(

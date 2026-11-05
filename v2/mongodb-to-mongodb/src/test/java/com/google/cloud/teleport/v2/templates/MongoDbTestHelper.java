@@ -67,11 +67,14 @@ import org.bson.BsonArray;
 import org.bson.BsonBinary;
 import org.bson.BsonBoolean;
 import org.bson.BsonDateTime;
+import org.bson.BsonDbPointer;
 import org.bson.BsonDecimal128;
 import org.bson.BsonDocument;
 import org.bson.BsonDouble;
 import org.bson.BsonInt32;
 import org.bson.BsonInt64;
+import org.bson.BsonJavaScript;
+import org.bson.BsonJavaScriptWithScope;
 import org.bson.BsonMaxKey;
 import org.bson.BsonMinKey;
 import org.bson.BsonNull;
@@ -87,6 +90,7 @@ import org.bson.RawBsonDocument;
 import org.bson.UuidRepresentation;
 import org.bson.codecs.BsonDocumentCodec;
 import org.bson.codecs.Codec;
+import org.bson.types.Binary;
 import org.bson.types.Decimal128;
 import org.bson.types.ObjectId;
 import org.junit.rules.TemporaryFolder;
@@ -307,6 +311,10 @@ final class MongoDbTestHelper {
   static final BsonBinary STREAMING_SURVIVING_UUID_ID =
       new BsonBinary(
           UUID.fromString("66666666-7777-4888-9999-aaaaaaaaaaaa"), UuidRepresentation.STANDARD);
+
+  static final Binary STREAMING_DELETED_BINARY_ID = new Binary(new byte[] {10, 20, 30, 40});
+
+  static final Binary STREAMING_SURVIVING_BINARY_ID = new Binary(new byte[] {50, 60, 70, 80});
 
   static final RawBsonDocument STREAM_PRE_T0_DOC_1 =
       rawDoc(new BsonDocument("_id", new BsonString("pre_t0_1")).append("score", new BsonInt32(5)));
@@ -543,6 +551,34 @@ final class MongoDbTestHelper {
       BsonTimestamp opTime = hello.get("operationTime", BsonTimestamp.class);
       assertThat(opTime).isNotNull();
       return opTime;
+    }
+
+    ConditionCheck streamingDlqConvergedCheck(
+        String gcsPrefix,
+        String resolvedDlqDir,
+        String expectedRetryableSubstring,
+        String expectedPermanentSubstring) {
+      return new ConditionCheck() {
+        @Override
+        protected String getDescription() {
+          return "Streaming DLQ contains expected retryable and permanent failure records";
+        }
+
+        @Override
+        protected CheckResult check() {
+          try {
+            String retryable = readDlqContents(gcsPrefix, resolvedDlqDir, "retryable");
+            String permanent = readDlqContents(gcsPrefix, resolvedDlqDir, "permanent");
+            boolean retryReady = retryable.contains(expectedRetryableSubstring);
+            boolean permReady = permanent.contains(expectedPermanentSubstring);
+            return new CheckResult(
+                retryReady && permReady,
+                String.format("retryReady=%s, permReady=%s", retryReady, permReady));
+          } catch (Exception e) {
+            return new CheckResult(false, "Exception reading streaming DLQ: " + e.getMessage());
+          }
+        }
+      };
     }
 
     ConditionCheck collectionParityCheck(String collectionName, int expectedCount) {
@@ -846,6 +882,26 @@ final class MongoDbTestHelper {
                 new BsonDocument("_id", new BsonObjectId(new ObjectId("507f1f77bcf86cd799439011")))
                     .append("layout", new BsonString("sym_str_oid")))));
     return layouts;
+  }
+
+  static List<RawBsonDocument> createCanonicalRareBsonIdDocs() {
+    return ImmutableList.of(
+        rawDoc(new BsonDocument("_id", BsonNull.VALUE).append("kind", new BsonString("null_id"))),
+        rawDoc(new BsonDocument("_id", new BsonInt32(42)).append("kind", new BsonString("int_id"))),
+        rawDoc(
+            new BsonDocument(
+                    "_id", new BsonDbPointer("db.ref", new ObjectId("600000000000000000000001")))
+                .append("kind", new BsonString("dbpointer_id"))),
+        rawDoc(
+            new BsonDocument("_id", new BsonJavaScript("function idFn() { return 1; }"))
+                .append("kind", new BsonString("js_id"))),
+        rawDoc(
+            new BsonDocument(
+                    "_id",
+                    new BsonJavaScriptWithScope(
+                        "function scopedFn() { return n; }",
+                        new BsonDocument("n", new BsonInt32(7))))
+                .append("kind", new BsonString("js_with_scope_id"))));
   }
 
   static void createCollectionWithPreAndPostImages(MongoDatabase db, String collectionName) {

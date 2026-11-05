@@ -39,6 +39,7 @@ import com.mongodb.client.model.DeleteOneModel;
 import com.mongodb.client.model.ReplaceOneModel;
 import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.WriteModel;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -71,6 +72,7 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.transforms.windowing.AfterPane;
+import org.apache.beam.sdk.transforms.windowing.AfterProcessingTime;
 import org.apache.beam.sdk.transforms.windowing.AfterWatermark;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.FixedWindows;
@@ -86,9 +88,13 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
+import org.bson.BsonValue;
 import org.bson.Document;
 import org.bson.UuidRepresentation;
+import org.bson.types.Binary;
 import org.bson.types.CodeWithScope;
+import org.bson.types.Decimal128;
+import org.bson.types.Symbol;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
@@ -336,6 +342,16 @@ public class MongoDbTransforms {
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
       }
     }
+
+    void awaitQuiescenceQuietly() {
+      for (CompletableFuture<Void> future : futures) {
+        try {
+          future.join();
+        } catch (Throwable ignored) {
+          // Wait only for in-flight RPCs of a prior aborted bundle to stop mutating MongoDB.
+        }
+      }
+    }
   }
 
   /** Returns a cached JVM-wide MongoClient for the given URI, or creates a new one if absent. */
@@ -570,6 +586,7 @@ public class MongoDbTransforms {
     // GroupIntoBatches flushes at GlobalWindow.INSTANCE.maxTimestamp() (+294247) during drain/EOF.
     private static final Duration DLQ_ALLOWED_LATENESS =
         Duration.millis(BoundedWindow.TIMESTAMP_MAX_VALUE.getMillis());
+    private static final Duration DLQ_EARLY_FLUSH_DELAY = Duration.standardSeconds(10);
     private final String retryablePath;
     private final String permanentPath;
 
@@ -649,20 +666,11 @@ public class MongoDbTransforms {
                       String json =
                           item.toDlqJson(
                               item.getErrorMessage(), item.getErrorType(), item.getRetryCount());
-                      // Clamp timestamps within 2 minutes of GlobalWindow.INSTANCE.maxTimestamp()
-                      // (e.g., end-of-GlobalWindow GroupIntoBatches flushes) to Instant.now() so
-                      // FixedWindows.of(1 minute) never constructs a window past
-                      // BoundedWindow.TIMESTAMP_MAX_VALUE, while DLQ_ALLOWED_LATENESS prevents
-                      // clamped records from being dropped behind the end-of-window watermark.
-                      if (c.timestamp()
-                          .isAfter(
-                              GlobalWindow.INSTANCE
-                                  .maxTimestamp()
-                                  .minus(Duration.standardMinutes(2)))) {
-                        c.outputWithTimestamp(json, Instant.now());
-                      } else {
-                        c.output(json);
-                      }
+                      // Stamp every DLQ record with wall-clock Instant.now() so upstream failures
+                      // carrying BoundedWindow.TIMESTAMP_MIN_VALUE (UDF, Validate, mid-bundle
+                      // writes) or GlobalWindow.INSTANCE.maxTimestamp() (end-of-GlobalWindow
+                      // flushes) land in valid wall-clock 1-minute windows without expiring.
+                      c.outputWithTimestamp(json, Instant.now());
                     }
                   }));
 
@@ -673,6 +681,9 @@ public class MongoDbTransforms {
                 Window.<String>into(FixedWindows.of(Duration.standardMinutes(1)))
                     .triggering(
                         AfterWatermark.pastEndOfWindow()
+                            .withEarlyFirings(
+                                AfterProcessingTime.pastFirstElementInPane()
+                                    .plusDelayOf(DLQ_EARLY_FLUSH_DELAY))
                             .withLateFirings(AfterPane.elementCountAtLeast(1)))
                     .withAllowedLateness(DLQ_ALLOWED_LATENESS)
                     .discardingFiredPanes())
@@ -897,7 +908,14 @@ public class MongoDbTransforms {
 
     @Setup
     public void setup() {
-      executor = Executors.newFixedThreadPool(maxConcurrentAsyncWrites);
+      executor =
+          Executors.newFixedThreadPool(
+              maxConcurrentAsyncWrites,
+              r -> {
+                Thread t = new Thread(r, "mongodb-writefn-async");
+                t.setDaemon(true);
+                return t;
+              });
       semaphore = new Semaphore(maxConcurrentAsyncWrites);
       lastDlqLogTimeMs = new AtomicLong(0L);
       if (clientFactory != null && uri != null) {
@@ -929,19 +947,24 @@ public class MongoDbTransforms {
 
     @Teardown
     public void teardown() {
-      if (bundleState != null) {
-        bundleState.awaitQuiescence();
+      try {
+        if (bundleState != null) {
+          bundleState.awaitQuiescenceQuietly();
+          bundleState = null;
+        }
+      } finally {
+        if (executor != null) {
+          executor.shutdown();
+        }
+        MongoDbTransforms.closeIfNotShared(mongoClient);
       }
-      if (executor != null) {
-        executor.shutdown();
-      }
-      MongoDbTransforms.closeIfNotShared(mongoClient);
     }
 
     @StartBundle
     public void startBundle() {
       if (bundleState != null) {
-        bundleState.awaitQuiescence();
+        bundleState.awaitQuiescenceQuietly();
+        bundleState = null;
       }
       if (lastDlqLogTimeMs == null) {
         lastDlqLogTimeMs = new AtomicLong(0L);
@@ -979,13 +1002,21 @@ public class MongoDbTransforms {
 
       for (DocumentWithMetadata item : items) {
         String targetCol = item.getTargetCollection();
-        if (targetCol == null) {
+        if (targetCol == null || targetCol.isEmpty()) {
           targetCol = item.getSourceCollection();
+        }
+        if (targetCol == null || targetCol.isEmpty()) {
+          LOG.warn("Received document without target collection name; routing to DLQ.");
+          writePermanentDlqMessage(
+              activeBundle,
+              Collections.singletonList(item),
+              "Received document without target collection name");
+          continue;
         }
 
         if (item.getOperationType() != null && item.getOperationType().isDelete()) {
-          Object id = item.getId();
-          if (id != null) {
+          if (item.hasId()) {
+            Object id = item.getId();
             updatesByCollection
                 .computeIfAbsent(targetCol, k -> new ArrayList<>())
                 .add(new DeleteOneModel<>(new Document("_id", id)));
@@ -1010,8 +1041,8 @@ public class MongoDbTransforms {
         } else {
           Document doc = item.getDocument();
           if (doc != null) {
-            Object id = doc.get("_id");
-            if (id != null) {
+            if (doc.containsKey("_id")) {
+              Object id = doc.get("_id");
               updatesByCollection
                   .computeIfAbsent(targetCol, k -> new ArrayList<>())
                   .add(
@@ -1060,8 +1091,25 @@ public class MongoDbTransforms {
                       List<WriteModel<Document>> currentUpdates = entry.getValue();
                       List<DocumentWithMetadata> currentItemList = itemsByCollection.get(colName);
 
-                      MongoCollection<Document> col =
-                          mongoClient.getDatabase(database).getCollection(colName);
+                      MongoCollection<Document> col;
+                      try {
+                        col = mongoClient.getDatabase(database).getCollection(colName);
+                      } catch (IllegalArgumentException iae) {
+                        LOG.warn(
+                            "Invalid target collection '{}' in database '{}'; routing {} items to DLQ.",
+                            colName,
+                            database,
+                            currentItemList.size(),
+                            iae);
+                        writePermanentDlqMessage(
+                            activeBundle,
+                            currentItemList,
+                            "Invalid target collection name '"
+                                + colName
+                                + "': "
+                                + iae.getMessage());
+                        continue;
+                      }
 
                       writeBatchWithRetry(
                           activeBundle, colName, col, currentUpdates, currentItemList);
@@ -1117,19 +1165,22 @@ public class MongoDbTransforms {
             continue;
           }
 
-          activeBundle.successfulCount.addAndGet(currentItemList.size() - writeErrors.size());
+          if (wcError == null) {
+            activeBundle.successfulCount.addAndGet(currentItemList.size() - writeErrors.size());
+          }
           LOG.warn(
-              "Transient MongoBulkWriteException on collection '{}' (errors={}). Retrying {}"
-                  + " documents after backoff",
+              "Transient MongoBulkWriteException on collection '{}' (errors={}, wcError={})."
+                  + " Evaluating retry batch after backoff",
               colName,
               writeErrors.size(),
-              writeErrors.size());
+              wcError != null ? wcError.getCode() : "none");
 
           List<WriteModel<Document>> nextUpdates = new ArrayList<>();
           List<DocumentWithMetadata> nextItemList = new ArrayList<>();
           generateRetryBatch(
               activeBundle,
               writeErrors,
+              wcError,
               currentUpdates,
               currentItemList,
               nextUpdates,
@@ -1197,13 +1248,18 @@ public class MongoDbTransforms {
     private void generateRetryBatch(
         BundleWriteState activeBundle,
         List<BulkWriteError> writeErrors,
+        WriteConcernError wcError,
         List<WriteModel<Document>> currentUpdates,
         List<DocumentWithMetadata> currentItemList,
         List<WriteModel<Document>> nextUpdates,
         List<DocumentWithMetadata> nextItemList) {
+      boolean[] seenWriteError = wcError != null ? new boolean[currentItemList.size()] : null;
       for (BulkWriteError error : writeErrors) {
         int index = error.getIndex();
         if (index >= 0 && index < currentItemList.size()) {
+          if (seenWriteError != null) {
+            seenWriteError[index] = true;
+          }
           DocumentWithMetadata failedItem = currentItemList.get(index);
           WriteModel<Document> failedUpdate = currentUpdates.get(index);
 
@@ -1222,6 +1278,24 @@ public class MongoDbTransforms {
             nextUpdates.add(failedUpdate);
             nextItemList.add(failedItem);
           }
+        }
+      }
+      if (wcError != null && seenWriteError != null) {
+        int wcRetryCount = 0;
+        for (int i = 0; i < currentItemList.size(); i++) {
+          if (!seenWriteError[i]) {
+            nextUpdates.add(currentUpdates.get(i));
+            nextItemList.add(currentItemList.get(i));
+            wcRetryCount++;
+          }
+        }
+        if (wcRetryCount > 0) {
+          activeBundle.incDynamicCounter(
+              "inMemoryRetries",
+              "MongoBulkWriteException_WriteConcern",
+              wcError.getCode(),
+              wcRetryCount);
+          activeBundle.inMemoryRetriesCount.addAndGet(wcRetryCount);
         }
       }
     }
@@ -1304,7 +1378,11 @@ public class MongoDbTransforms {
       if (state == null) {
         return;
       }
-      state.awaitQuiescence();
+      try {
+        state.awaitQuiescence();
+      } finally {
+        bundleState = null;
+      }
 
       successfulWrites.inc(state.successfulCount.get());
       inMemoryRetries.inc(state.inMemoryRetriesCount.get());
@@ -1323,7 +1401,6 @@ public class MongoDbTransforms {
       long memRetries = state.inMemoryRetriesCount.get();
       long dlqRet = state.dlqRetriesCount.get();
       long permFail = state.permanentFailuresCount.get();
-      bundleState = null;
       if (succ > 0 || memRetries > 0 || dlqRet > 0 || permFail > 0) {
         LOG.info(
             "Finished write bundle: {} successful writes, {} in-memory retries, {} DLQ retries, {}"
@@ -1568,19 +1645,24 @@ public class MongoDbTransforms {
 
     @Teardown
     public void teardown() {
-      if (bundleState != null) {
-        bundleState.awaitQuiescence();
+      try {
+        if (bundleState != null) {
+          bundleState.awaitQuiescenceQuietly();
+          bundleState = null;
+        }
+      } finally {
+        if (inFlightByKey != null) {
+          inFlightByKey.clear();
+        }
+        MongoDbTransforms.closeIfNotShared(mongoClient);
       }
-      if (inFlightByKey != null) {
-        inFlightByKey.clear();
-      }
-      MongoDbTransforms.closeIfNotShared(mongoClient);
     }
 
     @StartBundle
     public void startBundle() {
       if (bundleState != null) {
-        bundleState.awaitQuiescence();
+        bundleState.awaitQuiescenceQuietly();
+        bundleState = null;
       }
       if (lastDlqLogTimeMs == null) {
         lastDlqLogTimeMs = new AtomicLong(0L);
@@ -1628,12 +1710,99 @@ public class MongoDbTransforms {
       }
     }
 
+    private static final class NumericCoalesceKey {
+      static final NumericCoalesceKey NAN = new NumericCoalesceKey("NaN");
+      static final NumericCoalesceKey POS_INF = new NumericCoalesceKey("+Infinity");
+      static final NumericCoalesceKey NEG_INF = new NumericCoalesceKey("-Infinity");
+
+      private final Object canonicalValue;
+
+      NumericCoalesceKey(Object canonicalValue) {
+        this.canonicalValue = canonicalValue;
+      }
+
+      @Override
+      public boolean equals(Object o) {
+        if (this == o) {
+          return true;
+        }
+        if (!(o instanceof NumericCoalesceKey that)) {
+          return false;
+        }
+        return Objects.equals(canonicalValue, that.canonicalValue);
+      }
+
+      @Override
+      public int hashCode() {
+        return Objects.hash(NumericCoalesceKey.class, canonicalValue);
+      }
+
+      @Override
+      public String toString() {
+        return "num:" + canonicalValue;
+      }
+    }
+
     private static boolean requiresCanonicalCoalesceKey(Object id) {
-      return id instanceof Map
+      return id == null
+          || id instanceof Map
           || id instanceof byte[]
+          || id instanceof Binary
+          || id instanceof BsonValue
+          || id instanceof Symbol
           || id instanceof Pattern
           || id instanceof Iterable
           || id instanceof CodeWithScope;
+    }
+
+    private static Object canonicalCoalesceKey(Object id, DocumentWithMetadata item) {
+      if (requiresCanonicalCoalesceKey(id)) {
+        return item.getDedupKey() != null ? item.getDedupKey() : id;
+      }
+      if (id instanceof Integer
+          || id instanceof Long
+          || id instanceof Short
+          || id instanceof Byte) {
+        long v = ((Number) id).longValue();
+        return new NumericCoalesceKey(
+            v == 0L ? BigDecimal.ZERO : BigDecimal.valueOf(v).stripTrailingZeros());
+      }
+      if (id instanceof Double || id instanceof Float) {
+        double d = ((Number) id).doubleValue();
+        if (Double.isNaN(d)) {
+          return NumericCoalesceKey.NAN;
+        }
+        if (d == Double.POSITIVE_INFINITY) {
+          return NumericCoalesceKey.POS_INF;
+        }
+        if (d == Double.NEGATIVE_INFINITY) {
+          return NumericCoalesceKey.NEG_INF;
+        }
+        if (d == 0.0d) {
+          return new NumericCoalesceKey(BigDecimal.ZERO);
+        }
+        return new NumericCoalesceKey(new BigDecimal(d).stripTrailingZeros());
+      }
+      if (id instanceof Decimal128 dec) {
+        if (dec.isNaN()) {
+          return NumericCoalesceKey.NAN;
+        }
+        if (dec.isInfinite()) {
+          return dec.isNegative() ? NumericCoalesceKey.NEG_INF : NumericCoalesceKey.POS_INF;
+        }
+        try {
+          BigDecimal bd = dec.bigDecimalValue();
+          return new NumericCoalesceKey(
+              bd.compareTo(BigDecimal.ZERO) == 0 ? BigDecimal.ZERO : bd.stripTrailingZeros());
+        } catch (ArithmeticException e) {
+          return new NumericCoalesceKey(BigDecimal.ZERO);
+        }
+      }
+      if (id instanceof BigDecimal bd) {
+        return new NumericCoalesceKey(
+            bd.compareTo(BigDecimal.ZERO) == 0 ? BigDecimal.ZERO : bd.stripTrailingZeros());
+      }
+      return id;
     }
 
     private void putCoalescedOp(
@@ -1645,11 +1814,10 @@ public class MongoDbTransforms {
         boolean isDelete) {
       LinkedHashMap<Object, CoalescedOp> colMap =
           coalescedByCollection.computeIfAbsent(targetCol, k -> new LinkedHashMap<>());
-      // org.bson.Document implements Map (whose equals/hashCode ignore key insertion order), while
-      // byte[], Pattern, nested Iterable containers, and CodeWithScope lack BSON-value equality.
-      // Use the canonical Extended JSON dedupKey for those types to preserve exact BSON identity.
-      Object coalesceKey =
-          requiresCanonicalCoalesceKey(id) && item.getDedupKey() != null ? item.getDedupKey() : id;
+      // Normalize null, composite/binary/regex/CodeWithScope _id types via canonical Extended JSON
+      // dedupKey and numeric _id types via canonical mathematical value to match MongoDB's _id
+      // index equality semantics.
+      Object coalesceKey = canonicalCoalesceKey(id, item);
       CoalescedOp prev = colMap.get(coalesceKey);
       if (prev != null) {
         writeBatchesCoalesced.inc();
@@ -1672,13 +1840,21 @@ public class MongoDbTransforms {
 
       for (DocumentWithMetadata item : items) {
         String targetCol = item.getTargetCollection();
-        if (targetCol == null) {
+        if (targetCol == null || targetCol.isEmpty()) {
           targetCol = item.getSourceCollection();
+        }
+        if (targetCol == null || targetCol.isEmpty()) {
+          LOG.warn("Received document without target collection name; routing to DLQ.");
+          writePermanentDlqMessage(
+              activeBundle,
+              Collections.singletonList(item),
+              "Received document without target collection name");
+          continue;
         }
 
         if (item.getOperationType() != null && item.getOperationType().isDelete()) {
-          Object id = item.getId();
-          if (id != null) {
+          if (item.hasId()) {
+            Object id = item.getId();
             putCoalescedOp(
                 coalescedByCollection,
                 targetCol,
@@ -1705,8 +1881,8 @@ public class MongoDbTransforms {
         } else {
           Document doc = item.getDocument();
           if (doc != null) {
-            Object id = doc.get("_id");
-            if (id != null) {
+            if (doc.containsKey("_id")) {
+              Object id = doc.get("_id");
               putCoalescedOp(
                   coalescedByCollection,
                   targetCol,
@@ -1771,7 +1947,22 @@ public class MongoDbTransforms {
             }
           }
 
-          MongoCollection<Document> col = mongoClient.getDatabase(database).getCollection(colName);
+          MongoCollection<Document> col;
+          try {
+            col = mongoClient.getDatabase(database).getCollection(colName);
+          } catch (IllegalArgumentException iae) {
+            LOG.warn(
+                "Invalid target collection '{}' in database '{}'; routing {} items to DLQ.",
+                colName,
+                database,
+                currentItemList.size(),
+                iae);
+            writePermanentDlqMessage(
+                activeBundle,
+                currentItemList,
+                "Invalid target collection name '" + colName + "': " + iae.getMessage());
+            continue;
+          }
 
           List<CompletableFuture<Void>> priorFutures = null;
           if (inFlightByKey != null) {
@@ -1787,7 +1978,13 @@ public class MongoDbTransforms {
             }
           }
           if (priorFutures != null) {
-            CompletableFuture.allOf(priorFutures.toArray(new CompletableFuture[0])).join();
+            for (CompletableFuture<Void> prior : priorFutures) {
+              try {
+                prior.join();
+              } catch (Throwable ignored) {
+                // Only serialize write ordering after the prior in-flight RPC completes.
+              }
+            }
           }
 
           writePool.semaphore.acquire();
@@ -1858,19 +2055,22 @@ public class MongoDbTransforms {
             continue;
           }
 
-          activeBundle.successfulCount.addAndGet(currentItemList.size() - writeErrors.size());
+          if (wcError == null) {
+            activeBundle.successfulCount.addAndGet(currentItemList.size() - writeErrors.size());
+          }
           LOG.warn(
-              "Transient MongoBulkWriteException on collection '{}' (errors={}). Retrying {}"
-                  + " documents after backoff",
+              "Transient MongoBulkWriteException on collection '{}' (errors={}, wcError={})."
+                  + " Evaluating retry batch after backoff",
               colName,
               writeErrors.size(),
-              writeErrors.size());
+              wcError != null ? wcError.getCode() : "none");
 
           List<WriteModel<Document>> nextUpdates = new ArrayList<>();
           List<DocumentWithMetadata> nextItemList = new ArrayList<>();
           generateRetryBatch(
               activeBundle,
               writeErrors,
+              wcError,
               currentUpdates,
               currentItemList,
               nextUpdates,
@@ -1938,13 +2138,18 @@ public class MongoDbTransforms {
     private void generateRetryBatch(
         BundleWriteState activeBundle,
         List<BulkWriteError> writeErrors,
+        WriteConcernError wcError,
         List<WriteModel<Document>> currentUpdates,
         List<DocumentWithMetadata> currentItemList,
         List<WriteModel<Document>> nextUpdates,
         List<DocumentWithMetadata> nextItemList) {
+      boolean[] seenWriteError = wcError != null ? new boolean[currentItemList.size()] : null;
       for (BulkWriteError error : writeErrors) {
         int index = error.getIndex();
         if (index >= 0 && index < currentItemList.size()) {
+          if (seenWriteError != null) {
+            seenWriteError[index] = true;
+          }
           DocumentWithMetadata failedItem = currentItemList.get(index);
           WriteModel<Document> failedUpdate = currentUpdates.get(index);
 
@@ -1963,6 +2168,24 @@ public class MongoDbTransforms {
             nextUpdates.add(failedUpdate);
             nextItemList.add(failedItem);
           }
+        }
+      }
+      if (wcError != null && seenWriteError != null) {
+        int wcRetryCount = 0;
+        for (int i = 0; i < currentItemList.size(); i++) {
+          if (!seenWriteError[i]) {
+            nextUpdates.add(currentUpdates.get(i));
+            nextItemList.add(currentItemList.get(i));
+            wcRetryCount++;
+          }
+        }
+        if (wcRetryCount > 0) {
+          activeBundle.incDynamicCounter(
+              "inMemoryRetries",
+              "MongoBulkWriteException_WriteConcern",
+              wcError.getCode(),
+              wcRetryCount);
+          activeBundle.inMemoryRetriesCount.addAndGet(wcRetryCount);
         }
       }
     }
@@ -2038,9 +2261,13 @@ public class MongoDbTransforms {
       if (state == null) {
         return;
       }
-      state.awaitQuiescence();
-      if (inFlightByKey != null) {
-        inFlightByKey.clear();
+      try {
+        state.awaitQuiescence();
+      } finally {
+        bundleState = null;
+        if (inFlightByKey != null) {
+          inFlightByKey.clear();
+        }
       }
       successfulWrites.inc(state.successfulCount.get());
       inMemoryRetries.inc(state.inMemoryRetriesCount.get());
@@ -2059,7 +2286,6 @@ public class MongoDbTransforms {
       long memRetries = state.inMemoryRetriesCount.get();
       long dlqRet = state.dlqRetriesCount.get();
       long permFail = state.permanentFailuresCount.get();
-      bundleState = null;
       if (succ > 0 || memRetries > 0 || dlqRet > 0 || permFail > 0) {
         LOG.info(
             "Finished WriteBatchesFn bundle: {} successful writes, {} in-memory retries,"

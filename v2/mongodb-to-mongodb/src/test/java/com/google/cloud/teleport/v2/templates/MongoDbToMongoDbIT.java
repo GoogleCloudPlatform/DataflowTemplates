@@ -19,7 +19,9 @@ import static com.google.cloud.teleport.v2.templates.MongoDbTestHelper.DLQ_UDF_P
 import static com.google.cloud.teleport.v2.templates.MongoDbTestHelper.DLQ_VALID_DOC;
 import static com.google.cloud.teleport.v2.templates.MongoDbTestHelper.HETEROGENEOUS_BSON_DOCS;
 import static com.google.cloud.teleport.v2.templates.MongoDbTestHelper.OVERLAP_DELETED_UUID_ID;
+import static com.google.cloud.teleport.v2.templates.MongoDbTestHelper.STREAMING_DELETED_BINARY_ID;
 import static com.google.cloud.teleport.v2.templates.MongoDbTestHelper.STREAMING_DELETED_UUID_ID;
+import static com.google.cloud.teleport.v2.templates.MongoDbTestHelper.STREAMING_SURVIVING_BINARY_ID;
 import static com.google.cloud.teleport.v2.templates.MongoDbTestHelper.STREAMING_SURVIVING_UUID_ID;
 import static com.google.cloud.teleport.v2.templates.MongoDbTestHelper.STREAM_POST_T0_FILTERED_DOC;
 import static com.google.cloud.teleport.v2.templates.MongoDbTestHelper.STREAM_POST_T0_POISON_DOC;
@@ -267,11 +269,20 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
     srcCol.insertOne(
         new Document("_id", "resurrect_key").append("v", 2).append("resurrected", true));
 
-    // 4. UUID _id insert -> update -> delete and surviving UUID _id
+    // 4. UUID _id, generic Binary (byte[]) _id, and cross-width numeric _id coalescing
     srcCol.insertOne(new Document("_id", STREAMING_DELETED_UUID_ID).append("v", 1));
     srcCol.updateOne(Filters.eq("_id", STREAMING_DELETED_UUID_ID), Updates.set("v", 2));
     srcCol.deleteOne(Filters.eq("_id", STREAMING_DELETED_UUID_ID));
     srcCol.insertOne(new Document("_id", STREAMING_SURVIVING_UUID_ID).append("v", 10));
+
+    srcCol.insertOne(new Document("_id", STREAMING_DELETED_BINARY_ID).append("v", 1));
+    srcCol.updateOne(Filters.eq("_id", STREAMING_DELETED_BINARY_ID), Updates.set("v", 2));
+    srcCol.deleteOne(Filters.eq("_id", STREAMING_DELETED_BINARY_ID));
+    srcCol.insertOne(new Document("_id", STREAMING_SURVIVING_BINARY_ID).append("v", 1));
+    srcCol.updateOne(Filters.eq("_id", STREAMING_SURVIVING_BINARY_ID), Updates.set("v", 2));
+
+    srcCol.insertOne(new Document("_id", 42).append("v", 1));
+    srcCol.updateOne(Filters.eq("_id", 42L), Updates.set("v", 2));
 
     // 5. Burst of 70 inserts + 20 updates
     srcCol.insertMany(MongoDbTestHelper.createBurstDocs(70));
@@ -279,11 +290,12 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
       srcCol.updateOne(Filters.eq("_id", "burst_" + i), Updates.set("v", 2));
     }
 
-    // Wait for Wave 1 (73 active documents: chain_key, resurrect_key, survivingUuid, burst_0..69)
+    // Wait for Wave 1 (75 active documents: chain_key, resurrect_key, survivingUuid,
+    // survivingBinary, numeric 42, burst_0..69)
     Result wave1Result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(info, PIPELINE_TIMEOUT), env.collectionParityCheck(collection, 73));
+                createConfig(info, PIPELINE_TIMEOUT), env.collectionParityCheck(collection, 75));
     assertThatResult(wave1Result).meetsConditions();
 
     // Pause briefly so prefetcher becomes idle, then emit Wave 2 to verify requestFreshPollIfIdle()
@@ -295,10 +307,10 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
     Result wave2Result =
         pipelineOperator()
             .waitForConditionAndCancel(
-                createConfig(info, PIPELINE_TIMEOUT), env.collectionParityCheck(collection, 78));
+                createConfig(info, PIPELINE_TIMEOUT), env.collectionParityCheck(collection, 80));
     assertThatResult(wave2Result).meetsConditions();
 
-    env.assertCollectionParity(collection, 78);
+    env.assertCollectionParity(collection, 80);
   }
 
   /**
@@ -316,6 +328,8 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
     String streamCollection = "col_udf_stream";
     MongoDatabase srcDb = env.sourceDb();
     srcDb.createCollection(streamCollection);
+    RawBsonDocument streamPermRejectDoc =
+        env.prepareBackfillDlqTargetAndGetRejectDoc(streamCollection);
     MongoCollection<RawBsonDocument> srcStreamCol =
         srcDb.getCollection(streamCollection, RawBsonDocument.class);
 
@@ -326,12 +340,14 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
     Thread.sleep(2000L);
     BsonTimestamp t0 = MongoDbTestHelper.advanceAndCaptureClusterTime(srcDb);
 
-    // 2. Insert post-T0 documents: valid, filtered (return null), and poison (throws Error).
+    // 2. Insert post-T0 documents: valid, filtered (return null), poison (throws Error), and
+    // permanent target rejection.
     srcStreamCol.insertMany(
         ImmutableList.of(
             STREAM_POST_T0_VALID_DOC_1,
             STREAM_POST_T0_FILTERED_DOC,
             STREAM_POST_T0_POISON_DOC,
+            streamPermRejectDoc,
             STREAM_POST_T0_VALID_DOC_2));
 
     LaunchConfig.Builder streamOptions =
@@ -353,14 +369,27 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
         pipelineOperator()
             .waitForConditionAndCancel(
                 createConfig(streamInfo, PIPELINE_TIMEOUT),
-                MongoDbTestHelper.udfStreamConvergedCheck(tgtStreamCol));
+                MongoDbTestHelper.udfStreamConvergedCheck(tgtStreamCol),
+                env.streamingDlqConvergedCheck(
+                    "dlq-stream", streamDlqDir, "post_t0_poison", "dlq_permanent_reject_doc"));
     assertThatResult(streamResult).meetsConditions();
 
-    // Verify pre-T0 documents, filtered document, and poison document were excluded from target.
+    // Verify pre-T0 documents, filtered document, poison document, and permanent reject document
+    // were excluded from target, while live STREAMING_CDC DLQ flushed both failure tiers.
     assertThat(tgtStreamCol.find(Filters.eq("_id", "pre_t0_1")).first()).isNull();
     assertThat(tgtStreamCol.find(Filters.eq("_id", "pre_t0_2")).first()).isNull();
     assertThat(tgtStreamCol.find(Filters.eq("_id", "post_t0_filtered")).first()).isNull();
     assertThat(tgtStreamCol.find(Filters.eq("_id", "post_t0_poison")).first()).isNull();
+    assertThat(tgtStreamCol.find(Filters.eq("_id", "dlq_permanent_reject_doc")).first()).isNull();
+
+    String streamRetryableDlq = env.readDlqContents("dlq-stream", streamDlqDir, "retryable");
+    assertThat(streamRetryableDlq).contains("post_t0_poison");
+    assertThat(streamRetryableDlq).contains("keep_me");
+    assertThat(streamRetryableDlq).contains("RETRYABLE");
+
+    String streamPermanentDlq = env.readDlqContents("dlq-stream", streamDlqDir, "permanent");
+    assertThat(streamPermanentDlq).contains("dlq_permanent_reject_doc");
+    assertThat(streamPermanentDlq).contains("PERMANENT");
 
     Document valid1 = tgtStreamCol.find(Filters.eq("_id", "post_t0_valid_1")).first();
     Document valid2 = tgtStreamCol.find(Filters.eq("_id", "post_t0_valid_2")).first();
@@ -431,9 +460,12 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
     List<RawBsonDocument> wrapDocs = MongoDbTestHelper.createSameSecondWraparoundObjectIdDocs();
     srcDb.getCollection(wrapCol, RawBsonDocument.class).insertMany(wrapDocs);
 
+    String canonicalRareCol = "col_canonical_bson_types";
+    List<RawBsonDocument> canonicalRareDocs = MongoDbTestHelper.createCanonicalRareBsonIdDocs();
     Map<String, List<RawBsonDocument>> sharedRankCollections =
         MongoDbTestHelper.createSharedRankStringSymbolCollections();
     if (!env.isFirestoreTarget()) {
+      srcDb.getCollection(canonicalRareCol, RawBsonDocument.class).insertMany(canonicalRareDocs);
       for (Map.Entry<String, List<RawBsonDocument>> entry : sharedRankCollections.entrySet()) {
         srcDb.getCollection(entry.getKey(), RawBsonDocument.class).insertMany(entry.getValue());
       }
@@ -455,6 +487,7 @@ public final class MongoDbToMongoDbIT extends TemplateTestBase {
 
     env.assertCollectionParity(wrapCol, wrapDocs.size());
     if (!env.isFirestoreTarget()) {
+      env.assertCollectionParity(canonicalRareCol, canonicalRareDocs.size());
       for (Map.Entry<String, List<RawBsonDocument>> entry : sharedRankCollections.entrySet()) {
         env.assertCollectionParity(entry.getKey(), entry.getValue().size());
       }

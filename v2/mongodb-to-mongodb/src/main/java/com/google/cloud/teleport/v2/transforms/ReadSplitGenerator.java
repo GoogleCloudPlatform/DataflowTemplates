@@ -215,14 +215,20 @@ public final class ReadSplitGenerator {
     }
   }
 
+  private static final TypeBucket STRING_TYPE_BUCKET =
+      new TypeBucket("string", new BsonString("string"));
+  private static final TypeBucket SYMBOL_TYPE_BUCKET =
+      new TypeBucket("symbol", new BsonString("symbol"));
+
   private static final List<TypeBucket> KNOWN_TYPE_BUCKETS =
       Collections.unmodifiableList(
           Arrays.asList(
               new TypeBucket("minKey", new BsonString("minKey")),
+              new TypeBucket("undefined", new BsonString("undefined")),
               new TypeBucket("null", new BsonString("null")),
               new TypeBucket("number", NUMBER_BSON_TYPES),
-              new TypeBucket("string", new BsonString("string")),
-              new TypeBucket("symbol", new BsonString("symbol")),
+              STRING_TYPE_BUCKET,
+              SYMBOL_TYPE_BUCKET,
               new TypeBucket("object", new BsonString("object")),
               new TypeBucket("binData", new BsonString("binData")),
               new TypeBucket("objectId", new BsonString("objectId")),
@@ -230,6 +236,9 @@ public final class ReadSplitGenerator {
               new TypeBucket("date", new BsonString("date")),
               new TypeBucket("timestamp", new BsonString("timestamp")),
               new TypeBucket("regex", new BsonString("regex")),
+              new TypeBucket("dbPointer", new BsonString("dbPointer")),
+              new TypeBucket("javascript", new BsonString("javascript")),
+              new TypeBucket("javascriptWithScope", new BsonString("javascriptWithScope")),
               new TypeBucket("maxKey", new BsonString("maxKey"))));
 
   public static final class ProbedTypeBounds {
@@ -386,10 +395,10 @@ public final class ReadSplitGenerator {
 
   private static TypeBucket getSharedRankSibling(TypeBucket bucket) {
     if ("string".equals(bucket.getName())) {
-      return KNOWN_TYPE_BUCKETS.get(4);
+      return SYMBOL_TYPE_BUCKET;
     }
     if ("symbol".equals(bucket.getName())) {
-      return KNOWN_TYPE_BUCKETS.get(3);
+      return STRING_TYPE_BUCKET;
     }
     return null;
   }
@@ -483,23 +492,28 @@ public final class ReadSplitGenerator {
           e.getMessage());
     }
 
-    if (estimatedDocs > 0 && estimatedDocs <= 5000) {
-      return Collections.singletonList(new BsonDocument());
-    }
-
     int effectiveSplits;
-    if (targetChunkSize > 0 && estimatedDocs > 0) {
+    if (estimatedDocs > 0 && estimatedDocs <= 5000) {
+      effectiveSplits = 1;
+    } else if (targetChunkSize > 0 && estimatedDocs > 0) {
       int calculated = (int) Math.ceil((double) estimatedDocs / targetChunkSize);
       effectiveSplits = Math.max(1, Math.min(maxSplits, calculated));
     } else {
       effectiveSplits = Math.max(1, Math.min(maxSplits, numSplits));
     }
 
+    List<ProbedTypeBounds> activeTypes = probeActiveTypeBounds(col);
     if (effectiveSplits <= 1) {
-      return Collections.singletonList(new BsonDocument());
+      if (activeTypes.size() <= 1) {
+        return Collections.singletonList(new BsonDocument());
+      }
+      List<BsonDocument> typeFilters = new ArrayList<>(activeTypes.size());
+      for (ProbedTypeBounds bounds : activeTypes) {
+        typeFilters.add(bounds.getBucket().query());
+      }
+      return typeFilters;
     }
 
-    List<ProbedTypeBounds> activeTypes = probeActiveTypeBounds(col);
     if (activeTypes.isEmpty()) {
       LOG.info(
           "No active types detected via index probes for '{}.{}'."
@@ -926,6 +940,8 @@ public final class ReadSplitGenerator {
     switch (bucket.getName()) {
       case "minKey":
         return k.getBsonType() == BsonType.MIN_KEY;
+      case "undefined":
+        return k.getBsonType() == BsonType.UNDEFINED;
       case "null":
         return k.isNull();
       case "number":
@@ -948,6 +964,12 @@ public final class ReadSplitGenerator {
         return k.isTimestamp();
       case "regex":
         return k.isRegularExpression();
+      case "dbPointer":
+        return k.isDBPointer();
+      case "javascript":
+        return k.isJavaScript();
+      case "javascriptWithScope":
+        return k.isJavaScriptWithScope();
       case "maxKey":
         return k.getBsonType() == BsonType.MAX_KEY;
       default:
@@ -994,10 +1016,20 @@ public final class ReadSplitGenerator {
   private static BsonValue toBsonNumber(
       BigDecimal val, BsonValue originalMin, BsonValue originalMax) {
     if (originalMin.isDecimal128() || originalMax.isDecimal128()) {
-      return new BsonDecimal128(new Decimal128(val.round(MathContext.DECIMAL128)));
+      try {
+        return new BsonDecimal128(new Decimal128(val.round(MathContext.DECIMAL128)));
+      } catch (NumberFormatException e) {
+        // Subnormal underflow (exponent < -6176) or exponent overflow (> 6144) cannot be
+        // represented as an exact Decimal128 split boundary.
+        return null;
+      }
     }
     if (originalMin.isDouble() || originalMax.isDouble()) {
-      return new BsonDouble(val.doubleValue());
+      double d = val.doubleValue();
+      if (Double.isNaN(d) || Double.isInfinite(d)) {
+        return null;
+      }
+      return new BsonDouble(d);
     }
     return new BsonInt64(val.longValue());
   }
@@ -1029,6 +1061,9 @@ public final class ReadSplitGenerator {
     for (int i = 1; i < numSplits; i++) {
       BsonValue bound =
           toBsonNumber(minDec.add(step.multiply(BigDecimal.valueOf(i))), minVal, maxVal);
+      if (bound == null) {
+        return singleNumberBucketFilter();
+      }
       if (boundaries.isEmpty() || !bound.equals(boundaries.get(boundaries.size() - 1))) {
         boundaries.add(bound);
       }

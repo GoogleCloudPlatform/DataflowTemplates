@@ -312,4 +312,30 @@ public class DocumentWithMetadataTest {
     assertEquals(null, emptyKeyDelete.getId());
     assertEquals(null, malformedKeyDelete.getId());
   }
+
+  @Test
+  public void nullIdDocument_preservesDocumentKeyDedupKeyAndHasId() {
+    Document nullIdDoc = new Document("_id", null).append("name", "alice");
+    DocumentWithMetadata backfill =
+        DocumentWithMetadata.backfillEvent(
+            nullIdDoc, "srcCol", "tgtCol", TimestampSortKey.backfill(100L));
+    DocumentWithMetadata cdcDelete =
+        DocumentWithMetadata.cdcEvent(
+            null,
+            null,
+            "srcCol",
+            "tgtCol",
+            DocumentWithMetadata.OperationType.DELETE,
+            TimestampSortKey.cdc(101L, 1L),
+            "{\"_id\": null}");
+    DocumentWithMetadata missingIdDoc =
+        DocumentWithMetadata.of(new Document("name", "no_id"), "srcCol", "tgtCol");
+
+    assertTrue(backfill.hasId());
+    assertTrue(cdcDelete.hasId());
+    org.junit.Assert.assertFalse(missingIdDoc.hasId());
+    assertEquals("{\"_id\": null}", backfill.getDocumentKey());
+    assertEquals("tgtCol#{\"_id\": null}", backfill.getDedupKey());
+    assertEquals(backfill.getDedupKey(), cdcDelete.getDedupKey());
+  }
 }
