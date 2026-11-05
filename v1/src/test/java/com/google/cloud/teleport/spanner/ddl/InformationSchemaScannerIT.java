@@ -1834,7 +1834,7 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
         new AvroSchemaToDdlConverter(Dialect.GOOGLE_STANDARD_SQL);
     List<String> statements =
         Arrays.asList(
-            "CREATE LOCALITY GROUP `lg_it_gsql` OPTIONS (storage = 'ssd', ssd_to_hdd_spill_timespan = '10m')",
+            "CREATE LOCALITY GROUP `lg_it_gsql` OPTIONS (storage = 'ssd', ssd_to_hdd_spill_timespan = '1d')",
             "CREATE LOCALITY GROUP `lg_it_gsql_empty`",
             "CREATE TABLE `t_localityGroups_Users` ("
                 + " `id` INT64 NOT NULL,"
@@ -1852,7 +1852,7 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
               ddl.localityGroup("lg_it_gsql").prettyPrint(),
               equalToCompressingWhiteSpace(
                   "CREATE LOCALITY GROUP `lg_it_gsql`"
-                      + " OPTIONS (ssd_to_hdd_spill_timespan=\"10m\", storage=\"ssd\")"));
+                      + " OPTIONS (ssd_to_hdd_spill_timespan=\"1d\", storage=\"ssd\")"));
           assertThat(ddl.localityGroup("lg_it_gsql_empty"), notNullValue());
           assertThat(
               ddl.localityGroup("lg_it_gsql_empty").prettyPrint(),
@@ -1878,7 +1878,7 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
           assertThat(avroSchema.getName(), equalTo("lg_it_gsql"));
           assertThat(avroSchema.getProp("spannerEntity"), equalTo("LocalityGroup"));
           assertThat(
-              avroSchema.getProp("spannerOption_0"), equalTo("ssd_to_hdd_spill_timespan=\"10m\""));
+              avroSchema.getProp("spannerOption_0"), equalTo("ssd_to_hdd_spill_timespan=\"1d\""));
           assertThat(avroSchema.getProp("spannerOption_1"), equalTo("storage=\"ssd\""));
 
           Schema emptyAvroSchema = schemas.get("lg_it_gsql_empty");
@@ -1906,7 +1906,7 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
     AvroSchemaToDdlConverter toDdlConverter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
     List<String> statements =
         Arrays.asList(
-            "CREATE LOCALITY GROUP \"lg_it_pg\" STORAGE 'ssd' SSD_TO_HDD_SPILL_TIMESPAN '10m'",
+            "CREATE LOCALITY GROUP \"lg_it_pg\" STORAGE 'ssd' SSD_TO_HDD_SPILL_TIMESPAN '1d'",
             "CREATE LOCALITY GROUP \"lg_it_pg_empty\"",
             "CREATE TABLE \"t_pgLocalityGroups_Users\" ("
                 + " \"id\" bigint NOT NULL,"
@@ -1924,7 +1924,7 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
           assertThat(
               ddl.localityGroup("lg_it_pg").prettyPrint(),
               equalToCompressingWhiteSpace(
-                  "CREATE LOCALITY GROUP \"lg_it_pg\" STORAGE 'ssd' SSD_TO_HDD_SPILL_TIMESPAN '10m'"));
+                  "CREATE LOCALITY GROUP \"lg_it_pg\" STORAGE 'ssd' SSD_TO_HDD_SPILL_TIMESPAN '1d'"));
           assertThat(ddl.localityGroup("lg_it_pg_empty"), notNullValue());
           assertThat(
               ddl.localityGroup("lg_it_pg_empty").prettyPrint(),
@@ -1950,7 +1950,7 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
           assertThat(avroSchema.getName(), equalTo("lg_it_pg"));
           assertThat(avroSchema.getProp("spannerEntity"), equalTo("LocalityGroup"));
           assertThat(
-              avroSchema.getProp("spannerOption_0"), equalTo("ssd_to_hdd_spill_timespan='10m'"));
+              avroSchema.getProp("spannerOption_0"), equalTo("ssd_to_hdd_spill_timespan='1d'"));
           assertThat(avroSchema.getProp("spannerOption_1"), equalTo("storage='ssd'"));
 
           Schema emptyAvroSchema = schemas.get("lg_it_pg_empty");
