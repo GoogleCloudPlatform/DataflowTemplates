@@ -19,6 +19,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.teleport.v2.source.mysql.MySqlSourceConnector;
+import com.google.cloud.teleport.v2.source.oracle.OracleSourceConnector;
 import com.google.cloud.teleport.v2.source.spanner.SpannerSourceConnector;
 import com.google.cloud.teleport.v2.templates.CdcDataGeneratorOptions;
 import com.google.cloud.teleport.v2.templates.CdcDataGeneratorOptions.SinkType;
@@ -37,6 +38,8 @@ public class SourceConnectorFactoryTest {
         .isInstanceOf(SpannerSourceConnector.class);
     assertThat(SourceConnectorFactory.getSourceConnector(SinkType.MYSQL))
         .isInstanceOf(MySqlSourceConnector.class);
+    assertThat(SourceConnectorFactory.getSourceConnector(SinkType.ORACLE))
+        .isInstanceOf(OracleSourceConnector.class);
   }
 
   @Test
@@ -44,6 +47,21 @@ public class SourceConnectorFactoryTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> SourceConnectorFactory.getSourceConnector((SinkType) null));
+  }
+
+  @Test
+  public void testGetSourceConnector_byString() {
+    assertThat(SourceConnectorFactory.getSourceConnector("SPANNER"))
+        .isInstanceOf(SpannerSourceConnector.class);
+    assertThat(SourceConnectorFactory.getSourceConnector("MYSQL"))
+        .isInstanceOf(MySqlSourceConnector.class);
+    assertThat(SourceConnectorFactory.getSourceConnector("ORACLE"))
+        .isInstanceOf(OracleSourceConnector.class);
+    assertThat(SourceConnectorFactory.getSourceConnector("oracle"))
+        .isInstanceOf(OracleSourceConnector.class);
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> SourceConnectorFactory.getSourceConnector((String) null));
   }
 
   @Test
@@ -56,6 +74,10 @@ public class SourceConnectorFactoryTest {
     options.setSinkType(SinkType.MYSQL);
     assertThat(SourceConnectorFactory.getSourceConnector(options))
         .isInstanceOf(MySqlSourceConnector.class);
+
+    options.setSinkType(SinkType.ORACLE);
+    assertThat(SourceConnectorFactory.getSourceConnector(options))
+        .isInstanceOf(OracleSourceConnector.class);
   }
 
   @Test
@@ -75,10 +97,14 @@ public class SourceConnectorFactoryTest {
         .isInstanceOf(SpannerSourceConnector.class);
     assertThat(SourceConnectorFactory.getSourceConnectorBySourceType("MYSQL"))
         .isInstanceOf(MySqlSourceConnector.class);
+    assertThat(SourceConnectorFactory.getSourceConnectorBySourceType("ORACLE"))
+        .isInstanceOf(OracleSourceConnector.class);
     assertThat(SourceConnectorFactory.getSourceConnectorBySourceType("spanner"))
         .isInstanceOf(SpannerSourceConnector.class);
     assertThat(SourceConnectorFactory.getSourceConnectorBySourceType("mysql"))
         .isInstanceOf(MySqlSourceConnector.class);
+    assertThat(SourceConnectorFactory.getSourceConnectorBySourceType("oracle"))
+        .isInstanceOf(OracleSourceConnector.class);
   }
 
   @Test
@@ -94,6 +120,6 @@ public class SourceConnectorFactoryTest {
         () -> SourceConnectorFactory.getSourceConnectorBySourceType("   "));
     assertThrows(
         IllegalArgumentException.class,
-        () -> SourceConnectorFactory.getSourceConnectorBySourceType("ORACLE"));
+        () -> SourceConnectorFactory.getSourceConnectorBySourceType("UNSUPPORTED"));
   }
 }
