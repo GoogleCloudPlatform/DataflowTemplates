@@ -32,6 +32,9 @@ import org.apache.beam.sdk.options.StreamingOptions;
  */
 public interface SpannerToSourceDbOptions extends CommonTemplateOptions, StreamingOptions {
 
+  /** Default value of {@link #getShadowTablePrefix()}. */
+  String DEFAULT_SHADOW_TABLE_PREFIX = "rev_shadow_";
+
   @TemplateParameter.Text(
       order = 1,
       optional = false,
@@ -142,7 +145,7 @@ public interface SpannerToSourceDbOptions extends CommonTemplateOptions, Streami
       optional = true,
       description = "Cloud Spanner shadow table prefix.",
       helpText = "The prefix used to name shadow tables. Default: `rev_shadow_`.")
-  @Default.String("rev_shadow_")
+  @Default.String(DEFAULT_SHADOW_TABLE_PREFIX)
   String getShadowTablePrefix();
 
   void setShadowTablePrefix(String value);
