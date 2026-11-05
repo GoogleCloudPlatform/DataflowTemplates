@@ -324,14 +324,12 @@ public class SpannerToSourceDbLargeBacklogLT extends SpannerToSourceDbLTBase {
                 (System.currentTimeMillis() - startTimeMillis) / 60000,
                 reverseTimeoutMinutes);
             try {
-              long queryStartMillis = System.currentTimeMillis();
               long shadowRows = spannerMetadataResourceManager.getRowCount(SHADOW_TABLE);
               LOG.info(
-                  "Polled {} row count: {} / Target: {} (query took {} ms)",
+                  "Polled {} row count: {} / Target: {}",
                   SHADOW_TABLE,
                   shadowRows,
-                  expectedSpannerCount,
-                  System.currentTimeMillis() - queryStartMillis);
+                  expectedSpannerCount);
               LOG.info("---------------------------------");
               if (shadowRows == expectedSpannerCount) {
                 return new CheckResult(
