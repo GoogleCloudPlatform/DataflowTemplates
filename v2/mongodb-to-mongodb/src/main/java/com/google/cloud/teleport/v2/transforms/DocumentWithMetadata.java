@@ -20,16 +20,19 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mongodb.MongoClientSettings;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.UUID;
 import org.apache.beam.sdk.coders.DefaultCoder;
+import org.bson.BsonValue;
 import org.bson.Document;
 import org.bson.UuidRepresentation;
 import org.bson.codecs.Codec;
 import org.bson.codecs.configuration.CodecRegistries;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
+import org.bson.types.Decimal128;
 
 /**
  * This class contains the raw document and metadata related to the migration. It is used to carry
@@ -218,10 +221,15 @@ public class DocumentWithMetadata implements Serializable {
       col = "default";
     }
     if (document != null && document.containsKey("_id")) {
+      Object rawId = document.get("_id");
+      String numericKey = canonicalNumericIdKey(rawId);
+      if (numericKey != null) {
+        return col + "#" + numericKey;
+      }
       try {
-        return col + "#" + serializeIdDocument(document.get("_id"));
+        return col + "#" + serializeIdDocument(rawId);
       } catch (Exception ignored) {
-        return col + "#" + document.get("_id");
+        return col + "#" + rawId;
       }
     }
     if (documentKey != null && !documentKey.isEmpty()) {
@@ -233,7 +241,12 @@ public class DocumentWithMetadata implements Serializable {
       try {
         Document keyDoc = Document.parse(documentKey, DOCUMENT_CODEC);
         if (keyDoc.containsKey("_id")) {
-          return col + "#" + serializeIdDocument(keyDoc.get("_id"));
+          Object keyId = keyDoc.get("_id");
+          String numericKey = canonicalNumericIdKey(keyId);
+          if (numericKey != null) {
+            return col + "#" + numericKey;
+          }
+          return col + "#" + serializeIdDocument(keyId);
         }
       } catch (Exception ignored) {
         // Fall through to the raw documentKey below.
@@ -245,6 +258,80 @@ public class DocumentWithMetadata implements Serializable {
             + (sourceCollection != null ? sourceCollection : "")
             + (targetCollection != null ? targetCollection : "");
     return col + "#" + UUID.nameUUIDFromBytes(raw.getBytes(StandardCharsets.UTF_8)).toString();
+  }
+
+  /**
+   * Returns a canonical string representation for BSON numeric {@code _id} values matching
+   * MongoDB's cross-type {@code _id} equality semantics ({@code Int32(42) == Int64(42L) ==
+   * Double(42.0) == Decimal128("42.00")}, {@code -0.0 == +0.0}, {@code NaN == NaN}), or {@code
+   * null} if {@code id} is not a numeric value.
+   */
+  static String canonicalNumericIdKey(Object id) {
+    if (id instanceof BsonValue bv) {
+      if (bv.isInt32()) {
+        return canonicalBigDecimalKey(BigDecimal.valueOf(bv.asInt32().getValue()));
+      }
+      if (bv.isInt64()) {
+        return canonicalBigDecimalKey(BigDecimal.valueOf(bv.asInt64().getValue()));
+      }
+      if (bv.isDouble()) {
+        return canonicalDoubleKey(bv.asDouble().getValue());
+      }
+      if (bv.isDecimal128()) {
+        return canonicalDecimal128Key(bv.asDecimal128().getValue());
+      }
+      return null;
+    }
+    if (id instanceof Integer || id instanceof Long || id instanceof Short || id instanceof Byte) {
+      return canonicalBigDecimalKey(BigDecimal.valueOf(((Number) id).longValue()));
+    }
+    if (id instanceof Double || id instanceof Float) {
+      return canonicalDoubleKey(((Number) id).doubleValue());
+    }
+    if (id instanceof Decimal128 dec) {
+      return canonicalDecimal128Key(dec);
+    }
+    if (id instanceof BigDecimal bd) {
+      return canonicalBigDecimalKey(bd);
+    }
+    return null;
+  }
+
+  private static String canonicalDoubleKey(double d) {
+    if (Double.isNaN(d)) {
+      return "num:NaN";
+    }
+    if (d == Double.POSITIVE_INFINITY) {
+      return "num:+Infinity";
+    }
+    if (d == Double.NEGATIVE_INFINITY) {
+      return "num:-Infinity";
+    }
+    if (d == 0.0d) {
+      return "num:0";
+    }
+    return canonicalBigDecimalKey(new BigDecimal(d));
+  }
+
+  private static String canonicalDecimal128Key(Decimal128 dec) {
+    if (dec.isNaN()) {
+      return "num:NaN";
+    }
+    if (dec.isInfinite()) {
+      return dec.isNegative() ? "num:-Infinity" : "num:+Infinity";
+    }
+    try {
+      return canonicalBigDecimalKey(dec.bigDecimalValue());
+    } catch (ArithmeticException e) {
+      return "num:0";
+    }
+  }
+
+  private static String canonicalBigDecimalKey(BigDecimal bd) {
+    if (bd.compareTo(BigDecimal.ZERO) == 0) {
+      return "num:0";
+    }
+    return "num:" + bd.stripTrailingZeros().toString();
   }
 
   /** Returns the original document string. */

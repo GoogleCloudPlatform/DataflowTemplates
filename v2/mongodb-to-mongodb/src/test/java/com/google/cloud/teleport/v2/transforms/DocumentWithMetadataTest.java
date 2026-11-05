@@ -17,12 +17,14 @@ package com.google.cloud.teleport.v2.transforms;
 
 import static com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.ErrorType.RETRYABLE;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.UUID;
 import org.bson.Document;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
+import org.bson.types.Decimal128;
 import org.bson.types.ObjectId;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -337,5 +339,42 @@ public class DocumentWithMetadataTest {
     assertEquals("{\"_id\": null}", backfill.getDocumentKey());
     assertEquals("tgtCol#{\"_id\": null}", backfill.getDedupKey());
     assertEquals(backfill.getDedupKey(), cdcDelete.getDedupKey());
+  }
+
+  @Test
+  public void getDedupKey_crossRepresentationNumericIds_producesIdenticalCanonicalKey() {
+    String kInt = DocumentWithMetadata.of(new Document("_id", 42), "src", "tgt").getDedupKey();
+    String kLong = DocumentWithMetadata.of(new Document("_id", 42L), "src", "tgt").getDedupKey();
+    String kDouble =
+        DocumentWithMetadata.of(new Document("_id", 42.0d), "src", "tgt").getDedupKey();
+    String kDec =
+        DocumentWithMetadata.of(new Document("_id", Decimal128.parse("42.00")), "src", "tgt")
+            .getDedupKey();
+    String kDeleteKey =
+        DocumentWithMetadata.cdcEvent(
+                null,
+                null,
+                "src",
+                "tgt",
+                DocumentWithMetadata.OperationType.DELETE,
+                TimestampSortKey.cdc(100L, 1L),
+                "{\"_id\": {\"$numberInt\": \"42\"}}")
+            .getDedupKey();
+    String kLiteralString =
+        DocumentWithMetadata.of(new Document("_id", "num:42"), "src", "tgt").getDedupKey();
+
+    assertEquals(kInt, kLong);
+    assertEquals(kInt, kDouble);
+    assertEquals(kInt, kDec);
+    assertEquals(kInt, kDeleteKey);
+    assertNotEquals(kInt, kLiteralString);
+
+    assertEquals(
+        DocumentWithMetadata.of(new Document("_id", -0.0d), "src", "tgt").getDedupKey(),
+        DocumentWithMetadata.of(new Document("_id", Decimal128.NEGATIVE_ZERO), "src", "tgt")
+            .getDedupKey());
+    assertEquals(
+        DocumentWithMetadata.of(new Document("_id", Double.NaN), "src", "tgt").getDedupKey(),
+        DocumentWithMetadata.of(new Document("_id", Decimal128.NaN), "src", "tgt").getDedupKey());
   }
 }

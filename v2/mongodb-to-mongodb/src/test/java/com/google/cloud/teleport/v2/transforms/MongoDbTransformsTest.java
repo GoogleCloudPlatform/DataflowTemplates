@@ -58,6 +58,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.metrics.DistributionResult;
 import org.apache.beam.sdk.metrics.MetricResult;
 import org.apache.beam.sdk.metrics.MetricsFilter;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -1940,8 +1941,69 @@ public class MongoDbTransformsTest {
             TimestampSortKey.cdc(101, 1),
             null);
     List<WriteModel<Document>> numModels =
-        runWriteBatchesFn("num_col#0", Arrays.asList(negZero, posZero, dec1, dec100));
-    assertEquals(2, numModels.size());
+        runWriteBatchesFn(
+            "num_col#0",
+            Arrays.asList(
+                negZero,
+                posZero,
+                dec1,
+                dec100,
+                DocumentWithMetadata.of(new Document("_id", "num:1"), "num_col", "num_col")));
+    assertEquals(3, numModels.size());
+  }
+
+  @Test
+  public void writeWithDlq_bulkWriteLatencyDistributionAndCrossWidthNumericSharding_succeeds() {
+    when(staticCollection.bulkWrite(anyList(), any(BulkWriteOptions.class)))
+        .thenReturn(mock(BulkWriteResult.class));
+
+    DocumentWithMetadata intDoc =
+        DocumentWithMetadata.cdcEvent(
+            new Document("_id", 42).append("v", 1),
+            null,
+            "num_col",
+            "num_col",
+            DocumentWithMetadata.OperationType.INSERT,
+            TimestampSortKey.cdc(100, 1),
+            null);
+    DocumentWithMetadata longDoc =
+        DocumentWithMetadata.cdcEvent(
+            new Document("_id", 42L).append("v", 2),
+            null,
+            "num_col",
+            "num_col",
+            DocumentWithMetadata.OperationType.UPDATE,
+            TimestampSortKey.cdc(101, 1),
+            null);
+
+    assertEquals(
+        Math.floorMod(intDoc.getDedupKey().hashCode(), 64),
+        Math.floorMod(longDoc.getDedupKey().hashCode(), 64));
+
+    PCollection<DocumentWithMetadata> input =
+        pipeline.apply(
+            Create.of(Arrays.asList(intDoc, longDoc)).withCoder(DocumentWithMetadataCoder.of()));
+    input.apply(
+        "Write_LatencyMetric",
+        MongoDbTransforms.writeWithDlq()
+            .withUri("mongodb://localhost:27017")
+            .withDatabase("test")
+            .withBatchSize(10)
+            .withNumWriteShards(64)
+            .withInitialWriteRatePerWorker(0)
+            .withClientFactory(new MockClientFactory()));
+
+    PipelineResult result = pipeline.run();
+    result.waitUntilFinish();
+
+    long latencyCount = 0L;
+    for (MetricResult<DistributionResult> dist :
+        result.metrics().queryMetrics(MetricsFilter.builder().build()).getDistributions()) {
+      if ("bulkWriteLatencyMs".equals(dist.getName().getName())) {
+        latencyCount += dist.getCommitted().getCount();
+      }
+    }
+    assertThat(latencyCount).isAtLeast(1L);
   }
 
   private static String readDirectoryContents(Path directory) throws IOException {

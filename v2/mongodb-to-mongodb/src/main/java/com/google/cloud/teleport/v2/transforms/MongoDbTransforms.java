@@ -39,7 +39,6 @@ import com.mongodb.client.model.DeleteOneModel;
 import com.mongodb.client.model.ReplaceOneModel;
 import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.WriteModel;
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -93,7 +92,6 @@ import org.bson.Document;
 import org.bson.UuidRepresentation;
 import org.bson.types.Binary;
 import org.bson.types.CodeWithScope;
-import org.bson.types.Decimal128;
 import org.bson.types.Symbol;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
@@ -325,6 +323,7 @@ public class MongoDbTransforms {
   private static final class BundleWriteState {
     final ConcurrentLinkedQueue<CompletableFuture<Void>> futures = new ConcurrentLinkedQueue<>();
     final ConcurrentLinkedQueue<DocumentWithMetadata> failures = new ConcurrentLinkedQueue<>();
+    final ConcurrentLinkedQueue<Long> writeLatenciesMs = new ConcurrentLinkedQueue<>();
     final AtomicLong successfulCount = new AtomicLong(0);
     final ConcurrentHashMap<String, AtomicLong> dynamicCounters = new ConcurrentHashMap<>();
     final AtomicLong inMemoryRetriesCount = new AtomicLong(0);
@@ -1711,14 +1710,10 @@ public class MongoDbTransforms {
     }
 
     private static final class NumericCoalesceKey {
-      static final NumericCoalesceKey NAN = new NumericCoalesceKey("NaN");
-      static final NumericCoalesceKey POS_INF = new NumericCoalesceKey("+Infinity");
-      static final NumericCoalesceKey NEG_INF = new NumericCoalesceKey("-Infinity");
+      private final String canonicalKey;
 
-      private final Object canonicalValue;
-
-      NumericCoalesceKey(Object canonicalValue) {
-        this.canonicalValue = canonicalValue;
+      NumericCoalesceKey(String canonicalKey) {
+        this.canonicalKey = canonicalKey;
       }
 
       @Override
@@ -1729,17 +1724,17 @@ public class MongoDbTransforms {
         if (!(o instanceof NumericCoalesceKey that)) {
           return false;
         }
-        return Objects.equals(canonicalValue, that.canonicalValue);
+        return Objects.equals(canonicalKey, that.canonicalKey);
       }
 
       @Override
       public int hashCode() {
-        return Objects.hash(NumericCoalesceKey.class, canonicalValue);
+        return Objects.hash(NumericCoalesceKey.class, canonicalKey);
       }
 
       @Override
       public String toString() {
-        return "num:" + canonicalValue;
+        return canonicalKey;
       }
     }
 
@@ -1756,51 +1751,12 @@ public class MongoDbTransforms {
     }
 
     private static Object canonicalCoalesceKey(Object id, DocumentWithMetadata item) {
+      String numericKey = DocumentWithMetadata.canonicalNumericIdKey(id);
+      if (numericKey != null) {
+        return new NumericCoalesceKey(numericKey);
+      }
       if (requiresCanonicalCoalesceKey(id)) {
         return item.getDedupKey() != null ? item.getDedupKey() : id;
-      }
-      if (id instanceof Integer
-          || id instanceof Long
-          || id instanceof Short
-          || id instanceof Byte) {
-        long v = ((Number) id).longValue();
-        return new NumericCoalesceKey(
-            v == 0L ? BigDecimal.ZERO : BigDecimal.valueOf(v).stripTrailingZeros());
-      }
-      if (id instanceof Double || id instanceof Float) {
-        double d = ((Number) id).doubleValue();
-        if (Double.isNaN(d)) {
-          return NumericCoalesceKey.NAN;
-        }
-        if (d == Double.POSITIVE_INFINITY) {
-          return NumericCoalesceKey.POS_INF;
-        }
-        if (d == Double.NEGATIVE_INFINITY) {
-          return NumericCoalesceKey.NEG_INF;
-        }
-        if (d == 0.0d) {
-          return new NumericCoalesceKey(BigDecimal.ZERO);
-        }
-        return new NumericCoalesceKey(new BigDecimal(d).stripTrailingZeros());
-      }
-      if (id instanceof Decimal128 dec) {
-        if (dec.isNaN()) {
-          return NumericCoalesceKey.NAN;
-        }
-        if (dec.isInfinite()) {
-          return dec.isNegative() ? NumericCoalesceKey.NEG_INF : NumericCoalesceKey.POS_INF;
-        }
-        try {
-          BigDecimal bd = dec.bigDecimalValue();
-          return new NumericCoalesceKey(
-              bd.compareTo(BigDecimal.ZERO) == 0 ? BigDecimal.ZERO : bd.stripTrailingZeros());
-        } catch (ArithmeticException e) {
-          return new NumericCoalesceKey(BigDecimal.ZERO);
-        }
-      }
-      if (id instanceof BigDecimal bd) {
-        return new NumericCoalesceKey(
-            bd.compareTo(BigDecimal.ZERO) == 0 ? BigDecimal.ZERO : bd.stripTrailingZeros());
       }
       return id;
     }
@@ -2023,7 +1979,7 @@ public class MongoDbTransforms {
         try {
           col.bulkWrite(currentUpdates, new BulkWriteOptions().ordered(false));
           long writeLatency = System.currentTimeMillis() - writeStartMs;
-          bulkWriteLatencyMs.update(writeLatency);
+          activeBundle.writeLatenciesMs.add(writeLatency);
           activeBundle.successfulCount.addAndGet(currentItemList.size());
           LOG.debug(
               "Successfully bulk-wrote {} documents to collection '{}' in {}ms",
@@ -2276,6 +2232,10 @@ public class MongoDbTransforms {
       permanentFailures.inc(state.permanentFailuresCount.get());
       state.dynamicCounters.forEach(
           (name, count) -> Metrics.counter(WriteWithDlq.class, name).inc(count.get()));
+      Long latencyMs;
+      while ((latencyMs = state.writeLatenciesMs.poll()) != null) {
+        bulkWriteLatencyMs.update(latencyMs);
+      }
 
       DocumentWithMetadata failure;
       while ((failure = state.failures.poll()) != null) {

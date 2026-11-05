@@ -932,11 +932,15 @@ final class MongoDbTestHelper {
 
       @Override
       protected CheckResult check() {
-        long count = tgtStreamCol.countDocuments();
-        Document d1 = tgtStreamCol.find(Filters.eq("_id", "post_t0_valid_1")).first();
-        Document d2 = tgtStreamCol.find(Filters.eq("_id", "post_t0_valid_2")).first();
-        boolean ready = count == 2 && d1 != null && d2 != null;
-        return new CheckResult(ready, "count=" + count);
+        try {
+          long count = tgtStreamCol.countDocuments();
+          Document d1 = tgtStreamCol.find(Filters.eq("_id", "post_t0_valid_1")).first();
+          Document d2 = tgtStreamCol.find(Filters.eq("_id", "post_t0_valid_2")).first();
+          boolean ready = count == 2 && d1 != null && d2 != null;
+          return new CheckResult(ready, "count=" + count);
+        } catch (Exception e) {
+          return new CheckResult(false, "Exception during UDF stream check: " + e.getMessage());
+        }
       }
     };
   }
