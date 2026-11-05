@@ -1087,7 +1087,7 @@
     <profile>
       <id>validateCandidate</id>
       <activation>
-        <jdk>[1.)</jdk>
+        <jdk>[1.8,)</jdk>
       </activation>
       <repositories>
         <repository>
