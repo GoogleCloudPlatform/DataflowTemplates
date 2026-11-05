@@ -333,7 +333,10 @@ public class SpannerToSourceDbLargeBacklogLT extends SpannerToSourceDbLTBase {
               LOG.info("---------------------------------");
               if (shadowRows >= expectedSpannerCount) {
                 return new CheckResult(
-                    true, String.format("Shadow table has reached expected %d rows (current: %d)", expectedSpannerCount, shadowRows));
+                    true,
+                    String.format(
+                        "Shadow table has reached expected %d rows (current: %d)",
+                        expectedSpannerCount, shadowRows));
               }
               return new CheckResult(
                   false, String.format("Current progress: %d shadow rows", shadowRows));
