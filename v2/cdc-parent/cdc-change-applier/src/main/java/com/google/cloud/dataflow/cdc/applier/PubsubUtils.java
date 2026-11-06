@@ -15,7 +15,7 @@
  */
 package com.google.cloud.dataflow.cdc.applier;
 
-import com.google.cloud.dataflow.cdc.common.DataCatalogSchemaUtils;
+import com.google.cloud.dataflow.cdc.common.KnowledgeCatalogSchemaUtils;
 import com.google.cloud.pubsub.v1.SubscriptionAdminClient;
 import com.google.pubsub.v1.ProjectSubscriptionName;
 import com.google.pubsub.v1.ProjectTopicName;
@@ -35,20 +35,15 @@ public class PubsubUtils {
   private static final Logger LOG = LoggerFactory.getLogger(PubsubUtils.class);
 
   private static SubscriptionAdminClient subscriptionAdminClient;
-  private static DataCatalogSchemaUtils dataCatalogSchemaUtils;
 
-  private static void setupSubscriptionClient() throws IOException {
-    subscriptionAdminClient = SubscriptionAdminClient.create();
-  }
-
-  private static void setupDataCatalogSchemaUtils() {
-    dataCatalogSchemaUtils = new DataCatalogSchemaUtils();
+  private static synchronized void setupSubscriptionClient() throws IOException {
+    if (subscriptionAdminClient == null) {
+      subscriptionAdminClient = SubscriptionAdminClient.create();
+    }
   }
 
   public static Schema getBeamSchemaForTopic(String gcpProject, String pubsubTopic) {
-    setupDataCatalogSchemaUtils();
-
-    return dataCatalogSchemaUtils.getSchemaFromPubSubTopic(gcpProject, pubsubTopic);
+    return KnowledgeCatalogSchemaUtils.getSchemaFromPubSubTopic(gcpProject, pubsubTopic);
   }
 
   public static ProjectTopicName getPubSubTopicFromSubscription(
@@ -86,8 +81,12 @@ public class PubsubUtils {
     List<String> topicList;
     List<String> subscriptionList;
     List<Schema> schemaList;
-    if (subscriptions != null) {
-      subscriptionList = Arrays.asList(subscriptions.split(","));
+    if (subscriptions != null && !subscriptions.trim().isEmpty()) {
+      subscriptionList =
+          Arrays.stream(subscriptions.split(","))
+              .map(String::trim)
+              .filter(s -> !s.isEmpty())
+              .collect(Collectors.toList());
       topicList =
           subscriptionList.stream()
               .map(
@@ -99,9 +98,16 @@ public class PubsubUtils {
                     }
                   })
               .collect(Collectors.toList());
-    } else {
-      topicList = Arrays.asList(topics.split(","));
+    } else if (topics != null && !topics.trim().isEmpty()) {
+      topicList =
+          Arrays.stream(topics.split(","))
+              .map(String::trim)
+              .filter(t -> !t.isEmpty())
+              .collect(Collectors.toList());
       subscriptionList = topicList.stream().map(t -> (String) null).collect(Collectors.toList());
+    } else {
+      throw new IllegalArgumentException(
+          "Must provide an inputSubscriptions or inputTopics parameter.");
     }
 
     LOG.info("Topic list is: {}", topicList);

@@ -21,7 +21,7 @@ import static org.hamcrest.Matchers.is;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.Field;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 /** Tests for SchemaUtils class. */
 public class SchemaUtilsTest {

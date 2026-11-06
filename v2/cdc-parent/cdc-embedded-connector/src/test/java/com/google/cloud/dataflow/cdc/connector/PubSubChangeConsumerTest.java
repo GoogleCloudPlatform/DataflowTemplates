@@ -16,8 +16,8 @@
 package com.google.cloud.dataflow.cdc.connector;
 
 import com.google.api.core.ApiFuture;
-import com.google.cloud.datacatalog.v1beta1.Entry;
-import com.google.cloud.dataflow.cdc.common.DataCatalogSchemaUtils.DataCatalogSchemaManager;
+import com.google.cloud.dataflow.cdc.common.KnowledgeCatalogSchemaUtils;
+import com.google.cloud.dataplex.v1.Entry;
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -30,7 +30,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.mockito.Mockito;
 
 /** Tests for PubSubChangeConsumer. */
@@ -38,7 +38,7 @@ public class PubSubChangeConsumerTest {
 
   @Test
   public void testBasicRecordAndFilteredRecordInput() throws InterruptedException {
-    DataCatalogSchemaManager dataCatalogMock = Mockito.mock(DataCatalogSchemaManager.class);
+    KnowledgeCatalogSchemaUtils dataCatalogMock = Mockito.mock(KnowledgeCatalogSchemaUtils.class);
     Publisher pubsubMock = Mockito.mock(Publisher.class);
     Mockito.when(
             dataCatalogMock.updateSchemaForTable(
