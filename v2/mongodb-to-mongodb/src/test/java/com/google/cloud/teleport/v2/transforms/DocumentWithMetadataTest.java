@@ -17,11 +17,14 @@ package com.google.cloud.teleport.v2.transforms;
 
 import static com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.ErrorType.RETRYABLE;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.util.UUID;
 import org.bson.Document;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
+import org.bson.types.Decimal128;
 import org.bson.types.ObjectId;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -260,5 +263,118 @@ public class DocumentWithMetadataTest {
             unshardedDocumentKey);
 
     assertEquals(backfill.getDedupKey(), cdc.getDedupKey());
+  }
+
+  @Test
+  public void getDedupKey_andGetId_uuidStandardMatchesCdcDeleteBinarySubtype04() {
+    UUID uuid = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
+    Document doc = new Document("_id", uuid).append("name", "uuid-doc");
+
+    DocumentWithMetadata backfill =
+        DocumentWithMetadata.backfillEvent(
+            doc, "srcCol", "tgtCol", TimestampSortKey.backfill(100L));
+    String docKeyJson = backfill.getDocumentKey();
+
+    DocumentWithMetadata cdcDelete =
+        DocumentWithMetadata.cdcEvent(
+            null,
+            null,
+            "srcCol",
+            "tgtCol",
+            DocumentWithMetadata.OperationType.DELETE,
+            TimestampSortKey.cdc(101L, 1L),
+            docKeyJson);
+
+    assertEquals(uuid, backfill.getId());
+    assertEquals(uuid, cdcDelete.getId());
+    assertEquals(backfill.getDedupKey(), cdcDelete.getDedupKey());
+  }
+
+  @Test
+  public void getId_emptyOrMalformedDocumentKey_returnsNull() {
+    DocumentWithMetadata emptyKeyDelete =
+        DocumentWithMetadata.cdcEvent(
+            null,
+            null,
+            "srcCol",
+            "tgtCol",
+            DocumentWithMetadata.OperationType.DELETE,
+            TimestampSortKey.cdc(101L, 1L),
+            "");
+    DocumentWithMetadata malformedKeyDelete =
+        DocumentWithMetadata.cdcEvent(
+            null,
+            null,
+            "srcCol",
+            "tgtCol",
+            DocumentWithMetadata.OperationType.DELETE,
+            TimestampSortKey.cdc(101L, 2L),
+            "{not-valid-json");
+
+    assertEquals(null, emptyKeyDelete.getId());
+    assertEquals(null, malformedKeyDelete.getId());
+  }
+
+  @Test
+  public void nullIdDocument_preservesDocumentKeyDedupKeyAndHasId() {
+    Document nullIdDoc = new Document("_id", null).append("name", "alice");
+    DocumentWithMetadata backfill =
+        DocumentWithMetadata.backfillEvent(
+            nullIdDoc, "srcCol", "tgtCol", TimestampSortKey.backfill(100L));
+    DocumentWithMetadata cdcDelete =
+        DocumentWithMetadata.cdcEvent(
+            null,
+            null,
+            "srcCol",
+            "tgtCol",
+            DocumentWithMetadata.OperationType.DELETE,
+            TimestampSortKey.cdc(101L, 1L),
+            "{\"_id\": null}");
+    DocumentWithMetadata missingIdDoc =
+        DocumentWithMetadata.of(new Document("name", "no_id"), "srcCol", "tgtCol");
+
+    assertTrue(backfill.hasId());
+    assertTrue(cdcDelete.hasId());
+    org.junit.Assert.assertFalse(missingIdDoc.hasId());
+    assertEquals("{\"_id\": null}", backfill.getDocumentKey());
+    assertEquals("tgtCol#{\"_id\": null}", backfill.getDedupKey());
+    assertEquals(backfill.getDedupKey(), cdcDelete.getDedupKey());
+  }
+
+  @Test
+  public void getDedupKey_crossRepresentationNumericIds_producesIdenticalCanonicalKey() {
+    String kInt = DocumentWithMetadata.of(new Document("_id", 42), "src", "tgt").getDedupKey();
+    String kLong = DocumentWithMetadata.of(new Document("_id", 42L), "src", "tgt").getDedupKey();
+    String kDouble =
+        DocumentWithMetadata.of(new Document("_id", 42.0d), "src", "tgt").getDedupKey();
+    String kDec =
+        DocumentWithMetadata.of(new Document("_id", Decimal128.parse("42.00")), "src", "tgt")
+            .getDedupKey();
+    String kDeleteKey =
+        DocumentWithMetadata.cdcEvent(
+                null,
+                null,
+                "src",
+                "tgt",
+                DocumentWithMetadata.OperationType.DELETE,
+                TimestampSortKey.cdc(100L, 1L),
+                "{\"_id\": {\"$numberInt\": \"42\"}}")
+            .getDedupKey();
+    String kLiteralString =
+        DocumentWithMetadata.of(new Document("_id", "num:42"), "src", "tgt").getDedupKey();
+
+    assertEquals(kInt, kLong);
+    assertEquals(kInt, kDouble);
+    assertEquals(kInt, kDec);
+    assertEquals(kInt, kDeleteKey);
+    assertNotEquals(kInt, kLiteralString);
+
+    assertEquals(
+        DocumentWithMetadata.of(new Document("_id", -0.0d), "src", "tgt").getDedupKey(),
+        DocumentWithMetadata.of(new Document("_id", Decimal128.NEGATIVE_ZERO), "src", "tgt")
+            .getDedupKey());
+    assertEquals(
+        DocumentWithMetadata.of(new Document("_id", Double.NaN), "src", "tgt").getDedupKey(),
+        DocumentWithMetadata.of(new Document("_id", Decimal128.NaN), "src", "tgt").getDedupKey());
   }
 }

@@ -18,41 +18,35 @@ package com.google.cloud.teleport.v2.transforms;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import org.apache.beam.sdk.coders.AtomicCoder;
 import org.apache.beam.sdk.coders.BooleanCoder;
+import org.apache.beam.sdk.coders.ByteArrayCoder;
 import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.coders.VarIntCoder;
+import org.bson.BsonBinaryReader;
+import org.bson.BsonBinaryWriter;
 import org.bson.Document;
-import org.bson.json.JsonMode;
-import org.bson.json.JsonWriterSettings;
+import org.bson.codecs.DecoderContext;
+import org.bson.codecs.EncoderContext;
+import org.bson.io.BasicOutputBuffer;
 
 /**
  * Deterministic binary coder for {@link DocumentWithMetadata}.
  *
- * <p>Provides compact, fast binary serialization without Java reflection overhead for shuffle and
- * Windmill state storage.
+ * <p>Provides compact, fast binary BSON serialization without JSON string conversion or Java
+ * reflection overhead for shuffle and Windmill state storage.
  */
 public class DocumentWithMetadataCoder extends AtomicCoder<DocumentWithMetadata> {
 
   private static final DocumentWithMetadataCoder INSTANCE = new DocumentWithMetadataCoder();
+  private static final NullableCoder<byte[]> BYTE_ARRAY_CODER =
+      NullableCoder.of(ByteArrayCoder.of());
   private static final NullableCoder<String> STRING_CODER = NullableCoder.of(StringUtf8Coder.of());
   private static final BooleanCoder BOOLEAN_CODER = BooleanCoder.of();
   private static final VarIntCoder VARINT_CODER = VarIntCoder.of();
   private static final TimestampSortKeyCoder TIMESTAMP_CODER = TimestampSortKeyCoder.of();
-
-  private static final JsonWriterSettings CANONICAL_JSON_SETTINGS =
-      JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build();
-
-  /**
-   * Wire markers for the {@code originalDocument} field. A single boolean cannot distinguish "the
-   * field was null" from "the field was equal to the serialized document", so both decode to null
-   * and break {@code decode(encode(x)).equals(x)}.
-   */
-  private static final int ORIGINAL_DOC_ABSENT = 0;
-
-  private static final int ORIGINAL_DOC_SAME_AS_DOCUMENT = 1;
-  private static final int ORIGINAL_DOC_DISTINCT = 2;
 
   private DocumentWithMetadataCoder() {}
 
@@ -68,23 +62,9 @@ public class DocumentWithMetadataCoder extends AtomicCoder<DocumentWithMetadata>
     }
     BOOLEAN_CODER.encode(true, outStream);
 
-    String docJson =
-        value.getDocument() != null ? value.getDocument().toJson(CANONICAL_JSON_SETTINGS) : null;
-    STRING_CODER.encode(docJson, outStream);
-
-    String originalDoc = value.rawOriginalDocument();
-    int originalDocState;
-    if (originalDoc == null) {
-      originalDocState = ORIGINAL_DOC_ABSENT;
-    } else if (originalDoc.equals(docJson)) {
-      originalDocState = ORIGINAL_DOC_SAME_AS_DOCUMENT;
-    } else {
-      originalDocState = ORIGINAL_DOC_DISTINCT;
-    }
-    VARINT_CODER.encode(originalDocState, outStream);
-    if (originalDocState == ORIGINAL_DOC_DISTINCT) {
-      STRING_CODER.encode(originalDoc, outStream);
-    }
+    Document doc = value.getDocument();
+    BYTE_ARRAY_CODER.encode(encodeBsonDocument(doc), outStream);
+    STRING_CODER.encode(value.rawOriginalDocument(), outStream);
 
     VARINT_CODER.encode(value.getRetryCount() != null ? value.getRetryCount() : 0, outStream);
     STRING_CODER.encode(value.getErrorMessage(), outStream);
@@ -108,22 +88,9 @@ public class DocumentWithMetadataCoder extends AtomicCoder<DocumentWithMetadata>
       return null;
     }
 
-    String docJson = STRING_CODER.decode(inStream);
-    Document doc = docJson != null ? Document.parse(docJson) : null;
-
-    int originalDocState = VARINT_CODER.decode(inStream);
-    String originalDoc;
-    switch (originalDocState) {
-      case ORIGINAL_DOC_SAME_AS_DOCUMENT:
-        originalDoc = docJson;
-        break;
-      case ORIGINAL_DOC_DISTINCT:
-        originalDoc = STRING_CODER.decode(inStream);
-        break;
-      default:
-        originalDoc = null;
-        break;
-    }
+    byte[] docBytes = BYTE_ARRAY_CODER.decode(inStream);
+    Document doc = decodeBsonDocument(docBytes);
+    String originalDoc = STRING_CODER.decode(inStream);
     int retryCount = VARINT_CODER.decode(inStream);
     String errorMessage = STRING_CODER.decode(inStream);
     String errorTypeStr = STRING_CODER.decode(inStream);
@@ -160,9 +127,30 @@ public class DocumentWithMetadataCoder extends AtomicCoder<DocumentWithMetadata>
 
   @Override
   public void verifyDeterministic() throws NonDeterministicException {
+    BYTE_ARRAY_CODER.verifyDeterministic();
     STRING_CODER.verifyDeterministic();
     BOOLEAN_CODER.verifyDeterministic();
     VARINT_CODER.verifyDeterministic();
     TIMESTAMP_CODER.verifyDeterministic();
+  }
+
+  private static byte[] encodeBsonDocument(Document doc) {
+    if (doc == null) {
+      return null;
+    }
+    BasicOutputBuffer buffer = new BasicOutputBuffer();
+    try (BsonBinaryWriter writer = new BsonBinaryWriter(buffer)) {
+      DocumentWithMetadata.DOCUMENT_CODEC.encode(writer, doc, EncoderContext.builder().build());
+    }
+    return buffer.toByteArray();
+  }
+
+  private static Document decodeBsonDocument(byte[] bytes) {
+    if (bytes == null) {
+      return null;
+    }
+    try (BsonBinaryReader reader = new BsonBinaryReader(ByteBuffer.wrap(bytes))) {
+      return DocumentWithMetadata.DOCUMENT_CODEC.decode(reader, DecoderContext.builder().build());
+    }
   }
 }

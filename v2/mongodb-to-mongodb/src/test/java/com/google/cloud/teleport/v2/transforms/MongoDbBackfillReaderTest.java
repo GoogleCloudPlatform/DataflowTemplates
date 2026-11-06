@@ -39,8 +39,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.bson.BsonDocument;
 import org.bson.BsonTimestamp;
@@ -345,6 +348,25 @@ public class MongoDbBackfillReaderTest {
   }
 
   @Test
+  public void backfillSlotRestrictionTracker_trySplit_splitsRemainingWholePartitions() {
+    MongoDbBackfillReader.BackfillSlotRestriction restriction =
+        new MongoDbBackfillReader.BackfillSlotRestriction(0, 5, 50L, "{\"_id\": 100}", false);
+    MongoDbBackfillReader.BackfillSlotRestrictionTracker tracker =
+        new MongoDbBackfillReader.BackfillSlotRestrictionTracker(restriction);
+
+    org.apache.beam.sdk.transforms.splittabledofn.SplitResult<
+            MongoDbBackfillReader.BackfillSlotRestriction>
+        split = tracker.trySplit(0.5);
+    assertNotNull(split);
+    assertEquals(0, split.getPrimary().getPartitionIndexInSlot());
+    assertEquals(2, split.getPrimary().getEndPartitionIndexInSlot());
+    assertEquals(2, split.getResidual().getPartitionIndexInSlot());
+    assertEquals(5, split.getResidual().getEndPartitionIndexInSlot());
+    assertEquals(0L, split.getResidual().getOffsetInCurrentPartition());
+    assertNull(split.getResidual().getLastSeenIdJson());
+  }
+
+  @Test
   @SuppressWarnings("unchecked")
   public void processBackfillSlotFn_readsMultiplePartitionsInSlot() {
     MongoClient mockClient = mock(MongoClient.class);
@@ -358,7 +380,10 @@ public class MongoDbBackfillReaderTest {
     when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
     when(mockDb.getCollection(anyString())).thenReturn(mockCol);
 
-    Document doc1 = new Document("_id", 1).append("name", "Item1");
+    Document doc1 =
+        new Document("_id", UUID.fromString("123e4567-e89b-12d3-a456-426614174000"))
+            .append("name", "Item1")
+            .append("nestedUuid", UUID.randomUUID());
     Document doc2 = new Document("_id", 2).append("name", "Item2");
 
     when(mockCursor1.hasNext()).thenReturn(true, false);
@@ -458,5 +483,92 @@ public class MongoDbBackfillReaderTest {
             "ReadWithConcurrencyLimit",
             new MongoDbBackfillReader.ReadPartitions(Collections.singletonList(partition), 128));
     assertNotNull(docs);
+  }
+
+  @Test
+  public void
+      backfillSlotRestrictionTracker_concurrentSplit_preservesNarrowedEndAndRejectsStolenPartition() {
+    MongoDbBackfillReader.BackfillSlotRestriction initial =
+        new MongoDbBackfillReader.BackfillSlotRestriction(0, 4, 0L, null, false);
+    MongoDbBackfillReader.BackfillSlotRestrictionTracker tracker =
+        new MongoDbBackfillReader.BackfillSlotRestrictionTracker(initial);
+
+    // Worker reads endPartitionIndexInSlot (= 4) before runner invokes trySplit(0.5)
+    int staleEnd = tracker.currentRestriction().getEndPartitionIndexInSlot();
+    org.apache.beam.sdk.transforms.splittabledofn.SplitResult<
+            MongoDbBackfillReader.BackfillSlotRestriction>
+        split = tracker.trySplit(0.5);
+    assertNotNull(split);
+    assertEquals(2, split.getPrimary().getEndPartitionIndexInSlot());
+    assertEquals(2, split.getResidual().getPartitionIndexInSlot());
+
+    // 1. Worker claims next document in partition 0 with stale endIdx=4; narrowed endIdx=2 must be
+    // preserved.
+    assertTrue(
+        tracker.tryClaim(
+            new MongoDbBackfillReader.BackfillSlotRestriction(
+                0, staleEnd, 1L, "{\"_id\": 1}", false)));
+    assertEquals(2, tracker.currentRestriction().getEndPartitionIndexInSlot());
+    assertFalse(tracker.currentRestriction().isDone());
+
+    // 2. Worker later attempts to claim stolen partition 2 with done=false; tryClaim must reject
+    // (return false) and mark the restriction done so checkDone() passes.
+    assertFalse(
+        tracker.tryClaim(
+            new MongoDbBackfillReader.BackfillSlotRestriction(2, staleEnd, 0L, null, false)));
+    assertTrue(tracker.currentRestriction().isDone());
+    tracker.checkDone();
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void processBackfillSlotFn_emptySlotAndCheckpointAtEof_stopsCleanly() {
+    // 1. Empty BackfillSlotTask must mark restriction done so checkDone() succeeds
+    Pipeline p = Pipeline.create();
+    MongoDbBackfillReader.BackfillSlotTask emptyTask =
+        new MongoDbBackfillReader.BackfillSlotTask(0, 1, Collections.emptyList());
+    p.apply(Create.of(emptyTask))
+        .apply(ParDo.of(new MongoDbBackfillReader.ProcessBackfillSlotFn()));
+    p.run().waitUntilFinish();
+
+    // 2. Concurrent trySplit(0.0) arriving during partition EOF must return
+    // ProcessContinuation.stop()
+    MongoClient mockClient = mock(MongoClient.class);
+    MongoDatabase mockDb = mock(MongoDatabase.class);
+    MongoCollection<Document> mockCol = mock(MongoCollection.class);
+    FindIterable<Document> mockFind = mock(FindIterable.class);
+    MongoCursor<Document> mockCursor = mock(MongoCursor.class);
+    when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
+    when(mockDb.getCollection(anyString())).thenReturn(mockCol);
+    when(mockCol.find(any(Bson.class))).thenReturn(mockFind);
+    when(mockFind.sort(any(Bson.class))).thenReturn(mockFind);
+    when(mockFind.batchSize(anyInt())).thenReturn(mockFind);
+    when(mockFind.iterator()).thenReturn(mockCursor);
+
+    MongoDbBackfillReader.BackfillSlotRestriction restriction =
+        new MongoDbBackfillReader.BackfillSlotRestriction(0, 2, 0L, null, false);
+    MongoDbBackfillReader.BackfillSlotRestrictionTracker tracker =
+        new MongoDbBackfillReader.BackfillSlotRestrictionTracker(restriction);
+    when(mockCursor.hasNext())
+        .thenAnswer(
+            inv -> {
+              tracker.trySplit(0.0);
+              return false;
+            });
+
+    MongoDbBackfillReader.ProcessBackfillSlotFn fn =
+        new MongoDbBackfillReader.ProcessBackfillSlotFn(uri -> mockClient);
+    MongoDbBackfillReader.BackfillSlotTask twoPartTask =
+        new MongoDbBackfillReader.BackfillSlotTask(
+            0,
+            1,
+            Arrays.asList(
+                new BackfillPartition("mongodb://h", "db", "c", "c", null, null, 0, 2),
+                new BackfillPartition("mongodb://h", "db", "c", "c", null, null, 1, 2)));
+    DoFn.ProcessContinuation cont =
+        fn.processElement(twoPartTask, tracker, mock(DoFn.OutputReceiver.class));
+    assertEquals(DoFn.ProcessContinuation.stop(), cont);
+    tracker.checkDone();
+    fn.teardown();
   }
 }
