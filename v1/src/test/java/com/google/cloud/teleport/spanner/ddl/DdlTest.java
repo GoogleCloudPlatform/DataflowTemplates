@@ -1713,6 +1713,38 @@ public class DdlTest {
   }
 
   @Test
+  public void createLocalityGroupUpdatesExistingLocalityGroup() {
+    Ddl.Builder builder = Ddl.builder();
+    builder
+        .createLocalityGroup("lg1")
+        .options(ImmutableList.of("storage=\"ssd\""))
+        .endLocalityGroup();
+
+    assertTrue(builder.hasLocalityGroup("LG1"));
+    assertFalse(builder.hasLocalityGroup("lg2"));
+
+    builder
+        .createLocalityGroup("lg1")
+        .options(ImmutableList.of("storage=\"hdd\""))
+        .endLocalityGroup();
+    Ddl ddl = builder.build();
+
+    assertEquals(1, ddl.localityGroups().size());
+    assertEquals(ImmutableList.of("storage=\"hdd\""), ddl.localityGroup("lg1").options());
+  }
+
+  @Test
+  public void ddlEqualityIncludesLocalityGroups() {
+    Ddl ddl = Ddl.builder().createLocalityGroup("lg1").endLocalityGroup().build();
+    Ddl sameDdl = Ddl.builder().createLocalityGroup("lg1").endLocalityGroup().build();
+    Ddl otherDdl = Ddl.builder().createLocalityGroup("lg2").endLocalityGroup().build();
+
+    assertEquals(ddl, sameDdl);
+    assertEquals(ddl.hashCode(), sameDdl.hashCode());
+    assertNotEquals(ddl, otherDdl);
+  }
+
+  @Test
   public void localityGroupsBeforeTables() {
     Index idx =
         Index.builder()

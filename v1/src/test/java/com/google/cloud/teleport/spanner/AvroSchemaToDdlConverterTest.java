@@ -1753,6 +1753,32 @@ public class AvroSchemaToDdlConverterTest {
   }
 
   @Test
+  public void localityGroupNameFromSchema() {
+    Schema schema =
+        new Schema.Parser()
+            .parse(
+                "{"
+                    + "  \"type\" : \"record\","
+                    + "  \"name\" : \"lg_avro_name\","
+                    + "  \"fields\" : [],"
+                    + "  \"namespace\" : \"spannertest\","
+                    + "  \"googleStorage\" : \"CloudSpanner\","
+                    + "  \"spannerEntity\":\"LocalityGroup\", "
+                    + "  \"spannerName\" : \"lg1\","
+                    + "  \"googleFormatVersion\" : \"booleans\","
+                    + "  \"spannerOption_0\" : \"storage=\\\"ssd\\\"\""
+                    + "}");
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+
+    assertEquals("lg1", converter.toLocalityGroup(null, schema).name());
+    assertEquals("lg_explicit", converter.toLocalityGroup("lg_explicit", schema).name());
+    assertEquals(
+        Collections.singletonList("storage=\"ssd\""),
+        converter.toLocalityGroup(null, schema).options());
+  }
+
+  @Test
   public void placementTable() {
     String placementKeyAsPrimaryKeyAvroString =
         "{"
