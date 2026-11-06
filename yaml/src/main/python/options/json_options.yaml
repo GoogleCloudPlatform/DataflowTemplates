@@ -1,0 +1,30 @@
+options:
+  - name: "json_read_options"
+    parameters:
+      - order: 1
+        name: "jsonPath"
+        description: "Cloud Storage JSON path"
+        help: "The Cloud Storage path or file pattern to the JSON file(s) to read."
+        example: "gs://your-bucket/path/*.json"
+        required: true
+        type: text
+
+  - name: "json_write_options"
+    parameters:
+      - order: 1
+        name: "jsonPath"
+        description: "Cloud Storage JSON path"
+        help: "The Cloud Storage path or file prefix to write JSON output to."
+        example: "gs://your-bucket/output/result.json"
+        required: true
+        type: text
+
+  - name: "json_error_options"
+    parameters:
+      - order: 1
+        name: "errorPath"
+        description: "Output path for error records."
+        help: "The Cloud Storage path where failed records will be written in JSON format."
+        example: "gs://your-bucket/errors/error.json"
+        required: true
+        type: text
