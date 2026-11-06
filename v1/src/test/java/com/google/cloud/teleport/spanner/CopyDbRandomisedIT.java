@@ -185,14 +185,15 @@ public class CopyDbRandomisedIT extends SpannerTemplateITBase {
 
   @Test
   public void testRandomSchemaAndDataGsql() throws Exception {
-    Ddl ddl = RandomDdlGenerator.builder().build().generate();
+    Ddl ddl = RandomDdlGenerator.builder().setMaxLocalityGroups(2).build().generate();
     createAndPopulate(ddl, 100);
     runTest(Dialect.GOOGLE_STANDARD_SQL);
   }
 
   @Test
   public void testRandomSchemaAndDataPg() throws Exception {
-    Ddl ddl = RandomDdlGenerator.builder(Dialect.POSTGRESQL).build().generate();
+    Ddl ddl =
+        RandomDdlGenerator.builder(Dialect.POSTGRESQL).setMaxLocalityGroups(2).build().generate();
     createAndPopulate(ddl, 100);
     runTest(Dialect.POSTGRESQL);
   }
