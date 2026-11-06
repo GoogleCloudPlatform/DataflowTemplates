@@ -15,10 +15,10 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingWhiteSpace;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertThat;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.common.collect.ImmutableList;
@@ -99,6 +99,49 @@ public class LocalityGroupTest {
         lg.prettyPrint(),
         equalToCompressingWhiteSpace(
             "ALTER LOCALITY GROUP \"default\" STORAGE 'ssd' SSD_TO_HDD_SPILL_TIMESPAN '10m'"));
+  }
+
+  @Test
+  public void testDefaultLocalityGroupWithoutOptionsIsNotPrinted() {
+    LocalityGroup withoutOptions = LocalityGroup.builder().name("default").build();
+    LocalityGroup withEmptyOptions =
+        LocalityGroup.builder(Dialect.POSTGRESQL)
+            .name("default")
+            .options(ImmutableList.of())
+            .build();
+
+    assertEquals("", withoutOptions.prettyPrint());
+    assertEquals("", withEmptyOptions.prettyPrint());
+  }
+
+  @Test
+  public void testLocalityGroupPgConvertsDoubleQuotedValues() {
+    LocalityGroup lg =
+        LocalityGroup.builder(Dialect.POSTGRESQL)
+            .name("lg1")
+            .options(ImmutableList.of("storage=\"ssd\"", "ssd_to_hdd_spill_timespan=\"1d\""))
+            .build();
+
+    assertThat(
+        lg.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE LOCALITY GROUP \"lg1\" STORAGE 'ssd' SSD_TO_HDD_SPILL_TIMESPAN '1d'"));
+  }
+
+  @Test
+  public void testLocalityGroupPgIgnoresMalformedAndUnknownOptions() {
+    LocalityGroup lg =
+        LocalityGroup.builder(Dialect.POSTGRESQL)
+            .name("lg1")
+            .options(
+                ImmutableList.of(
+                    "storage", "unknown_option='value'", "ssd_to_hdd_spill_timespan='1d'"))
+            .build();
+
+    assertThat(
+        lg.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE LOCALITY GROUP \"lg1\" SSD_TO_HDD_SPILL_TIMESPAN '1d'"));
   }
 
   @Test

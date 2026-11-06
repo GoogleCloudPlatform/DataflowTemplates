@@ -388,6 +388,72 @@ public class ImportTransformTest {
   }
 
   @Test
+  public void testReadLocalityGroupManifestFiles() throws Exception {
+    // lg1 is located through its manifest file, lg2 through its data files.
+    String testManifest =
+        "{\n"
+            + "  \"localityGroups\":[\n"
+            + "    {\n"
+            + "       \"name\": \"lg1\",\n"
+            + "       \"manifestFile\": \"lg1-manifest.json\""
+            + "    },\n"
+            + "    {\n"
+            + "       \"name\": \"lg2\",\n"
+            + "       \"dataFiles\": [\"lg2.avro-00000-of-00001\"]"
+            + "    }\n"
+            + "  ]\n"
+            + "}";
+    Path path = tmpFolder.newFile("spanner-export.json").toPath();
+    Files.write(path, testManifest.getBytes());
+
+    path = tmpFolder.newFile("lg1.avro-00000-of-00001").toPath();
+    Files.write(path, new byte[20]);
+
+    String testLocalityGroupManifest =
+        "{\n"
+            + "  \"files\": [{\n"
+            + "    \"name\": \"lg1.avro-00000-of-00001\",\n"
+            + "    \"md5\": \""
+            + FileChecksum.getLocalFileChecksum(path)
+            + "\"\n"
+            + "  }]"
+            + "}";
+    path = tmpFolder.newFile("lg1-manifest.json").toPath();
+    Files.write(path, testLocalityGroupManifest.getBytes());
+
+    PCollectionView<Dialect> dialectView =
+        pipeline
+            .apply("Dialect", Create.of(Dialect.GOOGLE_STANDARD_SQL))
+            .apply("Dialect As PCollectionView", View.asSingleton());
+    PCollection<Export> manifest =
+        pipeline.apply(
+            "Read manifest",
+            new ReadExportManifestFile(
+                ValueProvider.StaticValueProvider.of(tmpFolder.getRoot().getAbsolutePath()),
+                dialectView));
+
+    PCollection<KV<String, String>> allFiles =
+        manifest.apply(
+            "Read all manifest files",
+            new ReadManifestFiles(
+                ValueProvider.StaticValueProvider.of(tmpFolder.getRoot().getAbsolutePath())));
+
+    PAssert.that(allFiles)
+        .satisfies(
+            input -> {
+              Map<String, String> filesByLocalityGroup = new HashMap<>();
+              for (KV<String, String> file : input) {
+                filesByLocalityGroup.put(file.getKey(), file.getValue());
+              }
+              assertEquals(2, filesByLocalityGroup.size());
+              assertTrue(filesByLocalityGroup.get("lg1").endsWith("lg1.avro-00000-of-00001"));
+              assertTrue(filesByLocalityGroup.get("lg2").endsWith("lg2.avro-00000-of-00001"));
+              return null;
+            });
+    pipeline.run();
+  }
+
+  @Test
   public void testReadAvroSchema() throws Exception {
     Schema schema =
         SchemaBuilder.builder().record("record").fields().requiredLong("id").endRecord();

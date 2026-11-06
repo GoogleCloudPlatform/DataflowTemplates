@@ -69,6 +69,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.spanner.Dialect;
@@ -2511,6 +2512,30 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(avroSchemaEmpty.getFields(), empty());
     assertThat(avroSchemaEmpty.getName(), equalTo(lgEmpty));
     assertThat(avroSchemaEmpty.getProp(SPANNER_OPTION + "0"), nullValue());
+  }
+
+  @Test
+  public void tableWithoutOptions() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", false);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("Users")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .options(null)
+            .endTable()
+            .build();
+
+    Schema tableSchema = converter.convert(ddl).iterator().next();
+
+    assertEquals("Users", tableSchema.getName());
+    assertNull(tableSchema.getProp(SPANNER_OPTION + "0"));
   }
 
   @Test
