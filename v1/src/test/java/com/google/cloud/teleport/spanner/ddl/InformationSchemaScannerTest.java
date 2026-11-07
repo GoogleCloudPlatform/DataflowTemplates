@@ -17,6 +17,8 @@ package com.google.cloud.teleport.spanner.ddl;
 
 import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingWhiteSpace;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -127,15 +129,16 @@ public class InformationSchemaScannerTest {
 
     when(mockResultSet.next()).thenReturn(true, true, true, false);
 
-    // Row 1: Valid option, Row 2: internal_updated_, Row 3: system_optimized_
+    // Row 1: locality_group, Row 2: internal_updated_, Row 3: system_optimized_
     when(mockResultSet.getString(0)).thenReturn("", "", ""); // schema
     when(mockResultSet.getString(1)).thenReturn("table1", "table1", "table1"); // table
     when(mockResultSet.getString(2)).thenReturn("index1", "index1", "index1"); // index
     when(mockResultSet.getString(3)).thenReturn("INDEX", "INDEX", "INDEX"); // index type
     when(mockResultSet.getString(4))
-        .thenReturn("valid_option", "internal_updated_opt", "system_optimized_opt"); // option name
+        .thenReturn(
+            "locality_group", "internal_updated_opt", "system_optimized_opt"); // option name
     when(mockResultSet.getString(5)).thenReturn("STRING", "STRING", "STRING"); // option type
-    when(mockResultSet.getString(6)).thenReturn("value1", "value2", "value3"); // option value
+    when(mockResultSet.getString(6)).thenReturn("lg1", "value2", "value3"); // option value
 
     InformationSchemaScanner scanner =
         new InformationSchemaScanner(mockContext, Dialect.GOOGLE_STANDARD_SQL);
@@ -144,6 +147,7 @@ public class InformationSchemaScannerTest {
     NavigableMap<String, Index.Builder> tableIndexes = Maps.newTreeMap();
     Index.Builder indexBuilder =
         Index.builder(Dialect.GOOGLE_STANDARD_SQL).name("index1").table("table1");
+    indexBuilder.columns().create().name("col1").asc().endIndexColumn().end();
     tableIndexes.put("index1", indexBuilder);
     indexes.put("table1", tableIndexes);
 
@@ -152,7 +156,46 @@ public class InformationSchemaScannerTest {
 
     Index index = indexBuilder.build();
     assertEquals(1, index.options().size());
-    assertEquals("valid_option=\"value1\"", index.options().get(0));
+    assertEquals("locality_group=\"lg1\"", index.options().get(0));
+    assertThat(
+        index.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE INDEX `index1` ON `table1`(`col1` ASC) OPTIONS (locality_group=\"lg1\")"));
+
+    // PostgreSQL test
+    ReadContext mockContextPg = mock(ReadContext.class);
+    ResultSet mockResultSetPg = mock(ResultSet.class);
+    when(mockContextPg.executeQuery(any())).thenReturn(mockResultSetPg);
+
+    when(mockResultSetPg.next()).thenReturn(true, false);
+    when(mockResultSetPg.getString(0)).thenReturn("public");
+    when(mockResultSetPg.getString(1)).thenReturn("table1");
+    when(mockResultSetPg.getString(2)).thenReturn("index1");
+    when(mockResultSetPg.getString(3)).thenReturn("INDEX");
+    when(mockResultSetPg.getString(4)).thenReturn("locality_group");
+    when(mockResultSetPg.getString(5)).thenReturn("character varying");
+    when(mockResultSetPg.getString(6)).thenReturn("lg_pg");
+
+    InformationSchemaScanner scannerPg =
+        new InformationSchemaScanner(mockContextPg, Dialect.POSTGRESQL);
+
+    Map<String, NavigableMap<String, Index.Builder>> indexesPg = Maps.newHashMap();
+    NavigableMap<String, Index.Builder> tableIndexesPg = Maps.newTreeMap();
+    Index.Builder indexBuilderPg = Index.builder(Dialect.POSTGRESQL).name("index1").table("table1");
+    indexBuilderPg.columns().create().name("col1").asc().endIndexColumn().end();
+    tableIndexesPg.put("index1", indexBuilderPg);
+    indexesPg.put("table1", tableIndexesPg);
+
+    Ddl.Builder builderPg = Ddl.builder(Dialect.POSTGRESQL);
+    scannerPg.listIndexOptions(builderPg, indexesPg);
+
+    Index indexPg = indexBuilderPg.build();
+    assertEquals(1, indexPg.options().size());
+    assertEquals("locality_group='lg_pg'", indexPg.options().get(0));
+    assertThat(
+        indexPg.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE INDEX \"index1\" ON \"table1\"(\"col1\" ASC) LOCALITY GROUP \"lg_pg\""));
   }
 
   @Test
@@ -202,12 +245,79 @@ public class InformationSchemaScannerTest {
   }
 
   @Test
+  public void testListTableOptionsSQL() {
+    assertThat(
+        googleSQLInfoScanner.listTableOptionsSQL().getSql(),
+        equalToCompressingWhiteSpace(
+            "SELECT t.table_schema, t.table_name, t.option_name, t.option_type, t.option_value"
+                + " FROM information_schema.table_options AS t"
+                + " WHERE t.table_schema NOT IN"
+                + " ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
+                + " ORDER BY t.table_name, t.option_name"));
+
+    assertThat(
+        postgresSQLInfoScanner.listTableOptionsSQL().getSql(),
+        equalToCompressingWhiteSpace(
+            "SELECT t.table_schema, t.table_name, t.option_name, t.option_type, t.option_value"
+                + " FROM information_schema.table_options AS t"
+                + " WHERE t.table_schema NOT IN"
+                + " ('information_schema', 'spanner_sys', 'pg_catalog')"
+                + " ORDER BY t.table_name, t.option_name"));
+  }
+
+  @Test
+  public void testListTableOptions() {
+    ReadContext mockContext = mock(ReadContext.class);
+    ResultSet mockResultSet = mock(ResultSet.class);
+    when(mockContext.executeQuery(any())).thenReturn(mockResultSet);
+
+    when(mockResultSet.next()).thenReturn(true, false);
+    when(mockResultSet.getString(0)).thenReturn("");
+    when(mockResultSet.getString(1)).thenReturn("Users");
+    when(mockResultSet.getString(2)).thenReturn("locality_group");
+    when(mockResultSet.getString(3)).thenReturn("STRING");
+    when(mockResultSet.getString(4)).thenReturn("lg1");
+
+    InformationSchemaScanner scanner =
+        new InformationSchemaScanner(mockContext, Dialect.GOOGLE_STANDARD_SQL);
+    Ddl.Builder builder = Ddl.builder(Dialect.GOOGLE_STANDARD_SQL);
+    builder.createTable("Users").endTable();
+    scanner.listTableOptions(builder);
+
+    Ddl ddl = builder.build();
+    assertEquals(1, ddl.table("Users").options().size());
+    assertEquals("locality_group=\"lg1\"", ddl.table("Users").options().get(0));
+
+    // PostgreSQL test
+    ReadContext mockContextPg = mock(ReadContext.class);
+    ResultSet mockResultSetPg = mock(ResultSet.class);
+    when(mockContextPg.executeQuery(any())).thenReturn(mockResultSetPg);
+
+    when(mockResultSetPg.next()).thenReturn(true, false);
+    when(mockResultSetPg.getString(0)).thenReturn("public");
+    when(mockResultSetPg.getString(1)).thenReturn("Users");
+    when(mockResultSetPg.getString(2)).thenReturn("locality_group");
+    when(mockResultSetPg.getString(3)).thenReturn("character varying");
+    when(mockResultSetPg.getString(4)).thenReturn("lg_pg");
+
+    InformationSchemaScanner scannerPg =
+        new InformationSchemaScanner(mockContextPg, Dialect.POSTGRESQL);
+    Ddl.Builder builderPg = Ddl.builder(Dialect.POSTGRESQL);
+    builderPg.createTable("Users").endTable();
+    scannerPg.listTableOptions(builderPg);
+
+    Ddl ddlPg = builderPg.build();
+    assertEquals(1, ddlPg.table("Users").options().size());
+    assertEquals("locality_group='lg_pg'", ddlPg.table("Users").options().get(0));
+  }
+
+  @Test
   public void testListColumnOptionsSQL() {
     assertThat(
         googleSQLInfoScanner.listColumnOptionsSQL().getSql(),
         equalToCompressingWhiteSpace(
             "SELECT t.table_schema, t.table_name, t.column_name, t.option_name, t.option_type,"
-                + " t.option_value"
+                + " t.option_value, t.is_inherited"
                 + " FROM information_schema.column_options AS t"
                 + " WHERE t.table_schema NOT IN"
                 + " ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
@@ -217,12 +327,132 @@ public class InformationSchemaScannerTest {
         postgresSQLInfoScanner.listColumnOptionsSQL().getSql(),
         equalToCompressingWhiteSpace(
             "SELECT t.table_schema, t.table_name, t.column_name, t.option_name, t.option_type,"
-                + " t.option_value"
+                + " t.option_value, t.is_inherited"
                 + " FROM information_schema.column_options AS t"
                 + " WHERE t.table_schema NOT IN "
                 + " ('information_schema', 'spanner_sys', 'pg_catalog')"
                 + " AND t.option_name NOT IN ('allow_commit_timestamp')"
                 + " ORDER BY t.table_name, t.column_name"));
+  }
+
+  @Test
+  public void testListColumnOptions() {
+    ReadContext mockContext = mock(ReadContext.class);
+    ResultSet mockTableOptionsResultSet = mock(ResultSet.class);
+    ResultSet mockColumnOptionsResultSet = mock(ResultSet.class);
+    when(mockContext.executeQuery(any()))
+        .thenReturn(mockTableOptionsResultSet, mockColumnOptionsResultSet);
+
+    // Table Users has non-default locality_group "lg1"
+    when(mockTableOptionsResultSet.next()).thenReturn(true, false);
+    when(mockTableOptionsResultSet.getString(0)).thenReturn("");
+    when(mockTableOptionsResultSet.getString(1)).thenReturn("Users");
+    when(mockTableOptionsResultSet.getString(2)).thenReturn("locality_group");
+    when(mockTableOptionsResultSet.getString(3)).thenReturn("STRING");
+    when(mockTableOptionsResultSet.getString(4)).thenReturn("lg1");
+
+    // Row 1: col1 inherits locality_group "lg1" from table (skipped)
+    // Row 2: col2 explicitly sets locality_group "default" (kept)
+    when(mockColumnOptionsResultSet.next()).thenReturn(true, true, false);
+    when(mockColumnOptionsResultSet.getString(0)).thenReturn("", "");
+    when(mockColumnOptionsResultSet.getString(1)).thenReturn("Users", "Users");
+    when(mockColumnOptionsResultSet.getString(2)).thenReturn("col1", "col2");
+    when(mockColumnOptionsResultSet.getString(3)).thenReturn("locality_group", "locality_group");
+    when(mockColumnOptionsResultSet.getString(4)).thenReturn("STRING", "STRING");
+    when(mockColumnOptionsResultSet.getString(5)).thenReturn("lg1", "default");
+    when(mockColumnOptionsResultSet.isNull(6)).thenReturn(false, false);
+    when(mockColumnOptionsResultSet.getBoolean(6)).thenReturn(true, false);
+
+    InformationSchemaScanner scanner =
+        new InformationSchemaScanner(mockContext, Dialect.GOOGLE_STANDARD_SQL);
+    Ddl.Builder builder = Ddl.builder(Dialect.GOOGLE_STANDARD_SQL);
+    builder
+        .createTable("Users")
+        .column("col1")
+        .int64()
+        .notNull()
+        .endColumn()
+        .column("col2")
+        .int64()
+        .endColumn()
+        .primaryKey()
+        .asc("col1")
+        .end()
+        .endTable();
+    scanner.listTableOptions(builder);
+    scanner.listColumnOptions(builder);
+
+    Ddl ddl = builder.build();
+    assertEquals(0, ddl.table("Users").column("col1").columnOptions().size());
+    assertEquals(1, ddl.table("Users").column("col2").columnOptions().size());
+    assertEquals(
+        "locality_group=\"default\"", ddl.table("Users").column("col2").columnOptions().get(0));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE `Users` ("
+                + " `col1` INT64 NOT NULL,"
+                + " `col2` INT64 OPTIONS (locality_group=\"default\"),"
+                + " ) PRIMARY KEY (`col1` ASC),"
+                + " OPTIONS (locality_group=\"lg1\")"));
+
+    // PostgreSQL test
+    ReadContext mockContextPg = mock(ReadContext.class);
+    ResultSet mockTableOptionsResultSetPg = mock(ResultSet.class);
+    ResultSet mockColumnOptionsResultSetPg = mock(ResultSet.class);
+    when(mockContextPg.executeQuery(any()))
+        .thenReturn(mockTableOptionsResultSetPg, mockColumnOptionsResultSetPg);
+
+    when(mockTableOptionsResultSetPg.next()).thenReturn(true, false);
+    when(mockTableOptionsResultSetPg.getString(0)).thenReturn("public");
+    when(mockTableOptionsResultSetPg.getString(1)).thenReturn("Users");
+    when(mockTableOptionsResultSetPg.getString(2)).thenReturn("locality_group");
+    when(mockTableOptionsResultSetPg.getString(3)).thenReturn("character varying");
+    when(mockTableOptionsResultSetPg.getString(4)).thenReturn("lg_pg");
+
+    when(mockColumnOptionsResultSetPg.next()).thenReturn(true, true, false);
+    when(mockColumnOptionsResultSetPg.getString(0)).thenReturn("public", "public");
+    when(mockColumnOptionsResultSetPg.getString(1)).thenReturn("Users", "Users");
+    when(mockColumnOptionsResultSetPg.getString(2)).thenReturn("col1", "col2");
+    when(mockColumnOptionsResultSetPg.getString(3)).thenReturn("locality_group", "locality_group");
+    when(mockColumnOptionsResultSetPg.getString(4))
+        .thenReturn("character varying", "character varying");
+    when(mockColumnOptionsResultSetPg.getString(5)).thenReturn("lg_pg", "default");
+    when(mockColumnOptionsResultSetPg.isNull(6)).thenReturn(false, false);
+    when(mockColumnOptionsResultSetPg.getString(6)).thenReturn("YES", "NO");
+
+    InformationSchemaScanner scannerPg =
+        new InformationSchemaScanner(mockContextPg, Dialect.POSTGRESQL);
+    Ddl.Builder builderPg = Ddl.builder(Dialect.POSTGRESQL);
+    builderPg
+        .createTable("Users")
+        .column("col1")
+        .pgInt8()
+        .notNull()
+        .endColumn()
+        .column("col2")
+        .pgInt8()
+        .endColumn()
+        .primaryKey()
+        .asc("col1")
+        .end()
+        .endTable();
+    scannerPg.listTableOptions(builderPg);
+    scannerPg.listColumnOptions(builderPg);
+
+    Ddl ddlPg = builderPg.build();
+    assertEquals(0, ddlPg.table("Users").column("col1").columnOptions().size());
+    assertEquals(1, ddlPg.table("Users").column("col2").columnOptions().size());
+    assertEquals(
+        "locality_group='default'", ddlPg.table("Users").column("col2").columnOptions().get(0));
+    assertThat(
+        ddlPg.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE \"Users\" ("
+                + " \"col1\" bigint NOT NULL,"
+                + " \"col2\" bigint LOCALITY GROUP \"default\","
+                + " PRIMARY KEY (\"col1\")"
+                + " ) LOCALITY GROUP \"lg_pg\""));
   }
 
   @Test
@@ -288,5 +518,99 @@ public class InformationSchemaScannerTest {
         udf.prettyPrint(),
         equalToCompressingWhiteSpace(
             "CREATE FUNCTION \"pg_add\"() RETURNS integer IMMUTABLE SECURITY INVOKER RETURN a + b"));
+  }
+
+  @Test
+  public void testListLocalityGroupsSQL() {
+    assertThat(
+        googleSQLInfoScanner.listLocalityGroupsSQL().getSql(),
+        equalToCompressingWhiteSpace(
+            "SELECT t.locality_group_name, t.option_name, t.option_value, t.is_inherited"
+                + " FROM information_schema.locality_group_options AS t"
+                + " ORDER BY t.locality_group_name, t.option_name"));
+
+    assertThat(
+        postgresSQLInfoScanner.listLocalityGroupsSQL().getSql(),
+        equalToCompressingWhiteSpace(
+            "SELECT t.locality_group_name, t.option_name, t.option_value, t.is_inherited"
+                + " FROM information_schema.locality_group_options AS t"
+                + " ORDER BY t.locality_group_name, t.option_name"));
+  }
+
+  @Test
+  public void testListLocalityGroups() {
+    ReadContext mockContext = mock(ReadContext.class);
+    ResultSet mockResultSet = mock(ResultSet.class);
+    when(mockContext.executeQuery(any())).thenReturn(mockResultSet);
+
+    // Row 1: default storage="ssd" (is_inherited=true -> skipped)
+    // Row 2: default ssd_to_hdd_spill_timespan=null (is_inherited=null -> skipped)
+    // Row 3: lg1 storage="ssd" (is_inherited=false -> kept)
+    // Row 4: lg1 ssd_to_hdd_spill_timespan="30d" (is_inherited=null -> kept)
+    // Row 5: lg_empty storage="ssd" (is_inherited=true -> lg_empty created with 0 options)
+    // Row 6: lg_empty ssd_to_hdd_spill_timespan=null (is_inherited=null -> lg_empty created with 0
+    // options)
+    when(mockResultSet.next()).thenReturn(true, true, true, true, true, true, false);
+    when(mockResultSet.getString(0))
+        .thenReturn("default", "default", "lg1", "lg1", "lg_empty", "lg_empty");
+    when(mockResultSet.getString(1))
+        .thenReturn(
+            "storage",
+            "ssd_to_hdd_spill_timespan",
+            "storage",
+            "ssd_to_hdd_spill_timespan",
+            "storage",
+            "ssd_to_hdd_spill_timespan");
+    when(mockResultSet.isNull(2)).thenReturn(false, true, false, false, false, true);
+    when(mockResultSet.getString(2)).thenReturn("ssd", "ssd", "30d", "ssd");
+    when(mockResultSet.isNull(3)).thenReturn(false, true, false, true, false, true);
+    when(mockResultSet.getBoolean(3)).thenReturn(true, false, true);
+
+    InformationSchemaScanner scanner =
+        new InformationSchemaScanner(mockContext, Dialect.GOOGLE_STANDARD_SQL);
+
+    Ddl.Builder builder = Ddl.builder(Dialect.GOOGLE_STANDARD_SQL);
+    scanner.listLocalityGroups(builder);
+
+    Ddl ddl = builder.build();
+    assertNull(ddl.localityGroup("default"));
+    assertNotNull(ddl.localityGroup("lg1"));
+    assertEquals(2, ddl.localityGroup("lg1").options().size());
+    assertEquals("storage=\"ssd\"", ddl.localityGroup("lg1").options().get(0));
+    assertEquals("ssd_to_hdd_spill_timespan=\"30d\"", ddl.localityGroup("lg1").options().get(1));
+    assertNotNull(ddl.localityGroup("lg_empty"));
+    assertEquals(0, ddl.localityGroup("lg_empty").options().size());
+
+    // PostgreSQL test with altered default locality group
+    ReadContext mockContextPg = mock(ReadContext.class);
+    ResultSet mockResultSetPg = mock(ResultSet.class);
+    when(mockContextPg.executeQuery(any())).thenReturn(mockResultSetPg);
+
+    // Row 1: default storage='hdd' (is_inherited='NO' -> kept!)
+    // Row 2: default ssd_to_hdd_spill_timespan=null (is_inherited=null -> skipped)
+    // Row 3: lg_pg storage='ssd' (is_inherited='NO' -> kept)
+    // Row 4: lg_pg ssd_to_hdd_spill_timespan='10d' (is_inherited=null -> kept)
+    when(mockResultSetPg.next()).thenReturn(true, true, true, true, false);
+    when(mockResultSetPg.getString(0)).thenReturn("default", "default", "lg_pg", "lg_pg");
+    when(mockResultSetPg.getString(1))
+        .thenReturn("storage", "ssd_to_hdd_spill_timespan", "storage", "ssd_to_hdd_spill_timespan");
+    when(mockResultSetPg.isNull(2)).thenReturn(false, true, false, false);
+    when(mockResultSetPg.getString(2)).thenReturn("hdd", "ssd", "10d");
+    when(mockResultSetPg.isNull(3)).thenReturn(false, true, false, true);
+    when(mockResultSetPg.getString(3)).thenReturn("NO", "NO");
+
+    InformationSchemaScanner scannerPg =
+        new InformationSchemaScanner(mockContextPg, Dialect.POSTGRESQL);
+    Ddl.Builder builderPg = Ddl.builder(Dialect.POSTGRESQL);
+    scannerPg.listLocalityGroups(builderPg);
+
+    Ddl ddlPg = builderPg.build();
+    assertNotNull(ddlPg.localityGroup("default"));
+    assertEquals(1, ddlPg.localityGroup("default").options().size());
+    assertEquals("storage='hdd'", ddlPg.localityGroup("default").options().get(0));
+    assertNotNull(ddlPg.localityGroup("lg_pg"));
+    assertEquals(2, ddlPg.localityGroup("lg_pg").options().size());
+    assertEquals("storage='ssd'", ddlPg.localityGroup("lg_pg").options().get(0));
+    assertEquals("ssd_to_hdd_spill_timespan='10d'", ddlPg.localityGroup("lg_pg").options().get(1));
   }
 }

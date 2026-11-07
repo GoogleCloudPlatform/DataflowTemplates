@@ -203,6 +203,31 @@ CREATE FUNCTION `my_schema`.`MyCustomFunction`(`input_val` INT64) RETURNS INT64 
 -- STRUCT parameter types are reported with spaces in INFORMATION_SCHEMA.PARAMETERS.DATA_TYPE.
 CREATE FUNCTION `my_schema`.`MyStructFunction`(`s` STRUCT<x INT64, y STRING>, `a` ARRAY<STRUCT<x INT64, y STRING>>) RETURNS INT64 AS (s.x + ARRAY_LENGTH(a));
 
+-- Locality Groups
+CREATE LOCALITY GROUP `lg_ssd` OPTIONS (storage = 'ssd', ssd_to_hdd_spill_timespan = '1d');
+CREATE LOCALITY GROUP `lg_hdd` OPTIONS (storage = 'hdd');
+CREATE LOCALITY GROUP `lg_no_options`;
+ALTER LOCALITY GROUP `default` SET OPTIONS (storage = 'ssd', ssd_to_hdd_spill_timespan = '10d');
+
+CREATE TABLE `LocalityGroupParent` (
+	`id`                                    INT64 NOT NULL,
+	`inherited_col`                         STRING(MAX),
+	`hdd_col`                               STRING(MAX) OPTIONS (locality_group = 'lg_hdd'),
+	`default_col`                           STRING(MAX) OPTIONS (locality_group = 'default'),
+) PRIMARY KEY (`id` ASC),
+OPTIONS (locality_group = 'lg_ssd');
+
+CREATE TABLE `LocalityGroupChild` (
+	`id`                                    INT64 NOT NULL,
+	`child_id`                              INT64 NOT NULL,
+	`val`                                   STRING(MAX),
+) PRIMARY KEY (`id` ASC, `child_id` ASC),
+INTERLEAVE IN PARENT `LocalityGroupParent` ON DELETE CASCADE,
+OPTIONS (locality_group = 'lg_hdd');
+
+CREATE INDEX `LocalityGroupIdx` ON `LocalityGroupParent`(`inherited_col` ASC) STORING (`hdd_col`) OPTIONS (locality_group = 'lg_no_options');
+CREATE INDEX `LocalityGroupInterleavedIdx` ON `LocalityGroupChild`(`id` ASC, `val` ASC) WHERE `val` IS NOT NULL, INTERLEAVE IN `LocalityGroupParent` OPTIONS (locality_group = 'lg_ssd');
+
 -- Tables w/o PKs
 CREATE TABLE `MyTable_NoPks` (
 	`val` INT64
