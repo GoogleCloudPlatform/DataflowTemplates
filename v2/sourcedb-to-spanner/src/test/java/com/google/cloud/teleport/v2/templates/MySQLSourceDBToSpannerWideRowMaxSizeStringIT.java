@@ -60,7 +60,8 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
   public void setUp() throws Exception {
     synchronized (MySQLSourceDBToSpannerWideRowMaxSizeStringIT.class) {
       if (!initialized) {
-        mySQLResourceManager = setUpMySQLResourceManager();
+        // Uses its own container: the test changes max_allowed_packet with SET GLOBAL.
+        mySQLResourceManager = setUpDedicatedMySQLResourceManager();
         spannerResourceManager = setUpSpannerResourceManager();
         pgDialectSpannerResourceManager = setUpPGDialectSpannerResourceManager();
 
