@@ -26,10 +26,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.source.SourceConstants;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertorTest;
-import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import java.io.IOException;
 import java.util.Map;
 import org.json.JSONObject;
@@ -59,7 +59,7 @@ public final class OracleChangeEventContextTest {
     JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");
     changeEvent.put(OracleDsToSpSourceConnector.ORACLE_TIMESTAMP_KEY, eventTimestamp);
     changeEvent.put(OracleDsToSpSourceConnector.ORACLE_SCN_KEY, "1");
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.ORACLE_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, SourceConstants.ORACLE_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
         new OracleDsToSpSourceConnector()
@@ -93,7 +93,7 @@ public final class OracleChangeEventContextTest {
     JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");
     changeEvent.put(OracleDsToSpSourceConnector.ORACLE_TIMESTAMP_KEY, eventTimestamp);
     changeEvent.put(OracleDsToSpSourceConnector.ORACLE_SCN_KEY, JSONObject.NULL);
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.ORACLE_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, SourceConstants.ORACLE_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
         new OracleDsToSpSourceConnector()
@@ -126,7 +126,7 @@ public final class OracleChangeEventContextTest {
     // Test Change Event
     JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");
     changeEvent.put(OracleDsToSpSourceConnector.ORACLE_TIMESTAMP_KEY, eventTimestamp);
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.ORACLE_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, SourceConstants.ORACLE_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
         new OracleDsToSpSourceConnector()
@@ -190,8 +190,8 @@ public final class OracleChangeEventContextTest {
             .build();
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("scn", "scn_string");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "MyTable");
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.ORACLE_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "MyTable");
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, SourceConstants.ORACLE_SOURCE_TYPE);
     changeEvent.put(OracleDsToSpSourceConnector.ORACLE_TIMESTAMP_KEY, eventTimestamp);
     changeEvent.put(OracleDsToSpSourceConnector.ORACLE_SCN_KEY, 999L);
 

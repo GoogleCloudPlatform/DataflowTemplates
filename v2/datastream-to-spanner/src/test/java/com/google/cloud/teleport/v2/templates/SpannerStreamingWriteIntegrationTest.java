@@ -29,9 +29,9 @@ import com.google.cloud.teleport.v2.spanner.IntegrationTest;
 import com.google.cloud.teleport.v2.spanner.SpannerServerResource;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.InformationSchemaScanner;
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.source.SourceConstants;
-import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.templates.source.oracle.OracleDsToSpSourceConnector;
 import com.google.cloud.teleport.v2.templates.spanner.ProcessInformationSchema;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -179,9 +179,9 @@ public class SpannerStreamingWriteIntegrationTest {
 
   private JSONObject getChangeEvent(String tableName, String changeType, String scn) {
     JSONObject json = new JSONObject();
-    json.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.ORACLE_SOURCE_TYPE);
-    json.put(DatastreamConstants.EVENT_CHANGE_TYPE_KEY, changeType);
-    json.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, tableName);
+    json.put(Constants.EVENT_SOURCE_TYPE_KEY, SourceConstants.ORACLE_SOURCE_TYPE);
+    json.put(Constants.EVENT_CHANGE_TYPE_KEY, changeType);
+    json.put(Constants.EVENT_TABLE_NAME_KEY, tableName);
     json.put(OracleDsToSpSourceConnector.ORACLE_TIMESTAMP_KEY, 1);
     json.put(OracleDsToSpSourceConnector.ORACLE_SCN_KEY, scn);
     return json;
