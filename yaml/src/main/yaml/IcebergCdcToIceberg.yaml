@@ -1,0 +1,66 @@
+template:
+
+  name: "Iceberg_Cdc_To_Iceberg_Yaml"
+  category: "BATCH"
+  type: "YAML"
+  display_name: "Iceberg CDC to Iceberg (YAML)"
+  description: >
+    The Iceberg CDC to Iceberg template is a batch pipeline that reads change records from an Iceberg table
+    and applies them to another Iceberg table using merge-on-read writes.
+  flex_container_name: "pipeline-yaml"
+  yamlTemplateFile: "IcebergCdcToIceberg.yaml"
+  filesToCopy: >
+    {"main.py", "requirements.txt", "options/iceberg_options.yaml"}
+  contactInformation: "https://cloud.google.com/support"
+  requirements: {
+     "The Input Iceberg table must exist, be accessible through the provided catalog, and use format version 2 or higher.",
+     "The Output Iceberg table need not exist, but the storage must exist and passed through catalog_properties."
+   }
+  streaming: false
+  hidden: false
+
+  options_file:
+    - "iceberg_options"
+
+  parameters:
+    - iceberg_cdc_source_options
+    - iceberg_common_options
+    - iceberg_read_options
+    - iceberg_write_options
+    - iceberg_cdc_write_options
+
+pipeline:
+  type: chain
+  transforms:
+    - type: ReadFromIcebergCDC
+      name: ReadFromIcebergCDC
+      config:
+        table: {{ sourceTable }}
+        catalog_name: {{ catalogName }}
+        catalog_properties: {{ catalogProperties }}
+        config_properties: {{ configProperties }}
+        filter: {{ filter }}
+        include_metadata_columns:
+          - _change_type
+          - _commit_snapshot_sequence_number
+
+    - type: WriteToIceberg
+      name: WriteToIceberg
+      config:
+        table: {{ table }}
+        catalog_name: {{ catalogName }}
+        catalog_properties: {{ catalogProperties }}
+        config_properties: {{ configProperties }}
+        drop: {{ drop }}
+        keep: {{ keep }}
+        only: {{ only }}
+        partition_fields: {{ partitionFields }}
+        table_properties: {{ tableProperties }}
+        mode: merge-on-read
+        {% if equalityColumns %}
+        equality_columns: {{ equalityColumns }}
+        {% endif %}
+        change_type_column: _change_type
+
+options:
+  streaming: false

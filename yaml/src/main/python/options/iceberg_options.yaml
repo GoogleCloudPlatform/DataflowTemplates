@@ -87,3 +87,23 @@ options:
         example: 60
         required: true
         type: integer
+
+  - name: "iceberg_cdc_source_options"
+    parameters:
+      - order: 1
+        name: "sourceTable"
+        description: "A fully-qualified Iceberg CDC source table identifier."
+        help: "The Iceberg table to read change records from. The table must use format version 2 or higher."
+        example: "my_dataset.source_table"
+        required: true
+        type: text
+
+  - name: "iceberg_cdc_write_options"
+    parameters:
+      - order: 1
+        name: "equalityColumns"
+        description: "Primary-key fields used to apply Iceberg CDC writes."
+        help: "A list of field names used as equality columns for merge-on-read writes. Leave unset to use the sink table's identifier fields. Required when the pipeline creates the sink table and that table has no identifier fields."
+        example: '["id"]'
+        required: false
+        type: text
