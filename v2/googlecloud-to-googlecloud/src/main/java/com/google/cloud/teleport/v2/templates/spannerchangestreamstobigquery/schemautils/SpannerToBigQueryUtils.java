@@ -263,7 +263,14 @@ public class SpannerToBigQueryUtils {
     for (TrackedSpannerColumn spannerColumn : spannerPkColumns) {
       String spannerColumnName = spannerColumn.getName();
       if (keysJsonObject.has(spannerColumnName)) {
-        tableRow.set(spannerColumnName, keysJsonObject.get(spannerColumnName));
+        // JSON null arrives as JSONObject.NULL. Copying that sentinel into TableRow makes BigQuery
+        // reject the scalar ("This field: <name> is not a record"), so store Java null instead.
+        // isNull is also true for an absent key, so this stays inside the has() branch.
+        if (keysJsonObject.isNull(spannerColumnName)) {
+          tableRow.set(spannerColumnName, null);
+        } else {
+          tableRow.set(spannerColumnName, keysJsonObject.get(spannerColumnName));
+        }
         tableRow.set("_type_" + spannerColumnName, spannerColumn.getType().toString());
       } else {
         throw new IllegalArgumentException("Cannot find value for key column " + spannerColumnName);
