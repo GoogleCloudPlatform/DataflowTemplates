@@ -276,6 +276,12 @@ public class PostgreSQLJdbcValueMappings implements JdbcValueMappingsProvider {
                 return (int) (n / 2 + 8);
               })
           .put("DOUBLE PRECISION", ResultSet::getDouble, valuePassThrough, 8)
+          .put(
+              "ENUM",
+              ResultSet::getString,
+              valuePassThrough,
+              63) // Enum labels are limited to NAMEDATALEN-1 = 63 bytes.
+          // https://www.postgresql.org/docs/current/datatype-enum.html
           .put("FLOAT4", ResultSet::getFloat, valuePassThrough, 4)
           .put("FLOAT8", ResultSet::getDouble, valuePassThrough, 8)
           .put("INET", ResultSet::getString, valuePassThrough, 196)

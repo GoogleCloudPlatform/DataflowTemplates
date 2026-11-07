@@ -256,18 +256,23 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
         tables);
 
     final String query =
-        "SELECT table_name,"
-            + "  column_name,"
-            + "  data_type,"
-            + "  character_maximum_length,"
-            + "  numeric_precision,"
-            + "  numeric_scale"
-            + " FROM information_schema.columns"
-            + " WHERE table_catalog = ?"
-            + "  AND table_schema = ?"
-            + "  AND table_name IN "
+        "SELECT c.table_name,"
+            + "  c.column_name,"
+            // Enum columns are reported as the placeholder `USER-DEFINED` by
+            // information_schema; follow udt_name into pg_type to report them as `ENUM`.
+            + "  CASE WHEN t.typtype = 'e' THEN 'ENUM' ELSE c.data_type END AS data_type,"
+            + "  c.character_maximum_length,"
+            + "  c.numeric_precision,"
+            + "  c.numeric_scale"
+            + " FROM information_schema.columns c"
+            + "  LEFT OUTER JOIN pg_catalog.pg_namespace n ON n.nspname = c.udt_schema"
+            + "  LEFT OUTER JOIN pg_catalog.pg_type t ON t.typname = c.udt_name"
+            + "   AND t.typnamespace = n.oid"
+            + " WHERE c.table_catalog = ?"
+            + "  AND c.table_schema = ?"
+            + "  AND c.table_name IN "
             + DialectAdapter.generateInClause(tables.size())
-            + " ORDER BY table_name, ordinal_position";
+            + " ORDER BY c.table_name, c.ordinal_position";
 
     Map<String, ImmutableMap.Builder<String, SourceColumnType>> builders = new HashMap<>();
     tables.forEach(
