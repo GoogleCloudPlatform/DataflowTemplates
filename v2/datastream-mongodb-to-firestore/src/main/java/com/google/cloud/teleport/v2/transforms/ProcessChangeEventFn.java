@@ -21,12 +21,10 @@ import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventConte
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Throwables;
-import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoException;
 import com.mongodb.MongoWriteException;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.ReplaceOptions;
@@ -36,7 +34,6 @@ import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.TupleTag;
 import org.bson.Document;
-import org.bson.UuidRepresentation;
 import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,14 +49,16 @@ public class ProcessChangeEventFn
   private final int maxRetries = 3; // Maximum number of retry attempts
   private final long retryDelayMs = 1000; // Initial delay in milliseconds
 
-  public static TupleTag<MongoDbChangeEventContext> successfulWriteTag =
+  public static final TupleTag<MongoDbChangeEventContext> SUCCESSFUL_WRITE_TAG =
       new TupleTag<>("successfulWrite");
-  public static TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>
-      failedWriteTag = new TupleTag<>("failedWrite");
+  public static final TupleTag<
+          FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>
+      FAILED_WRITE_TAG = new TupleTag<>("failedWrite");
   // Tag for severe failures that should not be retried (e.g. permanent errors or non-transient
   // transaction errors)
-  public static TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>
-      severeFailedWriteTag = new TupleTag<>("severeFailedWrite");
+  public static final TupleTag<
+          FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>
+      SEVERE_FAILED_WRITE_TAG = new TupleTag<>("severeFailedWrite");
 
   // Error code 2 corresponds to BadValue/InvalidArgument, which is treated as a permanent error.
   public static final int INVALID_ARGUMENT = 2;
@@ -181,7 +180,7 @@ public class ProcessChangeEventFn
           outOfOrderSkips.inc();
         }
         session.commitTransaction();
-        out.get(successfulWriteTag).output(element);
+        out.get(SUCCESSFUL_WRITE_TAG).output(element);
         break; // Exit the retry loop on success
       } catch (Exception e) {
         lastException = e;
@@ -217,7 +216,7 @@ public class ProcessChangeEventFn
               FailsafeElement.of(element, element);
           failedElement.setErrorMessage(e.getMessage());
           failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
-          out.get(severeFailedWriteTag).output(failedElement);
+          out.get(SEVERE_FAILED_WRITE_TAG).output(failedElement);
 
           String errorIdentifier = "UnknownError";
           if (e instanceof MongoWriteException writeException) {
@@ -264,7 +263,7 @@ public class ProcessChangeEventFn
                 FailsafeElement.of(element, element);
             failedElement.setErrorMessage(ie.getMessage());
             failedElement.setStacktrace(Throwables.getStackTraceAsString(ie));
-            out.get(failedWriteTag).output(failedElement);
+            out.get(FAILED_WRITE_TAG).output(failedElement);
             retriableFailedWrites.inc();
             break; // Exit the retry loop if interrupted
           }
@@ -282,7 +281,7 @@ public class ProcessChangeEventFn
               FailsafeElement.of(element, element);
           failedElement.setErrorMessage(e.getMessage());
           failedElement.setStacktrace(Throwables.getStackTraceAsString(e));
-          out.get(failedWriteTag).output(failedElement);
+          out.get(FAILED_WRITE_TAG).output(failedElement);
           retriableFailedWrites.inc();
           LOG.info(
               "Failed element of id {} sent to retry DLQ after {} attempts",
@@ -310,32 +309,19 @@ public class ProcessChangeEventFn
   @Setup
   public void setup() {
     if (client == null) {
-      // Log the projectId before creating the client
       LOG.info(
           "Creating MongoDB client in ProcessChangeEventFn with connection string: {}",
-          connectionString);
-      MongoClientSettings settings =
-          MongoClientSettings.builder()
-              .applyConnectionString(new com.mongodb.ConnectionString(connectionString))
-              .applyToSocketSettings(
-                  builder -> {
-                    // How long the driver will wait to establish a connection
-                    builder.connectTimeout(60, TimeUnit.SECONDS);
-                    builder.readTimeout(60, TimeUnit.SECONDS); // Example: 60 seconds
-                  })
-              .applyToClusterSettings(
-                  builder -> builder.serverSelectionTimeout(10, TimeUnit.MINUTES))
-              .uuidRepresentation(UuidRepresentation.STANDARD)
-              .build();
-      client = MongoClients.create(settings);
+          Utils.sanitizeConnectionUri(connectionString));
+      client = MongoDbBulkTransforms.getOrCreateClient(connectionString);
     }
   }
 
   @Teardown
   public void teardown() {
-    // Close the MongoClient when the pipeline finishes
+    // Close the MongoClient when the pipeline finishes if not shared across the worker
     if (client != null) {
-      client.close();
+      MongoDbBulkTransforms.closeIfNotShared(client);
+      client = null;
     }
   }
 
