@@ -48,7 +48,8 @@ public class SpannerWriter implements Serializable {
         SpannerIO.write()
             .withSpannerConfig(spannerConfig)
             .withFailureMode(FailureMode.REPORT_FAILURES)
-            .withGroupingFactor(500));
+            .withGroupingFactor(500)
+            .withExcludeTxnFromChangeStreams(true));
     // Reduced grouping factor from 1000 to 500 to reduce memory pressure. Tests show very little
     // impact of throughput by this change.
   }
