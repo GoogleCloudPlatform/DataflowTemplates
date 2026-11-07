@@ -564,6 +564,7 @@ public class InformationSchemaScanner {
       String indexLocalName = resultSet.getString(4);
       String indexType = resultSet.getString(5);
       String spannerType = resultSet.getString(6);
+      String expression = resultSet.getString(7);
 
       if (indexLocalName.equals("PRIMARY_KEY")) {
         IndexColumn.IndexColumnsBuilder<Table.Builder> pkBuilder =
@@ -599,7 +600,10 @@ public class InformationSchemaScanner {
         }
         IndexColumn.IndexColumnsBuilder<Index.Builder> indexColumnsBuilder =
             indexBuilder.columns().create().name(columnName);
-        boolean isStoring = resultSet.isNull(7);
+        if (expression != null) {
+          indexColumnsBuilder.expression(expression);
+        }
+        boolean isStoring = resultSet.isNull(8);
         if (isStoring) {
           indexColumnsBuilder.storing();
         } else if (ordering == null) {
@@ -631,7 +635,7 @@ public class InformationSchemaScanner {
       case GOOGLE_STANDARD_SQL:
         return Statement.of(
             "SELECT t.table_schema, t.table_name, t.column_name, t.column_ordering, t.index_name,"
-                + " t.index_type, t.spanner_type, t.ordinal_position "
+                + " t.index_type, t.spanner_type, t.expression, t.ordinal_position "
                 + "FROM information_schema.index_columns AS t "
                 + " WHERE t.table_schema NOT IN"
                 + " ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
@@ -639,7 +643,7 @@ public class InformationSchemaScanner {
       case POSTGRESQL:
         return Statement.of(
             "SELECT t.table_schema, t.table_name, t.column_name, t.column_ordering, t.index_name,"
-                + " t.index_type, t.spanner_type, t.ordinal_position "
+                + " t.index_type, t.spanner_type, t.expression, t.ordinal_position "
                 + "FROM information_schema.index_columns AS t "
                 + "WHERE t.table_schema NOT IN "
                 + "('information_schema', 'spanner_sys', 'pg_catalog') "
