@@ -82,6 +82,8 @@ def _beam_specifier(beam, extra, package):
   Returns:
     a SpecifierSet, or None if the extra does not declare the package.
   """
+  # Marker.evaluate() takes the keys not given here (for example,
+  # python_version) from the current Python process.
   environment = {'extra': canonicalize_name(extra)}
   specifiers = [
       requirement.specifier
@@ -161,9 +163,13 @@ def _report_error(dep, message):
     print(f'ERROR: {message}')
     return
   path = inspect.getsourcefile(ml_dependencies)
-  with open(path) as f:
-    line = next(
-        (i for i, text in enumerate(f, start=1) if f"'{dep}'" in text), 1)
+  # Finds the requirement as a string literal, in either quote style, so that
+  # comments and other requirements that contain it are not matched.
+  literals = (f"'{dep}'", f'"{dep}"')
+  with open(path, encoding='utf-8') as f:
+    line = next((
+        i for i, text in enumerate(f, start=1)
+        if any(literal in text for literal in literals)), 1)
   path = os.path.relpath(path, os.environ.get('GITHUB_WORKSPACE', '.'))
   print(f'::error file={path},line={line}::{message}')
 
