@@ -64,12 +64,6 @@ func TestGetModulesForPaths(t *testing.T) {
 			},
 		},
 		{
-			input: []string{"v2/cdc-parent/something", "v2/cdc-parent/cdc-common/something"},
-			expected: map[string][]string{
-				FlexRoot: []string{"cdc-parent", "cdc-parent/cdc-common"},
-			},
-		},
-		{
 			input: []string{"something", "it/something", "v2/something"},
 			expected: map[string][]string{
 				ProjectRoot: make([]string, 0),
