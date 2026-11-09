@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import static com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.ErrorType.PERMANENT;
+import static com.google.cloud.teleport.v2.transforms.DocumentWithMetadata.ErrorType.RETRYABLE;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -29,6 +31,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.mongodb.MongoBulkWriteException;
+import com.mongodb.MongoException;
 import com.mongodb.ServerAddress;
 import com.mongodb.bulk.BulkWriteError;
 import com.mongodb.bulk.BulkWriteResult;
@@ -49,7 +52,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -2004,6 +2009,149 @@ public class MongoDbTransformsTest {
       }
     }
     assertThat(latencyCount).isAtLeast(1L);
+  }
+
+  @Test
+  public void applyUdfFn_dlqReplay_incrementsRetryCountAndPromotesToPermanentAfterMaxRetries()
+      throws Exception {
+    File udfFile = tempFolder.newFile("dlq_replay_udf.js");
+    try (FileWriter writer = new FileWriter(udfFile)) {
+      writer.write(
+          "function transform(inJson) {\n"
+              + "  var obj = JSON.parse(inJson);\n"
+              + "  if (obj.dropMe) { return null; }\n"
+              + "  throw new Error('poison payload');\n"
+              + "}");
+    }
+
+    DocumentWithMetadata initialFailureInput =
+        DocumentWithMetadata.of(new Document("_id", "init_doc").append("v", 1));
+    DocumentWithMetadata finalReplayThrowInput =
+        DocumentWithMetadata.of(
+            new Document("_id", "exhausted_throw"),
+            "{\"_id\": \"exhausted_throw\"}",
+            3,
+            "prior failure",
+            RETRYABLE);
+    DocumentWithMetadata finalReplayNullInput =
+        DocumentWithMetadata.of(
+            new Document("_id", "exhausted_null").append("dropMe", true),
+            "{\"_id\": \"exhausted_null\", \"dropMe\": true}",
+            3,
+            "prior null",
+            RETRYABLE);
+
+    PCollection<DocumentWithMetadata> inputCollection =
+        pipeline.apply(
+            Create.of(initialFailureInput, finalReplayThrowInput, finalReplayNullInput)
+                .withCoder(DocumentWithMetadataCoder.of()));
+
+    PCollectionTuple output =
+        inputCollection.apply(
+            "ApplyUDF_DlqReplay",
+            ParDo.of(
+                    new MongoDbTransforms.ApplyUdfFn(
+                        udfFile.getAbsolutePath(),
+                        "transform",
+                        0,
+                        /* dlqMaxRetries= */ 3,
+                        FAILURE_TAG))
+                .withOutputTags(MAIN_TAG, TupleTagList.of(FAILURE_TAG)));
+
+    PAssert.that(output.get(MAIN_TAG)).empty();
+    PAssert.that(output.get(FAILURE_TAG))
+        .satisfies(
+            failures -> {
+              Map<Object, DocumentWithMetadata> byId = new HashMap<>();
+              for (DocumentWithMetadata item : failures) {
+                byId.put(item.getId(), item);
+              }
+              assertEquals(3, byId.size());
+
+              DocumentWithMetadata initOut = byId.get("init_doc");
+              assertEquals(Integer.valueOf(1), initOut.getRetryCount());
+              assertEquals(RETRYABLE, initOut.getErrorType());
+              assertTrue(initOut.isDlqReconsumed());
+
+              DocumentWithMetadata throwOut = byId.get("exhausted_throw");
+              assertEquals(Integer.valueOf(4), throwOut.getRetryCount());
+              assertEquals(PERMANENT, throwOut.getErrorType());
+
+              DocumentWithMetadata nullOut = byId.get("exhausted_null");
+              assertEquals(Integer.valueOf(4), nullOut.getRetryCount());
+              assertEquals(PERMANENT, nullOut.getErrorType());
+              return null;
+            });
+
+    pipeline.run();
+  }
+
+  @Test
+  public void
+      writeWithDlq_transientFailurePromotingToPermanentOnMaxRetries_talliesPerItemCounters() {
+    when(staticCollection.bulkWrite(anyList(), any(BulkWriteOptions.class)))
+        .thenThrow(new MongoException(91, "ShutdownInProgress"));
+
+    // freshDoc (retryCount=0 -> 1 <= 3) stays RETRYABLE; exhaustedDoc (retryCount=3 -> 4 > 3)
+    // promotes to PERMANENT. Metrics must tally 1 dlqRetries and 1 permanentFailures.
+    DocumentWithMetadata freshDoc =
+        DocumentWithMetadata.of(new Document("_id", "fresh_1"), "col", "col");
+    DocumentWithMetadata exhaustedDoc =
+        DocumentWithMetadata.of(
+            new Document("_id", "exhausted_1"),
+            "{\"_id\": \"exhausted_1\"}",
+            3,
+            "prior timeout",
+            RETRYABLE,
+            "col",
+            "col");
+
+    PCollection<DocumentWithMetadata> input =
+        pipeline.apply(
+            Create.of(Arrays.asList(freshDoc, exhaustedDoc))
+                .withCoder(DocumentWithMetadataCoder.of()));
+    PCollection<DocumentWithMetadata> failures =
+        input.apply(
+            "Write_CounterPromotion",
+            MongoDbTransforms.writeWithDlq()
+                .withUri("mongodb://localhost:27017")
+                .withDatabase("test")
+                .withBatchSize(10)
+                .withNumWriteShards(1)
+                .withMaxWriteRetries(0)
+                .withDlqMaxRetries(3)
+                .withInitialWriteRatePerWorker(0)
+                .withClientFactory(new MockClientFactory()));
+
+    PAssert.that(failures)
+        .satisfies(
+            items -> {
+              Map<Object, DocumentWithMetadata> byId = new HashMap<>();
+              for (DocumentWithMetadata item : items) {
+                byId.put(item.getId(), item);
+              }
+              assertEquals(RETRYABLE, byId.get("fresh_1").getErrorType());
+              assertEquals(Integer.valueOf(1), byId.get("fresh_1").getRetryCount());
+              assertEquals(PERMANENT, byId.get("exhausted_1").getErrorType());
+              assertEquals(Integer.valueOf(4), byId.get("exhausted_1").getRetryCount());
+              return null;
+            });
+
+    PipelineResult result = pipeline.run();
+    result.waitUntilFinish();
+
+    long dlqRetriesVal = 0L;
+    long permanentFailuresVal = 0L;
+    for (MetricResult<Long> counter :
+        result.metrics().queryMetrics(MetricsFilter.builder().build()).getCounters()) {
+      if ("dlqRetries".equals(counter.getName().getName())) {
+        dlqRetriesVal += counter.getCommitted();
+      } else if ("permanentFailures".equals(counter.getName().getName())) {
+        permanentFailuresVal += counter.getCommitted();
+      }
+    }
+    assertEquals(1L, dlqRetriesVal);
+    assertEquals(1L, permanentFailuresVal);
   }
 
   private static String readDirectoryContents(Path directory) throws IOException {

@@ -24,12 +24,14 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.transforms.MongoDbBackfillReader.BackfillPartition;
 import com.google.common.collect.ImmutableList;
+import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -38,6 +40,7 @@ import com.mongodb.client.MongoDatabase;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 import org.apache.beam.sdk.Pipeline;
@@ -46,6 +49,7 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.bson.BsonDocument;
+import org.bson.BsonString;
 import org.bson.BsonTimestamp;
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -125,14 +129,43 @@ public class MongoDbBackfillReaderTest {
     MongoClient mockClient = mock(MongoClient.class);
     MongoDatabase mockDb = mock(MongoDatabase.class);
     MongoCollection<BsonDocument> mockCol = mock(MongoCollection.class);
-    FindIterable<BsonDocument> mockFindIterable = mock(FindIterable.class);
+    FindIterable<BsonDocument> mockGlobalFind = mock(FindIterable.class);
+    FindIterable<BsonDocument> mockBucketFind = mock(FindIterable.class);
+    AggregateIterable<BsonDocument> mockAgg = mock(AggregateIterable.class);
+    MongoCursor<BsonDocument> mockSampleCursor = mock(MongoCursor.class);
 
     when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
-    when(mockDb.getCollection(anyString(), org.mockito.ArgumentMatchers.eq(BsonDocument.class)))
-        .thenReturn(mockCol);
-    when(mockCol.find(any(BsonDocument.class))).thenReturn(mockFindIterable);
-    when(mockFindIterable.limit(anyInt())).thenReturn(mockFindIterable);
-    when(mockFindIterable.first()).thenReturn(null);
+    when(mockDb.getCollection(anyString(), eq(BsonDocument.class))).thenReturn(mockCol);
+    when(mockCol.estimatedDocumentCount()).thenReturn(50_000L);
+
+    when(mockCol.find()).thenReturn(mockGlobalFind);
+    when(mockGlobalFind.projection(any())).thenReturn(mockGlobalFind);
+    when(mockGlobalFind.sort(any())).thenReturn(mockGlobalFind);
+    when(mockGlobalFind.limit(anyInt())).thenReturn(mockGlobalFind);
+    when(mockGlobalFind.maxTime(any(Long.class), any())).thenReturn(mockGlobalFind);
+    when(mockGlobalFind.first())
+        .thenReturn(new BsonDocument("_id", new BsonString("a")))
+        .thenReturn(new BsonDocument("_id", new BsonString("z")));
+
+    when(mockCol.find(any(BsonDocument.class))).thenReturn(mockBucketFind);
+    when(mockBucketFind.projection(any())).thenReturn(mockBucketFind);
+    when(mockBucketFind.sort(any())).thenReturn(mockBucketFind);
+    when(mockBucketFind.limit(anyInt())).thenReturn(mockBucketFind);
+    when(mockBucketFind.maxTime(any(Long.class), any())).thenReturn(mockBucketFind);
+    when(mockBucketFind.first()).thenReturn(null);
+
+    when(mockCol.aggregate(any())).thenReturn(mockAgg);
+    when(mockAgg.maxTime(any(Long.class), any())).thenReturn(mockAgg);
+    when(mockAgg.iterator()).thenReturn(mockSampleCursor);
+    List<BsonDocument> sampleDocs =
+        ImmutableList.of(
+            new BsonDocument("_id", new BsonString("a")),
+            new BsonDocument("_id", new BsonString("f")),
+            new BsonDocument("_id", new BsonString("m")),
+            new BsonDocument("_id", new BsonString("z")));
+    Iterator<BsonDocument> sampleIt = sampleDocs.iterator();
+    when(mockSampleCursor.hasNext()).thenAnswer(inv -> sampleIt.hasNext());
+    when(mockSampleCursor.next()).thenAnswer(inv -> sampleIt.next());
 
     BsonTimestamp t0 = new BsonTimestamp(1700000000, 5);
     List<BackfillPartition> partitions =
@@ -142,6 +175,8 @@ public class MongoDbBackfillReaderTest {
     assertEquals(2, partitions.size());
     assertEquals(0, partitions.get(0).getPartitionIndex());
     assertEquals(1, partitions.get(1).getPartitionIndex());
+    assertTrue(partitions.get(0).getFilterJson().contains("\"$lte\": \"m\""));
+    assertTrue(partitions.get(1).getFilterJson().contains("\"$gt\": \"m\""));
   }
 
   @Test

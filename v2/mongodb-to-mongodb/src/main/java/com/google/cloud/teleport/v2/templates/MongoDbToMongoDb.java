@@ -921,6 +921,7 @@ public class MongoDbToMongoDb {
                             options.getJavascriptTextTransformGcsPath(),
                             options.getJavascriptTextTransformFunctionName(),
                             options.getJavascriptTextTransformReloadIntervalMinutes(),
+                            options.getDlqMaxRetries(),
                             udfFailureTag))
                     .withOutputTags(udfSuccessTag, TupleTagList.of(udfFailureTag)));
 

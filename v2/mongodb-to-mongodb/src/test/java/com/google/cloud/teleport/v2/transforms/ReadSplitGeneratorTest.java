@@ -18,11 +18,16 @@ package com.google.cloud.teleport.v2.transforms;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.mongodb.MongoException;
+import com.mongodb.MongoExecutionTimeoutException;
 import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
@@ -32,6 +37,7 @@ import com.mongodb.client.MongoDatabase;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
@@ -56,7 +62,6 @@ import org.bson.BsonSymbol;
 import org.bson.BsonTimestamp;
 import org.bson.BsonUndefined;
 import org.bson.BsonValue;
-import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.Decimal128;
 import org.bson.types.ObjectId;
@@ -187,99 +192,65 @@ public class ReadSplitGeneratorTest {
     @SuppressWarnings("unchecked")
     MongoCollection<BsonDocument> mockCol = mock(MongoCollection.class);
 
-    when(mockClient.getDatabase(org.mockito.ArgumentMatchers.anyString())).thenReturn(mockDb);
-    when(mockDb.getCollection(
-            org.mockito.ArgumentMatchers.anyString(),
-            org.mockito.ArgumentMatchers.eq(BsonDocument.class)))
-        .thenReturn(mockCol);
+    when(mockClient.getDatabase(anyString())).thenReturn(mockDb);
+    when(mockDb.getCollection(anyString(), eq(BsonDocument.class))).thenReturn(mockCol);
+    when(mockCol.estimatedDocumentCount()).thenReturn(50_000L);
 
-    // Mock detectIdTypes to return multiple types
-    @SuppressWarnings("unchecked")
-    FindIterable<BsonDocument> mockFind = mock(FindIterable.class);
-    when(mockCol.find(any(BsonDocument.class))).thenReturn(mockFind);
-    when(mockFind.limit(1)).thenReturn(mockFind);
-    when(mockFind.first()).thenReturn(new BsonDocument()); // Meaning we detect active types
+    FindIterable<BsonDocument> mockGlobalFind = mockChainedFind();
+    FindIterable<BsonDocument> mockBucketFind = mockChainedFind();
+    when(mockCol.find()).thenReturn(mockGlobalFind);
+    when(mockCol.find(any(BsonDocument.class))).thenReturn(mockBucketFind);
 
-    // Mock $sample aggregation
-    @SuppressWarnings("unchecked")
-    com.mongodb.client.AggregateIterable<BsonDocument> mockAgg =
-        (com.mongodb.client.AggregateIterable<BsonDocument>)
-            java.lang.reflect.Proxy.newProxyInstance(
-                getClass().getClassLoader(),
-                new Class<?>[] {com.mongodb.client.AggregateIterable.class},
-                (proxy, method, args) -> {
-                  if (method.getName().equals("allowDiskUse")
-                      || method.getName().equals("maxTime")) {
-                    return proxy;
-                  }
-                  if (method.getName().equals("iterator")) {
-                    return new com.mongodb.client.MongoCursor<BsonDocument>() {
-                      java.util.Iterator<BsonDocument> iter =
-                          java.util.Arrays.asList(
-                                  new BsonDocument("_id", new org.bson.BsonString("min")),
-                                  new BsonDocument("_id", new org.bson.BsonString("mid")),
-                                  new BsonDocument("_id", new org.bson.BsonString("max")))
-                              .iterator();
+    // Global min = Int32(1), global max = String("z")
+    when(mockGlobalFind.first())
+        .thenReturn(new BsonDocument("_id", new BsonInt32(1)))
+        .thenReturn(new BsonDocument("_id", new BsonString("z")));
+    // number max = Int32(100), string min = String("a"), symbol sibling min = null
+    when(mockBucketFind.first())
+        .thenReturn(new BsonDocument("_id", new BsonInt32(100)))
+        .thenReturn(new BsonDocument("_id", new BsonString("a")))
+        .thenReturn(null);
 
-                      @Override
-                      public void close() {}
-
-                      @Override
-                      public boolean hasNext() {
-                        return iter.hasNext();
-                      }
-
-                      @Override
-                      public BsonDocument next() {
-                        return iter.next();
-                      }
-
-                      @Override
-                      public BsonDocument tryNext() {
-                        return null;
-                      }
-
-                      @Override
-                      public com.mongodb.ServerCursor getServerCursor() {
-                        return null;
-                      }
-
-                      @Override
-                      public com.mongodb.ServerAddress getServerAddress() {
-                        return null;
-                      }
-
-                      @Override
-                      public int available() {
-                        return 0;
-                      }
-                    };
-                  }
-                  return null;
-                });
-    when(mockCol.aggregate(any())).thenReturn(mockAgg);
+    mockSampledDocuments(
+        mockCol,
+        Arrays.asList(
+            new BsonDocument("_id", new BsonInt32(1)),
+            new BsonDocument("_id", new BsonInt32(25)),
+            new BsonDocument("_id", new BsonInt32(50)),
+            new BsonDocument("_id", new BsonInt32(100)),
+            new BsonDocument("_id", new BsonString("a")),
+            new BsonDocument("_id", new BsonString("f")),
+            new BsonDocument("_id", new BsonString("m")),
+            new BsonDocument("_id", new BsonString("z"))));
 
     List<BsonDocument> filters =
-        ReadSplitGenerator.generateIndexSliceFilters(mockClient, "db", "col", 2);
+        ReadSplitGenerator.generateIndexSliceFilters(mockClient, "db", "col", 4);
 
-    assertEquals(2, filters.size());
-    String slice0 = filters.get(0).toJson();
-    String slice1 = filters.get(1).toJson();
-
-    // Validate we use the $or wrapper
-    assertTrue(slice0.contains("\"$or\""));
-
-    // Validate that the bounds are nested within specific type bounds!
-    assertTrue(slice0.contains("\"$type\": \"string\""));
-    assertTrue(slice0.contains("\"$type\": \"objectId\""));
-    assertTrue(slice0.contains("\"$type\": [\"int\""));
+    assertEquals(4, filters.size());
+    for (BsonDocument filter : filters) {
+      assertFalse(
+          "Type-isolated splits must never combine types with $or",
+          filter.toJson().contains("\"$or\""));
+    }
+    assertEquals(new BsonInt32(50), filters.get(0).getDocument("_id").get("$lte"));
+    assertEquals(new BsonInt32(50), filters.get(1).getDocument("_id").get("$gt"));
+    assertEquals(new BsonString("m"), filters.get(2).getDocument("_id").get("$lte"));
+    assertEquals(new BsonString("m"), filters.get(3).getDocument("_id").get("$gt"));
   }
 
   @Test
   public void testGenerateTypeIsolatedSplits_smallCollectionReturnsSingleSplit() {
     @SuppressWarnings("unchecked")
     MongoCollection<BsonDocument> mockCol = mock(MongoCollection.class);
+    FindIterable<BsonDocument> mockFind = mockChainedFind();
     when(mockCol.estimatedDocumentCount()).thenReturn(2000L);
+    when(mockCol.find()).thenReturn(mockFind);
+    when(mockFind.first())
+        .thenReturn(new BsonDocument("_id", new BsonString("a")))
+        .thenReturn(new BsonDocument("_id", new BsonString("z")));
+    FindIterable<BsonDocument> mockBucketFind = mockChainedFind();
+    when(mockCol.find(any(BsonDocument.class))).thenReturn(mockBucketFind);
+    when(mockBucketFind.first()).thenReturn(null);
 
     List<BsonDocument> splits = ReadSplitGenerator.generateTypeIsolatedSplits(mockCol, 16);
     assertEquals(1, splits.size());
@@ -288,34 +259,35 @@ public class ReadSplitGeneratorTest {
 
   @Test
   public void testGenerateTypeIsolatedSplits_adaptiveVolumeSizing_calculatesEffectiveSplits() {
-    @SuppressWarnings("unchecked")
-    MongoCollection<BsonDocument> mockCol = mock(MongoCollection.class);
-    when(mockCol.estimatedDocumentCount()).thenReturn(1_000_000L);
+    MongoCollection<BsonDocument> mockCol = mockHomogeneousObjectIdCollectionWithCount(1_000_000L);
 
     List<BsonDocument> splits =
         ReadSplitGenerator.generateTypeIsolatedSplits(mockCol, 1, 200_000, 256);
     assertEquals(5, splits.size());
+    for (BsonDocument split : splits) {
+      assertFalse(split.toJson().contains("\"$or\""));
+      assertTrue(split.toJson().contains("\"$type\": \"objectId\""));
+    }
   }
 
   @Test
   public void testGenerateTypeIsolatedSplits_adaptiveVolumeSizing_clampsToMaxSplits() {
-    @SuppressWarnings("unchecked")
-    MongoCollection<BsonDocument> mockCol = mock(MongoCollection.class);
-    when(mockCol.estimatedDocumentCount()).thenReturn(100_000_000L);
+    MongoCollection<BsonDocument> mockCol =
+        mockHomogeneousObjectIdCollectionWithCount(100_000_000L);
 
     List<BsonDocument> splits =
         ReadSplitGenerator.generateTypeIsolatedSplits(mockCol, 1, 200_000, 256);
     assertEquals(256, splits.size());
+    assertFalse(splits.get(0).toJson().contains("\"$or\""));
   }
 
   @Test
   public void testGenerateTypeIsolatedSplits_zeroTargetChunkSize_usesNumSplits() {
-    @SuppressWarnings("unchecked")
-    MongoCollection<BsonDocument> mockCol = mock(MongoCollection.class);
-    when(mockCol.estimatedDocumentCount()).thenReturn(10_000_000L);
+    MongoCollection<BsonDocument> mockCol = mockHomogeneousObjectIdCollectionWithCount(10_000_000L);
 
     List<BsonDocument> splits = ReadSplitGenerator.generateTypeIsolatedSplits(mockCol, 16, 0, 256);
     assertEquals(16, splits.size());
+    assertFalse(splits.get(0).toJson().contains("\"$or\""));
   }
 
   @Test
@@ -459,16 +431,23 @@ public class ReadSplitGeneratorTest {
         .thenReturn(
             new BsonDocument("_id", new BsonObjectId(new ObjectId("600000000000000000000009"))));
 
-    // Simulate timeout exception on intermediate bucket probe
+    // Simulate MongoExecutionTimeoutException on intermediate bucket probe
     when(mockBucketFind.first())
         .thenReturn(new BsonDocument("_id", new BsonInt32(100)))
-        .thenThrow(new RuntimeException("MongoExecutionTimeoutException"));
+        .thenThrow(new MongoExecutionTimeoutException(50, "Execution timed out"));
 
     List<ReadSplitGenerator.ProbedTypeBounds> bounds =
         ReadSplitGenerator.probeActiveTypeBounds(mockCol);
 
     // Must abort and return empty list rather than silently dropping the timed-out type!
     assertTrue(bounds.isEmpty());
+
+    // Non-MongoException programming bugs must propagate rather than being silently masked
+    @SuppressWarnings("unchecked")
+    MongoCollection<BsonDocument> buggyCol = mock(MongoCollection.class);
+    when(buggyCol.find()).thenThrow(new IllegalStateException("unexpected bug"));
+    assertThrows(
+        IllegalStateException.class, () -> ReadSplitGenerator.probeActiveTypeBounds(buggyCol));
   }
 
   @Test
@@ -477,10 +456,34 @@ public class ReadSplitGeneratorTest {
         ReadSplitGenerator.generateProbedNumberSplits(
             new BsonInt64(-1000L), new BsonInt64(1000L), 4);
     assertEquals(4, splits.size());
-    assertTrue(splits.get(0).toJson().contains("\"$lt\""));
-    assertFalse(splits.get(0).toJson().contains("\"$gte\""));
-    assertTrue(splits.get(3).toJson().contains("\"$gte\""));
-    assertFalse(splits.get(3).toJson().contains("\"$lt\""));
+    assertEquals(new BsonInt64(-500L), splits.get(0).getDocument("_id").get("$lt"));
+    assertFalse(splits.get(0).getDocument("_id").containsKey("$gte"));
+    assertEquals(new BsonInt64(-500L), splits.get(1).getDocument("_id").get("$gte"));
+    assertEquals(new BsonInt64(0L), splits.get(1).getDocument("_id").get("$lt"));
+    assertEquals(new BsonInt64(0L), splits.get(2).getDocument("_id").get("$gte"));
+    assertEquals(new BsonInt64(500L), splits.get(2).getDocument("_id").get("$lt"));
+    assertEquals(new BsonInt64(500L), splits.get(3).getDocument("_id").get("$gte"));
+    assertFalse(splits.get(3).getDocument("_id").containsKey("$lt"));
+
+    // Values beyond 2^53 (9_007_199_254_740_992L) must preserve exact 64-bit integer precision
+    long above53Min = (1L << 53) + 100L;
+    long above53Max = (1L << 53) + 500L;
+    List<BsonDocument> largeLongSplits =
+        ReadSplitGenerator.generateProbedNumberSplits(
+            new BsonInt64(above53Min), new BsonInt64(above53Max), 4);
+    assertEquals(4, largeLongSplits.size());
+    assertEquals(
+        new BsonInt64((1L << 53) + 200L), largeLongSplits.get(0).getDocument("_id").get("$lt"));
+    assertEquals(
+        new BsonInt64((1L << 53) + 200L), largeLongSplits.get(1).getDocument("_id").get("$gte"));
+    assertEquals(
+        new BsonInt64((1L << 53) + 300L), largeLongSplits.get(1).getDocument("_id").get("$lt"));
+    assertEquals(
+        new BsonInt64((1L << 53) + 300L), largeLongSplits.get(2).getDocument("_id").get("$gte"));
+    assertEquals(
+        new BsonInt64((1L << 53) + 400L), largeLongSplits.get(2).getDocument("_id").get("$lt"));
+    assertEquals(
+        new BsonInt64((1L << 53) + 400L), largeLongSplits.get(3).getDocument("_id").get("$gte"));
   }
 
   @Test
@@ -639,29 +642,44 @@ public class ReadSplitGeneratorTest {
     MongoDatabase mockDb = mock(MongoDatabase.class);
     when(mockClient.getDatabase("db")).thenReturn(mockDb);
     when(mockDb.getCollection("col", BsonDocument.class)).thenReturn(mockCol);
-    when(mockDb.runCommand(any())).thenReturn(new Document("count", 10000));
-
-    @SuppressWarnings("unchecked")
-    AggregateIterable<BsonDocument> mockAgg = mock(AggregateIterable.class);
-    @SuppressWarnings("unchecked")
-    MongoCursor<BsonDocument> mockCursor = mock(MongoCursor.class);
-    when(mockCol.aggregate(any())).thenReturn(mockAgg);
-    when(mockAgg.allowDiskUse(any(Boolean.class))).thenReturn(mockAgg);
-    when(mockAgg.maxTime(any(Long.class), any())).thenReturn(mockAgg);
-    when(mockAgg.iterator()).thenReturn(mockCursor);
+    when(mockCol.estimatedDocumentCount()).thenReturn(100_000L);
 
     // Feed all sampleDocs through $sample cursor to exercise matchesType for every BSON type
     List<BsonDocument> wrappedDocs = new ArrayList<>();
     for (BsonValue v : sampleDocs) {
       wrappedDocs.add(new BsonDocument("_id", v));
     }
-    Iterator<BsonDocument> it = wrappedDocs.iterator();
-    when(mockCursor.hasNext()).thenAnswer(inv -> it.hasNext());
-    when(mockCursor.next()).thenAnswer(inv -> it.next());
+    mockSampledDocuments(mockCol, wrappedDocs);
 
+    // 17 active types: 15 single-split buckets (14 minKey==maxKey + bool) + 2 multi-doc buckets
+    // (number [10..20], string ["abc".."xyz"]). remainingSplits = 21 - 15 = 6 -> 3 splits each,
+    // yielding 15 + 3 + 3 = 21 total splits in strict canonical BSON order.
     List<BsonDocument> splits =
-        ReadSplitGenerator.generateIndexSliceFilters(mockClient, "db", "col", 26);
-    assertFalse(splits.isEmpty());
+        ReadSplitGenerator.generateIndexSliceFilters(mockClient, "db", "col", 21);
+    assertEquals(21, splits.size());
+    assertTrue(splits.get(0).toJson().contains("\"minKey\""));
+    assertTrue(splits.get(1).toJson().contains("\"undefined\""));
+    assertTrue(splits.get(2).toJson().contains("\"null\""));
+    // Indices 3..5: 3 interpolated number splits
+    assertTrue(splits.get(3).toJson().contains("\"int\""));
+    assertTrue(splits.get(5).toJson().contains("\"int\""));
+    // Indices 6..8: 3 string splits
+    assertTrue(splits.get(6).toJson().contains("\"string\""));
+    assertTrue(splits.get(8).toJson().contains("\"string\""));
+    // Indices 9..20: remaining 12 single-split buckets in exact canonical order
+    assertTrue(splits.get(9).toJson().contains("\"symbol\""));
+    assertTrue(splits.get(10).toJson().contains("\"object\""));
+    assertTrue(splits.get(11).toJson().contains("\"binData\""));
+    assertTrue(splits.get(12).toJson().contains("\"objectId\""));
+    assertTrue(splits.get(13).toJson().contains("\"bool\""));
+    assertFalse(splits.get(13).toJson().contains("$lte"));
+    assertTrue(splits.get(14).toJson().contains("\"date\""));
+    assertTrue(splits.get(15).toJson().contains("\"timestamp\""));
+    assertTrue(splits.get(16).toJson().contains("\"regex\""));
+    assertTrue(splits.get(17).toJson().contains("\"dbPointer\""));
+    assertTrue(splits.get(18).toJson().contains("\"javascript\""));
+    assertTrue(splits.get(19).toJson().contains("\"javascriptWithScope\""));
+    assertTrue(splits.get(20).toJson().contains("\"maxKey\""));
   }
 
   @Test
@@ -670,9 +688,28 @@ public class ReadSplitGeneratorTest {
         ReadSplitGenerator.generateIndexSliceFilters(
             128, EnumSet.of(ReadSplitGenerator.IdType.STRING));
     assertEquals(62, filters.size());
-    for (BsonDocument filter : filters) {
+    String prevGte = null;
+    for (int i = 0; i < filters.size(); i++) {
+      BsonDocument filter = filters.get(i);
       assertFalse("Must not emit empty full-collection-scan filter", filter.isEmpty());
-      assertTrue(filter.toJson().contains("\"$type\": \"string\""));
+      BsonDocument idDoc = filter.getDocument("_id");
+      assertEquals(new BsonString("string"), idDoc.get("$type"));
+      if (i > 0) {
+        String gte = idDoc.getString("$gte").getValue();
+        if (prevGte != null) {
+          assertTrue("Bounds must be strictly increasing", gte.compareTo(prevGte) > 0);
+        }
+        prevGte = gte;
+      }
+      if (i < filters.size() - 1) {
+        String lt = idDoc.getString("$lt").getValue();
+        if (i > 0) {
+          assertFalse(lt.equals(idDoc.getString("$gte").getValue()));
+        }
+      } else {
+        assertFalse("Tail slice must be open-ended without $lt", idDoc.containsKey("$lt"));
+        assertFalse("Tail slice must be open-ended without $lte", idDoc.containsKey("$lte"));
+      }
     }
   }
 
@@ -961,6 +998,202 @@ public class ReadSplitGeneratorTest {
         "javascriptWithScope",
         ReadSplitGenerator.getBucketForValue(new BsonJavaScriptWithScope("f()", new BsonDocument()))
             .getName());
+  }
+
+  @Test
+  public void generateTypeIsolatedSplits_quantileBoundariesAndDuplicateDedup_emitsOpenEndedTail() {
+    // 1. typeKeys.size() >= splits (8 sampled string keys, splits = 4)
+    @SuppressWarnings("unchecked")
+    MongoCollection<BsonDocument> fullSampleCol = mock(MongoCollection.class);
+    when(fullSampleCol.estimatedDocumentCount()).thenReturn(100_000L);
+    FindIterable<BsonDocument> fullGlobal = mockChainedFind();
+    FindIterable<BsonDocument> fullBucket = mockChainedFind();
+    when(fullSampleCol.find()).thenReturn(fullGlobal);
+    when(fullSampleCol.find(any(BsonDocument.class))).thenReturn(fullBucket);
+    when(fullGlobal.first())
+        .thenReturn(new BsonDocument("_id", new BsonString("k1")))
+        .thenReturn(new BsonDocument("_id", new BsonString("k8")));
+    when(fullBucket.first()).thenReturn(null);
+    mockSampledDocuments(
+        fullSampleCol,
+        Arrays.asList(
+            new BsonDocument("_id", new BsonString("k1")),
+            new BsonDocument("_id", new BsonString("k2")),
+            new BsonDocument("_id", new BsonString("k3")),
+            new BsonDocument("_id", new BsonString("k4")),
+            new BsonDocument("_id", new BsonString("k5")),
+            new BsonDocument("_id", new BsonString("k6")),
+            new BsonDocument("_id", new BsonString("k7")),
+            new BsonDocument("_id", new BsonString("k8"))));
+
+    List<BsonDocument> fullSplits = ReadSplitGenerator.generateTypeIsolatedSplits(fullSampleCol, 4);
+    assertEquals(4, fullSplits.size());
+    assertEquals(new BsonString("k3"), fullSplits.get(0).getDocument("_id").get("$lte"));
+    assertFalse(fullSplits.get(0).getDocument("_id").containsKey("$gt"));
+    assertEquals(new BsonString("k3"), fullSplits.get(1).getDocument("_id").get("$gt"));
+    assertEquals(new BsonString("k5"), fullSplits.get(1).getDocument("_id").get("$lte"));
+    assertEquals(new BsonString("k7"), fullSplits.get(3).getDocument("_id").get("$gt"));
+    assertFalse(fullSplits.get(3).getDocument("_id").containsKey("$lte"));
+
+    // 2. 2 <= typeKeys.size() < splits with duplicate boundaries ("a", "a", "a", "z", splits = 8)
+    @SuppressWarnings("unchecked")
+    MongoCollection<BsonDocument> dupSampleCol = mock(MongoCollection.class);
+    when(dupSampleCol.estimatedDocumentCount()).thenReturn(100_000L);
+    FindIterable<BsonDocument> dupGlobal = mockChainedFind();
+    FindIterable<BsonDocument> dupBucket = mockChainedFind();
+    when(dupSampleCol.find()).thenReturn(dupGlobal);
+    when(dupSampleCol.find(any(BsonDocument.class))).thenReturn(dupBucket);
+    when(dupGlobal.first())
+        .thenReturn(new BsonDocument("_id", new BsonString("a")))
+        .thenReturn(new BsonDocument("_id", new BsonString("z")));
+    when(dupBucket.first()).thenReturn(null);
+    mockSampledDocuments(
+        dupSampleCol,
+        Arrays.asList(
+            new BsonDocument("_id", new BsonString("a")),
+            new BsonDocument("_id", new BsonString("a")),
+            new BsonDocument("_id", new BsonString("a")),
+            new BsonDocument("_id", new BsonString("z"))));
+
+    List<BsonDocument> dupSplits = ReadSplitGenerator.generateTypeIsolatedSplits(dupSampleCol, 8);
+    // Duplicate "a" boundaries collapse so no empty {$gt: "a", $lte: "a"} partition is produced
+    assertEquals(3, dupSplits.size());
+    assertEquals(new BsonString("a"), dupSplits.get(0).getDocument("_id").get("$lte"));
+    assertEquals(new BsonString("a"), dupSplits.get(1).getDocument("_id").get("$gt"));
+    assertEquals(new BsonString("z"), dupSplits.get(1).getDocument("_id").get("$lte"));
+    assertEquals(new BsonString("z"), dupSplits.get(2).getDocument("_id").get("$gt"));
+  }
+
+  @Test
+  public void
+      generateTypeIsolatedSplits_mixedCollectionProportionalWeightingAndSampleFailureFallback() {
+    // 1. Skewed multi-type collection: 9 string samples + 1 number sample + bool (1-split budget)
+    @SuppressWarnings("unchecked")
+    MongoCollection<BsonDocument> skewedCol = mock(MongoCollection.class);
+    when(skewedCol.estimatedDocumentCount()).thenReturn(100_000L);
+    FindIterable<BsonDocument> skewedGlobal = mockChainedFind();
+    FindIterable<BsonDocument> skewedBucket = mockChainedFind();
+    when(skewedCol.find()).thenReturn(skewedGlobal);
+    when(skewedCol.find(any(BsonDocument.class))).thenReturn(skewedBucket);
+    when(skewedGlobal.first())
+        .thenReturn(new BsonDocument("_id", new BsonInt32(1)))
+        .thenReturn(new BsonDocument("_id", new BsonBoolean(true)));
+    // Between number (idx 3) and bool (idx 9): string active, symbol..objectId empty
+    when(skewedBucket.first())
+        .thenReturn(new BsonDocument("_id", new BsonInt32(1000))) // number max
+        .thenReturn(new BsonDocument("_id", new BsonString("s0"))) // string min
+        .thenReturn(new BsonDocument("_id", new BsonString("s9"))) // string max
+        .thenReturn(null) // symbol
+        .thenReturn(null) // object
+        .thenReturn(null) // binData
+        .thenReturn(null) // objectId
+        .thenReturn(new BsonDocument("_id", new BsonBoolean(false))); // bool min
+
+    List<BsonDocument> skewedSamples = new ArrayList<>();
+    skewedSamples.add(new BsonDocument("_id", new BsonInt32(50)));
+    for (int i = 0; i < 9; i++) {
+      skewedSamples.add(new BsonDocument("_id", new BsonString("s" + i)));
+    }
+    mockSampledDocuments(skewedCol, skewedSamples);
+
+    // effectiveSplits = 11 -> bool gets 1, remainingSplits = 10 -> number gets 1 (1/10 * 10),
+    // string gets 9 (9/10 * 10)
+    List<BsonDocument> weightedSplits =
+        ReadSplitGenerator.generateTypeIsolatedSplits(skewedCol, 11);
+    int numFilterCount = 0;
+    int strFilterCount = 0;
+    int boolFilterCount = 0;
+    for (BsonDocument f : weightedSplits) {
+      String json = f.toJson();
+      if (json.contains("\"int\"")) {
+        numFilterCount++;
+      } else if (json.contains("\"string\"")) {
+        strFilterCount++;
+      } else if (json.contains("\"bool\"")) {
+        boolFilterCount++;
+      }
+    }
+    assertEquals(1, numFilterCount);
+    assertEquals(9, strFilterCount);
+    assertEquals(1, boolFilterCount);
+
+    // 2. When $sample fails with MongoException (totalMultiDocSamples == 0), falls back to equal
+    // split allocation across multi-doc buckets using probed bounds
+    @SuppressWarnings("unchecked")
+    MongoCollection<BsonDocument> sampleFailCol = mock(MongoCollection.class);
+    when(sampleFailCol.estimatedDocumentCount()).thenReturn(100_000L);
+    FindIterable<BsonDocument> failGlobal = mockChainedFind();
+    FindIterable<BsonDocument> failBucket = mockChainedFind();
+    when(sampleFailCol.find()).thenReturn(failGlobal);
+    when(sampleFailCol.find(any(BsonDocument.class))).thenReturn(failBucket);
+    when(failGlobal.first())
+        .thenReturn(new BsonDocument("_id", new BsonInt32(0)))
+        .thenReturn(new BsonDocument("_id", new BsonString("z")));
+    when(failBucket.first())
+        .thenReturn(new BsonDocument("_id", new BsonInt32(400))) // number max
+        .thenReturn(new BsonDocument("_id", new BsonString("a"))) // string min
+        .thenReturn(null); // symbol sibling
+    when(sampleFailCol.aggregate(any())).thenThrow(new MongoException("sample timed out"));
+
+    List<BsonDocument> fallbackSplits =
+        ReadSplitGenerator.generateTypeIsolatedSplits(sampleFailCol, 6);
+    assertEquals(6, fallbackSplits.size());
+  }
+
+  @Test
+  public void probeActiveTypeBounds_sharedRankNullAndUndefined_discoversBothBuckets() {
+    @SuppressWarnings("unchecked")
+    MongoCollection<BsonDocument> mockCol = mock(MongoCollection.class);
+    FindIterable<BsonDocument> globalFind = mockChainedFind();
+    FindIterable<BsonDocument> bucketFind = mockChainedFind();
+    when(mockCol.find()).thenReturn(globalFind);
+    when(mockCol.find(any(BsonDocument.class))).thenReturn(bucketFind);
+
+    // Global min = null (idx 2), global max = int32 (idx 3), while legacy undefined (idx 1) exists
+    when(globalFind.first())
+        .thenReturn(new BsonDocument("_id", BsonNull.VALUE))
+        .thenReturn(new BsonDocument("_id", new BsonInt32(10)));
+    when(bucketFind.first())
+        .thenReturn(new BsonDocument("_id", BsonNull.VALUE)) // null max
+        .thenReturn(new BsonDocument("_id", new BsonUndefined())) // undefined sibling min
+        .thenReturn(new BsonDocument("_id", new BsonUndefined())) // undefined sibling max
+        .thenReturn(new BsonDocument("_id", new BsonInt32(1))); // number min
+
+    List<ReadSplitGenerator.ProbedTypeBounds> bounds =
+        ReadSplitGenerator.probeActiveTypeBounds(mockCol);
+    assertEquals(3, bounds.size());
+    assertEquals("null", bounds.get(0).getBucket().getName());
+    assertEquals("undefined", bounds.get(1).getBucket().getName());
+    assertEquals("number", bounds.get(2).getBucket().getName());
+  }
+
+  @SuppressWarnings("unchecked")
+  private static MongoCollection<BsonDocument> mockHomogeneousObjectIdCollectionWithCount(
+      long estimatedCount) {
+    MongoCollection<BsonDocument> mockCol = mock(MongoCollection.class);
+    FindIterable<BsonDocument> mockFind = mockChainedFind();
+    when(mockCol.estimatedDocumentCount()).thenReturn(estimatedCount);
+    when(mockCol.find()).thenReturn(mockFind);
+    when(mockFind.first())
+        .thenReturn(
+            new BsonDocument("_id", new BsonObjectId(new ObjectId("000000000000000000000001"))))
+        .thenReturn(
+            new BsonDocument("_id", new BsonObjectId(new ObjectId("ffffffffffffffffffffffff"))));
+    mockSampledDocuments(mockCol, Collections.emptyList());
+    return mockCol;
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void mockSampledDocuments(
+      MongoCollection<BsonDocument> mockCol, List<BsonDocument> docs) {
+    AggregateIterable<BsonDocument> mockAgg = mock(AggregateIterable.class);
+    MongoCursor<BsonDocument> mockCursor = mock(MongoCursor.class);
+    when(mockCol.aggregate(any())).thenReturn(mockAgg);
+    when(mockAgg.maxTime(any(Long.class), any())).thenReturn(mockAgg);
+    when(mockAgg.iterator()).thenReturn(mockCursor);
+    Iterator<BsonDocument> it = docs.iterator();
+    when(mockCursor.hasNext()).thenAnswer(inv -> it.hasNext());
+    when(mockCursor.next()).thenAnswer(inv -> it.next());
   }
 
   @SuppressWarnings("unchecked")

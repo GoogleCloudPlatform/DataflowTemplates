@@ -1314,11 +1314,6 @@ public class MongoDbTransforms {
         List<DocumentWithMetadata> itemList,
         String message,
         boolean isPermanent) {
-      if (isPermanent) {
-        activeBundle.permanentFailuresCount.addAndGet(itemList.size());
-      } else {
-        activeBundle.dlqRetriesCount.addAndGet(itemList.size());
-      }
       long now = System.currentTimeMillis();
       long prev = lastDlqLogTimeMs != null ? lastDlqLogTimeMs.get() : 0L;
       if ((prev == 0L || now - prev >= DLQ_LOG_INTERVAL_MS)
@@ -1331,6 +1326,8 @@ public class MongoDbTransforms {
             message,
             sampleId);
       }
+      long permCount = 0;
+      long retryDlqCount = 0;
       for (DocumentWithMetadata item : itemList) {
         int nextRetryCount = (item.getRetryCount() != null ? item.getRetryCount() : 0) + 1;
         boolean isPerm = isPermanent || (dlqMaxRetries != null && nextRetryCount > dlqMaxRetries);
@@ -1339,9 +1336,20 @@ public class MongoDbTransforms {
                 ? Math.max(nextRetryCount, dlqMaxRetries != null ? dlqMaxRetries + 1 : 1)
                 : nextRetryCount;
         ErrorType errorType = isPerm ? PERMANENT : RETRYABLE;
+        if (isPerm) {
+          permCount++;
+        } else {
+          retryDlqCount++;
+        }
 
         activeBundle.failures.add(
             item.withFailure(message, errorType, FailureStage.WRITE, retryCount));
+      }
+      if (permCount > 0) {
+        activeBundle.permanentFailuresCount.addAndGet(permCount);
+      }
+      if (retryDlqCount > 0) {
+        activeBundle.dlqRetriesCount.addAndGet(retryDlqCount);
       }
     }
 
@@ -2161,11 +2169,6 @@ public class MongoDbTransforms {
         List<DocumentWithMetadata> itemList,
         String message,
         boolean isPermanent) {
-      if (isPermanent) {
-        activeBundle.permanentFailuresCount.addAndGet(itemList.size());
-      } else {
-        activeBundle.dlqRetriesCount.addAndGet(itemList.size());
-      }
       long now = System.currentTimeMillis();
       long prev = lastDlqLogTimeMs != null ? lastDlqLogTimeMs.get() : 0L;
       if ((prev == 0L || now - prev >= DLQ_LOG_INTERVAL_MS)
@@ -2178,6 +2181,8 @@ public class MongoDbTransforms {
             message,
             sampleId);
       }
+      long permCount = 0;
+      long retryDlqCount = 0;
       for (DocumentWithMetadata item : itemList) {
         int nextRetryCount = (item.getRetryCount() != null ? item.getRetryCount() : 0) + 1;
         boolean isPerm = isPermanent || (dlqMaxRetries != null && nextRetryCount > dlqMaxRetries);
@@ -2186,9 +2191,20 @@ public class MongoDbTransforms {
                 ? Math.max(nextRetryCount, dlqMaxRetries != null ? dlqMaxRetries + 1 : 1)
                 : nextRetryCount;
         ErrorType errorType = isPerm ? PERMANENT : RETRYABLE;
+        if (isPerm) {
+          permCount++;
+        } else {
+          retryDlqCount++;
+        }
 
         activeBundle.failures.add(
             item.withFailure(message, errorType, FailureStage.WRITE, retryCount));
+      }
+      if (permCount > 0) {
+        activeBundle.permanentFailuresCount.addAndGet(permCount);
+      }
+      if (retryDlqCount > 0) {
+        activeBundle.dlqRetriesCount.addAndGet(retryDlqCount);
       }
     }
 
@@ -2265,6 +2281,7 @@ public class MongoDbTransforms {
     private final String fileSystemPath;
     private final String functionName;
     private final Integer reloadIntervalMinutes;
+    private final Integer dlqMaxRetries;
     private final TupleTag<DocumentWithMetadata> failureTag;
     private transient JavascriptRuntime javascriptRuntime;
     private final Counter udfProcessingFailures =
@@ -2275,9 +2292,19 @@ public class MongoDbTransforms {
         String functionName,
         Integer reloadIntervalMinutes,
         TupleTag<DocumentWithMetadata> failureTag) {
+      this(fileSystemPath, functionName, reloadIntervalMinutes, /* dlqMaxRetries= */ 3, failureTag);
+    }
+
+    public ApplyUdfFn(
+        String fileSystemPath,
+        String functionName,
+        Integer reloadIntervalMinutes,
+        Integer dlqMaxRetries,
+        TupleTag<DocumentWithMetadata> failureTag) {
       this.fileSystemPath = fileSystemPath;
       this.functionName = functionName;
       this.reloadIntervalMinutes = reloadIntervalMinutes;
+      this.dlqMaxRetries = dlqMaxRetries;
       this.failureTag = failureTag;
     }
 
@@ -2291,6 +2318,17 @@ public class MongoDbTransforms {
                 .setReloadIntervalMinutes(reloadIntervalMinutes)
                 .build();
       }
+    }
+
+    private DocumentWithMetadata buildUdfFailure(DocumentWithMetadata item, String errorMessage) {
+      int nextRetryCount = (item.getRetryCount() != null ? item.getRetryCount() : 0) + 1;
+      boolean isPerm = dlqMaxRetries != null && nextRetryCount > dlqMaxRetries;
+      int retryCount =
+          isPerm
+              ? Math.max(nextRetryCount, dlqMaxRetries != null ? dlqMaxRetries + 1 : 1)
+              : nextRetryCount;
+      ErrorType errorType = isPerm ? PERMANENT : RETRYABLE;
+      return item.withFailure(errorMessage, errorType, FailureStage.UDF, retryCount);
     }
 
     @ProcessElement
@@ -2314,15 +2352,12 @@ public class MongoDbTransforms {
           } else {
             LOG.warn("UDF returned null for document ID: {}", item.getId());
             udfProcessingFailures.inc();
-            c.output(
-                failureTag, item.withFailure("UDF returned null", RETRYABLE, FailureStage.UDF));
+            c.output(failureTag, buildUdfFailure(item, "UDF returned null"));
           }
         } catch (Throwable e) {
           LOG.error("Failed to apply UDF: {}", e.getMessage());
           udfProcessingFailures.inc();
-          c.output(
-              failureTag,
-              item.withFailure("UDF failed: " + e.getMessage(), RETRYABLE, FailureStage.UDF));
+          c.output(failureTag, buildUdfFailure(item, "UDF failed: " + e.getMessage()));
         }
       } else {
         c.output(item);
