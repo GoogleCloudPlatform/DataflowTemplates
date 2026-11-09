@@ -21,7 +21,6 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **createDisposition**: Specifies whether a table should be created if it does not exist.  Valid inputs are 'CREATE_NEVER' and 'CREATE_IF_NEEDED'. For example, `CREATE_NEVER`. Defaults to: CREATE_NEVER.
 * **writeDisposition**: How to specify if a write should append to an existing table, replace the table, or verify that the table is empty. Note that the dataset being written to must already exist. Unbounded collections can only be written using 'WRITE_EMPTY' or 'WRITE_APPEND'. For example, `WRITE_APPEND`. Defaults to: WRITE_APPEND.
-* **numStreams**: Number of streams defines the parallelism of the BigQueryIO’s Write  transform and roughly corresponds to the number of Storage Write API’s  streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. The default value is 1. For example, `1`.
 
 
 
@@ -120,7 +119,6 @@ export TABLE=<table>
 ### Optional
 export CREATE_DISPOSITION=CREATE_NEVER
 export WRITE_DISPOSITION=WRITE_APPEND
-export NUM_STREAMS=1
 
 gcloud dataflow flex-template run "gcs-text-to-bigquery-yaml-job" \
   --project "$PROJECT" \
@@ -129,8 +127,7 @@ gcloud dataflow flex-template run "gcs-text-to-bigquery-yaml-job" \
   --parameters "inputPath=$INPUT_PATH" \
   --parameters "table=$TABLE" \
   --parameters "createDisposition=$CREATE_DISPOSITION" \
-  --parameters "writeDisposition=$WRITE_DISPOSITION" \
-  --parameters "numStreams=$NUM_STREAMS"
+  --parameters "writeDisposition=$WRITE_DISPOSITION"
 ```
 
 For more information about the command, please check:
@@ -155,7 +152,6 @@ export TABLE=<table>
 ### Optional
 export CREATE_DISPOSITION=CREATE_NEVER
 export WRITE_DISPOSITION=WRITE_APPEND
-export NUM_STREAMS=1
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -164,7 +160,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="gcs-text-to-bigquery-yaml-job" \
 -DtemplateName="GCS_Text_to_BigQuery_Yaml" \
--Dparameters="inputPath=$INPUT_PATH,table=$TABLE,createDisposition=$CREATE_DISPOSITION,writeDisposition=$WRITE_DISPOSITION,numStreams=$NUM_STREAMS" \
+-Dparameters="inputPath=$INPUT_PATH,table=$TABLE,createDisposition=$CREATE_DISPOSITION,writeDisposition=$WRITE_DISPOSITION" \
 -f yaml
 ```
 
@@ -213,7 +209,6 @@ resource "google_dataflow_flex_template_job" "gcs_text_to_bigquery_yaml" {
     table = "<table>"
     # createDisposition = "CREATE_NEVER"
     # writeDisposition = "WRITE_APPEND"
-    # numStreams = "1"
   }
 }
 ```

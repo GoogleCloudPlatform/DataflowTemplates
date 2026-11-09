@@ -88,15 +88,4 @@ public interface GcsTextToBigQueryYaml {
       example = "WRITE_APPEND")
   @Default.String("WRITE_APPEND")
   String getWriteDisposition();
-
-  @TemplateParameter.Integer(
-      order = 5,
-      name = "numStreams",
-      optional = true,
-      description = "Number of streams for BigQuery Storage Write API",
-      helpText =
-          "Number of streams defines the parallelism of the BigQueryIO’s Write  transform and roughly corresponds to the number of Storage Write API’s  streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. The default value is 1.",
-      example = "1")
-  @Default.Integer(1)
-  Integer getNumStreams();
 }

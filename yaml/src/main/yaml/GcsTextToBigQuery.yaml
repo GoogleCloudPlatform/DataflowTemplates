@@ -24,7 +24,7 @@ template:
   parameters:
     - text_read_options
     - bigquery_common_options
-    - bigquery_write_options
+    - bigquery_batch_write_options
 
 pipeline:
   type: chain
@@ -40,7 +40,6 @@ pipeline:
         table: {{ table }}
         create_disposition: {{ createDisposition | default('CREATE_NEVER') }}
         write_disposition: {{ writeDisposition | default('WRITE_APPEND') }}
-        num_streams: {{ numStreams | default(1) }}
 
 options:
   streaming: false
