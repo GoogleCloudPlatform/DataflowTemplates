@@ -1,0 +1,218 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Canonical Vulnerability Exploitability eXchange (VEX) configuration for
+# Google Cloud Dataflow Flex Template Base and Template container images.
+
+schema_version: "1.0"
+publisher:
+  name: "Google Cloud Dataflow Templates"
+  namespace: "https://github.com/GoogleCloudPlatform/DataflowTemplates"
+  role: "vendor"
+  contact_details: "https://github.com/GoogleCloudPlatform/DataflowTemplates/issues"
+
+image_families:
+  python_template_launcher_base:
+    description: "Dataflow Python Flex Template launcher base images (Python 3.11 - 3.14)"
+    repositories:
+      - "gcr.io/dataflow-templates-base/python3-template-launcher-base"
+      - "gcr.io/dataflow-templates-base/python311-template-launcher-base"
+      - "gcr.io/dataflow-templates-base/python312-template-launcher-base"
+      - "gcr.io/dataflow-templates-base/python313-template-launcher-base"
+      - "gcr.io/dataflow-templates-base/python314-template-launcher-base"
+      - "us.gcr.io/dataflow-templates-base/python3-template-launcher-base"
+      - "us.gcr.io/dataflow-templates-base/python311-template-launcher-base"
+      - "us.gcr.io/dataflow-templates-base/python312-template-launcher-base"
+      - "us.gcr.io/dataflow-templates-base/python313-template-launcher-base"
+      - "us.gcr.io/dataflow-templates-base/python314-template-launcher-base"
+    runtime_entrypoints:
+      - "/opt/google/dataflow/python_template_launcher"
+    inherited_rule_sets:
+      - "debian_build_and_desktop_os_packages"
+      - "template_launcher_openssl_evp_cipher"
+    statements: []
+
+  java_template_launcher_base:
+    description: "Dataflow Java Flex Template launcher base images (Java 11, 17, 21, 25)"
+    repositories:
+      - "gcr.io/dataflow-templates-base/java11-template-launcher-base"
+      - "gcr.io/dataflow-templates-base/java11-template-launcher-base-distroless"
+      - "gcr.io/dataflow-templates-base/java17-template-launcher-base"
+      - "gcr.io/dataflow-templates-base/java17-template-launcher-base-distroless"
+      - "gcr.io/dataflow-templates-base/java21-template-launcher-base"
+      - "gcr.io/dataflow-templates-base/java21-template-launcher-base-distroless"
+      - "gcr.io/dataflow-templates-base/java25-template-launcher-base"
+      - "gcr.io/dataflow-templates-base/java25-template-launcher-base-distroless"
+      - "us.gcr.io/dataflow-templates-base/java11-template-launcher-base"
+      - "us.gcr.io/dataflow-templates-base/java11-template-launcher-base-distroless"
+      - "us.gcr.io/dataflow-templates-base/java17-template-launcher-base"
+      - "us.gcr.io/dataflow-templates-base/java17-template-launcher-base-distroless"
+      - "us.gcr.io/dataflow-templates-base/java21-template-launcher-base"
+      - "us.gcr.io/dataflow-templates-base/java21-template-launcher-base-distroless"
+      - "us.gcr.io/dataflow-templates-base/java25-template-launcher-base"
+      - "us.gcr.io/dataflow-templates-base/java25-template-launcher-base-distroless"
+    runtime_entrypoints:
+      - "/opt/google/dataflow/java_template_launcher"
+    inherited_rule_sets:
+      - "debian_build_and_desktop_os_packages"
+      - "template_launcher_openssl_evp_cipher"
+    statements: []
+
+  go_template_launcher_base:
+    description: "Dataflow Go Flex Template launcher base and logger images"
+    repositories:
+      - "gcr.io/dataflow-templates-base/go-template-launcher-base"
+      - "gcr.io/dataflow-templates-base/go-template-launcher-base-distroless"
+      - "gcr.io/dataflow-templates-base/template-launcher-logger-distroless"
+      - "gcr.io/dataflow-templates-base/flex-template-launcher-image"
+      - "us.gcr.io/dataflow-templates-base/go-template-launcher-base"
+      - "us.gcr.io/dataflow-templates-base/go-template-launcher-base-distroless"
+      - "us.gcr.io/dataflow-templates-base/template-launcher-logger-distroless"
+      - "us.gcr.io/dataflow-templates-base/flex-template-launcher-image"
+    runtime_entrypoints:
+      - "/opt/google/dataflow/go_template_launcher"
+      - "/opt/google/dataflow/template_launcher_logger"
+    inherited_rule_sets:
+      - "debian_build_and_desktop_os_packages"
+      - "template_launcher_openssl_evp_cipher"
+    statements: []
+
+shared_rule_sets:
+  template_launcher_openssl_evp_cipher:
+    description: >-
+      OpenSSL EVP_Cipher() one-shot AEAD tag verification issue on empty
+      ciphertext with AES-OCB or ChaCha20-Poly1305.
+    statements:
+      - id: "CVE-2026-75803"
+        status: "not_affected"
+        justification: "vulnerable_code_not_in_execute_path"
+        packages: ["openssl"]
+        impact_statement: >-
+          CVE-2026-75803 affects OpenSSL EVP_Cipher() one-shot AEAD decryption
+          with AES-OCB or ChaCha20-Poly1305 on empty ciphertext. Dataflow
+          template launcher binaries (Go stdlib crypto/tls and Temurin JSSE) do
+          not call OpenSSL EVP_Cipher() with AES-OCB or ChaCha20-Poly1305.
+
+  debian_build_and_desktop_os_packages:
+    description: >-
+      OS compiler toolchains, binary inspection CLI tools, and desktop/multimedia
+      libraries present in upstream Debian base layers that are never loaded or
+      executed at runtime by Dataflow Flex Template launchers.
+    statements:
+      - ids:
+          - "CVE-2022-27943"
+          - "CVE-2023-4039"
+          - "CVE-2026-95619"
+          - "CVE-2026-102010"
+          - "CVE-2026-114690"
+          - "CVE-2026-114691"
+          - "CVE-2026-115456"
+        status: "not_affected"
+        justification: "vulnerable_code_not_in_execute_path"
+        packages: ["gcc-12"]
+        impact_statement: >-
+          gcc-12 compiler binaries and C++ demangler CLI utilities are inherited
+          from the Debian build layer and are not invoked at runtime by Dataflow
+          Flex Template launchers.
+      - ids:
+          - "CVE-2018-20673"
+          - "CVE-2018-20712"
+          - "CVE-2021-32256"
+          - "CVE-2023-1972"
+          - "CVE-2024-53589"
+          - "CVE-2025-0840"
+          - "CVE-2025-1178"
+          - "CVE-2025-1179"
+          - "CVE-2025-5244"
+          - "CVE-2025-5245"
+          - "CVE-2025-7545"
+          - "CVE-2025-7546"
+          - "CVE-2025-11082"
+          - "CVE-2025-11083"
+          - "CVE-2025-66862"
+          - "CVE-2025-66863"
+          - "CVE-2025-66864"
+          - "CVE-2025-66865"
+          - "CVE-2025-66866"
+          - "CVE-2025-69647"
+          - "CVE-2025-69648"
+          - "CVE-2025-69649"
+          - "CVE-2025-69650"
+          - "CVE-2025-69652"
+          - "CVE-2026-3441"
+          - "CVE-2026-3442"
+          - "CVE-2026-4647"
+          - "CVE-2026-6846"
+          - "CVE-2026-18220"
+          - "CVE-2026-90801"
+          - "CVE-2026-90803"
+          - "CVE-2026-90804"
+          - "CVE-2026-90828"
+        status: "not_affected"
+        justification: "vulnerable_code_not_in_execute_path"
+        packages: ["binutils"]
+        impact_statement: >-
+          GNU binutils CLI utilities (objdump, readelf, nm, ld, strip) and libbfd
+          are build-time tools inherited from the base OS image and are never
+          invoked on untrusted ELF inputs by the Dataflow template launcher.
+      - ids:
+          - "CVE-2025-1352"
+          - "CVE-2025-1365"
+          - "CVE-2025-1372"
+        status: "not_affected"
+        justification: "vulnerable_code_not_in_execute_path"
+        packages: ["elfutils"]
+        impact_statement: >-
+          elfutils DWARF/ELF inspection utilities (eu-readelf, eu-stack) are not
+          executed at runtime by the Dataflow template launcher.
+      - ids:
+          - "CVE-2008-1687"
+          - "CVE-2008-1688"
+        status: "not_affected"
+        justification: "vulnerable_code_not_in_execute_path"
+        packages: ["m4"]
+        impact_statement: >-
+          GNU m4 is a build-time macro processor pulled in by autotools/compiler
+          dependencies in the base OS layer and is never invoked at runtime.
+      - ids:
+          - "CVE-2007-3476"
+          - "CVE-2007-3477"
+          - "CVE-2009-3546"
+          - "CVE-2023-39327"
+          - "CVE-2023-51596"
+          - "CVE-2024-31047"
+          - "CVE-2025-50422"
+          - "CVE-2026-19774"
+          - "CVE-2026-62289"
+          - "CVE-2026-81893"
+          - "CVE-2026-84448"
+          - "CVE-2026-84449"
+          - "CVE-2026-84450"
+          - "CVE-2026-85218"
+          - "CVE-2026-109282"
+        status: "not_affected"
+        justification: "vulnerable_code_not_in_execute_path"
+        packages:
+          - "bluez"
+          - "cairo"
+          - "gdk-pixbuf"
+          - "imagemagick"
+          - "libheif"
+          - "libwmf"
+          - "openexr"
+          - "openjpeg2"
+        impact_statement: >-
+          Bluetooth and desktop image-rendering libraries present in the upstream
+          Debian language base image are not loaded or executed by the Dataflow
+          template launcher.

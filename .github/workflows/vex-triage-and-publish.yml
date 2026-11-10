@@ -1,0 +1,138 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Dataflow Templates VEX Triage and Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Base image tag to scan and attach VEX to (e.g., latest)"
+        required: false
+        default: "latest"
+      attach_vex:
+        description: "Attach OpenVEX (cosign) and CSAF 2.0 VEX (Artifact Registry)"
+        type: boolean
+        default: true
+      open_pr:
+        description: "Open a draft PR if new non-exploitable CVEs are discovered"
+        type: boolean
+        default: true
+  schedule:
+    - cron: "0 14 * * 1"
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+env:
+  IMAGE_TAG: "${{ github.event.inputs.tag || 'latest' }}"
+
+jobs:
+  triage-and-publish-vex:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.7.0
+
+      - name: Install dependencies
+        run: |
+          python3 -m pip install pyyaml
+          if ! command -v trivy >/dev/null 2>&1; then
+            curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
+          fi
+
+      - name: Run VEX unit tests
+        run: |
+          python3 .github/vex/vex_manager_test.py
+
+      - name: Scan Dataflow template base images in Artifact Registry and Trivy
+        run: |
+          mkdir -p /tmp/vex-reports
+          for entry in \
+            "python311-template-launcher-base:python_template_launcher_base" \
+            "python312-template-launcher-base:python_template_launcher_base" \
+            "java17-template-launcher-base-distroless:java_template_launcher_base" \
+            "java21-template-launcher-base-distroless:java_template_launcher_base" \
+            "go-template-launcher-base-distroless:go_template_launcher_base"; do
+            image_name="${entry%%:*}"
+            family_name="${entry##*:}"
+            repo="gcr.io/dataflow-templates-base/${image_name}"
+            digest=$(gcloud artifacts docker images describe "${repo}:${IMAGE_TAG}" --format='value(image_summary.digest)' 2>/dev/null || true)
+            if [ -n "${digest}" ]; then
+              python3 .github/vex/vex_manager.py scan \
+                --family="${family_name}" \
+                --ar-image="${repo}@${digest}" \
+                --ar-location="us" \
+                --trivy-image="${repo}@${digest}" \
+                --update-config \
+                --report-json="/tmp/vex-reports/${image_name}.json" || true
+            fi
+          done
+          python3 .github/vex/vex_manager.py generate --timestamp=2026-11-10T00:00:00Z
+
+      - name: Attach OpenVEX and Artifact Registry CSAF 2.0 VEX statements
+        if: ${{ github.event.inputs.attach_vex != 'false' }}
+        run: |
+          for entry in \
+            "python311-template-launcher-base:python_template_launcher_base" \
+            "python312-template-launcher-base:python_template_launcher_base" \
+            "java17-template-launcher-base-distroless:java_template_launcher_base" \
+            "java21-template-launcher-base-distroless:java_template_launcher_base" \
+            "go-template-launcher-base-distroless:go_template_launcher_base"; do
+            image_name="${entry%%:*}"
+            family_name="${entry##*:}"
+            repo="gcr.io/dataflow-templates-base/${image_name}"
+            digest=$(gcloud artifacts docker images describe "${repo}:${IMAGE_TAG}" --format='value(image_summary.digest)' 2>/dev/null || true)
+            if [ -n "${digest}" ]; then
+              python3 .github/vex/vex_manager.py generate \
+                --family="${family_name}" \
+                --extra-uri="${repo}" \
+                --extra-digest="${digest}"
+              python3 .github/vex/vex_manager.py attach \
+                --image-uri="${repo}@${digest}" \
+                --openvex=".github/vex/openvex/${family_name}.openvex.json" \
+                --csaf=".github/vex/csaf/${family_name}.vex.json" \
+                --project="dataflow-templates-base" || true
+            fi
+          done
+
+      - name: Open draft PR if VEX statements changed
+        if: ${{ github.event.inputs.open_pr != 'false' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 .github/vex/vex_manager.py generate --timestamp=2026-11-10T00:00:00Z
+          if [ -n "$(git status --porcelain .github/vex/)" ]; then
+            branch_name="vex-auto-update-$(date +'%Y%m%d-%H%M%S')"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git checkout -b "${branch_name}"
+            git add .github/vex/
+            git commit -m "chore(vex): automated container VEX statement update"
+            git push origin "${branch_name}"
+            gh pr create \
+              --draft \
+              --title "chore(vex): automated container VEX statement update" \
+              --body "Automated VEX triage update from Artifact Registry and Trivy container scans."
+          fi
