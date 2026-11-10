@@ -658,7 +658,6 @@
         <module>bigtable-common</module>
         <module>bigquery-to-bigtable</module>
         <module>bigquery-to-parquet</module>
-        <module>cdc-parent</module>
         <module>common</module>
         <module>cdc-data-generator</module>
         <module>dataplex</module>
