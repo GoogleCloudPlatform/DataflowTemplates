@@ -58,12 +58,22 @@ jobs:
         run: |
           python3 -m pip install pyyaml
           if ! command -v cosign >/dev/null 2>&1; then
-            sudo curl -sSfL https://github.com/sigstore/cosign/releases/download/v2.4.1/cosign-linux-amd64 -o /usr/local/bin/cosign
-            sudo chmod +x /usr/local/bin/cosign
+            curl -sSfL https://github.com/sigstore/cosign/releases/download/v2.4.1/cosign-linux-amd64 -o /tmp/cosign
+            echo "8b24b946dd5809c6bd93de08033bcf6bc0ed7d336b7785787c080f574b89249b  /tmp/cosign" | sha256sum -c -
+            sudo install -m 0755 /tmp/cosign /usr/local/bin/cosign
+            rm -f /tmp/cosign
           fi
           if ! command -v trivy >/dev/null 2>&1; then
-            curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
+            curl -sSfL https://github.com/aquasecurity/trivy/releases/download/v0.76.2/trivy_0.76.2_Linux-64bit.tar.gz -o /tmp/trivy.tar.gz
+            echo "bc0fc726e017b8927a62b2d3531d7a84ee01769daf5c99ed866dced54089fdbf  /tmp/trivy.tar.gz" | sha256sum -c -
+            sudo tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin trivy
+            sudo chmod 0755 /usr/local/bin/trivy
+            rm -f /tmp/trivy.tar.gz
           fi
+
+      - name: Configure Docker credential helper
+        run: |
+          gcloud auth configure-docker gcr.io --quiet || true
 
       - name: Run VEX unit tests
         run: |

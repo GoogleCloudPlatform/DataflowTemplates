@@ -58,6 +58,11 @@ class DataflowTemplatesVexManagerTest(unittest.TestCase):
           "us-docker.pkg.dev/dataflow-templates-base/gcr.io/python311-template-launcher-base",
           branch_names,
       )
+      port_variants = vex_manager.expand_uri_variants(
+          "localhost:5000/project/image:latest"
+      )
+      self.assertIn("localhost:5000/project/image", port_variants)
+      self.assertIn("localhost:5000/project/image:latest", port_variants)
 
 
 if __name__ == "__main__":
