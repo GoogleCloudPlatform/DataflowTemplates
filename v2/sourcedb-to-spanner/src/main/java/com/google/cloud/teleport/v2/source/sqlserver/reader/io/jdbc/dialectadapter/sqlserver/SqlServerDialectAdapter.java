@@ -76,7 +76,7 @@ public class SqlServerDialectAdapter implements DialectAdapter {
           .put("NCHAR", IndexType.STRING)
           .put("NVARCHAR", IndexType.STRING)
           .put("NTEXT", IndexType.STRING)
-          .put("UNIQUEIDENTIFIER", IndexType.STRING)
+          .put("UNIQUEIDENTIFIER", IndexType.BINARY)
           .put("XML", IndexType.STRING)
           .put("SYSNAME", IndexType.STRING)
           .put("TIME", IndexType.STRING)

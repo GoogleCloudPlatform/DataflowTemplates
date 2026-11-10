@@ -60,7 +60,8 @@ public class SpannerToSourceDbExceptionClassifier {
 
     if (cause instanceof InvalidTransformationException
         || cause instanceof ChangeEventConvertorException
-        || cause instanceof InvalidDMLGenerationException) {
+        || cause instanceof InvalidDMLGenerationException
+        || cause instanceof NullPointerException) {
       return Constants.PERMANENT_ERROR_TAG;
     } else if (cause instanceof SQLSyntaxErrorException || cause instanceof SQLDataException) {
       return Constants.PERMANENT_ERROR_TAG;

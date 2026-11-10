@@ -1,0 +1,87 @@
+{
+  "SessionName": "SQLServerSession",
+  "EditorName": "",
+  "DatabaseType": "sqlserver",
+  "DatabaseName": "SP_DATABASE",
+  "Dialect": "google_standard_sql",
+  "Notes": null,
+  "Tags": null,
+  "SpSchema": {
+    "t1": {
+      "Name": "source_table1",
+      "ColIds": ["c1", "c2", "c3", "c4", "c5"],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c1": {"Name": "id", "T": {"Name": "INT64", "Len": 0, "IsArray": false}, "NotNull": true, "Comment": "", "Id": "c1"},
+        "c2": {"Name": "name", "T": {"Name": "STRING", "Len": 0, "IsArray": false}, "NotNull": false, "Comment": "", "Id": "c2"},
+        "c3": {"Name": "age", "T": {"Name": "INT64", "Len": 0, "IsArray": false}, "NotNull": false, "Comment": "", "Id": "c3"},
+        "c4": {"Name": "member", "T": {"Name": "STRING", "Len": 0, "IsArray": false}, "NotNull": false, "Comment": "", "Id": "c4"},
+        "c5": {"Name": "entry_added", "T": {"Name": "STRING", "Len": 0, "IsArray": false}, "NotNull": false, "Comment": "", "Id": "c5"}
+      },
+      "PrimaryKeys": [{"ColId": "c1", "Desc": false, "Order": 1}],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentId": "",
+      "Comment": "",
+      "Id": "t1"
+    },
+    "t2": {
+      "Name": "source_table2",
+      "ColIds": ["c1", "c2", "c3", "c4", "c5"],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c1": {"Name": "id", "T": {"Name": "INT64", "Len": 0, "IsArray": false}, "NotNull": true, "Id": "c1"},
+        "c2": {"Name": "name", "T": {"Name": "STRING", "Len": 0, "IsArray": false}, "NotNull": false, "Id": "c2"},
+        "c3": {"Name": "age", "T": {"Name": "INT64", "Len": 0, "IsArray": false}, "NotNull": false, "Id": "c3"},
+        "c4": {"Name": "member", "T": {"Name": "STRING", "Len": 0, "IsArray": false}, "NotNull": false, "Id": "c4"},
+        "c5": {"Name": "entry_added", "T": {"Name": "STRING", "Len": 0, "IsArray": false}, "NotNull": false, "Id": "c5"}
+      },
+      "PrimaryKeys": [{"ColId": "c1", "Desc": false, "Order": 1}],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentId": "",
+      "Comment": "",
+      "Id": "t2"
+    }
+  },
+  "SyntheticPKeys": {},
+  "SrcSchema": {
+    "t1": {
+      "Name": "source_table1",
+      "Schema": "SRC_DATABASE",
+      "ColIds": ["c1", "c2", "c3", "c4", "c5"],
+      "ColDefs": {
+        "c1": {"Name": "id", "T": {"Name": "INT", "Len": 0, "IsArray": false}, "NotNull": true, "Id": "c1"},
+        "c2": {"Name": "name", "T": {"Name": "VARCHAR", "Len": 200, "IsArray": false}, "NotNull": false, "Id": "c2"},
+        "c3": {"Name": "age", "T": {"Name": "INT", "Len": 0, "IsArray": false}, "NotNull": false, "Id": "c3"},
+        "c4": {"Name": "member", "T": {"Name": "VARCHAR", "Len": 200, "IsArray": false}, "NotNull": false, "Id": "c4"},
+        "c5": {"Name": "entry_added", "T": {"Name": "VARCHAR", "Len": 200, "IsArray": false}, "NotNull": false, "Id": "c5"}
+      },
+      "PrimaryKeys": [{"ColId": "c1", "Desc": false, "Order": 1}],
+      "Id": "t1"
+    },
+    "t2": {
+      "Name": "source_table2",
+      "Schema": "SRC_DATABASE",
+      "ColIds": ["c1", "c2", "c3", "c4", "c5"],
+      "ColDefs": {
+        "c1": {"Name": "id", "T": {"Name": "INT", "Len": 0, "IsArray": false}, "NotNull": true, "Id": "c1"},
+        "c2": {"Name": "name", "T": {"Name": "VARCHAR", "Len": 200, "IsArray": false}, "NotNull": false, "Id": "c2"},
+        "c3": {"Name": "age", "T": {"Name": "INT", "Len": 0, "IsArray": false}, "NotNull": false, "Id": "c3"},
+        "c4": {"Name": "member", "T": {"Name": "VARCHAR", "Len": 200, "IsArray": false}, "NotNull": false, "Id": "c4"},
+        "c5": {"Name": "entry_added", "T": {"Name": "VARCHAR", "Len": 200, "IsArray": false}, "NotNull": false, "Id": "c5"}
+      },
+      "PrimaryKeys": [{"ColId": "c1", "Desc": false, "Order": 1}],
+      "Id": "t2"
+    }
+  },
+  "SchemaIssues": {},
+  "TimezoneOffset": "+00:00",
+  "SpDialect": "google_standard_sql",
+  "UniquePKey": {},
+  "Rules": [],
+  "IsSharded": false,
+  "SpRegion": "",
+  "ResourceValidation": false,
+  "UI": false
+}

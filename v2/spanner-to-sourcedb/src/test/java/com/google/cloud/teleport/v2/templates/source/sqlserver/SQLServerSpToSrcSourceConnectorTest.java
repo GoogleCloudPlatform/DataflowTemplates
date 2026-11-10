@@ -264,12 +264,6 @@ public class SQLServerSpToSrcSourceConnectorTest {
         connector.classifyException(new SQLException("Invalid object name", "S0002", 208)));
     assertEquals(
         PERMANENT_ERROR_TAG,
-        connector.classifyException(new SQLException("Constraint conflict", "23000", 547)));
-    assertEquals(
-        PERMANENT_ERROR_TAG,
-        connector.classifyException(new SQLException("Duplicate key", "23000", 2627)));
-    assertEquals(
-        PERMANENT_ERROR_TAG,
         connector.classifyException(new SQLException("String truncation", "22001", 8152)));
 
     // SQL Server SQLState classes
@@ -279,9 +273,13 @@ public class SQLServerSpToSrcSourceConnectorTest {
     assertEquals(
         PERMANENT_ERROR_TAG,
         connector.classifyException(new SQLException("Data error", "22003", 0)));
-    assertEquals(
-        PERMANENT_ERROR_TAG,
-        connector.classifyException(new SQLException("Integrity error", "23505", 0)));
+
+    // Integrity constraint violations are retryable (null -> default classifier), as they are
+    // commonly caused by out-of-order delivery across shards and succeed on retry.
+    assertNull(connector.classifyException(new SQLException("Constraint conflict", "23000", 547)));
+    assertNull(connector.classifyException(new SQLException("Duplicate key", "23000", 2601)));
+    assertNull(connector.classifyException(new SQLException("PK violation", "23000", 2627)));
+    assertNull(connector.classifyException(new SQLException("Integrity error", "23505", 0)));
 
     // Transient / other SQL Server error codes (e.g. deadlock 1205)
     assertNull(

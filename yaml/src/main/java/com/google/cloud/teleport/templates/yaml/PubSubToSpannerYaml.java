@@ -18,6 +18,7 @@ package com.google.cloud.teleport.templates.yaml;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
 @Template(
@@ -33,7 +34,8 @@ import org.apache.beam.sdk.options.Validation;
       "main.py",
       "requirements.txt",
       "options/pubsub_options.yaml",
-      "options/spanner_options.yaml"
+      "options/spanner_options.yaml",
+      "options/windowing_options.yaml"
     },
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/pubsub-to-spanner",
@@ -115,7 +117,7 @@ public interface PubSubToSpannerYaml {
       description = "Message value to use as element timestamp.",
       helpText =
           "Message value to use as element timestamp. If None, uses message  publishing time as the timestamp. Timestamp values should be in one of two formats: 1). A numerical value representing the number of milliseconds since the Unix epoch. 2). A string in RFC 3339 format, UTC timezone. Example: ``2015-10-29T23:41:41.123Z``. The sub-second component of the timestamp is optional, and digits beyond the first three (i.e., time units smaller than milliseconds) may be ignored.",
-      example = "")
+      example = "timestamp")
   String getTimestampAttribute();
 
   @TemplateParameter.Text(
@@ -174,4 +176,25 @@ public interface PubSubToSpannerYaml {
       example = "your-table-id")
   @Validation.Required
   String getTableId();
+
+  @TemplateParameter.Text(
+      order = 14,
+      name = "type",
+      optional = true,
+      description = "The type of windowing to apply.",
+      helpText =
+          "The type of windowing to apply (e.g., fixed, sliding, sessions, global). Defaults to fixed.",
+      example = "fixed")
+  @Default.String("fixed")
+  String getType();
+
+  @TemplateParameter.Integer(
+      order = 15,
+      name = "size",
+      optional = true,
+      description = "The window size in seconds.",
+      helpText = "The window size in seconds. Defaults to 60.",
+      example = "60")
+  @Default.Integer(60)
+  Integer getSize();
 }

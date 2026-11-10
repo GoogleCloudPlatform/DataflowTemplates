@@ -1451,7 +1451,7 @@ public class DdlTest {
     String expectedDdlString =
         "\nCREATE FUNCTION \"Foo1\"() RETURN (SELECT 'bar')\n"
             + "CREATE FUNCTION \"Foo2\"(\"arg0\" TEXT, \"arg1\" TEXT DEFAULT 'bar')"
-            + " RETURNS STRING SQL SECURITY INVOKER RETURN (SELECT 'bar')\n"
+            + " RETURNS STRING SECURITY INVOKER RETURN (SELECT 'bar')\n"
             + "CREATE FUNCTION \"Foo3\"(\"arg0\" BIGINT) RETURNS STRING VOLATILE LANGUAGE REMOTE"
             + " AS '{\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/myfunc\", \"max_batching_rows\": 50}'";
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdlString));
@@ -1465,7 +1465,7 @@ public class DdlTest {
         statements.get(1),
         equalToCompressingWhiteSpace(
             "CREATE FUNCTION \"Foo2\"(\"arg0\" TEXT, \"arg1\" TEXT DEFAULT 'bar')"
-                + " RETURNS STRING SQL SECURITY INVOKER RETURN (SELECT 'bar')"));
+                + " RETURNS STRING SECURITY INVOKER RETURN (SELECT 'bar')"));
     assertThat(
         statements.get(2),
         equalToCompressingWhiteSpace(
@@ -1475,6 +1475,84 @@ public class DdlTest {
 
     assertThat(
         ddl.toBuilder().build().prettyPrint(), equalToCompressingWhiteSpace(expectedDdlString));
+  }
+
+  @Test
+  public void pgUdfsWithDeterminism() {
+    Ddl.Builder ddlBuilder =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createUdf("spanner.Foo1")
+            .dialect(Dialect.POSTGRESQL)
+            .name("Foo1")
+            .definition("(SELECT 'bar')")
+            .endUdf()
+            .createUdf("spanner.Foo2")
+            .dialect(Dialect.POSTGRESQL)
+            .name("Foo2")
+            .definition("(SELECT 'bar')")
+            .security(SqlSecurity.INVOKER)
+            .type("TEXT")
+            .spannerDeterminism("DETERMINISTIC")
+            .addParameter(UdfParameter.parse("arg0 TEXT", "spanner.Foo2", Dialect.POSTGRESQL))
+            .addParameter(
+                UdfParameter.parse("arg1 TEXT DEFAULT 'bar'", "spanner.Foo2", Dialect.POSTGRESQL))
+            .endUdf()
+            .createUdf("spanner.Foo3")
+            .dialect(Dialect.POSTGRESQL)
+            .name("Foo3")
+            .definition("(SELECT 'bar')")
+            .type("TEXT")
+            .spannerDeterminism("NOT_DETERMINISTIC_STABLE")
+            .addParameter(UdfParameter.parse("arg0 TEXT", "spanner.Foo3", Dialect.POSTGRESQL))
+            .endUdf();
+    assertThat(ddlBuilder.hasUdf("spanner.Foo1"));
+    assertThat(ddlBuilder.createUdf("spanner.Foo1").name().equals("Foo1"));
+    Ddl ddl = ddlBuilder.build();
+
+    String expectedDdlString =
+        "\nCREATE FUNCTION \"Foo1\"() RETURN (SELECT 'bar')\n"
+            + "CREATE FUNCTION \"Foo2\"(\"arg0\" TEXT, \"arg1\" TEXT DEFAULT 'bar')"
+            + " RETURNS TEXT IMMUTABLE SECURITY INVOKER RETURN (SELECT 'bar')\n"
+            + "CREATE FUNCTION \"Foo3\"(\"arg0\" TEXT) RETURNS TEXT STABLE RETURN (SELECT 'bar')";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdlString));
+
+    List<String> statements = ddl.statements();
+    assertEquals(3, statements.size());
+    assertThat(
+        statements.get(0),
+        equalToCompressingWhiteSpace("CREATE FUNCTION \"Foo1\"() RETURN (SELECT 'bar')"));
+    assertThat(
+        statements.get(1),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION \"Foo2\"(\"arg0\" TEXT, \"arg1\" TEXT DEFAULT 'bar')"
+                + " RETURNS TEXT IMMUTABLE SECURITY INVOKER RETURN (SELECT 'bar')"));
+    assertThat(
+        statements.get(2),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION \"Foo3\"(\"arg0\" TEXT)"
+                + " RETURNS TEXT STABLE RETURN (SELECT 'bar')"));
+    assertNotNull(ddl.hashCode());
+
+    assertThat(
+        ddl.toBuilder().build().prettyPrint(), equalToCompressingWhiteSpace(expectedDdlString));
+  }
+
+  @Test
+  public void pgUdfVolatile() {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createUdf("spanner.Foo")
+            .dialect(Dialect.POSTGRESQL)
+            .name("Foo")
+            .definition("(SELECT 'bar')")
+            .type("TEXT")
+            .spannerDeterminism("NOT_DETERMINISTIC_VOLATILE")
+            .endUdf()
+            .build();
+
+    String expectedDdlString =
+        "CREATE FUNCTION \"Foo\"() RETURNS TEXT VOLATILE RETURN (SELECT 'bar')";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdlString));
   }
 
   @Test
@@ -1764,21 +1842,31 @@ public class DdlTest {
     ForeignKey fkWithDeleteNoAction = fkWithDeleteNoActionBuilder.build();
     assertTrue(fkWithDeleteNoAction.equals(fkWithDeleteNoAction));
     assertFalse(fkWithDeleteCascade1.equals(fkWithDeleteNoAction));
+
+    ForeignKey.Builder fkWithDeleteSetNullBuilder =
+        ForeignKey.builder().name("fk_odsn").table("Users").referencedTable("AllowedNames");
+    fkWithDeleteSetNullBuilder.columnsBuilder().add("first_name", "last_name");
+    fkWithDeleteSetNullBuilder.referencedColumnsBuilder().add("first_name", "last_name");
+    fkWithDeleteSetNullBuilder.referentialAction(Optional.of(ReferentialAction.ON_DELETE_SET_NULL));
+    ForeignKey fkWithDeleteSetNull = fkWithDeleteSetNullBuilder.build();
+    assertTrue(fkWithDeleteSetNull.equals(fkWithDeleteSetNull));
+    assertFalse(fkWithDeleteCascade1.equals(fkWithDeleteSetNull));
+    assertFalse(fkWithDeleteNoAction.equals(fkWithDeleteSetNull));
   }
 
   @Test
   public void testUnsupportedForeignKeyBuilderActionThrowsError() {
     ForeignKey.Builder fkWithUnsupportedActionBuilder =
-        ForeignKey.builder().name("fk_odsn").table("Users").referencedTable("AllowedNames");
+        ForeignKey.builder().name("fk_odr").table("Users").referencedTable("AllowedNames");
     fkWithUnsupportedActionBuilder.columnsBuilder().add("first_name", "last_name");
     fkWithUnsupportedActionBuilder.referencedColumnsBuilder().add("first_name", "last_name");
     fkWithUnsupportedActionBuilder.referentialAction(
-        Optional.of(ReferentialAction.ON_DELETE_SET_NULL));
+        Optional.of(ReferentialAction.ON_DELETE_RESTRICT));
     ForeignKey fkWithUnsupportedAction = fkWithUnsupportedActionBuilder.build();
     Throwable exception =
         assertThrows(IllegalArgumentException.class, () -> fkWithUnsupportedAction.prettyPrint());
     assertThat(exception.getMessage())
-        .matches("Foreign Key action not supported: ON DELETE SET NULL");
+        .matches("Foreign Key action not supported: ON DELETE RESTRICT");
   }
 
   @Test

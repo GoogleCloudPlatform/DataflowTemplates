@@ -914,6 +914,17 @@ public class SchemaUtilsTest {
                     .to(Value.int64(3))
                     .set("SPANNER_TYPE")
                     .to(Value.string("STRING"))
+                    .build(),
+                // TOKENLIST columns for full-text search should always be skipped.
+                Struct.newBuilder()
+                    .set("TABLE_NAME")
+                    .to(Value.string("Singers"))
+                    .set("COLUMN_NAME")
+                    .to(Value.string("FirstName_Tokens"))
+                    .set("ORDINAL_POSITION")
+                    .to(Value.int64(4))
+                    .set("SPANNER_TYPE")
+                    .to(Value.string("TOKENLIST"))
                     .build()));
     // spotless:on
 
@@ -974,6 +985,17 @@ public class SchemaUtilsTest {
                     .to(Value.int64(3))
                     .set("spanner_type")
                     .to(Value.string("character varying"))
+                    .build(),
+                // TOKENLIST columns for full-text search should always be skipped.
+                Struct.newBuilder()
+                    .set("table_name")
+                    .to(Value.string("Singers"))
+                    .set("column_name")
+                    .to(Value.string("FirstName_Tokens"))
+                    .set("ordinal_position")
+                    .to(Value.int64(4))
+                    .set("spanner_type")
+                    .to(Value.string("spanner.tokenlist"))
                     .build()));
     // spotless:on
 

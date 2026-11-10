@@ -659,6 +659,22 @@ public class FormatDatastreamRecordToJson
                   .withZoneSameInstant(ZoneId.of("UTC"))
                   .format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
           break;
+        case "datetime":
+          // Datastream's zone-less datetime (SQL Server datetime, datetime2, smalldatetime):
+          // days since the epoch plus microseconds of day. The wall-clock value is rendered as a
+          // UTC timestamp, consistent with GenericRecordTypeConvertor in bulk migration.
+          long datetimeMicros =
+              TimeUnit.DAYS.toMicros(((Number) element.get("date")).longValue())
+                  + ((Number) element.get("time")).longValue();
+          Instant datetime =
+              Instant.ofEpochSecond(
+                  Math.floorDiv(datetimeMicros, TimeUnit.SECONDS.toMicros(1)),
+                  TimeUnit.MICROSECONDS.toNanos(
+                      Math.floorMod(datetimeMicros, TimeUnit.SECONDS.toMicros(1))));
+          jsonObject.put(
+              fieldName,
+              datetime.atOffset(ZoneOffset.UTC).format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
+          break;
         case "timeTz":
           long timeTzNanos =
               ((Number) getOrDefault(element, "time", 0L)).longValue()

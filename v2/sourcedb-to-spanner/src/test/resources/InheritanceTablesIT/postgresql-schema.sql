@@ -16,3 +16,10 @@ CREATE TABLE sports_cars (
 INSERT INTO vehicles (id, make) VALUES (1, 'Generic Vehicle');
 INSERT INTO cars (id, make, doors) VALUES (2, 'Honda', 4);
 INSERT INTO sports_cars (id, make, doors, top_speed) VALUES (3, 'Ferrari', 2, 200);
+
+CREATE SCHEMA archive;
+CREATE TABLE archive.vehicles (
+    archive_id INT PRIMARY KEY,
+    make VARCHAR(50)
+);
+INSERT INTO archive.vehicles (archive_id, make) VALUES (100, 'Archived Vehicle');

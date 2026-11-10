@@ -17,6 +17,26 @@ from unittest.mock import patch
 import os
 
 import main
+import ml_dependencies
+
+# A pipeline with an ML transform that needs additional runtime dependencies.
+_ML_PIPELINE = '''
+pipeline:
+  type: chain
+  transforms:
+    - type: Create
+      config:
+        elements:
+          - {text: "I love Apache Beam!"}
+    - type: RunInference
+      config:
+        model_handler:
+          type: HuggingFacePipelineModelHandler
+          config:
+            task: text-classification
+            preprocess:
+              callable: 'lambda row: row.text'
+'''
 
 
 class MainTest(unittest.TestCase):
@@ -98,6 +118,52 @@ class MainTest(unittest.TestCase):
           arg for arg in called_args if arg.startswith('--requirements_file=')
       ]
       self.assertEqual(len(req_file_args), 0)
+
+  def _run_and_get_requirements(self, argv):
+    """Runs the template and returns the generated runtime requirements."""
+    with patch('main.main.run') as mock_run:
+      main.run(argv)
+
+    mock_run.assert_called_once()
+    req_file_args = [
+        arg
+        for arg in mock_run.call_args[0][0]
+        if arg.startswith('--requirements_file=')
+    ]
+    self.assertEqual(len(req_file_args), 1)
+    temp_path = req_file_args[0].split('=', 1)[1]
+    self.addCleanup(os.remove, temp_path)
+    with open(temp_path, 'r') as f:
+      return f.read().splitlines()
+
+  def test_run_adds_ml_dependencies(self):
+    requirements = self._run_and_get_requirements(
+        [f'--yaml_pipeline={_ML_PIPELINE}', '--yaml_experimental_features=ML'])
+    self.assertEqual(
+        requirements,
+        main.DEFAULT_DEPENDENCIES + ml_dependencies.RUN_INFERENCE_DEPENDENCIES[
+            'HuggingFacePipelineModelHandler'])
+
+  def test_run_removes_duplicate_dependencies(self):
+    with patch(
+        'ml_dependencies.get_runtime_dependencies',
+        return_value=['torch', main.DEFAULT_DEPENDENCIES[0], 'torch']):
+      requirements = self._run_and_get_requirements(
+          ['--yaml_pipeline=path/to/pipeline.yaml'])
+    self.assertEqual(requirements, main.DEFAULT_DEPENDENCIES + ['torch'])
+
+  def test_run_does_not_add_ml_dependencies_if_requirements_file_present(self):
+    custom_req_path = 'custom/requirements.txt'
+    argv = [
+        f'--yaml_pipeline={_ML_PIPELINE}',
+        '--yaml_experimental_features=ML',
+        f'--requirements_file={custom_req_path}',
+    ]
+
+    with patch('main.main.run') as mock_run:
+      main.run(argv)
+
+    mock_run.assert_called_once_with(argv)
 
 
 if __name__ == '__main__':

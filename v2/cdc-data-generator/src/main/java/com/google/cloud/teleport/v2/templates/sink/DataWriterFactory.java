@@ -15,12 +15,10 @@
  */
 package com.google.cloud.teleport.v2.templates.sink;
 
+import com.google.cloud.teleport.v2.source.SourceConnectorFactory;
 import com.google.cloud.teleport.v2.templates.CdcDataGeneratorOptions.SinkType;
-import com.google.cloud.teleport.v2.templates.model.MySqlSinkConfig;
 import com.google.cloud.teleport.v2.templates.model.SinkConfig;
-import com.google.cloud.teleport.v2.templates.model.SpannerSinkConfig;
-import com.google.cloud.teleport.v2.templates.mysql.MySqlDataWriter;
-import com.google.cloud.teleport.v2.templates.spanner.SpannerDataWriter;
+import java.util.Objects;
 
 /**
  * Factory class for creating {@link DataWriter} instances based on {@link SinkType} and {@link
@@ -39,13 +37,7 @@ public class DataWriterFactory {
    * @throws IllegalArgumentException if the sink type is unsupported
    */
   public static DataWriter createWriter(SinkType type, SinkConfig config) {
-    switch (type) {
-      case MYSQL:
-        return new MySqlDataWriter((MySqlSinkConfig) config);
-      case SPANNER:
-        return new SpannerDataWriter((SpannerSinkConfig) config);
-      default:
-        throw new IllegalArgumentException("Unsupported sink type: " + type);
-    }
+    Objects.requireNonNull(type, "Sink type must not be null");
+    return SourceConnectorFactory.getSourceConnector(type).createDataWriter(config);
   }
 }

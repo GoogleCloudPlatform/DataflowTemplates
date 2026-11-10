@@ -27,7 +27,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **spannerMetadataTableName**: The Spanner change streams connector metadata table name to use. If not provided, Spanner automatically creates the streams connector metadata table during the pipeline flow change. You must provide this parameter when updating an existing pipeline to ensure that the metadata table from the original job is carried over.
 * **startTimestamp**: Read changes from the given timestamp. Defaults to empty.
 * **endTimestamp**: Read changes until the given timestamp. If no timestamp provided, reads indefinitely. Defaults to empty.
-* **shadowTablePrefix**: The prefix used to name shadow tables. Default: `shadow_`.
+* **shadowTablePrefix**: The prefix used to name shadow tables. Default: `rev_shadow_`.
 * **sessionFilePath**: Session file path in Cloud Storage that contains mapping information from HarbourBridge.
 * **filtrationMode**: Mode of Filtration, decides how to drop certain records based on a criteria. Currently supported modes are: none (filter nothing), forward_migration (filter records written via the forward migration pipeline). Defaults to forward_migration.
 * **shardingCustomJarPath**: Custom jar location in Cloud Storage that contains the customization logic for fetching shard id. Defaults to empty.

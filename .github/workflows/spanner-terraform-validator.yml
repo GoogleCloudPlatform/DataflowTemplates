@@ -37,7 +37,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Verify Terraform formatting
-        uses: dflook/terraform-fmt-check@e3f43c85d3e0a6bb3adb7be8c423c22c42d572bd # v3.1.0
+        uses: dflook/terraform-fmt-check@b5d95a3c92f409e0e1cae4200cb7b6e1244d3182 # v3.1.2
         with:
           path: ${{ matrix.terraform_paths }}
       - name: Verify Terraform template and required structure

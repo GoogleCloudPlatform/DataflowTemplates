@@ -19,10 +19,10 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.spanner.Dialect;
+import com.google.cloud.teleport.v2.source.mysql.MySqlSinkConfig;
+import com.google.cloud.teleport.v2.source.spanner.SpannerSinkConfig;
 import com.google.cloud.teleport.v2.templates.CdcDataGeneratorOptions.SinkType;
-import com.google.cloud.teleport.v2.templates.model.MySqlSinkConfig;
 import com.google.cloud.teleport.v2.templates.model.SinkConfig;
-import com.google.cloud.teleport.v2.templates.model.SpannerSinkConfig;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;

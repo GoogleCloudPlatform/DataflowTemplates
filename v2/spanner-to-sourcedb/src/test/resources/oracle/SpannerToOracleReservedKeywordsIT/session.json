@@ -1,0 +1,25 @@
+{
+  "SpSchema": {
+    "t1": {
+      "Name": "true",
+      "ColIds": ["c1", "c2", "c3"],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c1": {"Name": "COLUMN", "T": {"Name": "INT64"}},
+        "c2": {"Name": "TABLE", "T": {"Name": "STRING"}},
+        "c3": {"Name": "WITH", "T": {"Name": "STRING"}}
+      },
+      "PrimaryKeys": [{"ColId": "c1", "Order": 1}]
+    }
+  },
+  "SyntheticPKeys": {},
+  "SrcSchema": {
+    "t1": {
+      "Name": "true",
+      "Schema": "SRC_DATABASE",
+      "ColIds": ["c1", "c2", "c3"],
+      "ColDefs": {"c1": {"Name": "COLUMN"}, "c2": {"Name": "TABLE"}, "c3": {"Name": "WITH"}},
+      "PrimaryKeys": [{"ColId": "c1", "Order": 1}]
+    }
+  }
+}

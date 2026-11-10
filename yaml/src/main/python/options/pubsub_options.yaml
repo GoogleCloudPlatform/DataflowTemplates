@@ -2,19 +2,12 @@ options:
   - name: "pubsub_common_options"
     parameters:
       - order: 1
-        name: "topic"
-        description: "Pub/Sub input topic"
-        help: "Pub/Sub topic to read the input from."
-        example: "projects/your-project-id/topics/your-topic-name"
-        required: true
-        type: text
-      - order: 2
         name: "format"
         description: "The message format."
         help: "The message format. One of: AVRO, JSON, PROTO, RAW, or STRING."
         required: true
         type: text
-      - order: 3
+      - order: 2
         name: "schema"
         description: "Data schema."
         help: >
@@ -23,7 +16,7 @@ options:
           definition.
         required: true
         type: text
-      - order: 4
+      - order: 3
         name: "attributes"
         description: "List of attribute keys."
         help: >
@@ -33,7 +26,7 @@ options:
           the form `Row(payload=..., a=..., b=...)`.
         required: false
         type: text
-      - order: 5
+      - order: 4
         name: "attributesMap"
         description: "Name of a field in which to store the full set of attributes."
         help: >
@@ -47,7 +40,7 @@ options:
           attribute map.
         required: false
         type: text
-      - order: 6
+      - order: 5
         name: "idAttribute"
         description: "The attribute on incoming Pub/Sub messages to use as a unique record identifier."
         help: >
@@ -59,7 +52,7 @@ options:
           case, deduplication of the stream will be strictly best effort.
         required: false
         type: text
-      - order: 7
+      - order: 6
         name: "timestampAttribute"
         description: "Message value to use as element timestamp."
         help: >
@@ -71,13 +64,15 @@ options:
           ``2015-10-29T23:41:41.123Z``. The sub-second component of the
           timestamp is optional, and digits beyond the first three (i.e., time
           units smaller than milliseconds) may be ignored.
-      - order: 8
+        example: "timestamp"
+        required: false
+        type: text
+      - order: 7
         name: "errorHandling"
         description: "Error handling configuration"
         help: "This option specifies whether and where to output error rows."
         required: false
         type: text
-
 
   - name: "pubsub_read_options"
     parameters:
@@ -172,8 +167,14 @@ options:
         name: "timestampAttribute"
         description: "Message value to use as element timestamp."
         help: >
-          Message value to use as element timestamp. If None, uses message
-          publishing time as the timestamp.
+          Message value to use as element timestamp. If None, uses message 
+          publishing time as the timestamp. Timestamp values should be in one of two formats:
+          1). A numerical value representing the number of milliseconds since the
+          Unix epoch.
+          2). A string in RFC 3339 format, UTC timezone. Example:
+          ``2015-10-29T23:41:41.123Z``. The sub-second component of the
+          timestamp is optional, and digits beyond the first three (i.e., time
+          units smaller than milliseconds) may be ignored.
         example: "timestamp"
         required: false
         type: text

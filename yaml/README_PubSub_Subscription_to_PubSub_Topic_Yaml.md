@@ -25,7 +25,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **attributes**: List of attribute keys whose values will be flattened into the output message as additional fields. For example, if the format is `raw` and attributes is `[a, b]` then this read will produce elements of the form `Row(payload=..., a=..., b=...)`. For example, `["attr1", "attr2"]`.
 * **attributesMap**: Name of a field in which to store the full set of attributes associated with this message. For example, if the format is `raw` and `attributes_map` is set to `attrs` then this read will produce elements of the form `Row(payload=..., attrs=...)` where `attrs` is a Map type of string to string. If both `attributes` and `attributes_map` are set, the overlapping attribute values will be present in both the flattened structure and the attribute map. For example, `attrs`.
 * **idAttribute**: The attribute on incoming Pub/Sub messages to use as a unique record identifier. When specified, the value of this attribute (which can be any string that uniquely identifies the record) will be used for deduplication of messages. If not provided, we cannot guarantee that no duplicate data will be delivered on the Pub/Sub stream. In this case, deduplication of the stream will be strictly best effort. For example, `id`.
-* **timestampAttribute**: Message value to use as element timestamp. If None, uses message publishing time as the timestamp. For example, `timestamp`.
+* **timestampAttribute**: Message value to use as element timestamp. If None, uses message  publishing time as the timestamp. Timestamp values should be in one of two formats: 1). A numerical value representing the number of milliseconds since the Unix epoch. 2). A string in RFC 3339 format, UTC timezone. Example: ``2015-10-29T23:41:41.123Z``. The sub-second component of the timestamp is optional, and digits beyond the first three (i.e., time units smaller than milliseconds) may be ignored. For example, `timestamp`.
 * **publishTimeField**: Field to add to output messages with the Pub/Sub message publish time. If None, no such field is added. For example, `publish_time`.
 * **outputFormat**: The output message format. One of: AVRO, JSON, PROTO, RAW, or STRING. For example, `JSON`. Defaults to: JSON.
 * **outputSchema**: Schema specification for the output format, if applicable. For example, `{"type": "object", "properties": {"field1": {"type": "string"}}}`.
@@ -33,6 +33,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **outputAttributesMap**: Name of a string-to-string map field in which to pull a set of attributes associated with this message. For example, `attrs`.
 * **outputIdAttribute**: If set, will set an attribute for each Cloud Pub/Sub message with the given name and a unique value. For example, `id`.
 * **outputTimestampAttribute**: If set, will set an attribute for each Cloud Pub/Sub message with the given name and the message's publish time as the value. For example, `timestamp`.
+* **type**: The type of windowing to apply (e.g., fixed, sliding, sessions, global). Defaults to fixed. For example, `fixed`.
+* **size**: The window size in seconds. Defaults to 60. For example, `60`.
 
 
 
@@ -142,6 +144,8 @@ export OUTPUT_ATTRIBUTES=<outputAttributes>
 export OUTPUT_ATTRIBUTES_MAP=<outputAttributesMap>
 export OUTPUT_ID_ATTRIBUTE=<outputIdAttribute>
 export OUTPUT_TIMESTAMP_ATTRIBUTE=<outputTimestampAttribute>
+export TYPE=fixed
+export SIZE=60
 
 gcloud dataflow flex-template run "pubsub-subscription-to-pubsub-topic-yaml-job" \
   --project "$PROJECT" \
@@ -161,7 +165,9 @@ gcloud dataflow flex-template run "pubsub-subscription-to-pubsub-topic-yaml-job"
   --parameters "outputAttributes=$OUTPUT_ATTRIBUTES" \
   --parameters "outputAttributesMap=$OUTPUT_ATTRIBUTES_MAP" \
   --parameters "outputIdAttribute=$OUTPUT_ID_ATTRIBUTE" \
-  --parameters "outputTimestampAttribute=$OUTPUT_TIMESTAMP_ATTRIBUTE"
+  --parameters "outputTimestampAttribute=$OUTPUT_TIMESTAMP_ATTRIBUTE" \
+  --parameters "type=$TYPE" \
+  --parameters "size=$SIZE"
 ```
 
 For more information about the command, please check:
@@ -197,6 +203,8 @@ export OUTPUT_ATTRIBUTES=<outputAttributes>
 export OUTPUT_ATTRIBUTES_MAP=<outputAttributesMap>
 export OUTPUT_ID_ATTRIBUTE=<outputIdAttribute>
 export OUTPUT_TIMESTAMP_ATTRIBUTE=<outputTimestampAttribute>
+export TYPE=fixed
+export SIZE=60
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -205,7 +213,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="pubsub-subscription-to-pubsub-topic-yaml-job" \
 -DtemplateName="PubSub_Subscription_to_PubSub_Topic_Yaml" \
--Dparameters="subscription=$SUBSCRIPTION,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributesMap=$ATTRIBUTES_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,publishTimeField=$PUBLISH_TIME_FIELD,outputTopic=$OUTPUT_TOPIC,outputFormat=$OUTPUT_FORMAT,outputSchema=$OUTPUT_SCHEMA,outputAttributes=$OUTPUT_ATTRIBUTES,outputAttributesMap=$OUTPUT_ATTRIBUTES_MAP,outputIdAttribute=$OUTPUT_ID_ATTRIBUTE,outputTimestampAttribute=$OUTPUT_TIMESTAMP_ATTRIBUTE" \
+-Dparameters="subscription=$SUBSCRIPTION,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributesMap=$ATTRIBUTES_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,publishTimeField=$PUBLISH_TIME_FIELD,outputTopic=$OUTPUT_TOPIC,outputFormat=$OUTPUT_FORMAT,outputSchema=$OUTPUT_SCHEMA,outputAttributes=$OUTPUT_ATTRIBUTES,outputAttributesMap=$OUTPUT_ATTRIBUTES_MAP,outputIdAttribute=$OUTPUT_ID_ATTRIBUTE,outputTimestampAttribute=$OUTPUT_TIMESTAMP_ATTRIBUTE,type=$TYPE,size=$SIZE" \
 -f yaml
 ```
 
@@ -265,6 +273,8 @@ resource "google_dataflow_flex_template_job" "pubsub_subscription_to_pubsub_topi
     # outputAttributesMap = "<outputAttributesMap>"
     # outputIdAttribute = "<outputIdAttribute>"
     # outputTimestampAttribute = "<outputTimestampAttribute>"
+    # type = "fixed"
+    # size = "60"
   }
 }
 ```

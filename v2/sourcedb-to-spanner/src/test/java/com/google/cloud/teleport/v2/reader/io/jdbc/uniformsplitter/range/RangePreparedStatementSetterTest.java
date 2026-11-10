@@ -33,6 +33,7 @@ import java.time.LocalTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
 import java.util.Arrays;
+import java.util.UUID;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -363,8 +364,56 @@ public class RangePreparedStatementSetterTest {
     // native java.util.UUID instances before being bound to parameter indices 2 and 3.
     // 0L, 0L represents 16 bytes of 0x00 (min UUID), and -1L, -1L represents 16 bytes of 0xFF (max
     // UUID).
-    verify(mockStatement).setObject(2, new java.util.UUID(0L, 0L));
-    verify(mockStatement).setObject(3, new java.util.UUID(-1L, -1L));
+    verify(mockStatement).setObject(2, new UUID(0L, 0L));
+    verify(mockStatement).setObject(3, new UUID(-1L, -1L));
+  }
+
+  @Test
+  public void testSetParameters_withSqlServerUniqueIdentifierColumn() throws Exception {
+    byte[] startBytes = new byte[16];
+    byte[] endBytes = new byte[16];
+    Arrays.fill(endBytes, (byte) 0xFF);
+
+    TableIdentifier tableId =
+        TableIdentifier.builder()
+            .setDataSourceId("test_ds")
+            .setTableName("test_uniqueidentifier_table")
+            .build();
+    PartitionColumn col =
+        PartitionColumn.builder()
+            .setColumnName("guid_col")
+            .setColumnClass(byte[].class)
+            .setColumnTypeName("uniqueidentifier")
+            .build();
+
+    Range range =
+        Range.builder()
+            .setColumnTypeName("uniqueidentifier")
+            .setTableIdentifier(tableId)
+            .setBoundarySplitter(BoundarySplitterFactory.create(byte[].class))
+            .setColName("guid_col")
+            .setColClass(byte[].class)
+            .setStart(startBytes)
+            .setEnd(endBytes)
+            .setCount(1000L)
+            .setIsFirst(true)
+            .setIsLast(true)
+            .build();
+
+    TableSplitSpecification splitSpec =
+        TableSplitSpecification.builder()
+            .setTableIdentifier(tableId)
+            .setPartitionColumns(ImmutableList.of(col))
+            .setApproxRowCount(1000L)
+            .build();
+
+    PreparedStatement mockStatement = mock(PreparedStatement.class);
+    RangePreparedStatementSetter setter =
+        new RangePreparedStatementSetter(ImmutableList.of(splitSpec));
+    setter.setParameters(range, mockStatement);
+
+    verify(mockStatement).setObject(2, "00000000-0000-0000-0000-000000000000");
+    verify(mockStatement).setObject(3, "ffffffff-ffff-ffff-ffff-ffffffffffff");
   }
 
   @Test
