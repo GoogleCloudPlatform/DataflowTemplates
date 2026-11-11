@@ -40,17 +40,19 @@ graph TD
 | `maxWriteRetries` | Integer | Maximum number of retry attempts for transient failures during write. | No | 3 |
 | `numWriteShards` | Integer | Number of parallel shards per collection for batched writes. | No | 64 |
 | `maxBufferingDurationMs` | Integer | Maximum duration in milliseconds to buffer documents before flushing. | No | 200 |
-| `migrationMode` | String | Migration mode: BACKFILL_AND_STREAMING, STREAMING_CDC, or BACKFILL. | No | BACKFILL_AND_STREAMING |
+| `migrationMode` | String | Migration mode: BACKFILL, BACKFILL_AND_STREAMING, or STREAMING_CDC. | No | BACKFILL |
 | `targetBackfillChunkSize` | Integer | Target document count per backfill read split. | No | 200000 |
 | `maxBackfillSplits` | Integer | Maximum backfill read splits allowed per collection. | No | 256 |
 | `maxConcurrentBackfillReads` | Integer | Maximum concurrent backfill cursors allowed across the cluster. | No | 128 |
+| `backfillCursorBatchSize` | Integer | Number of documents fetched per MongoDB cursor `getMore` round-trip during backfill. | No | 5000 |
+| `backfillMaxDocsPerSlice` | Integer | Maximum documents emitted per Splittable DoFn continuation slice before checkpointing. | No | 25000 |
 | `numChangeStreamSplits` | Integer | Number of parallel change stream cursors per collection for CDC. | No | 1 |
-| `changeStreamFullDocument` | String | Change stream full document strategy (updateLookup or whenAvailable). | No | updateLookup |
+| `changeStreamFullDocument` | String | Change stream full document strategy (updateLookup, whenAvailable, required, or default). | No | updateLookup |
 | `startAtOperationTime` | String | Optional starting clusterTime (epoch seconds or ISO-8601). | No | |
 | `initialWriteRatePerWorker` | Integer | Initial maximum documents/second per worker during ramp-up (<=0 disables). | No | 5000 |
-| `maxWriteRatePerWorker` | Integer | Maximum target documents/second per worker after completing ramp-up. | No | 25000 |
+| `maxWriteRatePerWorker` | Integer | Maximum target documents/second per worker after completing ramp-up (<=0 warms up exponentially over `writeRateRampUpMinutes` and then runs uncapped). | No | 25000 |
 | `writeRateRampUpMinutes` | Integer | Duration in minutes for write rate ramp-up. | No | 5 |
-| `writeRateRampUpSteps` | Integer | Number of discrete linear step increases over ramp-up. | No | 5 |
+| `writeRateRampUpSteps` | Integer | Number of discrete step increases over ramp-up. | No | 5 |
 | `dlqDirectory` | String | Base path to store failed events. | No | `tempLocation`/tmp |
 | `dlqMaxRetries` | Integer | Maximum number of times to retry events from DLQ. | No | 3 |
 | `readFromDlq` | Boolean | If true, reads only from DLQ for retry. If false, reads from MongoDB. | No | false |
@@ -162,5 +164,7 @@ To optimize performance, consider the following parameters:
 - **`targetBackfillChunkSize`**: Target document count per backfill read split for adaptive volume-based splitting. Default is 200000.
 - **`maxBackfillSplits`**: Maximum backfill read splits allowed per collection. Default is 256.
 - **`maxConcurrentBackfillReads`**: Maximum concurrent backfill cursors allowed across the cluster, bounding source database connections. Default is 128.
+- **`backfillCursorBatchSize`**: Number of documents fetched per MongoDB cursor `getMore` round-trip during backfill. Tune based on average document size (e.g., 5000 for 1–10 KiB docs, 500 for 250 KiB docs). Default is 5000.
+- **`backfillMaxDocsPerSlice`**: Maximum documents emitted per Splittable DoFn continuation slice before checkpointing progress to Windmill. Default is 25000.
 - **`numChangeStreamSplits`**: Number of parallel change stream cursors per collection for high-throughput CDC streaming. Default is 1.
 - **`numberOfWorkerHarnessThreads`**: This is a standard Dataflow flag (set via `--numberOfWorkerHarnessThreads`) that controls the number of threads per worker. Increasing this allows the worker to process more bundles in parallel, which can increase throughput but also increases memory and resource contention. It complements `maxConcurrentAsyncWrites` by allowing more concurrent work on the worker level before hitting the write throttle.
