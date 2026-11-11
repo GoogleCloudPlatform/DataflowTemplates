@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.kafka.transforms;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.Optional;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
@@ -42,6 +41,9 @@ public abstract class AbstractAvroSerializer implements Serializer<GenericRecord
 
   @Override
   public byte[] serialize(String topic, GenericRecord record) {
+    if (record == null) {
+      return null;
+    }
     try {
       Schema schema = getSchema(record);
       ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -56,7 +58,7 @@ public abstract class AbstractAvroSerializer implements Serializer<GenericRecord
   }
 
   protected Schema getSchema(GenericRecord record) {
-    return Optional.ofNullable(this.schemaOverride).orElse(record.getSchema());
+    return this.schemaOverride != null ? this.schemaOverride : record.getSchema();
   }
 
   protected abstract Encoder getEncoder(Schema schema, OutputStream outputStream)

@@ -24,14 +24,14 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.bigtable.options.BigtableCommonOptions;
 import com.google.cloud.teleport.v2.bigtable.utils.UnsupportedEntryException;
-import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
 import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.kafka.options.KafkaWriteOptions;
 import com.google.cloud.teleport.v2.kafka.options.SchemaRegistryOptions;
 import com.google.cloud.teleport.v2.kafka.transforms.BinaryAvroSerializer;
 import com.google.cloud.teleport.v2.kafka.transforms.JsonAvroSerializer;
-import com.google.cloud.teleport.v2.kafka.utils.FileAwareFactoryFn;
+import com.google.cloud.teleport.v2.kafka.utils.FileAwareProducerFactoryFn;
+import com.google.cloud.teleport.v2.kafka.utils.FileAwareSchemaRegistryFactoryFn;
 import com.google.cloud.teleport.v2.kafka.utils.KafkaConfig;
 import com.google.cloud.teleport.v2.kafka.utils.KafkaTopicUtils;
 import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParameters;
@@ -47,39 +47,32 @@ import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
+import java.util.UUID;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
+import org.apache.beam.sdk.io.kafka.KafkaIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Values;
-import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.Serializer;
+import org.apache.kafka.common.utils.Utils;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,7 +87,11 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.STREAMING,
     displayName = "Cloud Bigtable Change Streams to Apache Kafka",
     description =
-        "Streaming pipeline. Streams Bigtable data change records and writes them into Kafka using Dataflow runner V2.",
+        "Streaming pipeline. Streams Bigtable data change records and writes them into Kafka.\n\n"
+            + "Changes are delivered to Kafka at least once: when Dataflow retries work, for example "
+            + "after a failed write or a worker restart, some changes can be written more than once. "
+            + "A duplicate is an exact copy of an earlier message, so consumers that need each change "
+            + "only once must remove duplicates themselves.",
     optionsClass = BigtableChangeStreamsToKafkaOptions.class,
     optionsOrder = {
       BigtableChangeStreamsToKafkaOptions.class,
@@ -120,7 +117,7 @@ public final class BigtableChangeStreamsToKafka {
   public static final FailsafeElementCoder<String, String> FAILSAFE_ELEMENT_CODER =
       FailsafeElementCoder.of(STRING_CODER, STRING_CODER);
 
-  private static final String USE_RUNNER_V2_EXPERIMENT = "use_runner_v2";
+  private static final String DLQ_DATETIME_SUBDIRECTORY = "YYYY/MM/dd/HH/mm/";
 
   /**
    * Main entry point for executing the pipeline.
@@ -140,13 +137,6 @@ public final class BigtableChangeStreamsToKafka {
   private static void setOptions(BigtableChangeStreamsToKafkaOptions options) {
     options.setStreaming(true);
     options.setEnableStreamingEngine(true);
-
-    // Add use_runner_v2 to the experiments option, since change streams connector is only supported
-    // on Dataflow runner v2.
-    List<String> experiments =
-        Optional.ofNullable(options.getExperiments()).orElse(new ArrayList<>());
-    experiments.add(USE_RUNNER_V2_EXPERIMENT);
-    options.setExperiments(experiments);
 
     BigtableChangeStreamsToKafkaOptionsUtils.validate(options);
   }
@@ -171,11 +161,10 @@ public final class BigtableChangeStreamsToKafka {
     /*
      * Stages:
      * 1) Read {@link ChangeStreamMutation} from change stream.
-     * 2) Create {@link FailsafeElement} of {@link Mod} JSON and merge from:
-     *    a) Stream of Bigtable mutations.
-     *    b) GCS dead letter queue.
-     * 3) Convert {@link Mod} JSON into ProduceRecord and write it to Kafka.
-     * 4) Write failures to GCS dead letter queue.
+     * 2) Create {@link FailsafeElement} of {@link Mod} JSON.
+     * 3) Convert {@link Mod} JSON into serialized Kafka records.
+     * 4) Write the Kafka records to Kafka using {@link KafkaIO}.
+     * 5) Write records that failed conversion or serialization to GCS dead letter queue.
      */
     Pipeline pipeline = Pipeline.create(options);
 
@@ -186,16 +175,8 @@ public final class BigtableChangeStreamsToKafka {
             FAILSAFE_ELEMENT_CODER.getEncodedTypeDescriptor(), FAILSAFE_ELEMENT_CODER);
 
     // Configure DLQ.
-    DeadLetterQueueManager dlqManager = buildDlqManager(options);
-    String dlqDirectory = dlqManager.getRetryDlqDirectoryWithDateTime();
-    String tempDlqDirectory = dlqManager.getRetryDlqDirectory() + "tmp/";
-    if (options.getDisableDlqRetries()) {
-      LOG.info(
-          "Disabling retries for the DLQ, directly writing into severe DLQ: {}",
-          dlqManager.getSevereDlqDirectoryWithDateTime());
-      dlqDirectory = dlqManager.getSevereDlqDirectoryWithDateTime();
-      tempDlqDirectory = dlqManager.getSevereDlqDirectory() + "tmp/";
-    }
+    String dlqDirectory = buildDlqDirectory(options);
+    LOG.info("DLQ directory: {}", dlqDirectory);
 
     // Configure input Bigtable change stream.
     BigtableIO.ReadChangeStream readChangeStream =
@@ -218,7 +199,7 @@ public final class BigtableChangeStreamsToKafka {
     }
 
     // Read the input, serialize it, and wrap into FailsafeElement.
-    PCollection<FailsafeElement<String, String>> inputFailsafe =
+    PCollection<FailsafeElement<String, String>> failsafeModJson =
         pipeline
             .apply("Read from Cloud Bigtable Change Streams", readChangeStream)
             .apply(Values.create())
@@ -237,69 +218,85 @@ public final class BigtableChangeStreamsToKafka {
                       }
                     }));
 
-    // Read retryable input from GCS dead letter queue.
-    PCollectionTuple dlqModJson =
-        dlqManager.getReconsumerDataTransform(
-            pipeline.apply(dlqManager.dlqReconsumer(options.getDlqRetryMinutes())));
-    PCollection<FailsafeElement<String, String>> retryableDlqFailsafeModJson;
-    if (options.getDisableDlqRetries()) {
-      retryableDlqFailsafeModJson = pipeline.apply(Create.empty(FAILSAFE_ELEMENT_CODER));
-    } else {
-      retryableDlqFailsafeModJson = dlqModJson.get(DeadLetterQueueManager.RETRYABLE_ERRORS);
-    }
+    // Convert the records into serialized Kafka records.
+    List<String> bootstrapServerAndTopic =
+        KafkaTopicUtils.getBootstrapServerAndTopic(
+            options.getWriteBootstrapServerAndTopic(), options.getProject());
+    String bootstrapServers = bootstrapServerAndTopic.get(0);
+    String destinationTopic = bootstrapServerAndTopic.get(1);
+    Map<String, Object> producerConfig = buildProducerConfig(options);
+    PCollectionTuple kafkaRecords =
+        failsafeModJson.apply(
+            "Mod JSON To Kafka Record",
+            ParDo.of(
+                    new ModJsonToKafkaRecordFn(
+                        destinationTopic, options.getMessageFormat(), producerConfig))
+                .withOutputTags(
+                    ModJsonToKafkaRecordFn.KAFKA_RECORDS,
+                    TupleTagList.of(ModJsonToKafkaRecordFn.FAILED_MOD_JSON)));
 
-    // Merge the input sources.
-    PCollection<FailsafeElement<String, String>> failsafeModJson =
-        PCollectionList.of(inputFailsafe)
-            .and(retryableDlqFailsafeModJson)
-            .apply("Merge Source And DLQ Mod JSON", Flatten.pCollections());
+    // Write the records to Kafka. A failed write fails the bundle, which is then retried.
+    kafkaRecords
+        .get(ModJsonToKafkaRecordFn.KAFKA_RECORDS)
+        .apply(
+            "Write To Kafka",
+            KafkaIO.<byte[], byte[]>write()
+                .withBootstrapServers(bootstrapServers)
+                .withTopic(destinationTopic)
+                .withKeySerializer(ByteArraySerializer.class)
+                .withValueSerializer(ByteArraySerializer.class)
+                .withProducerConfigUpdates(producerConfig)
+                .withProducerFactoryFn(new FileAwareProducerFactoryFn()));
 
-    // Serialize the records and write them to Kafka.
-    PCollection<FailsafeElement<String, String>> failedToPublish =
-        failsafeModJson.apply("Publish Mod JSON To Kafka", ParDo.of(new WriteToKafkaFn(options)));
-
-    // Send the failed records to dead letter queue.
-    failedToPublish
+    // Send the records that could not be converted or serialized to dead letter queue.
+    kafkaRecords
+        .get(ModJsonToKafkaRecordFn.FAILED_MOD_JSON)
         .apply(
             "Failed Mod JSON During Table Row Transformation",
             MapElements.via(new StringDeadLetterQueueSanitizer()))
         .apply(
             "Write Failed Mod JSON To DLQ",
             DLQWriteTransform.WriteDLQ.newBuilder()
-                .withDlqDirectory(dlqDirectory)
-                .withTmpDirectory(tempDlqDirectory)
-                .setIncludePaneInfo(true)
-                .build());
-    LOG.info(
-        "DLQ manager severe DLQ directory with date time: {}",
-        dlqManager.getSevereDlqDirectoryWithDateTime());
-    LOG.info("DLQ manager severe DLQ directory: {}", dlqManager.getSevereDlqDirectory() + "tmp/");
-    dlqModJson
-        .get(DeadLetterQueueManager.PERMANENT_ERRORS)
-        .setCoder(FAILSAFE_ELEMENT_CODER)
-        .apply(
-            "Write Mod JSON With Non-retriable Error To DLQ",
-            MapElements.via(new StringDeadLetterQueueSanitizer()))
-        .apply(
-            DLQWriteTransform.WriteDLQ.newBuilder()
-                .withDlqDirectory(dlqManager.getSevereDlqDirectoryWithDateTime())
-                .withTmpDirectory(dlqManager.getSevereDlqDirectory() + "tmp/")
+                .withDlqDirectory(dlqDirectory + DLQ_DATETIME_SUBDIRECTORY)
+                .withTmpDirectory(dlqDirectory + "tmp/")
                 .setIncludePaneInfo(true)
                 .build());
 
     return pipeline.run();
   }
 
-  private static DeadLetterQueueManager buildDlqManager(
-      BigtableChangeStreamsToKafkaOptions options) {
+  /**
+   * Returns the DLQ directory, ending with a slash. Unless set explicitly, it's a directory unique
+   * to this launch of the job in the temp location, so that different jobs don't share it.
+   */
+  private static String buildDlqDirectory(BigtableChangeStreamsToKafkaOptions options) {
+    if (StringUtils.isNotEmpty(options.getDlqDirectory())) {
+      return StringUtils.appendIfMissing(options.getDlqDirectory(), "/");
+    }
     String tempLocation =
         StringUtils.defaultString(options.as(DataflowPipelineOptions.class).getTempLocation());
     tempLocation = StringUtils.appendIfMissing(tempLocation, "/");
-    String dlqDirectory =
-        options.getDlqDirectory().isEmpty() ? tempLocation + "dlq/" : options.getDlqDirectory();
+    String randomSuffix = UUID.randomUUID().toString().substring(0, 8);
+    return tempLocation + "dlq/" + options.getJobName() + "-" + randomSuffix + "/";
+  }
 
-    LOG.info("DLQ directory: {}", dlqDirectory);
-    return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetries());
+  private static Map<String, Object> buildProducerConfig(
+      BigtableChangeStreamsToKafkaOptions options) {
+    Map<String, Object> config = KafkaConfig.fromWriteOptions(options);
+    config.putAll(KafkaConfig.fromSchemaRegistryOptions(options));
+    if (StringUtils.isNotBlank(options.getSchemaRegistryConnectionUrl())) {
+      config.put(
+          AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG,
+          options.getSchemaRegistryConnectionUrl());
+    }
+    // KafkaIO limits the retries to 3 by default. Restore Kafka's default of retrying until
+    // delivery.timeout.ms passes, so that short broker unavailability doesn't fail the bundle.
+    config.put(ProducerConfig.RETRIES_CONFIG, Integer.MAX_VALUE);
+    // Allow the biggest records that Bigtable cells can produce. The Kafka broker and topic must
+    // allow them as well, or writing them fails.
+    config.put(ProducerConfig.MAX_REQUEST_SIZE_CONFIG, Mod.MAX_SERIALIZED_SIZE_BYTES);
+    config.put(ProducerConfig.BUFFER_MEMORY_CONFIG, (long) Mod.MAX_SERIALIZED_SIZE_BYTES);
+    return config;
   }
 
   /**
@@ -312,7 +309,6 @@ public final class BigtableChangeStreamsToKafka {
 
     ChangeStreamMutationToModJsonFn(BigtableSource source) {
       this.sourceInfo = source;
-      this.charset = Charset.forName(sourceInfo.getCharset());
     }
 
     @Setup
@@ -325,7 +321,7 @@ public final class BigtableChangeStreamsToKafka {
         return mod.toJson();
       } catch (IOException e) {
         // Ignore exception and print bad format.
-        // This record will fail serialization in WriteToKafkaFn and end up in DLQ.
+        // This record will fail conversion in ModJsonToKafkaRecordFn and end up in DLQ.
         return String.format("\"%s\"", inputMutation);
       }
     }
@@ -358,7 +354,7 @@ public final class BigtableChangeStreamsToKafka {
           throw new UnsupportedEntryException(
               "Cloud Bigtable change stream entry of type "
                   + entry.getClass().getName()
-                  + " is not supported. The entry was put into a DLQ directory. "
+                  + " is not supported. "
                   + "Please update your Dataflow template with the latest template version");
         }
         receiver.output(toJsonString(mod, input));
@@ -366,62 +362,57 @@ public final class BigtableChangeStreamsToKafka {
     }
   }
 
-  /** DoFn that serializes and writes {@link FailsafeElement FailsafeElements} to Kafka. */
-  static class WriteToKafkaFn
-      extends DoFn<FailsafeElement<String, String>, FailsafeElement<String, String>> {
-    private final Map<String, Object> kafkaProducerConfig;
+  /**
+   * DoFn that converts {@link Mod} JSON in {@link FailsafeElement FailsafeElements} to serialized
+   * Kafka records keyed by the row key. Records that can't be converted or serialized are sent to
+   * the {@link #FAILED_MOD_JSON} output.
+   */
+  static class ModJsonToKafkaRecordFn
+      extends DoFn<FailsafeElement<String, String>, KV<byte[], byte[]>> {
+    static final TupleTag<KV<byte[], byte[]>> KAFKA_RECORDS = new TupleTag<KV<byte[], byte[]>>() {};
+    static final TupleTag<FailsafeElement<String, String>> FAILED_MOD_JSON =
+        new TupleTag<FailsafeElement<String, String>>() {};
+
     private final KafkaUtils kafkaUtils;
     private final String destinationTopic;
     private final boolean base64EncodeByteFields;
-    private transient Producer<byte[], GenericRecord> producer;
-    private transient List<InFlightRequest> inFlightRequests;
+    private final Class<? extends Serializer<? super GenericRecord>> valueSerializerClass;
+    private final Map<String, Object> valueSerializerConfig;
+    private transient Serializer<? super GenericRecord> valueSerializer;
 
-    WriteToKafkaFn(BigtableChangeStreamsToKafkaOptions options) {
-      Class<?> serializerClass = getSerializerClass(options.getMessageFormat());
-      base64EncodeByteFields = JsonAvroSerializer.class.equals(serializerClass);
-      kafkaUtils =
-          new KafkaUtils(
-              BigtableChangeStreamsToKafkaOptionsUtils.buildBigtableSource(options).getCharset());
-      List<String> destinationBootstrapServerAndTopicList =
-          KafkaTopicUtils.getBootstrapServerAndTopic(
-              options.getWriteBootstrapServerAndTopic(), options.getProject());
-      destinationTopic = destinationBootstrapServerAndTopicList.get(1);
-      kafkaProducerConfig = KafkaConfig.fromWriteOptions(options);
-      kafkaProducerConfig.put(
-          ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, destinationBootstrapServerAndTopicList.get(0));
-      kafkaProducerConfig.put(
-          ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
-      kafkaProducerConfig.put(
-          ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, serializerClass.getName());
-      kafkaProducerConfig.putAll(KafkaConfig.fromSchemaRegistryOptions(options));
-      kafkaProducerConfig.put(
-          AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG,
-          options.getSchemaRegistryConnectionUrl());
+    /**
+     * @param valueSerializerConfig the config to {@link Serializer#configure configure} the value
+     *     serializer with, the same one that a Kafka producer would pass to it
+     */
+    ModJsonToKafkaRecordFn(
+        String destinationTopic, String messageFormat, Map<String, Object> valueSerializerConfig) {
+      this.kafkaUtils = new KafkaUtils();
+      this.destinationTopic = destinationTopic;
+      this.valueSerializerClass = getSerializerClass(messageFormat);
+      this.base64EncodeByteFields = JsonAvroSerializer.class.equals(valueSerializerClass);
+      this.valueSerializerConfig = valueSerializerConfig;
     }
 
     @Setup
     public void setup() {
-      producer = new FileAwareProducerFactoryFn().apply(kafkaProducerConfig);
+      // Replace the references to GCS files and Secret Manager secrets, as the producer does.
+      Map<String, Object> config =
+          new FileAwareSchemaRegistryFactoryFn().apply(valueSerializerConfig);
+      valueSerializer = Utils.newInstance(valueSerializerClass);
+      valueSerializer.configure(config, false);
     }
 
     @Teardown
     public void teardown() {
-      if (producer != null) {
-        this.producer.close(Duration.ofMinutes(5));
+      if (valueSerializer != null) {
+        valueSerializer.close();
       }
-    }
-
-    @StartBundle
-    public void startBundle() {
-      inFlightRequests = new ArrayList<>();
     }
 
     @ProcessElement
     public void process(
-        @Element FailsafeElement<String, String> input,
-        @Timestamp Instant timestamp,
-        BoundedWindow window,
-        OutputReceiver<FailsafeElement<String, String>> receiver) {
+        @Element FailsafeElement<String, String> input, MultiOutputReceiver receiver) {
+      KV<byte[], byte[]> kafkaRecord;
       try {
         String modChangeJson = Mod.fromJson(input.getPayload()).getChangeJson();
         ProducerRecord<byte[], GenericRecord> record =
@@ -429,40 +420,21 @@ public final class BigtableChangeStreamsToKafka {
                 ? kafkaUtils.getProducerRecordWithBase64EncodedFields(
                     modChangeJson, destinationTopic)
                 : kafkaUtils.getProducerRecord(modChangeJson, destinationTopic);
-        inFlightRequests.add(new InFlightRequest(input, producer.send(record), timestamp, window));
+        kafkaRecord =
+            KV.of(
+                record.key(),
+                valueSerializer.serialize(record.topic(), record.headers(), record.value()));
       } catch (Exception e) {
-        receiver.output(toFailedElement(input, e));
+        receiver
+            .get(FAILED_MOD_JSON)
+            .output(
+                FailsafeElement.of(input)
+                    .setErrorMessage(e.getMessage())
+                    .setStacktrace(Throwables.getStackTraceAsString(e)));
+        return;
       }
+      receiver.get(KAFKA_RECORDS).output(kafkaRecord);
     }
-
-    @FinishBundle
-    public void finishBundle(FinishBundleContext context) throws InterruptedException {
-      producer.flush();
-      for (InFlightRequest inFlightRequest : inFlightRequests) {
-        try {
-          inFlightRequest.future().get();
-        } catch (ExecutionException e) {
-          context.output(
-              toFailedElement(inFlightRequest.input(), e),
-              inFlightRequest.timestamp(),
-              inFlightRequest.window());
-        }
-      }
-      inFlightRequests.clear();
-    }
-
-    private static FailsafeElement<String, String> toFailedElement(
-        FailsafeElement<String, String> input, Throwable t) {
-      return FailsafeElement.of(input)
-          .setErrorMessage(t.getMessage())
-          .setStacktrace(Throwables.getStackTraceAsString(t));
-    }
-
-    private record InFlightRequest(
-        FailsafeElement<String, String> input,
-        Future<RecordMetadata> future,
-        Instant timestamp,
-        BoundedWindow window) {}
 
     private static Class<? extends Serializer<? super GenericRecord>> getSerializerClass(
         String messageFormat) {
@@ -475,18 +447,6 @@ public final class BigtableChangeStreamsToKafka {
         default -> throw new IllegalArgumentException(
             "Unexpected message format: " + messageFormat);
       };
-    }
-  }
-
-  public static class FileAwareProducerFactoryFn
-      extends FileAwareFactoryFn<Producer<byte[], GenericRecord>> {
-    public FileAwareProducerFactoryFn() {
-      super("producer", null);
-    }
-
-    @Override
-    protected Producer<byte[], GenericRecord> createObject(Map<String, Object> config) {
-      return new KafkaProducer<>(config);
     }
   }
 }

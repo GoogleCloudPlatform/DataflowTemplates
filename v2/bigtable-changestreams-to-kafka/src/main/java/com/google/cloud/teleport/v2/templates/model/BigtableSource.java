@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.model;
 
 import java.io.Serializable;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -43,6 +44,8 @@ public class BigtableSource implements Serializable {
       String ignoreColumns) {
     this.instanceId = instanceId;
     this.tableId = tableId;
+    // Fail at pipeline construction if the charset isn't supported.
+    Charset.forName(charset);
     this.charset = charset;
     if (StringUtils.isBlank(ignoreColumnFamilies)) {
       this.columnFamiliesToIgnore = Collections.emptySet();
@@ -94,7 +97,7 @@ public class BigtableSource implements Serializable {
     return charset;
   }
 
-  public Boolean isIgnoredColumnFamily(String columnFamily) {
+  public boolean isIgnoredColumnFamily(String columnFamily) {
     return columnFamiliesToIgnore.contains(columnFamily);
   }
 

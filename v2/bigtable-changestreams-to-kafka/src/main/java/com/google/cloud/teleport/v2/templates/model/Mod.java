@@ -49,8 +49,15 @@ public final class Mod implements Serializable {
 
   private static final long serialVersionUID = 169227493747673831L;
 
+  /**
+   * The maximum size of a serialized change. Bigtable cell values are at most 100 MB, which the
+   * JSON message format encodes in base64 (about 134 MB, plus the row key, column and other
+   * fields), so 150 MB leaves a margin.
+   */
+  public static final int MAX_SERIALIZED_SIZE_BYTES = 150 * 1024 * 1024;
+
   private static final ObjectMapper OBJECT_MAPPER =
-      new ObjectMapper(RowJsonUtils.createJsonFactory(100 * 1024 * 1024));
+      new ObjectMapper(RowJsonUtils.createJsonFactory(MAX_SERIALIZED_SIZE_BYTES));
 
   private String changeJson;
   private long commitTimestampSeconds;

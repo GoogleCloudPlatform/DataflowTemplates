@@ -21,12 +21,10 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.cloud.bigtable.admin.v2.models.StorageType;
 import com.google.cloud.bigtable.data.v2.models.RowMutation;
 import com.google.cloud.bigtable.data.v2.models.TableId;
@@ -38,6 +36,7 @@ import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParameters;
 import com.google.common.collect.Lists;
 import com.google.protobuf.ByteString;
 import io.confluent.kafka.schemaregistry.ParsedSchema;
+import io.confluent.kafka.schemaregistry.avro.AvroSchema;
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.SchemaRegistryClient;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
@@ -78,9 +77,14 @@ import org.apache.beam.it.gcp.bigtable.BigtableTableSpec;
 import org.apache.beam.it.kafka.KafkaResourceManager;
 import org.apache.beam.sdk.util.RowJsonUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.AlterConfigOp;
+import org.apache.kafka.clients.admin.ConfigEntry;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.common.errors.RecordTooLargeException;
+import org.apache.kafka.common.config.ConfigResource;
+import org.apache.kafka.common.config.TopicConfig;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.jetbrains.annotations.NotNull;
 import org.junit.After;
@@ -88,18 +92,19 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Integration test for {@link BigtableChangeStreamsToKafka}. */
 @TemplateIntegrationTest(BigtableChangeStreamsToKafka.class)
 @Category({TemplateIntegrationTest.class})
-@RunWith(Parameterized.class)
+@RunWith(JUnit4.class)
 public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(BigtableChangeStreamsToKafkaIT.class);
 
   private static final int KAFKA_PARTITIONS = 1;
+  private static final int TOPIC_MAX_MESSAGE_BYTES = 10 * 1024 * 1024;
   private static final Duration KAFKA_POLL_TIMEOUT = Duration.ofMillis(1000);
   private static final long MAX_MESSAGE_LAG_MICROS =
       TimeUnit.MICROSECONDS.convert(Duration.ofSeconds(20));
@@ -121,13 +126,6 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
   private String appProfileId;
   private String topicName;
   private String srcTable;
-
-  @Parameterized.Parameter public Boolean noDlqRetry;
-
-  @Parameterized.Parameters(name = "no-dlq-retry-{0}")
-  public static List<Boolean> testParameters() {
-    return List.of(false, true);
-  }
 
   @Test
   public void testJsonCustomCharset() throws Exception {
@@ -300,91 +298,73 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
 
   @Test
   public void testDeadLetterQueueDelivery() throws Exception {
+    schemaRegistryResourceManager =
+        SchemaRegistryResourceManager.builder(testName)
+            .withTestContainerKafkaBootstrapServers(
+                Arrays.stream(kafkaResourceManager.getBootstrapServers().split(","))
+                    .map(protocolHostPort -> protocolHostPort.split("://")[1].split(":")[1])
+                    .map(Integer::parseInt)
+                    .collect(Collectors.toSet()))
+            .build();
+    String schemaRegistryUrl = schemaRegistryResourceManager.getConnectionString();
+
+    // Register an incompatible schema for the topic, so that the records can't be serialized.
+    try (SchemaRegistryClient schemaRegistryClient =
+        new CachedSchemaRegistryClient(schemaRegistryUrl, 10)) {
+      schemaRegistryClient.register(
+          topicName + "-value",
+          new AvroSchema(
+              "{\"type\":\"record\",\"name\":\"Other\",\"fields\":[{\"name\":\"id\",\"type\":\"int\"}]}"));
+    }
+
     String dlqPrefix = "dlq";
     LaunchInfo launchInfo =
         launchTemplate(
-            "JSON",
+            "AVRO_CONFLUENT_WIRE_FORMAT",
             "UTF-8",
             Map.of(
-                "dlqDirectory", getGcsPath(dlqPrefix),
-                "dlqMaxRetries", "1",
-                "dlqRetryMinutes", "1"));
+                "schemaRegistryConnectionUrl",
+                schemaRegistryUrl,
+                "schemaFormat",
+                KafkaTemplateParameters.SchemaFormat.SCHEMA_REGISTRY,
+                "dlqDirectory",
+                getGcsPath(dlqPrefix)));
 
     assertThatPipeline(launchInfo).isRunning();
 
     String rowkey = UUID.randomUUID().toString();
-    String column = "test_column";
-
-    String goodValue = UUID.randomUUID().toString();
-    // Making some 2MB value (the default max.request.size is 1048576 (1 MB)).
-    String tooBigValue =
-        StringUtils.repeat(UUID.randomUUID().toString(), 2 * 1024 * 1024 / goodValue.length());
-
-    long timestamp = 12000L;
-
-    RowMutation tooLargeMutation =
+    bigtableResourceManager.write(
         RowMutation.create(TableId.of(srcTable), rowkey)
-            .setCell(STANDARD_COLUMN_FAMILY, column, timestamp, tooBigValue);
-    bigtableResourceManager.write(tooLargeMutation);
-
-    RowMutation smallMutation =
-        RowMutation.create(TableId.of(srcTable), rowkey)
-            .setCell(STANDARD_COLUMN_FAMILY, column, timestamp, goodValue);
-    bigtableResourceManager.write(smallMutation);
-
-    ChangelogEntryMessageBase64 expected =
-        ChangelogEntryMessageBase64.newBuilder()
-            .setColumn(B64.encodeToString(column.getBytes(StandardCharsets.UTF_8)))
-            .setColumnFamily(STANDARD_COLUMN_FAMILY)
-            .setIsGC(false)
-            .setModType(ModType.SET_CELL)
-            .setCommitTimestamp(System.currentTimeMillis() * 1000)
-            .setRowKey(B64.encodeToString(rowkey.getBytes(StandardCharsets.UTF_8)))
-            .setSourceInstance(bigtableResourceManager.getInstanceId())
-            .setSourceCluster(clusterName)
-            .setTieBreaker(1)
-            .setTimestamp(timestamp)
-            .setTimestampFrom(null)
-            .setTimestampTo(null)
-            .setSourceTable(srcTable)
-            .setValue(B64.encodeToString(goodValue.getBytes(StandardCharsets.UTF_8)))
-            .build();
-
-    kafkaConsumer.subscribe(Collections.singletonList(topicName));
-    List<ConsumerRecord<byte[], byte[]>> receivedMessages =
-        getAtLeastOneMessage(launchInfo, kafkaConsumer, topicName);
-    assertEquals(1, receivedMessages.size());
-    validateJsonMessageData(
-        expected, new String(receivedMessages.get(0).value(), StandardCharsets.UTF_8));
-    assertArrayEquals(rowkey.getBytes(StandardCharsets.UTF_8), receivedMessages.get(0).key());
+            .setCell(STANDARD_COLUMN_FAMILY, "test_column", 12000L, UUID.randomUUID().toString()));
 
     LOG.info("Looking for files in DLQ");
 
+    String encodedRowkey = B64.encodeToString(rowkey.getBytes(StandardCharsets.UTF_8));
     Result result =
         pipelineOperator()
-            .waitForConditionAndFinish(
+            .waitForConditionAndCancel(
                 createConfig(launchInfo),
                 () -> {
-                  List<Artifact> artifacts =
-                      gcsClient.listArtifacts(dlqPrefix, Pattern.compile(".*"));
-                  RowJsonUtils.increaseDefaultStreamReadConstraints(100 * 1024 * 1024);
                   ObjectMapper om = new ObjectMapper();
-                  for (Artifact artifact : artifacts) {
+                  for (Artifact artifact :
+                      gcsClient.listArtifacts(dlqPrefix + "/", Pattern.compile(".*"))) {
+                    // We exclude /tmp, where the runner stores the records before moving them to
+                    // their DLQ final destination.
+                    if (artifact.name().contains(dlqPrefix + "/tmp/")) {
+                      continue;
+                    }
+                    String contents = new String(artifact.contents(), StandardCharsets.UTF_8);
                     try {
-                      JsonNode severeError = om.readTree(artifact.contents());
-                      assertNotNull(severeError);
-                      JsonNode errorMessageNode = severeError.get("error_message");
-                      assertNotNull(errorMessageNode);
-                      assertTrue(errorMessageNode instanceof TextNode);
-                      String messageText = errorMessageNode.asText();
+                      JsonNode error = om.readTree(contents);
+                      String errorMessage = error.get("error_message").asText();
                       assertTrue(
-                          "Unexpected message text: " + messageText,
-                          StringUtils.contains(
-                              messageText, RecordTooLargeException.class.getName()));
-                      return true;
+                          "Unexpected message text: " + errorMessage,
+                          StringUtils.containsIgnoreCase(errorMessage, "incompatible"));
                     } catch (Exception e) {
                       throw new RuntimeException(e);
                     }
+                    assertTrue(contents.contains(encodedRowkey));
+                    return true;
                   }
                   return false;
                 });
@@ -393,73 +373,83 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
   }
 
   @Test
-  public void testMixedSuccessesAndFailures() throws Exception {
-    String dlqPrefix = "dlq";
-    LaunchInfo launchInfo =
-        launchTemplate(
-            "JSON",
-            "UTF-8",
-            Map.of(
-                "dlqDirectory", getGcsPath(dlqPrefix),
-                "dlqMaxRetries", "1",
-                "dlqRetryMinutes", "1"));
+  public void testLargeRecordDelivery() throws Exception {
+    LaunchInfo launchInfo = launchTemplate("JSON", "UTF-8");
+
+    assertThatPipeline(launchInfo).isRunning();
+
+    String rowkey = UUID.randomUUID().toString();
+    String column = "test_column";
+
+    String smallValue = UUID.randomUUID().toString();
+    // Making some 2MB value (bigger than the default max.request.size of 1048576 (1 MB)).
+    String largeValue =
+        StringUtils.repeat(UUID.randomUUID().toString(), 2 * 1024 * 1024 / smallValue.length());
+
+    long timestamp = 12000L;
+
+    RowMutation largeMutation =
+        RowMutation.create(TableId.of(srcTable), rowkey)
+            .setCell(STANDARD_COLUMN_FAMILY, column, timestamp, largeValue);
+    bigtableResourceManager.write(largeMutation);
+
+    RowMutation smallMutation =
+        RowMutation.create(TableId.of(srcTable), rowkey)
+            .setCell(STANDARD_COLUMN_FAMILY, column, timestamp, smallValue);
+    bigtableResourceManager.write(smallMutation);
+
+    ChangelogEntryMessageBase64 expectedLarge =
+        expectedSetCell(rowkey, column, timestamp, largeValue);
+    ChangelogEntryMessageBase64 expectedSmall =
+        expectedSetCell(rowkey, column, timestamp, smallValue);
+
+    kafkaConsumer.subscribe(Collections.singletonList(topicName));
+    List<ConsumerRecord<byte[], byte[]>> receivedMessages =
+        getAtLeastNMessages(launchInfo, kafkaConsumer, topicName, 2);
+    assertEquals(2, receivedMessages.size());
+    // The changes of a row are delivered in order.
+    validateJsonMessageData(
+        expectedLarge, new String(receivedMessages.get(0).value(), StandardCharsets.UTF_8));
+    validateJsonMessageData(
+        expectedSmall, new String(receivedMessages.get(1).value(), StandardCharsets.UTF_8));
+    for (ConsumerRecord<byte[], byte[]> receivedMessage : receivedMessages) {
+      assertArrayEquals(rowkey.getBytes(StandardCharsets.UTF_8), receivedMessage.key());
+    }
+  }
+
+  @Test
+  public void testMixedSmallAndLargeRecords() throws Exception {
+    LaunchInfo launchInfo = launchTemplate("JSON", "UTF-8");
 
     assertThatPipeline(launchInfo).isRunning();
 
     int recordPairs = 25;
     String column = "test_column";
 
-    String goodValue = UUID.randomUUID().toString();
-    // Making some 2MB value (the default max.request.size is 1048576 (1 MB)).
-    String tooBigValue =
-        StringUtils.repeat(UUID.randomUUID().toString(), 2 * 1024 * 1024 / goodValue.length());
+    String smallValue = UUID.randomUUID().toString();
+    // Making some 2MB value (bigger than the default max.request.size of 1048576 (1 MB)).
+    String largeValue =
+        StringUtils.repeat(UUID.randomUUID().toString(), 2 * 1024 * 1024 / smallValue.length());
 
     long timestamp = 12000L;
 
-    // Interleave good and failing records with each other, so that bundles contain both.
+    // Interleave small and large records with each other, so that bundles contain both.
     List<RowMutation> mutations = new ArrayList<>();
     for (int i = 0; i < recordPairs; i++) {
       mutations.add(
           RowMutation.create(TableId.of(srcTable), UUID.randomUUID().toString())
-              .setCell(STANDARD_COLUMN_FAMILY, column, timestamp, goodValue));
+              .setCell(STANDARD_COLUMN_FAMILY, column, timestamp, smallValue));
       mutations.add(
           RowMutation.create(TableId.of(srcTable), UUID.randomUUID().toString())
-              .setCell(STANDARD_COLUMN_FAMILY, column, timestamp, tooBigValue));
+              .setCell(STANDARD_COLUMN_FAMILY, column, timestamp, largeValue));
     }
     bigtableResourceManager.write(mutations);
 
+    // All the records are delivered, so none of them ends up in the DLQ.
     kafkaConsumer.subscribe(Collections.singletonList(topicName));
     List<ConsumerRecord<byte[], byte[]>> receivedMessages =
-        getAtLeastNMessages(launchInfo, kafkaConsumer, topicName, recordPairs);
-    assertEquals(recordPairs, receivedMessages.size());
-
-    LOG.info("Looking for records in severe DLQ");
-
-    Result result =
-        pipelineOperator()
-            .waitForConditionAndFinish(
-                createConfig(launchInfo),
-                () -> {
-                  long records = 0;
-                  for (Artifact artifact :
-                      gcsClient.listArtifacts(dlqPrefix + "/severe/", Pattern.compile(".*"))) {
-                    // We exclude /tmp to avoid double counting records - the runner stores
-                    // the records there before moving them to their DLQ final destination.
-                    if (artifact.name().contains("/severe/tmp/")) {
-                      continue;
-                    }
-                    records +=
-                        new String(artifact.contents(), StandardCharsets.UTF_8)
-                            .lines()
-                            .filter(StringUtils::isNotBlank)
-                            .count();
-                  }
-                  // Each error gets exactly one entry in the severe DLQ regardless whether
-                  // the retries were enabled.
-                  return records == recordPairs;
-                });
-
-    assertThatResult(result).meetsConditions();
+        getAtLeastNMessages(launchInfo, kafkaConsumer, topicName, 2 * recordPairs);
+    assertEquals(2 * recordPairs, receivedMessages.size());
   }
 
   @Test
@@ -544,6 +534,26 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
     validateJsonMessageData(
         expected, new String(receivedMessages.get(0).value(), StandardCharsets.UTF_8));
     assertArrayEquals(rowkey.getBytes(charset), receivedMessages.get(0).key());
+  }
+
+  private ChangelogEntryMessageBase64 expectedSetCell(
+      String rowkey, String column, long timestamp, String value) {
+    return ChangelogEntryMessageBase64.newBuilder()
+        .setColumn(B64.encodeToString(column.getBytes(StandardCharsets.UTF_8)))
+        .setColumnFamily(STANDARD_COLUMN_FAMILY)
+        .setIsGC(false)
+        .setModType(ModType.SET_CELL)
+        .setCommitTimestamp(System.currentTimeMillis() * 1000)
+        .setRowKey(B64.encodeToString(rowkey.getBytes(StandardCharsets.UTF_8)))
+        .setSourceInstance(bigtableResourceManager.getInstanceId())
+        .setSourceCluster(clusterName)
+        .setTieBreaker(1)
+        .setTimestamp(timestamp)
+        .setTimestampFrom(null)
+        .setTimestampTo(null)
+        .setSourceTable(srcTable)
+        .setValue(B64.encodeToString(value.getBytes(StandardCharsets.UTF_8)))
+        .build();
   }
 
   private void validateJsonMessageData(ChangelogEntryMessageBase64 expected, String jsonString)
@@ -640,7 +650,7 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
   }
 
   @Before
-  public void setup() throws IOException {
+  public void setup() throws Exception {
     BigtableResourceManager.Builder rmBuilder =
         BigtableResourceManager.builder(
             removeUnsafeCharacters(testName), PROJECT, credentialsProvider);
@@ -670,9 +680,35 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
     kafkaResourceManager =
         KafkaResourceManager.builder(testName).setHost(TestProperties.hostIp()).build();
     topicName = kafkaResourceManager.createTopic(topicNameToCreate, KAFKA_PARTITIONS);
+    allowLargeRecords(topicName);
     kafkaConsumer =
         kafkaResourceManager.buildConsumer(
             new ByteArrayDeserializer(), new ByteArrayDeserializer());
+  }
+
+  /**
+   * Raises the maximum record size of the topic above the broker's default of 1 MB, so that large
+   * Bigtable cells can be written to it.
+   */
+  private void allowLargeRecords(String topicName) throws Exception {
+    try (AdminClient adminClient =
+        AdminClient.create(
+            Map.of(
+                AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG,
+                kafkaResourceManager.getBootstrapServers().replace("PLAINTEXT://", "")))) {
+      adminClient
+          .incrementalAlterConfigs(
+              Map.of(
+                  new ConfigResource(ConfigResource.Type.TOPIC, topicName),
+                  List.of(
+                      new AlterConfigOp(
+                          new ConfigEntry(
+                              TopicConfig.MAX_MESSAGE_BYTES_CONFIG,
+                              Integer.toString(TOPIC_MAX_MESSAGE_BYTES)),
+                          AlterConfigOp.OpType.SET))))
+          .all()
+          .get();
+    }
   }
 
   @After
@@ -744,8 +780,7 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
                 kafkaResourceManager.getBootstrapServers().replace("PLAINTEXT://", "")
                     + ";"
                     + topicName)
-            .addParameter("kafkaWriteAuthenticationMethod", "NONE")
-            .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry));
+            .addParameter("kafkaWriteAuthenticationMethod", "NONE");
     for (Map.Entry<String, String> additionalParameter : additionalParameters.entrySet()) {
       builder.addParameter(additionalParameter.getKey(), additionalParameter.getValue());
     }

@@ -21,9 +21,7 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParameters;
 import com.google.cloud.teleport.v2.templates.model.BigtableSource;
-import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.StringUtils;
-import org.joda.time.Duration;
 import org.joda.time.Instant;
 
 public class BigtableChangeStreamsToKafkaOptionsUtils {
@@ -32,9 +30,7 @@ public class BigtableChangeStreamsToKafkaOptionsUtils {
       return Instant.now();
     } else {
       Timestamp ts = Timestamp.parseTimestamp(options.getBigtableChangeStreamStartTimestamp());
-      return Instant.ofEpochSecond(ts.getSeconds())
-          .plus(
-              Duration.millis(TimeUnit.MILLISECONDS.convert(ts.getNanos(), TimeUnit.NANOSECONDS)));
+      return new Instant(ts.getSeconds() * 1000L + ts.getNanos() / 1_000_000L);
     }
   }
 
@@ -50,42 +46,37 @@ public class BigtableChangeStreamsToKafkaOptionsUtils {
   }
 
   public static void validate(BigtableChangeStreamsToKafkaOptions options) {
-    // DLQ
-    checkArgument(options.getDlqRetryMinutes() > 0, "dlqRetryMinutes must be positive");
-    checkArgument(options.getDlqMaxRetries() >= 0, "dlqMaxRetries cannot be negative");
-
     // Kafka non-auth
     checkArgument(
-        !options.getWriteBootstrapServerAndTopic().trim().isEmpty(),
+        StringUtils.isNotBlank(options.getWriteBootstrapServerAndTopic()),
         "WriteBootstrapServerAndTopic must be set");
     // Kafka auth
-    if (options.getKafkaWriteAuthenticationMethod().equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
+    if (KafkaAuthenticationMethod.SASL_PLAIN.equals(options.getKafkaWriteAuthenticationMethod())) {
       checkArgument(
-          !options.getKafkaWriteUsernameSecretId().trim().isEmpty(),
+          StringUtils.isNotBlank(options.getKafkaWriteUsernameSecretId()),
           "KafkaWriteUsernameSecretId required to access username for destination Kafka");
       checkArgument(
-          !options.getKafkaWritePasswordSecretId().trim().isEmpty(),
+          StringUtils.isNotBlank(options.getKafkaWritePasswordSecretId()),
           "KafkaWritePasswordSecretId required to access password for destination Kafka");
-    } else if (options.getKafkaWriteAuthenticationMethod().equals(KafkaAuthenticationMethod.TLS)) {
+    } else if (KafkaAuthenticationMethod.TLS.equals(options.getKafkaWriteAuthenticationMethod())) {
       checkArgument(
-          !options.getKafkaWriteTruststoreLocation().trim().isEmpty(),
+          StringUtils.isNotBlank(options.getKafkaWriteTruststoreLocation()),
           "KafkaWriteTruststoreLocation for trust store certificate required for ssl authentication");
       checkArgument(
-          !options.getKafkaWriteTruststorePasswordSecretId().trim().isEmpty(),
+          StringUtils.isNotBlank(options.getKafkaWriteTruststorePasswordSecretId()),
           "KafkaWriteTruststorePasswordSecretId for trust store password required for accessing truststore");
       checkArgument(
-          !options.getKafkaWriteKeystoreLocation().trim().isEmpty(),
+          StringUtils.isNotBlank(options.getKafkaWriteKeystoreLocation()),
           "KafkaWriteKeystoreLocation for key store location required for ssl authentication");
       checkArgument(
-          !options.getKafkaWriteKeystorePasswordSecretId().trim().isEmpty(),
+          StringUtils.isNotBlank(options.getKafkaWriteKeystorePasswordSecretId()),
           "KafkaWriteKeystorePasswordSecretId for key store password required to access key store");
       checkArgument(
-          !options.getKafkaWriteKeyPasswordSecretId().trim().isEmpty(),
+          StringUtils.isNotBlank(options.getKafkaWriteKeyPasswordSecretId()),
           "KafkaWriteKeyPasswordSecretId for key password secret id version required for SSL authentication");
-    } else if (options.getKafkaWriteAuthenticationMethod().equals(KafkaAuthenticationMethod.NONE)
-        || options
-            .getKafkaWriteAuthenticationMethod()
-            .equals(KafkaAuthenticationMethod.APPLICATION_DEFAULT_CREDENTIALS)) {
+    } else if (KafkaAuthenticationMethod.NONE.equals(options.getKafkaWriteAuthenticationMethod())
+        || KafkaAuthenticationMethod.APPLICATION_DEFAULT_CREDENTIALS.equals(
+            options.getKafkaWriteAuthenticationMethod())) {
       // No additional validation is required for these auth mechanisms since they don't depend on
       // any specific pipeline options.
     } else {
@@ -94,54 +85,51 @@ public class BigtableChangeStreamsToKafkaOptionsUtils {
               + options.getKafkaWriteAuthenticationMethod());
     }
 
-    if (options
-        .getMessageFormat()
-        .equals(KafkaTemplateParameters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)) {
+    if (KafkaTemplateParameters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT.equals(
+        options.getMessageFormat())) {
       // Schema Registry non-auth
       checkArgument(
-          !options.getSchemaRegistryConnectionUrl().trim().isEmpty(),
+          StringUtils.isNotBlank(options.getSchemaRegistryConnectionUrl()),
           "SchemaRegistryConnectionUrl must be set when MessageFormat is set to '"
               + KafkaTemplateParameters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT
               + "'");
       checkArgument(
-          options.getSchemaFormat().equals(KafkaTemplateParameters.SchemaFormat.SCHEMA_REGISTRY),
+          KafkaTemplateParameters.SchemaFormat.SCHEMA_REGISTRY.equals(options.getSchemaFormat()),
           "SchemaFormat must be set to '"
               + KafkaTemplateParameters.SchemaFormat.SCHEMA_REGISTRY
               + "' when MessageFormat is set to '"
               + KafkaTemplateParameters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT
               + "'");
       // Schema Registry auth
-      if (options.getSchemaRegistryAuthenticationMode().equals(KafkaAuthenticationMethod.TLS)) {
+      if (KafkaAuthenticationMethod.TLS.equals(options.getSchemaRegistryAuthenticationMode())) {
         checkArgument(
-            !options.getSchemaRegistryTruststoreLocation().trim().isEmpty(),
+            StringUtils.isNotBlank(options.getSchemaRegistryTruststoreLocation()),
             "SchemaRegistryTruststoreLocation for trust store certificate required for ssl authentication");
         checkArgument(
-            !options.getSchemaRegistryTruststorePasswordSecretId().trim().isEmpty(),
+            StringUtils.isNotBlank(options.getSchemaRegistryTruststorePasswordSecretId()),
             "SchemaRegistryTruststorePasswordSecretId for trust store password required for accessing truststore");
         checkArgument(
-            !options.getSchemaRegistryKeystoreLocation().trim().isEmpty(),
+            StringUtils.isNotBlank(options.getSchemaRegistryKeystoreLocation()),
             "SchemaRegistryKeystoreLocation for key store location required for ssl authentication");
         checkArgument(
-            !options.getSchemaRegistryKeystorePasswordSecretId().trim().isEmpty(),
+            StringUtils.isNotBlank(options.getSchemaRegistryKeystorePasswordSecretId()),
             "SchemaRegistryKeystorePasswordSecretId for key store password required to access key store");
         checkArgument(
-            !options.getSchemaRegistryKeyPasswordSecretId().trim().isEmpty(),
+            StringUtils.isNotBlank(options.getSchemaRegistryKeyPasswordSecretId()),
             "SchemaRegistryKeyPasswordSecretId for source key password secret id version required for SSL authentication");
-      } else if (options
-          .getSchemaRegistryAuthenticationMode()
-          .equals(KafkaAuthenticationMethod.OAUTH)) {
+      } else if (KafkaAuthenticationMethod.OAUTH.equals(
+          options.getSchemaRegistryAuthenticationMode())) {
         checkArgument(
-            !options.getSchemaRegistryOauthTokenEndpointUrl().trim().isEmpty(),
+            StringUtils.isNotBlank(options.getSchemaRegistryOauthTokenEndpointUrl()),
             "SchemaRegistryOauthTokenEndpointUrl for OAuth token endpoint URL required for oauth authentication");
         checkArgument(
-            !options.getSchemaRegistryOauthClientId().trim().isEmpty(),
+            StringUtils.isNotBlank(options.getSchemaRegistryOauthClientId()),
             "SchemaRegistryOauthClientId for OAuth client ID required for oauth authentication");
         checkArgument(
-            !options.getSchemaRegistryOauthClientSecretId().trim().isEmpty(),
+            StringUtils.isNotBlank(options.getSchemaRegistryOauthClientSecretId()),
             "SchemaRegistryOauthClientSecretId for OAuth client secret ID required for oauth authentication");
-      } else if (options
-          .getSchemaRegistryAuthenticationMode()
-          .equals(KafkaAuthenticationMethod.NONE)) {
+      } else if (KafkaAuthenticationMethod.NONE.equals(
+          options.getSchemaRegistryAuthenticationMode())) {
         // No additional validation is required since it doesn't depend on any specific pipeline
         // options.
       } else {

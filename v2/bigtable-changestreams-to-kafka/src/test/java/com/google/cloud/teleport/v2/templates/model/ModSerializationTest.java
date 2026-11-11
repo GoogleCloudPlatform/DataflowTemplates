@@ -89,7 +89,7 @@ public class ModSerializationTest {
     }
 
     String changeJson = Mod.fromJson(mod.toJson()).getChangeJson();
-    KafkaUtils kafkaUtils = new KafkaUtils("UTF-8");
+    KafkaUtils kafkaUtils = new KafkaUtils();
     // Simpler version of the record and serializer selection logic from WriteToKafkaFn.
     // KafkaAvroSerializer is missing from this test, because it differs from
     // BinaryAvroSerializer mostly by using external schema  registry - it is tested

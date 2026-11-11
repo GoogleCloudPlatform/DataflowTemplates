@@ -38,34 +38,4 @@ public interface BigtableChangeStreamsToKafkaOptions
   String getDlqDirectory();
 
   void setDlqDirectory(String dlqDirectory);
-
-  @TemplateParameter.Integer(
-      order = 2,
-      optional = true,
-      description = "Dead letter queue retry minutes",
-      helpText = "The number of minutes between dead-letter queue retries. Defaults to `10`.")
-  @Default.Integer(10)
-  Integer getDlqRetryMinutes();
-
-  void setDlqRetryMinutes(Integer dlqRetryMinutes);
-
-  @TemplateParameter.Integer(
-      order = 3,
-      optional = true,
-      description = "Dead letter maximum retries",
-      helpText = "The dead letter maximum retries. Defaults to `5`.")
-  @Default.Integer(5)
-  Integer getDlqMaxRetries();
-
-  void setDlqMaxRetries(Integer dlqMaxRetries);
-
-  @TemplateParameter.Boolean(
-      order = 4,
-      optional = true,
-      description = "Whether or not to disable retries for the DLQ",
-      helpText = "Whether or not to disable retries for the DLQ")
-  @Default.Boolean(false)
-  boolean getDisableDlqRetries();
-
-  void setDisableDlqRetries(boolean value);
 }

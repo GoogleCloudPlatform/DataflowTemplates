@@ -19,11 +19,8 @@ import com.google.cloud.teleport.bigtable.ChangelogEntryMessage;
 import com.google.cloud.teleport.bigtable.ChangelogEntryMessageBase64;
 import com.google.cloud.teleport.bigtable.ModType;
 import com.google.cloud.teleport.v2.templates.model.KafkaFields;
-import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 import java.util.Base64;
 import java.util.EnumMap;
 import org.apache.avro.generic.GenericRecord;
@@ -51,7 +48,7 @@ public class KafkaUtils implements Serializable {
     FORMATTERS.put(
         KafkaFields.COLUMN,
         (k, chg) -> {
-          if (!chg.has(KafkaFields.COLUMN.name())) {
+          if (chg.isNull(KafkaFields.COLUMN.name())) {
             return null;
           }
           String qualifierEncoded = chg.getString(KafkaFields.COLUMN.name());
@@ -60,7 +57,7 @@ public class KafkaUtils implements Serializable {
     FORMATTERS.put(
         KafkaFields.TIMESTAMP,
         (k, chg) -> {
-          if (!chg.has(KafkaFields.TIMESTAMP.name())) {
+          if (chg.isNull(KafkaFields.TIMESTAMP.name())) {
             return null;
           }
           return chg.getLong(KafkaFields.TIMESTAMP.name());
@@ -68,7 +65,7 @@ public class KafkaUtils implements Serializable {
     FORMATTERS.put(
         KafkaFields.VALUE,
         (k, chg) -> {
-          if (!chg.has(KafkaFields.VALUE.name())) {
+          if (chg.isNull(KafkaFields.VALUE.name())) {
             return null;
           }
 
@@ -78,7 +75,7 @@ public class KafkaUtils implements Serializable {
     FORMATTERS.put(
         KafkaFields.TIMESTAMP_FROM,
         (k, chg) -> {
-          if (!chg.has(KafkaFields.TIMESTAMP_FROM.name())) {
+          if (chg.isNull(KafkaFields.TIMESTAMP_FROM.name())) {
             return null;
           }
           return chg.getLong(KafkaFields.TIMESTAMP_FROM.name());
@@ -86,7 +83,7 @@ public class KafkaUtils implements Serializable {
     FORMATTERS.put(
         KafkaFields.TIMESTAMP_TO,
         (k, chg) -> {
-          if (!chg.has(KafkaFields.TIMESTAMP_TO.name())) {
+          if (chg.isNull(KafkaFields.TIMESTAMP_TO.name())) {
             return null;
           }
           return chg.getLong(KafkaFields.TIMESTAMP_TO.name());
@@ -109,23 +106,6 @@ public class KafkaUtils implements Serializable {
 
   private static byte[] convertBase64ToBytes(String base64String) {
     return Base64.getDecoder().decode(base64String);
-  }
-
-  private final String charset;
-  private transient Charset charsetObj;
-
-  public KafkaUtils(String charset) {
-    this.charset = charset;
-    this.charsetObj = Charset.forName(charset);
-  }
-
-  private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
-    in.defaultReadObject();
-    charsetObj = Charset.forName(charset);
-  }
-
-  private String convertBase64ToString(String base64String) {
-    return new String(Base64.getDecoder().decode(base64String), charsetObj);
   }
 
   public ProducerRecord<byte[], GenericRecord> getProducerRecord(

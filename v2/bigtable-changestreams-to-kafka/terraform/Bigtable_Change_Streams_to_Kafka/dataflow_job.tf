@@ -39,24 +39,6 @@ variable "dlqDirectory" {
   default     = null
 }
 
-variable "dlqRetryMinutes" {
-  type        = number
-  description = "The number of minutes between dead-letter queue retries. Defaults to `10`."
-  default     = null
-}
-
-variable "dlqMaxRetries" {
-  type        = number
-  description = "The dead letter maximum retries. Defaults to `5`."
-  default     = null
-}
-
-variable "disableDlqRetries" {
-  type        = bool
-  description = "Whether or not to disable retries for the DLQ. Defaults to: false."
-  default     = null
-}
-
 variable "bigtableChangeStreamMetadataInstanceId" {
   type        = string
   description = "The Bigtable change streams metadata instance ID. Defaults to empty."
@@ -110,6 +92,12 @@ variable "bigtableChangeStreamName" {
 variable "bigtableChangeStreamResume" {
   type        = bool
   description = "When set to `true`, a new pipeline resumes processing from the point at which a previously running pipeline with the same `bigtableChangeStreamName` value stopped. If the pipeline with the given `bigtableChangeStreamName` value has never run, a new pipeline doesn't start. When set to `false`, a new pipeline starts. If a pipeline with the same `bigtableChangeStreamName` value has already run for the given source, a new pipeline doesn't start. Defaults to `false`."
+  default     = null
+}
+
+variable "bigtableReadChangeStreamTimeoutMs" {
+  type        = number
+  description = "The timeout for Bigtable ReadChangeStream requests in milliseconds."
   default     = null
 }
 
@@ -241,7 +229,7 @@ variable "binaryAvroSchemaPath" {
 
 variable "schemaRegistryAuthenticationMode" {
   type        = string
-  description = "Schema Registry authentication mode. Can be NONE, TLS or OAUTH. Defaults to: NONE."
+  description = "The mode of authentication to use with the Schema Registry. Use `NONE` for no authentication, `TLS` for certificate-based authentication and `OAUTH` for OAuth2 authentication. `APPLICATION_DEFAULT_CREDENTIALS` should be used only for Google Cloud Managed Service for Apache Kafka Schema Registry, it allows to authenticate using application default credentials."
   default     = null
 }
 
@@ -425,9 +413,6 @@ resource "google_dataflow_flex_template_job" "generated" {
   container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Bigtable_Change_Streams_to_Kafka"
   parameters = {
     dlqDirectory                                 = var.dlqDirectory
-    dlqRetryMinutes                              = tostring(var.dlqRetryMinutes)
-    dlqMaxRetries                                = tostring(var.dlqMaxRetries)
-    disableDlqRetries                            = tostring(var.disableDlqRetries)
     bigtableChangeStreamMetadataInstanceId       = var.bigtableChangeStreamMetadataInstanceId
     bigtableChangeStreamMetadataTableTableId     = var.bigtableChangeStreamMetadataTableTableId
     bigtableChangeStreamAppProfile               = var.bigtableChangeStreamAppProfile
@@ -437,6 +422,7 @@ resource "google_dataflow_flex_template_job" "generated" {
     bigtableChangeStreamIgnoreColumns            = var.bigtableChangeStreamIgnoreColumns
     bigtableChangeStreamName                     = var.bigtableChangeStreamName
     bigtableChangeStreamResume                   = tostring(var.bigtableChangeStreamResume)
+    bigtableReadChangeStreamTimeoutMs            = tostring(var.bigtableReadChangeStreamTimeoutMs)
     bigtableReadInstanceId                       = var.bigtableReadInstanceId
     bigtableReadTableId                          = var.bigtableReadTableId
     bigtableReadProjectId                        = var.bigtableReadProjectId
