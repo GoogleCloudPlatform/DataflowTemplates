@@ -16,7 +16,9 @@
 # (python/src/main/python/yaml-template/ml_dependencies.py) follow the versions
 # that apache-beam declares for the same packages. Runs on PRs that change these
 # dependencies or the version of apache-beam used by the template, and every 12
-# hours on the latest commit of main.
+# hours on the latest commit of main. Since this check does not block merging
+# PRs, an issue is opened (or the open one is updated) once 3 scheduled runs in
+# a row fail, so that the failure is noticed.
 name: YAML Template ML Dependencies
 
 on:
@@ -44,6 +46,10 @@ jobs:
     name: Check ML Dependency Versions
     timeout-minutes: 15
     runs-on: ubuntu-latest
+    permissions:
+      actions: read # To count the scheduled runs that failed in a row.
+      contents: read
+      issues: write # To open an issue if scheduled runs fail.
     steps:
       - name: Checkout Code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -60,8 +66,48 @@ jobs:
       - name: Install dependencies
         working-directory: python
         run: pip install --require-hashes --no-deps -r src/main/python/yaml-template/requirements.txt
+      # Saves the output for the issue opened if scheduled runs fail. Unlike the
+      # default shell, `bash` sets pipefail, so the step fails if the script does.
       - name: Compare ML dependency versions with apache-beam
+        id: check
         working-directory: python
+        shell: bash
         run: |
           PYTHONPATH=src/main/python/yaml-template python \
-            src/test/python/yaml-template/check_ml_dependencies.py
+            src/test/python/yaml-template/check_ml_dependencies.py 2>&1 |
+            tee "$RUNNER_TEMP/check_ml_dependencies.txt"
+      # The steps below run if any step fails, so that it's also noticed if the
+      # check can't run, for example because the requirements of the template
+      # can't be installed.
+      - name: Describe the failure
+        if: failure() && github.event_name == 'schedule'
+        env:
+          CHECK_OUTCOME: ${{ steps.check.outcome }}
+        run: |
+          # shellcheck disable=SC2016 # The backticks are Markdown, not commands.
+          {
+            if [[ "$CHECK_OUTCOME" == failure ]]; then
+              echo 'This usually means that the versions of the ML dependencies' \
+                'that the YAML template installs' \
+                '(`python/src/main/python/yaml-template/ml_dependencies.py`) no' \
+                'longer follow the versions that apache-beam declares for the same' \
+                'packages, for example after apache-beam was upgraded. Update' \
+                '`ml_dependencies.py` as described below (and the expected values' \
+                'in `ml_dependencies_test.py`).'
+              echo
+              echo '```'
+              cat "$RUNNER_TEMP/check_ml_dependencies.txt"
+              echo '```'
+            else
+              echo 'A step before the check failed (for example, installing the' \
+                'requirements of the YAML template), so the versions were not' \
+                'compared. See the logs of the run for details.'
+            fi
+          } > "$RUNNER_TEMP/failure_details.md"
+      - name: Open or update an issue
+        if: failure() && github.event_name == 'schedule'
+        uses: ./.github/actions/report-workflow-failure
+        with:
+          title: YAML Template ML Dependencies check failed
+          details-file: ${{ runner.temp }}/failure_details.md
+          consecutive-failures: 3
