@@ -17,8 +17,8 @@
 # that apache-beam declares for the same packages. Runs on PRs that change these
 # dependencies or the version of apache-beam used by the template, and every 12
 # hours on the latest commit of main. Since this check does not block merging
-# PRs, a scheduled run that fails opens an issue (or updates the open one), so
-# that the failure is noticed.
+# PRs, an issue is opened (or the open one is updated) once 3 scheduled runs in
+# a row fail, so that the failure is noticed.
 name: YAML Template ML Dependencies
 
 on:
@@ -47,8 +47,9 @@ jobs:
     timeout-minutes: 15
     runs-on: ubuntu-latest
     permissions:
+      actions: read # To count the scheduled runs that failed in a row.
       contents: read
-      issues: write # To open an issue if a scheduled run fails.
+      issues: write # To open an issue if scheduled runs fail.
     steps:
       - name: Checkout Code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -65,7 +66,7 @@ jobs:
       - name: Install dependencies
         working-directory: python
         run: pip install --require-hashes --no-deps -r src/main/python/yaml-template/requirements.txt
-      # Saves the output for the issue opened if a scheduled run fails. Unlike the
+      # Saves the output for the issue opened if scheduled runs fail. Unlike the
       # default shell, `bash` sets pipefail, so the step fails if the script does.
       - name: Compare ML dependency versions with apache-beam
         id: check
@@ -75,25 +76,16 @@ jobs:
           PYTHONPATH=src/main/python/yaml-template python \
             src/test/python/yaml-template/check_ml_dependencies.py 2>&1 |
             tee "$RUNNER_TEMP/check_ml_dependencies.txt"
-      # Runs if any step fails, so that it's also noticed if the check can't run,
-      # for example because the requirements of the template can't be installed.
-      - name: Open or update an issue
+      # The steps below run if any step fails, so that it's also noticed if the
+      # check can't run, for example because the requirements of the template
+      # can't be installed.
+      - name: Describe the failure
         if: failure() && github.event_name == 'schedule'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
           CHECK_OUTCOME: ${{ steps.check.outcome }}
-          TITLE: YAML Template ML Dependencies check failed
         run: |
-          repo_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
-          run_url="$repo_url/actions/runs/$GITHUB_RUN_ID"
-          workflow_url="$repo_url/actions/workflows/yaml-ml-dependencies.yml"
-          body_file="$RUNNER_TEMP/issue_body.md"
           # shellcheck disable=SC2016 # The backticks are Markdown, not commands.
           {
-            echo "A [scheduled run]($run_url) of the" \
-              "[YAML Template ML Dependencies]($workflow_url) workflow failed on main."
-            echo
             if [[ "$CHECK_OUTCOME" == failure ]]; then
               echo 'This usually means that the versions of the ML dependencies' \
                 'that the YAML template installs' \
@@ -111,18 +103,11 @@ jobs:
                 'requirements of the YAML template), so the versions were not' \
                 'compared. See the logs of the run for details.'
             fi
-            echo
-            echo 'Close this issue once the workflow passes again.'
-          } > "$body_file"
-
-          # Updates the open issue, if any, instead of opening another one. Note
-          # that `--app github-actions` instead of --author would not find it, so
-          # every failed run would open a new issue.
-          number=$(gh issue list --author 'github-actions[bot]' --state open \
-            --limit 1000 --json number,title \
-            --jq 'map(select(.title == env.TITLE))[0].number // empty')
-          if [[ -n "$number" ]]; then
-            gh issue edit "$number" --body-file "$body_file"
-          else
-            gh issue create --title "$TITLE" --body-file "$body_file"
-          fi
+          } > "$RUNNER_TEMP/failure_details.md"
+      - name: Open or update an issue
+        if: failure() && github.event_name == 'schedule'
+        uses: ./.github/actions/report-workflow-failure
+        with:
+          title: YAML Template ML Dependencies check failed
+          details-file: ${{ runner.temp }}/failure_details.md
+          consecutive-failures: 3
