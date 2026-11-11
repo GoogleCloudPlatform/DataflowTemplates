@@ -57,7 +57,6 @@ import org.joda.time.Instant;
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/avro-to-spanner-dv",
     contactInformation = "https://cloud.google.com/support",
-    preview = true,
     requirements = {
       "The Cloud Storage directory for Avro files must exist before pipeline execution.",
       "The target BigQuery dataset for validation results must exist before pipeline execution.",
