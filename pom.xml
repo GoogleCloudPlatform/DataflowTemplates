@@ -82,7 +82,7 @@
     <hadoop.version>3.4.3</hadoop.version>
     <hamcrest.version>2.1</hamcrest.version>
     <hbase.client.version>2.6.7-hadoop3</hbase.client.version>
-    <iceberg.version>1.10.1</iceberg.version>
+    <iceberg.version>1.12.0</iceberg.version>
     <jackson.version>2.22.4</jackson.version>
     <jettison.version>1.5.4</jettison.version>
     <json.version>20260719</json.version>
