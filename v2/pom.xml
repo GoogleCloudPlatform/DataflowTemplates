@@ -40,7 +40,7 @@
         <base-container-image>gcr.io/dataflow-templates-base/java${java.version}-template-launcher-base</base-container-image>
         <base-container-image.version>latest</base-container-image.version>
         <excluded.spanner.tests>com.google.cloud.teleport.v2.spanner.IntegrationTest</excluded.spanner.tests>
-        <astra-sdk.version>2.2.0</astra-sdk.version>
+        <astra-sdk.version>2.3.2</astra-sdk.version>
         <astra-io.version>4.18.2</astra-io.version>
         <dataplex.api.version>v1-rev20251113-2.0.0</dataplex.api.version>
         <dnsjava.version>3.6.5</dnsjava.version>
