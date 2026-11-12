@@ -46,7 +46,7 @@ import org.slf4j.LoggerFactory;
  * Dataflow template which reads data from Azure Event-hub Topic and writes it to Cloud PubSub.
  *
  * <p>Check out <a
- * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/azure-eventhub-to-pubsub/README_Azure_Eventhub_to_PubSub.md">README</a>
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/googlecloud-and-kafka/README_Azure_Eventhub_to_PubSub.md">README</a>
  * for instructions on how to use or modify this template.
  */
 @Template(
@@ -55,7 +55,7 @@ import org.slf4j.LoggerFactory;
     displayName = "Azure Eventhub to Pubsub",
     description = "A pipeline to extract from Azure Event hub Server to Cloud Pub/Sub Topic.",
     optionsClass = AzureEventhubToPubsub.AzureEventhubToPubsubOptions.class,
-    flexContainerName = "azure-eventhub-to-pubsub",
+    flexContainerName = "googlecloud-and-kafka",
     contactInformation = "https://cloud.google.com/support",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/azure-eventhub-to-pubsub",
