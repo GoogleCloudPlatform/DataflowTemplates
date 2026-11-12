@@ -211,13 +211,9 @@ public class CassandraSslContainerWrapper
       try {
         // Create temporary directory for storing generated certificates and keystores
         tempDir = Files.createTempDirectory("cassandra-ssl").toFile();
-        tempDir.deleteOnExit();
         File keyStoreFile = new File(tempDir, "keystore.jks");
-        keyStoreFile.deleteOnExit();
         File trustStoreFile = new File(tempDir, "truststore.jks");
-        trustStoreFile.deleteOnExit();
         File certFile = new File(tempDir, "cassandra.cer");
-        certFile.deleteOnExit();
 
         String password = "cassandra_ssl_password";
         String keytool = System.getProperty("java.home") + "/bin/keytool";

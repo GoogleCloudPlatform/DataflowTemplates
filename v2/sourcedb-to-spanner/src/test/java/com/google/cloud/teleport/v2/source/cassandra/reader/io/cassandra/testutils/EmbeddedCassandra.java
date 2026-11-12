@@ -96,16 +96,14 @@ public class EmbeddedCassandra implements AutoCloseable {
             .addConfigProperty("storage_port", 0)
             .addSystemProperty("cassandra.jmx.local.port", 0)
             .workingDirectoryDestroyer(WorkingDirectoryDestroyer.deleteAll())
-            .registerShutdownHook(true)
+            .registerShutdownHook(false)
             .addJvmOptions("-Xmx1g", "-Xms1g");
     try {
       if (clientEncryption) {
 
         // Generate temporary keystore and truststore files
         keyStoreFile = java.io.File.createTempFile("client", ".keystore");
-        keyStoreFile.deleteOnExit();
         trustStoreFile = java.io.File.createTempFile("client", ".truststore");
-        trustStoreFile.deleteOnExit();
         builder =
             builder
                 .addConfigProperty("client_encryption_options.enabled", true)

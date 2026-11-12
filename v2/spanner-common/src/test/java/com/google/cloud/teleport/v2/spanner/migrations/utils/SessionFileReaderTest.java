@@ -66,7 +66,6 @@ public class SessionFileReaderTest {
   @Test(expected = RuntimeException.class)
   public void readSessionFileWithMissingSpannerSchema() throws Exception {
     Path sessionFile = Files.createTempFile("session-file-without-SpSchema", ".json");
-    sessionFile.toFile().deleteOnExit();
     try {
       Charset charset = Charset.forName("UTF-8");
       try (BufferedWriter writer = Files.newBufferedWriter(sessionFile, charset)) {
@@ -84,7 +83,6 @@ public class SessionFileReaderTest {
   @Test(expected = RuntimeException.class)
   public void readSessionFileWithMissingSyntheicPK() throws Exception {
     Path sessionFile = Files.createTempFile("session-file-without-SyntheticPKey", ".json");
-    sessionFile.toFile().deleteOnExit();
     try {
       Charset charset = Charset.forName("UTF-8");
       try (BufferedWriter writer = Files.newBufferedWriter(sessionFile, charset)) {
