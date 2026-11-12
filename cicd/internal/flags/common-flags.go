@@ -43,8 +43,6 @@ var (
 			"plugins/templates-maven-plugin",
 		},
 		SPANNER: {"v2/datastream-to-spanner/",
-			"v2/spanner-change-streams-to-sharded-file-sink/",
-			"v2/gcs-to-sourcedb/",
 			"v2/sourcedb-to-spanner/",
 			"v2/spanner-to-sourcedb/",
 			"v2/spanner-custom-shard/",
