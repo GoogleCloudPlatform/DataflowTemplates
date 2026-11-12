@@ -46,21 +46,21 @@ func TestGetModulesForPaths(t *testing.T) {
 			input: []string{
 				"src/something",
 				"it/something",
-				"v2/pubsub-binary-to-bigquery/avro",
+				"v2/googlecloud-to-googlecloud/avro",
 				"src/something-else",
-				"v2/pubsub-binary-to-bigquery/proto",
+				"v2/googlecloud-to-googlecloud/proto",
 				"v2/something",
 			},
 			expected: map[string][]string{
 				ProjectRoot: []string{},
 				ItRoot:      []string{},
-				FlexRoot:    []string{"pubsub-binary-to-bigquery", ""},
+				FlexRoot:    []string{"googlecloud-to-googlecloud", ""},
 			},
 		},
 		{
-			input: []string{"v2/pubsub-cdc-to-bigquery", "v2/pubsub-binary-to-bigquery"},
+			input: []string{"v2/dataplex", "v2/googlecloud-to-googlecloud"},
 			expected: map[string][]string{
-				FlexRoot: []string{"pubsub-cdc-to-bigquery", "pubsub-binary-to-bigquery"},
+				FlexRoot: []string{"dataplex", "googlecloud-to-googlecloud"},
 			},
 		},
 		{

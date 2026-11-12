@@ -49,7 +49,6 @@ var (
 			"v2/gcs-spanner-dv/",
 			"plugins/templates-maven-plugin"},
 		BIGTABLE: {"v2/bigtable-common/",
-			"v2/bigquery-to-bigtable/",
 			"v2/bigtable-changestreams-to-hbase/",
 			"plugins/templates-maven-plugin",
 		},

@@ -31,7 +31,6 @@ on:
       - 'v2/bigtable-common/**'
       # bigtable template paths
       - '.github/workflows/bigtable-pr.yml'
-      - 'v2/bigquery-to-bigtable/**'
       - 'v2/bigtable-changestreams-to-hbase/**'
   schedule:
     - cron: "9 */12 * * *" # Adjusted cron

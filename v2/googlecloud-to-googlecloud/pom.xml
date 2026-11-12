@@ -28,6 +28,11 @@
 
   <artifactId>googlecloud-to-googlecloud</artifactId>
 
+  <!-- Override Firestore and proto version to enable setting the Firestore
+       data access mode in tests. -->
+  <properties>
+    <firestore.version>3.48.0</firestore.version>
+  </properties>
 
   <build>
     <plugins>
@@ -252,6 +257,30 @@
     <dependency>
       <groupId>com.google.cloud</groupId>
       <artifactId>google-cloud-aiplatform</artifactId>
+    </dependency>
+    <!-- Override Firestore and proto version to enable setting the Firestore
+         data access mode in tests. -->
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-firestore</artifactId>
+      <version>${firestore.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.api.grpc</groupId>
+      <artifactId>proto-google-cloud-firestore-v1</artifactId>
+      <version>${firestore.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-firestore-admin</artifactId>
+      <version>${firestore.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.api.grpc</groupId>
+      <artifactId>proto-google-cloud-firestore-admin-v1</artifactId>
+      <version>${firestore.version}</version>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 </project>
