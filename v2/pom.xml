@@ -670,7 +670,6 @@
         <module>elasticsearch-common</module>
         <module>file-format-conversion</module>
         <module>firestore-to-firestore</module>
-        <module>gcs-to-sourcedb</module>
         <module>gcs-spanner-dv</module>
         <module>googlecloud-to-elasticsearch</module>
         <module>googlecloud-to-googlecloud</module>
@@ -695,7 +694,6 @@
         <module>pubsub-cdc-to-bigquery</module>
         <module>pubsub-to-redis</module>
         <module>sourcedb-to-spanner</module>
-        <module>spanner-change-streams-to-sharded-file-sink</module>
         <module>spanner-common</module>
         <module>spanner-custom-shard</module>
         <module>spanner-migrations-sdk</module>
