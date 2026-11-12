@@ -66,27 +66,37 @@ public class SessionFileReaderTest {
   @Test(expected = RuntimeException.class)
   public void readSessionFileWithMissingSpannerSchema() throws Exception {
     Path sessionFile = Files.createTempFile("session-file-without-SpSchema", ".json");
-    Charset charset = Charset.forName("UTF-8");
-    try (BufferedWriter writer = Files.newBufferedWriter(sessionFile, charset)) {
-      String jsonString = getSessionStringWithoutSpSchema();
-      writer.write(jsonString, 0, jsonString.length());
-    } catch (IOException e) {
-      e.printStackTrace();
+    sessionFile.toFile().deleteOnExit();
+    try {
+      Charset charset = Charset.forName("UTF-8");
+      try (BufferedWriter writer = Files.newBufferedWriter(sessionFile, charset)) {
+        String jsonString = getSessionStringWithoutSpSchema();
+        writer.write(jsonString, 0, jsonString.length());
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+      Schema schema = SessionFileReader.read(sessionFile.toString());
+    } finally {
+      Files.deleteIfExists(sessionFile);
     }
-    Schema schema = SessionFileReader.read(sessionFile.toString());
   }
 
   @Test(expected = RuntimeException.class)
   public void readSessionFileWithMissingSyntheicPK() throws Exception {
     Path sessionFile = Files.createTempFile("session-file-without-SyntheticPKey", ".json");
-    Charset charset = Charset.forName("UTF-8");
-    try (BufferedWriter writer = Files.newBufferedWriter(sessionFile, charset)) {
-      String jsonString = getSessionStringWithoutSyntheticPK();
-      writer.write(jsonString, 0, jsonString.length());
-    } catch (IOException e) {
-      e.printStackTrace();
+    sessionFile.toFile().deleteOnExit();
+    try {
+      Charset charset = Charset.forName("UTF-8");
+      try (BufferedWriter writer = Files.newBufferedWriter(sessionFile, charset)) {
+        String jsonString = getSessionStringWithoutSyntheticPK();
+        writer.write(jsonString, 0, jsonString.length());
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+      Schema schema = SessionFileReader.read(sessionFile.toString());
+    } finally {
+      Files.deleteIfExists(sessionFile);
     }
-    Schema schema = SessionFileReader.read(sessionFile.toString());
   }
 
   @Test(expected = RuntimeException.class)
