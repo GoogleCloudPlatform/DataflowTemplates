@@ -106,7 +106,7 @@ import org.slf4j.LoggerFactory;
         "A pipeline that converts file format of Cloud Storage files, registering metadata for the"
             + " newly created files in Dataplex.",
     optionsClass = FileFormatConversionOptions.class,
-    flexContainerName = "dataplex-file-format-conversion",
+    flexContainerName = "dataplex",
     contactInformation = "https://cloud.google.com/support")
 public class DataplexFileFormatConversion {
 
