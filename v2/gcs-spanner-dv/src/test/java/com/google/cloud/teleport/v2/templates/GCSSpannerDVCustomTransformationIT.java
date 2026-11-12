@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.common.truth.Truth.assertThat;
+
 import com.google.cloud.ByteArray;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Mutation;
@@ -178,6 +180,17 @@ public class GCSSpannerDVCustomTransformationIT extends GCSSpannerDVITBase {
                 /* mismatchRowCount= */ 0L)));
 
     GCSSpannerDVTestAsserts.assertMismatchedRecords(bigQueryResourceManager, Arrays.asList());
+
+    // 5. Assert the records-processed counters. The filtered record is not counted.
+    // DirectRunnerClient does not return metrics, so this is only asserted in DataflowRunner tests.
+    assertThat(
+            pipelineLauncher.getMetric(
+                PROJECT, REGION, jobInfo.jobId(), "source_records_processed"))
+        .isEqualTo(1.0);
+    assertThat(
+            pipelineLauncher.getMetric(
+                PROJECT, REGION, jobInfo.jobId(), "spanner_records_processed"))
+        .isEqualTo(1.0);
   }
 
   // TODO: @aasthabharill Add test for scenario where Exception is thrown by Custom transformation

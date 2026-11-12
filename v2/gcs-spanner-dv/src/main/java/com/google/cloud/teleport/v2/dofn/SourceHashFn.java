@@ -24,6 +24,8 @@ import com.google.cloud.teleport.v2.spanner.migrations.utils.CustomTransformatio
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import java.util.Objects;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollectionView;
@@ -37,6 +39,11 @@ public class SourceHashFn extends DoFn<GenericRecord, ComparisonRecord> {
 
   private transient ComparisonRecordMapper comparisonRecordMapper;
   private transient ISpannerMigrationTransformer transformer;
+
+  // Records that were hashed for comparison. Records dropped by the mapper (e.g. filtered by a
+  // custom transformation) are not counted; duplicate records are counted each time.
+  private final Counter recordsProcessed =
+      Metrics.counter(SourceHashFn.class, "source_records_processed");
 
   public SourceHashFn(
       PCollectionView<Ddl> ddlView,
@@ -68,6 +75,7 @@ public class SourceHashFn extends DoFn<GenericRecord, ComparisonRecord> {
     ComparisonRecord comparisonRecord =
         comparisonRecordMapper.mapFrom(Objects.requireNonNull(c.element()));
     if (comparisonRecord != null) {
+      recordsProcessed.inc();
       c.output(comparisonRecord);
     }
   }
