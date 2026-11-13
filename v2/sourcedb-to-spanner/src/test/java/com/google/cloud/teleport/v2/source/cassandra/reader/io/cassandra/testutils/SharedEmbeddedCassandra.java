@@ -89,25 +89,35 @@ public class SharedEmbeddedCassandra implements AutoCloseable {
                   EmbeddedCassandra newCassandra =
                       new EmbeddedCassandra(
                           config.configYaml(), config.cqlScript(), config.clientEncryption());
-                  // Wait for cassandra to be healthy.
-                  int maxRetries = 60;
-                  int retries = 0;
-                  boolean isHealthy = false;
-                  while (retries < maxRetries && !isHealthy) {
-                    isHealthy = newCassandra.isHealthy();
-                    if (!isHealthy) {
-                      try {
-                        Thread.sleep(2000); // Wait for 2 seconds before retrying.
-                      } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
+                  try {
+                    // Wait for cassandra to be healthy.
+                    int maxRetries = 60;
+                    int retries = 0;
+                    boolean isHealthy = false;
+                    while (retries < maxRetries && !isHealthy) {
+                      isHealthy = newCassandra.isHealthy();
+                      if (!isHealthy) {
+                        try {
+                          Thread.sleep(2000); // Wait for 2 seconds before retrying.
+                        } catch (InterruptedException e) {
+                          Thread.currentThread().interrupt();
+                          throw new RuntimeException(e);
+                        }
                       }
+                      retries++;
                     }
-                    retries++;
+                    if (!isHealthy) {
+                      throw new RuntimeException("Embedded cassandra is not healthy after waiting");
+                    }
+                    refCountedCassandra = RefCountedEmbeddedCassandra.create(newCassandra);
+                  } catch (Throwable t) {
+                    try {
+                      newCassandra.close();
+                    } catch (Exception closeException) {
+                      t.addSuppressed(closeException);
+                    }
+                    throw t;
                   }
-                  if (!isHealthy) {
-                    throw new RuntimeException("Embedded cassandra is not healthy after waiting");
-                  }
-                  refCountedCassandra = RefCountedEmbeddedCassandra.create(newCassandra);
                 } catch (IOException e) {
                   throw new RuntimeException(e);
                 }

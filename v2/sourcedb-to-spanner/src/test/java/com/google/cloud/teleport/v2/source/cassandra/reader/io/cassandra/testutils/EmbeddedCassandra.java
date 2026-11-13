@@ -19,7 +19,9 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.github.nosan.embedded.cassandra.Cassandra;
 import com.github.nosan.embedded.cassandra.CassandraBuilder;
 import com.github.nosan.embedded.cassandra.Settings;
+import com.github.nosan.embedded.cassandra.WorkingDirectoryDestroyer;
 import com.github.nosan.embedded.cassandra.commons.ClassPathResource;
+import com.github.nosan.embedded.cassandra.commons.FileUtils;
 import com.github.nosan.embedded.cassandra.cql.CqlScript;
 import com.google.common.collect.ImmutableList;
 import java.io.FileOutputStream;
@@ -78,6 +80,8 @@ public class EmbeddedCassandra implements AutoCloseable {
   /** Temporary file for storing the certificate. */
   private java.io.File trustStoreFile = null;
 
+  private Thread shutdownHookThread = null;
+
   public EmbeddedCassandra(String config, @Nullable String cqlResource, boolean clientEncryption)
       throws IOException {
     var builder =
@@ -91,48 +95,68 @@ public class EmbeddedCassandra implements AutoCloseable {
             .addConfigProperty("native_transport_port", 0)
             .addConfigProperty("storage_port", 0)
             .addSystemProperty("cassandra.jmx.local.port", 0)
-            .registerShutdownHook(true)
+            .workingDirectoryDestroyer(WorkingDirectoryDestroyer.deleteAll())
+            .registerShutdownHook(false)
             .addJvmOptions("-Xmx1g", "-Xms1g");
-    if (clientEncryption) {
+    try {
+      if (clientEncryption) {
 
-      // Generate temporary keystore and truststore files
-      keyStoreFile = java.io.File.createTempFile("client", ".keystore");
-      trustStoreFile = java.io.File.createTempFile("client", ".truststore");
-      builder =
-          builder
-              .addConfigProperty("client_encryption_options.enabled", true)
-              .addConfigProperty("client_encryption_options.optional", true)
-              .addConfigProperty(
-                  "client_encryption_options.keystore", keyStoreFile.getAbsolutePath());
-      createTemporaryKeyStore(keyStoreFile, trustStoreFile);
-    }
-    // Ref: https://stackoverflow.com/questions/78195798/embedded-cassandra-not-working-in-java-21
-    if (Runtime.version().compareTo(Runtime.Version.parse("12")) >= 0) {
-      builder = builder.addSystemProperty("java.security.manager", "allow");
-    }
-    /*
-    * TODO (vardhanvthigle): Get EmbeddedCassandra 4.0 working with our UT JVM.
-    // If we spawn Cassandra 4.0.0 for testing, it tries to set biased locking, which is not recognized by some JVMs.
-    builder = builder.addJvmOptions("-XX:+IgnoreUnrecognizedVMOptions");
-    // This is needed as Cassandra 4.0 goes for deep reflections for java packages.
-    builder = builder.addEnvironmentVariable("JDK_JAVA_OPTIONS", "--add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED"
-        + "--add-opens java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED");
-    builder = builder.version("4.0.15");
-    */
-    embeddedCassandra = builder.build();
-    embeddedCassandra.start();
-    settings = embeddedCassandra.getSettings();
-    clusterName = (String) settings.getConfigProperties().get("cluster_name");
-    contactPoints =
-        ImmutableList.of(new InetSocketAddress(settings.getAddress(), settings.getPort()));
-    if (StringUtils.isNotBlank(cqlResource)) {
-      try (CqlSession session =
-          CqlSession.builder()
-              .addContactPoint(new InetSocketAddress(settings.getAddress(), settings.getPort()))
-              .withLocalDatacenter(LOCAL_DATA_CENTER)
-              .build()) {
-        CqlScript.ofClassPath(cqlResource).forEachStatement(session::execute);
+        // Generate temporary keystore and truststore files
+        keyStoreFile = java.io.File.createTempFile("client", ".keystore");
+        trustStoreFile = java.io.File.createTempFile("client", ".truststore");
+        builder =
+            builder
+                .addConfigProperty("client_encryption_options.enabled", true)
+                .addConfigProperty("client_encryption_options.optional", true)
+                .addConfigProperty(
+                    "client_encryption_options.keystore", keyStoreFile.getAbsolutePath());
+        createTemporaryKeyStore(keyStoreFile, trustStoreFile);
       }
+      // Ref: https://stackoverflow.com/questions/78195798/embedded-cassandra-not-working-in-java-21
+      if (Runtime.version().compareTo(Runtime.Version.parse("12")) >= 0) {
+        builder = builder.addSystemProperty("java.security.manager", "allow");
+      }
+      /*
+      * TODO (vardhanvthigle): Get EmbeddedCassandra 4.0 working with our UT JVM.
+      // If we spawn Cassandra 4.0.0 for testing, it tries to set biased locking, which is not recognized by some JVMs.
+      builder = builder.addJvmOptions("-XX:+IgnoreUnrecognizedVMOptions");
+      // This is needed as Cassandra 4.0 goes for deep reflections for java packages.
+      builder = builder.addEnvironmentVariable("JDK_JAVA_OPTIONS", "--add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED"
+          + "--add-opens java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED");
+      builder = builder.version("4.0.15");
+      */
+      embeddedCassandra = builder.build();
+      shutdownHookThread =
+          new Thread(
+              () -> {
+                try {
+                  close();
+                } catch (Exception ignored) {
+                  // Best-effort cleanup on JVM exit.
+                }
+              });
+      Runtime.getRuntime().addShutdownHook(shutdownHookThread);
+      embeddedCassandra.start();
+      settings = embeddedCassandra.getSettings();
+      clusterName = (String) settings.getConfigProperties().get("cluster_name");
+      contactPoints =
+          ImmutableList.of(new InetSocketAddress(settings.getAddress(), settings.getPort()));
+      if (StringUtils.isNotBlank(cqlResource)) {
+        try (CqlSession session =
+            CqlSession.builder()
+                .addContactPoint(new InetSocketAddress(settings.getAddress(), settings.getPort()))
+                .withLocalDatacenter(LOCAL_DATA_CENTER)
+                .build()) {
+          CqlScript.ofClassPath(cqlResource).forEachStatement(session::execute);
+        }
+      }
+    } catch (Throwable t) {
+      try {
+        close();
+      } catch (Exception closeException) {
+        t.addSuppressed(closeException);
+      }
+      throw t;
     }
   }
 
@@ -288,17 +312,34 @@ public class EmbeddedCassandra implements AutoCloseable {
 
   @Override
   public void close() throws Exception {
-    if (embeddedCassandra != null) {
-      embeddedCassandra.stop();
-    }
-
-    if (keyStoreFile != null && keyStoreFile.exists()) {
-      keyStoreFile.delete();
-      keyStoreFile = null;
-    }
-    if (trustStoreFile != null && trustStoreFile.exists()) {
-      trustStoreFile.delete();
-      trustStoreFile = null;
+    try {
+      if (embeddedCassandra != null) {
+        embeddedCassandra.stop();
+      }
+    } finally {
+      if (embeddedCassandra != null) {
+        try {
+          FileUtils.delete(embeddedCassandra.getWorkingDirectory());
+        } catch (IOException ignored) {
+          // Best-effort cleanup if stop() threw before destroying working directory.
+        }
+      }
+      if (shutdownHookThread != null && shutdownHookThread != Thread.currentThread()) {
+        try {
+          Runtime.getRuntime().removeShutdownHook(shutdownHookThread);
+        } catch (IllegalStateException ignored) {
+          // JVM is already shutting down.
+        }
+        shutdownHookThread = null;
+      }
+      if (keyStoreFile != null && keyStoreFile.exists()) {
+        keyStoreFile.delete();
+        keyStoreFile = null;
+      }
+      if (trustStoreFile != null && trustStoreFile.exists()) {
+        trustStoreFile.delete();
+        trustStoreFile = null;
+      }
     }
   }
 }
