@@ -654,6 +654,7 @@
     <modules>
         <module>astradb-to-bigquery</module>
         <module>bigtable-changestreams-to-hbase</module>
+        <module>bigtable-changestreams-to-kafka</module>
         <module>bigtable-common</module>
         <module>bigquery-to-bigtable</module>
         <module>bigquery-to-parquet</module>
