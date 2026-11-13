@@ -33,6 +33,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.source.config.AstraConnec
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.CassandraConnectionConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardConfig;
 import java.util.Arrays;
+import org.apache.beam.runners.dataflow.options.DataflowWorkerHarnessOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.joda.time.Duration;
@@ -69,14 +70,29 @@ public class SourceDbToSpannerTest {
   }
 
   @Test
+  public void testGetTxnTag() {
+    String[] args = new String[] {"--jobId=123"};
+    DataflowWorkerHarnessOptions options =
+        PipelineOptionsFactory.fromArgs(args).as(DataflowWorkerHarnessOptions.class);
+    String result = SourceDbToSpanner.getTxnTag(options);
+    assertEquals(result, "txBy=bulk-123");
+  }
+
+  @Test
   public void testCreateSpannerConfig() {
 
     SourceDbToSpannerOptions mockOptions =
         mock(SourceDbToSpannerOptions.class, Mockito.withSettings().serializable());
+    DataflowWorkerHarnessOptions mockHarnessOptions =
+        mock(DataflowWorkerHarnessOptions.class, Mockito.withSettings().serializable());
     when(mockOptions.getProjectId()).thenReturn("testProject");
     when(mockOptions.getSpannerHost()).thenReturn("testHost");
     when(mockOptions.getInstanceId()).thenReturn("testInstance");
     when(mockOptions.getDatabaseId()).thenReturn("testDatabaseId");
+    when(mockOptions.as(DataflowWorkerHarnessOptions.class))
+        .thenReturn(null)
+        .thenReturn(mockHarnessOptions);
+    when(mockHarnessOptions.getJobId()).thenReturn("123");
     when(mockOptions.getMaxCommitDelay()).thenReturn(-1L).thenReturn(42L);
 
     // For first set of mocks.
@@ -84,11 +100,15 @@ public class SourceDbToSpannerTest {
     assertEquals(config.getProjectId().get(), "testProject");
     assertEquals(config.getInstanceId().get(), "testInstance");
     assertEquals(config.getDatabaseId().get(), "testDatabaseId");
+    assertEquals(config.getExcludeTxnFromChangeStreams().get(), Boolean.TRUE);
+    assertEquals(config.getTransactionTag().get(), "txBy=bulk-sourcedbToSpanner");
     assertThat(config.getMaxCommitDelay()).isNull();
 
     // For second set of mocks.
     config = SourceDbToSpanner.createSpannerConfig(mockOptions);
     assertEquals(config.getMaxCommitDelay().get(), Duration.millis(42L));
+    assertEquals(config.getExcludeTxnFromChangeStreams().get(), Boolean.TRUE);
+    assertEquals(config.getTransactionTag().get(), "txBy=bulk-123");
   }
 
   @Test
