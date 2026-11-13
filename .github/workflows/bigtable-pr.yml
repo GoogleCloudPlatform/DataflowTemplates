@@ -203,6 +203,7 @@ jobs:
       - name: Integration Test report on GitHub
         uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
         if: always()
+        continue-on-error: true
         with:
           name: Integration Test report on GitHub
           path: '**/surefire-reports/TEST-*.xml'
