@@ -60,9 +60,9 @@ public class CreateMongoDbChangeEventContextFnTest {
     mockFailureReceiver = mock(OutputReceiver.class);
 
     // Stub the get() method of MultiOutputReceiver
-    when(mockReceiver.get(CreateMongoDbChangeEventContextFn.successfulCreationTag))
+    when(mockReceiver.get(CreateMongoDbChangeEventContextFn.SUCCESSFUL_CREATION_TAG))
         .thenReturn(mockSuccessReceiver);
-    when(mockReceiver.get(CreateMongoDbChangeEventContextFn.failedCreationTag))
+    when(mockReceiver.get(CreateMongoDbChangeEventContextFn.FAILED_CREATION_TAG))
         .thenReturn(mockFailureReceiver);
 
     String validPayload =
@@ -94,7 +94,7 @@ public class CreateMongoDbChangeEventContextFnTest {
 
     ArgumentCaptor<MongoDbChangeEventContext> successCaptor =
         ArgumentCaptor.forClass(MongoDbChangeEventContext.class);
-    verify(mockReceiver).get(CreateMongoDbChangeEventContextFn.successfulCreationTag);
+    verify(mockReceiver).get(CreateMongoDbChangeEventContextFn.SUCCESSFUL_CREATION_TAG);
     verify(mockSuccessReceiver, times(1)).output(successCaptor.capture());
     MongoDbChangeEventContext actualContext = successCaptor.getValue();
 
@@ -111,7 +111,7 @@ public class CreateMongoDbChangeEventContextFnTest {
 
     ArgumentCaptor<FailsafeElement<String, String>> failureCaptor =
         ArgumentCaptor.forClass(FailsafeElement.class);
-    verify(mockReceiver).get(CreateMongoDbChangeEventContextFn.failedCreationTag);
+    verify(mockReceiver).get(CreateMongoDbChangeEventContextFn.FAILED_CREATION_TAG);
     verify(mockFailureReceiver, times(1)).output(failureCaptor.capture());
 
     assertEquals(failureElement, failureCaptor.getValue());

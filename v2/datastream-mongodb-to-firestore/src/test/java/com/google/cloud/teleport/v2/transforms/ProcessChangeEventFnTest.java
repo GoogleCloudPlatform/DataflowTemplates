@@ -140,9 +140,10 @@ public class ProcessChangeEventFnTest {
     when(mockShadowCollection.find(mockSession, LOOKUP_BY_DOC_ID)).thenReturn(mockFindIterable);
 
     // Mock the MultiOutputReceiver's get() method
-    when(mockReceiver.get(ProcessChangeEventFn.successfulWriteTag)).thenReturn(mockSuccessReceiver);
-    when(mockReceiver.get(ProcessChangeEventFn.failedWriteTag)).thenReturn(mockFailureReceiver);
-    when(mockReceiver.get(ProcessChangeEventFn.severeFailedWriteTag))
+    when(mockReceiver.get(ProcessChangeEventFn.SUCCESSFUL_WRITE_TAG))
+        .thenReturn(mockSuccessReceiver);
+    when(mockReceiver.get(ProcessChangeEventFn.FAILED_WRITE_TAG)).thenReturn(mockFailureReceiver);
+    when(mockReceiver.get(ProcessChangeEventFn.SEVERE_FAILED_WRITE_TAG))
         .thenReturn(mockSevereFailureReceiver);
   }
 
@@ -164,7 +165,7 @@ public class ProcessChangeEventFnTest {
 
     ArgumentCaptor<MongoDbChangeEventContext> successCaptor =
         ArgumentCaptor.forClass(MongoDbChangeEventContext.class);
-    verify(mockReceiver).get(ProcessChangeEventFn.successfulWriteTag);
+    verify(mockReceiver).get(ProcessChangeEventFn.SUCCESSFUL_WRITE_TAG);
     verify(mockSuccessReceiver, times(1)).output(successCaptor.capture());
     verify(mockSession, never()).abortTransaction();
 
@@ -201,7 +202,7 @@ public class ProcessChangeEventFnTest {
     verify(mockSession).commitTransaction();
     ArgumentCaptor<MongoDbChangeEventContext> successCaptor =
         ArgumentCaptor.forClass(MongoDbChangeEventContext.class);
-    verify(mockReceiver).get(ProcessChangeEventFn.successfulWriteTag);
+    verify(mockReceiver).get(ProcessChangeEventFn.SUCCESSFUL_WRITE_TAG);
     verify(mockSuccessReceiver, times(1)).output(successCaptor.capture());
     verify(mockSession, never()).abortTransaction();
   }
@@ -218,7 +219,7 @@ public class ProcessChangeEventFnTest {
     verify(mockShadowCollection, never()).replaceOne(any(), any(), any(), any());
     ArgumentCaptor<MongoDbChangeEventContext> successCaptor =
         ArgumentCaptor.forClass(MongoDbChangeEventContext.class);
-    verify(mockReceiver).get(ProcessChangeEventFn.successfulWriteTag);
+    verify(mockReceiver).get(ProcessChangeEventFn.SUCCESSFUL_WRITE_TAG);
     verify(mockSuccessReceiver, times(1)).output(successCaptor.capture());
     verify(mockSession, never()).abortTransaction();
 
@@ -260,10 +261,10 @@ public class ProcessChangeEventFnTest {
     verify(mockShadowCollection).find(mockSession, LOOKUP_BY_DOC_ID);
     verify(mockDataCollection).deleteOne(mockSession, LOOKUP_BY_DOC_ID);
     verify(mockSession).commitTransaction();
-    verify(mockReceiver).get(ProcessChangeEventFn.successfulWriteTag);
+    verify(mockReceiver).get(ProcessChangeEventFn.SUCCESSFUL_WRITE_TAG);
     ArgumentCaptor<MongoDbChangeEventContext> successCaptor =
         ArgumentCaptor.forClass(MongoDbChangeEventContext.class);
-    verify(mockReceiver).get(ProcessChangeEventFn.successfulWriteTag);
+    verify(mockReceiver).get(ProcessChangeEventFn.SUCCESSFUL_WRITE_TAG);
     verify(mockSuccessReceiver, times(1)).output(successCaptor.capture());
     verify(mockSession, never()).abortTransaction();
   }
@@ -286,7 +287,7 @@ public class ProcessChangeEventFnTest {
     verify(mockSession).commitTransaction();
     ArgumentCaptor<MongoDbChangeEventContext> successCaptor =
         ArgumentCaptor.forClass(MongoDbChangeEventContext.class);
-    verify(mockReceiver).get(ProcessChangeEventFn.successfulWriteTag);
+    verify(mockReceiver).get(ProcessChangeEventFn.SUCCESSFUL_WRITE_TAG);
     verify(mockSuccessReceiver, times(1)).output(successCaptor.capture());
     verify(mockSession, never()).abortTransaction();
   }
@@ -304,7 +305,7 @@ public class ProcessChangeEventFnTest {
     verify(mockShadowCollection, never()).replaceOne(any(), any(), any(), any());
     ArgumentCaptor<MongoDbChangeEventContext> successCaptor =
         ArgumentCaptor.forClass(MongoDbChangeEventContext.class);
-    verify(mockReceiver).get(ProcessChangeEventFn.successfulWriteTag);
+    verify(mockReceiver).get(ProcessChangeEventFn.SUCCESSFUL_WRITE_TAG);
     verify(mockSuccessReceiver, times(1)).output(successCaptor.capture());
     verify(mockSession, never()).abortTransaction();
   }
@@ -322,7 +323,7 @@ public class ProcessChangeEventFnTest {
     verify(mockShadowCollection, times(2)).find(mockSession, LOOKUP_BY_DOC_ID);
     ArgumentCaptor<MongoDbChangeEventContext> failureCaptor =
         ArgumentCaptor.forClass(MongoDbChangeEventContext.class);
-    verify(mockReceiver).get(ProcessChangeEventFn.severeFailedWriteTag);
+    verify(mockReceiver).get(ProcessChangeEventFn.SEVERE_FAILED_WRITE_TAG);
     verify(mockSevereFailureReceiver, times(1)).output(failureCaptor.capture());
     verify(mockSession, never()).commitTransaction();
   }
@@ -338,7 +339,7 @@ public class ProcessChangeEventFnTest {
     verify(mockShadowCollection, times(4)).find(mockSession, LOOKUP_BY_DOC_ID);
     ArgumentCaptor<MongoDbChangeEventContext> failureCaptor =
         ArgumentCaptor.forClass(MongoDbChangeEventContext.class);
-    verify(mockReceiver).get(ProcessChangeEventFn.failedWriteTag);
+    verify(mockReceiver).get(ProcessChangeEventFn.FAILED_WRITE_TAG);
     verify(mockFailureReceiver, times(1)).output(failureCaptor.capture());
     verify(mockSession, never()).commitTransaction();
 
@@ -376,7 +377,7 @@ public class ProcessChangeEventFnTest {
     processFn.processElement(mockContext, mockReceiver);
 
     verify(mockShadowCollection, times(1)).find(mockSession, LOOKUP_BY_DOC_ID);
-    verify(mockReceiver).get(ProcessChangeEventFn.severeFailedWriteTag);
+    verify(mockReceiver).get(ProcessChangeEventFn.SEVERE_FAILED_WRITE_TAG);
     verify(mockSevereFailureReceiver, times(1)).output(any());
     verify(mockSession, never()).commitTransaction();
 
@@ -412,7 +413,7 @@ public class ProcessChangeEventFnTest {
 
     verify(mockShadowCollection).find(mockSession, LOOKUP_BY_DOC_ID);
     verify(mockSession).commitTransaction();
-    verify(mockReceiver).get(ProcessChangeEventFn.successfulWriteTag);
+    verify(mockReceiver).get(ProcessChangeEventFn.SUCCESSFUL_WRITE_TAG);
     verify(mockSuccessReceiver, times(1)).output(any());
 
     MetricsContainerImpl container =
@@ -450,7 +451,7 @@ public class ProcessChangeEventFnTest {
     processFn.processElement(mockContext, mockReceiver);
 
     verify(mockShadowCollection, times(2)).find(mockSession, LOOKUP_BY_DOC_ID);
-    verify(mockReceiver).get(ProcessChangeEventFn.successfulWriteTag);
+    verify(mockReceiver).get(ProcessChangeEventFn.SUCCESSFUL_WRITE_TAG);
   }
 
   @Test
@@ -472,7 +473,7 @@ public class ProcessChangeEventFnTest {
     processFn.processElement(mockContext, mockReceiver);
 
     verify(mockShadowCollection, times(2)).find(mockSession, LOOKUP_BY_DOC_ID);
-    verify(mockReceiver).get(ProcessChangeEventFn.successfulWriteTag);
+    verify(mockReceiver).get(ProcessChangeEventFn.SUCCESSFUL_WRITE_TAG);
   }
 
   @Test
@@ -486,7 +487,7 @@ public class ProcessChangeEventFnTest {
     processFn.processElement(mockContext, mockReceiver);
 
     verify(mockShadowCollection, times(1)).find(mockSession, LOOKUP_BY_DOC_ID);
-    verify(mockReceiver).get(ProcessChangeEventFn.severeFailedWriteTag);
+    verify(mockReceiver).get(ProcessChangeEventFn.SEVERE_FAILED_WRITE_TAG);
     verify(mockSevereFailureReceiver, times(1)).output(any());
     verify(mockSession, never()).commitTransaction();
   }
@@ -506,7 +507,7 @@ public class ProcessChangeEventFnTest {
         .replaceOne(any(), any(), any(), any(ReplaceOptions.class));
     verify(mockSession).commitTransaction();
     verify(mockSession, never()).abortTransaction();
-    verify(mockReceiver).get(ProcessChangeEventFn.successfulWriteTag);
+    verify(mockReceiver).get(ProcessChangeEventFn.SUCCESSFUL_WRITE_TAG);
     verify(mockSuccessReceiver, times(1)).output(mockElement);
 
     MetricsContainerImpl container =
@@ -539,7 +540,7 @@ public class ProcessChangeEventFnTest {
     verify(mockDataCollection, never()).replaceOne(any(), any(), any(), any(ReplaceOptions.class));
     verify(mockShadowCollection, never())
         .replaceOne(any(), any(), any(), any(ReplaceOptions.class));
-    verify(mockReceiver).get(ProcessChangeEventFn.severeFailedWriteTag);
+    verify(mockReceiver).get(ProcessChangeEventFn.SEVERE_FAILED_WRITE_TAG);
     verify(mockSevereFailureReceiver, times(1)).output(any());
   }
 

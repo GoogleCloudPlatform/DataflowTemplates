@@ -17,6 +17,8 @@ package com.google.cloud.teleport.v2.transforms;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -24,11 +26,22 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
+import java.math.BigDecimal;
+import java.util.Date;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.UUID;
+import org.bson.BsonTimestamp;
 import org.bson.Document;
 import org.bson.types.Binary;
+import org.bson.types.Code;
+import org.bson.types.CodeWithScope;
+import org.bson.types.Decimal128;
+import org.bson.types.MaxKey;
+import org.bson.types.MinKey;
 import org.bson.types.ObjectId;
+import org.bson.types.Symbol;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -136,6 +149,34 @@ public class UtilsTest {
   }
 
   @Test
+  public void testIsNewerTimestamp_nullSafety() {
+    Document ts1 =
+        new Document(MongoDbChangeEventContext.TIMESTAMP_SECONDS_COL, 1L)
+            .append(MongoDbChangeEventContext.TIMESTAMP_NANOS_COL, 100);
+
+    assertTrue(Utils.isNewerTimestamp(ts1, null));
+    assertFalse(Utils.isNewerTimestamp(null, ts1));
+    assertFalse(Utils.isNewerTimestamp(null, null));
+  }
+
+  @Test
+  public void testGetTimestampNanos() {
+    assertEquals(0L, Utils.getTimestampNanos(null));
+    assertEquals(0L, Utils.getTimestampNanos(new Document()));
+
+    Document validTs =
+        new Document(MongoDbChangeEventContext.TIMESTAMP_SECONDS_COL, 1700000000L)
+            .append(MongoDbChangeEventContext.TIMESTAMP_NANOS_COL, 500);
+    assertEquals(1700000000000000500L, Utils.getTimestampNanos(validTs));
+
+    // Number types as Integer / Double
+    Document intTs =
+        new Document(MongoDbChangeEventContext.TIMESTAMP_SECONDS_COL, 100)
+            .append(MongoDbChangeEventContext.TIMESTAMP_NANOS_COL, 20);
+    assertEquals(100000000020L, Utils.getTimestampNanos(intTs));
+  }
+
+  @Test
   public void testJsonToDocument() {
     String jsonString =
         "{\"_id\":\"{\\\"$oid\\\": \\\"6811235eaf8583310cb9d2e9\\\"}\",\"data\":\"{\\\"_id\\\":"
@@ -172,20 +213,73 @@ public class UtilsTest {
 
   @Test
   public void testDocumentIdToString() {
-    assertEquals("test_id", Utils.documentIdToString("test_id"));
-    assertEquals("123", Utils.documentIdToString(123L));
-    assertEquals("123.456", Utils.documentIdToString(123.456));
-    assertEquals("true", Utils.documentIdToString(true));
+    assertEquals("str_test_id", Utils.documentIdToString("test_id"));
+    assertEquals("str_123", Utils.documentIdToString("123"));
+    assertEquals("i64_123", Utils.documentIdToString(123L));
+    assertEquals("i32_123", Utils.documentIdToString(123));
+    assertEquals("f64_123.456", Utils.documentIdToString(123.456));
+    assertEquals("bool_true", Utils.documentIdToString(true));
+    assertEquals("bool_false", Utils.documentIdToString(false));
     assertEquals("null", Utils.documentIdToString(null));
 
+    // Verify string "123" vs Long 123L vs Integer 123 are distinct and do not collide
+    assertFalse(Utils.documentIdToString("123").equals(Utils.documentIdToString(123L)));
+    assertFalse(Utils.documentIdToString("123").equals(Utils.documentIdToString(123)));
+    assertFalse(Utils.documentIdToString(123L).equals(Utils.documentIdToString(123)));
+
     ObjectId objectId = new ObjectId("645c9a7e7b8b1a0e9c0f8b3a");
-    assertEquals("645c9a7e7b8b1a0e9c0f8b3a", Utils.documentIdToString(objectId));
+    assertEquals("oid_645c9a7e7b8b1a0e9c0f8b3a", Utils.documentIdToString(objectId));
 
     Binary binary = new Binary(new byte[] {1, 2, 3});
-    assertEquals("AQID", Utils.documentIdToString(binary));
+    assertEquals("bin_0_AQID", Utils.documentIdToString(binary));
 
     Document doc = new Document("a", 1).append("b", "test");
-    assertEquals("{\"a\": 1, \"b\": \"test\"}", Utils.documentIdToString(doc));
+    assertEquals(
+        "doc_{\"a\": {\"$numberInt\": \"1\"}, \"b\": \"test\"}", Utils.documentIdToString(doc));
+
+    List<Object> list = java.util.Arrays.asList(1, "partA", 2);
+    assertEquals(
+        "list_{\"arr\": [{\"$numberInt\": \"1\"}, \"partA\", {\"$numberInt\": \"2\"}]}",
+        Utils.documentIdToString(list));
+
+    // Additional BSON _id types
+    assertEquals("bin_0_AQID", Utils.documentIdToString(new byte[] {1, 2, 3}));
+    UUID uuid = UUID.fromString("123e4567-e89b-12d3-a456-426614174000");
+    assertEquals("uuid_123e4567-e89b-12d3-a456-426614174000", Utils.documentIdToString(uuid));
+    assertEquals("dec_123.45", Utils.documentIdToString(new Decimal128(new BigDecimal("123.45"))));
+    assertEquals("date_1700000000000", Utils.documentIdToString(new Date(1700000000000L)));
+    assertEquals("ts_1700000000_5", Utils.documentIdToString(new BsonTimestamp(1700000000, 5)));
+    assertEquals("sym_my_sym", Utils.documentIdToString(new Symbol("my_sym")));
+    assertEquals("minkey", Utils.documentIdToString(new MinKey()));
+    assertEquals("maxkey", Utils.documentIdToString(new MaxKey()));
+    assertEquals("code_function() {}", Utils.documentIdToString(new Code("function() {}")));
+    assertEquals(
+        "codewscope_13:function() {}_{\"x\": {\"$numberInt\": \"1\"}}",
+        Utils.documentIdToString(new CodeWithScope("function() {}", new Document("x", 1))));
+
+    // Composite Document containing UUID does not throw CodecConfigurationException
+    Document docWithUuid = new Document("tenant", uuid).append("seq", 1);
+    assertTrue(Utils.documentIdToString(docWithUuid).startsWith("doc_"));
+
+    // Composite Document field order is preserved and distinct
+    Document order1 = new Document("a", 1).append("b", 2);
+    Document order2 = new Document("b", 2).append("a", 1);
+    assertNotEquals(Utils.documentIdToString(order1), Utils.documentIdToString(order2));
+  }
+
+  @Test
+  public void testSanitizeConnectionUri() {
+    assertEquals(
+        "mongodb://admin:****@cluster0.example.com:27017/mydb",
+        Utils.sanitizeConnectionUri("mongodb://admin:s3cr3tP@ss@cluster0.example.com:27017/mydb"));
+    assertEquals(
+        "mongodb+srv://user:****@cluster0.example.com/?authMechanism=PLAIN",
+        Utils.sanitizeConnectionUri(
+            "mongodb+srv://user:myPassword123@cluster0.example.com/?authMechanism=PLAIN"));
+    assertEquals(
+        "mongodb://localhost:27017/?authMechanism=MONGODB-OIDC&authMechanismProperties=TOKEN_RESOURCE:FIRESTORE,access_token:****",
+        Utils.sanitizeConnectionUri(
+            "mongodb://localhost:27017/?authMechanism=MONGODB-OIDC&authMechanismProperties=TOKEN_RESOURCE:FIRESTORE,access_token:myOidcTokenValue"));
   }
 
   @Test
@@ -248,5 +342,36 @@ public class UtilsTest {
     assertEquals(inner, Utils.extractInnerEvent(wrapped));
     // Test case where the JSON node is NOT wrapped
     assertEquals(inner, Utils.extractInnerEvent(inner));
+  }
+
+  @Test
+  public void testJsonToDocument_preservesCustomerDataField() {
+    String jsonString =
+        "{\"_id\":\"{\\\"$oid\\\": \\\"6a7c79fbfd2b2eb4aca6d225\\\"}\","
+            + "\"data\":\"{\\\"_id\\\":{\\\"$oid\\\": \\\"6a7c79fbfd2b2eb4aca6d225\\\"},"
+            + "\\\"value\\\":0.7018,\\\"version\\\":14,\\\"data\\\":\\\"xxxxxxxxxxxxxxxxxxxx\\\"}\","
+            + "\"_metadata_stream\":\"test-stream\",\"_metadata_timestamp\":1745957556}";
+
+    Document result = Utils.jsonToDocument(jsonString, "6a7c79fbfd2b2eb4aca6d225");
+    assertNotNull(result);
+    assertEquals("6a7c79fbfd2b2eb4aca6d225", result.get("_id"));
+    assertEquals(0.7018, result.getDouble("value"), 1e-4);
+    assertEquals(14, result.getInteger("version").intValue());
+    assertEquals("xxxxxxxxxxxxxxxxxxxx", result.getString("data"));
+    assertFalse(result.containsKey("_metadata_stream"));
+    assertFalse(result.containsKey("_metadata_timestamp"));
+  }
+
+  @Test
+  public void testJsonToDocument_preservesDataFieldInObjectFormat() {
+    String jsonString =
+        "{\"data\":{\"name\":\"John\",\"data\":\"custom_payload_data\",\"_metadata_stream\":\"str\"}}";
+    Document result = Utils.jsonToDocument(jsonString, "id1");
+
+    assertNotNull(result);
+    assertEquals("John", result.get("name"));
+    assertEquals("custom_payload_data", result.get("data"));
+    assertEquals("id1", result.get("_id"));
+    assertFalse(result.containsKey("_metadata_stream"));
   }
 }
