@@ -161,6 +161,8 @@ public class ExportTransformTest {
             "function manifest",
             "placement",
             "placement manifest",
+            "localityGroup",
+            "localityGroup manifest",
             "propertyGraph1",
             "propertyGraph1 manifest");
 
@@ -201,6 +203,10 @@ public class ExportTransformTest {
         .options(
             ImmutableList.of("instance_partition=\"mr-partition\"", "default_leader=\"us-east1\""))
         .endPlacement();
+    ddlBuilder
+        .createLocalityGroup("localityGroup")
+        .options(ImmutableList.of("storage=\"ssd\""))
+        .endLocalityGroup();
     ddlBuilder.mergeProtoBundle(protoBundle);
     ddlBuilder.mergeProtoDescriptors(protoDescriptors);
     Ddl ddl = ddlBuilder.build();
@@ -261,6 +267,12 @@ public class ExportTransformTest {
                   assertThat(
                       manifestProto.getPlacements(0).getManifestFile(),
                       is("placement-manifest.json"));
+
+                  assertThat(manifestProto.getLocalityGroupsCount(), is(1));
+                  assertThat(manifestProto.getLocalityGroups(0).getName(), is("localityGroup"));
+                  assertThat(
+                      manifestProto.getLocalityGroups(0).getManifestFile(),
+                      is("localityGroup-manifest.json"));
 
                   assertThat(manifestProto.getSequencesCount(), is(1));
                   assertThat(manifestProto.getSequences(0).getName(), is("sequence"));

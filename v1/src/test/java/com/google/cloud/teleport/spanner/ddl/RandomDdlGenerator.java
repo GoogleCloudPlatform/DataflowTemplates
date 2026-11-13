@@ -24,9 +24,11 @@ import com.google.cloud.teleport.spanner.ddl.Udf.SqlSecurity;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -140,6 +142,8 @@ public abstract class RandomDdlGenerator {
 
   public abstract int getMaxChangeStreams();
 
+  public abstract int getMaxLocalityGroups();
+
   public static Builder builder() {
     return builder(Dialect.GOOGLE_STANDARD_SQL);
   }
@@ -163,6 +167,7 @@ public abstract class RandomDdlGenerator {
         .setMaxIdLength(11)
         .setEnableGeneratedColumns(true)
         .setEnableDefaultColumns(true)
+        .setMaxLocalityGroups(0)
         // Change stream is only supported in GoogleSQL, not in PostgreSQL.
         .setMaxChangeStreams(dialect == Dialect.GOOGLE_STANDARD_SQL ? 2 : 0);
   }
@@ -206,6 +211,8 @@ public abstract class RandomDdlGenerator {
     public abstract Builder setMaxViews(int maxViews);
 
     public abstract Builder setMaxChangeStreams(int maxChangeStreams);
+
+    public abstract Builder setMaxLocalityGroups(int maxLocalityGroups);
   }
 
   public abstract Builder toBuilder();
@@ -214,10 +221,17 @@ public abstract class RandomDdlGenerator {
 
   private final Set<String> allIdentifiers = Sets.newHashSet("generated");
 
+  private List<String> localityGroupNames = new ArrayList<>();
+
   public Ddl generate() {
     allIdentifiers.clear();
     allIdentifiers.add("generated");
     Ddl.Builder builder = Ddl.builder(getDialect());
+    // Locality groups are generated first so that tables, columns and indexes can reference them.
+    int numLocalityGroups = getRandom().nextInt(getMaxLocalityGroups() + 1);
+    for (int i = 0; i < numLocalityGroups; i++) {
+      generateLocalityGroup(builder);
+    }
     int numParentTables = 1 + getRandom().nextInt(getMaxBranchPerLevel()[0]);
     for (int i = 0; i < numParentTables; i++) {
       generateTable(builder, null, 0);
@@ -236,6 +250,39 @@ public abstract class RandomDdlGenerator {
     }
 
     return builder.build();
+  }
+
+  private void generateLocalityGroup(Ddl.Builder builder) {
+    String name = generateIdentifier(getMaxIdLength());
+    String quote = getDialect() == Dialect.POSTGRESQL ? "'" : "\"";
+    ImmutableList.Builder<String> options = ImmutableList.builder();
+    switch (getRandom().nextInt(3)) {
+      case 0:
+        // No options: the locality group uses the default storage.
+        break;
+      case 1:
+        options.add("storage=" + quote + "hdd" + quote);
+        break;
+      default:
+        options.add("storage=" + quote + "ssd" + quote);
+        options.add("ssd_to_hdd_spill_timespan=" + quote + "1d" + quote);
+    }
+    builder.createLocalityGroup(name).options(options.build()).endLocalityGroup();
+    localityGroupNames.add(name);
+  }
+
+  /**
+   * Picks a random generated locality group. When {@code includeDefault} is set, the {@code
+   * default} locality group is also a candidate.
+   */
+  private String randomLocalityGroup(boolean includeDefault) {
+    int index = getRandom().nextInt(localityGroupNames.size() + (includeDefault ? 1 : 0));
+    return index < localityGroupNames.size() ? localityGroupNames.get(index) : "default";
+  }
+
+  private ImmutableList<String> localityGroupOptions(String localityGroupName) {
+    String quote = getDialect() == Dialect.POSTGRESQL ? "'" : "\"";
+    return ImmutableList.of("locality_group=" + quote + localityGroupName + quote);
   }
 
   private void generateUdf(Ddl.Builder builder) {
@@ -435,7 +482,18 @@ public abstract class RandomDdlGenerator {
           generateColumn(
               (getDialect() == Dialect.GOOGLE_STANDARD_SQL) ? COLUMN_TYPES : PG_COLUMN_TYPES,
               getArrayChance());
+      if (!localityGroupNames.isEmpty() && rnd.nextBoolean()) {
+        column =
+            column.toBuilder()
+                .columnOptions(
+                    localityGroupOptions(randomLocalityGroup(/* includeDefault= */ true)))
+                .autoBuild();
+      }
       tableBuilder.addColumn(column);
+    }
+
+    if (!localityGroupNames.isEmpty() && rnd.nextBoolean()) {
+      tableBuilder.options(localityGroupOptions(randomLocalityGroup(/* includeDefault= */ false)));
     }
 
     Table table = tableBuilder.build();
@@ -551,6 +609,9 @@ public abstract class RandomDdlGenerator {
       index.nullFiltered(rnd.nextBoolean());
       index.filter(String.join(" AND ", filters.build()));
       // index.unique(rnd.nextBoolean());
+      if (!localityGroupNames.isEmpty() && rnd.nextBoolean()) {
+        index.options(localityGroupOptions(randomLocalityGroup(/* includeDefault= */ false)));
+      }
       if (indexColumns > 0) {
         indexes.add(index.build().prettyPrint());
       }

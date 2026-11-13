@@ -153,6 +153,30 @@ CREATE FUNCTION my_schema."PgDefaults"("MixedCase" bigint, "lower_case" text DEF
 -- No parameters.
 CREATE FUNCTION my_schema."PgNoParams"() RETURNS jsonb SECURITY INVOKER IMMUTABLE RETURN ('{"a": 1}'::jsonb);
 
+-- Locality Groups
+CREATE LOCALITY GROUP "lg_ssd" STORAGE 'ssd' SSD_TO_HDD_SPILL_TIMESPAN '1d';
+CREATE LOCALITY GROUP "lg_hdd" STORAGE 'hdd';
+CREATE LOCALITY GROUP "lg_no_options";
+ALTER LOCALITY GROUP "default" STORAGE 'ssd' SSD_TO_HDD_SPILL_TIMESPAN '10d';
+
+CREATE TABLE "LocalityGroupParent" (
+	"id"                                    bigint NOT NULL,
+	"inherited_col"                         text,
+	"hdd_col"                               text LOCALITY GROUP "lg_hdd",
+	"default_col"                           text LOCALITY GROUP "default",
+	PRIMARY KEY ("id")
+) LOCALITY GROUP "lg_ssd";
+
+CREATE TABLE "LocalityGroupChild" (
+	"id"                                    bigint NOT NULL,
+	"child_id"                              bigint NOT NULL,
+	"val"                                   text,
+	PRIMARY KEY ("id", "child_id")
+) LOCALITY GROUP "lg_hdd" INTERLEAVE IN PARENT "LocalityGroupParent" ON DELETE CASCADE;
+
+CREATE INDEX "LocalityGroupIdx" ON "LocalityGroupParent"("inherited_col") INCLUDE ("hdd_col") LOCALITY GROUP "lg_no_options";
+CREATE INDEX "LocalityGroupInterleavedIdx" ON "LocalityGroupChild"("id", "val") LOCALITY GROUP "lg_ssd" INTERLEAVE IN "LocalityGroupParent" WHERE "val" IS NOT NULL;
+
 -- Tables w/o PKs
 CREATE TABLE "MyTable_NoPks" (
 	"val" bigint
