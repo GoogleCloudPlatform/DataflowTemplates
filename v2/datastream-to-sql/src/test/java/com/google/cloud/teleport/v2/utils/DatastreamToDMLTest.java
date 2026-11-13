@@ -108,6 +108,70 @@ public class DatastreamToDMLTest {
     assertEquals(expectedNullByteTextContent, testNullByteSqlContent);
   }
 
+  @Test
+  public void testMySqlTimestampLiterals() {
+    DatastreamToDML dml = DatastreamToMySQLDML.of(null);
+    Map<String, String> tableSchema = new HashMap<>();
+    String[][] timestamps = {
+      {"2025-08-01T09:15:00Z", "2025-08-01 09:15:00"},
+      {"2025-08-01T09:15:00.000123Z", "2025-08-01 09:15:00.000123"},
+      {"2025-08-01T09:15:00.123Z", "2025-08-01 09:15:00.123"},
+      {"2025-08-01T00:15:00+02:00", "2025-07-31 22:15:00"}
+    };
+    for (String type : Arrays.asList("TIMESTAMP", "DATETIME")) {
+      tableSchema.put("created_at", type);
+      for (String[] timestamp : timestamps) {
+        JsonNode rowObj = getRowObj("{\"created_at\":\"" + timestamp[0] + "\"}");
+        assertEquals("'" + timestamp[1] + "'", dml.getValueSql(rowObj, "created_at", tableSchema));
+      }
+    }
+  }
+
+  @Test
+  public void testMySqlTimestampUnchangedValues() {
+    DatastreamToDML dml = DatastreamToMySQLDML.of(null);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("created_at", "TIMESTAMP");
+    for (String value :
+        Arrays.asList("", "invalid", "2025-02-30T09:15:00Z", "2025-08-01 09:15:00")) {
+      JsonNode rowObj = getRowObj("{\"created_at\":\"" + value + "\"}");
+      assertEquals("'" + value + "'", dml.getValueSql(rowObj, "created_at", tableSchema));
+    }
+    assertEquals(
+        "null", dml.getValueSql(getRowObj("{\"created_at\":null}"), "created_at", tableSchema));
+    assertEquals("", dml.getValueSql(getRowObj("{}"), "created_at", tableSchema));
+    JsonNode rowObj = getRowObj("{\"created_at\":\"2025-08-01T09:15:00Z\",\"id\":123}");
+    assertEquals("123", dml.getValueSql(rowObj, "id", tableSchema));
+    for (String type : Arrays.asList("VARCHAR", "JSON", null)) {
+      tableSchema.put("created_at", type);
+      assertEquals("'2025-08-01T09:15:00Z'", dml.getValueSql(rowObj, "created_at", tableSchema));
+    }
+    tableSchema.clear();
+    assertEquals("'2025-08-01T09:15:00Z'", dml.getValueSql(rowObj, "created_at", tableSchema));
+    tableSchema.put("created_at", "TIMESTAMP");
+    assertEquals(
+        "'2025-08-01T09:15:00Z'",
+        DatastreamToPostgresDML.of(null).getValueSql(rowObj, "created_at", tableSchema));
+  }
+
+  @Test
+  public void testMySqlTimestampSqlFragmentsWithColumnCasing() {
+    DatastreamToDML dml = DatastreamToMySQLDML.of(null).withColumnCasing("UPPERCASE");
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("CREATED_AT", "timestamp");
+    JsonNode rowObj =
+        getRowObj(
+            "{\"created_at\":\"2025-08-01T09:15:00.000123Z\","
+                + "\"_metadata_source_type\":\"mysql\","
+                + "\"_metadata_primary_keys\":[\"created_at\"]}");
+    assertEquals("'2025-08-01 09:15:00.000123'", dml.getColumnsValuesSql(rowObj, tableSchema));
+    assertEquals(
+        "`CREATED_AT`='2025-08-01 09:15:00.000123'", dml.getColumnsUpdateSql(rowObj, tableSchema));
+    assertEquals(
+        "`CREATED_AT`='2025-08-01 09:15:00.000123'",
+        dml.getPrimaryKeyToValueFilterSql(rowObj, Arrays.asList("CREATED_AT"), tableSchema));
+  }
+
   /**
    * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} converts array
    * data into correct integer array syntax.
