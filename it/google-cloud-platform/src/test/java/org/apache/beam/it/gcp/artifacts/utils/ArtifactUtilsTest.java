@@ -67,4 +67,23 @@ public final class ArtifactUtilsTest {
         IllegalArgumentException.class,
         () -> ArtifactUtils.getFullGcsPath("bucket", "", "dir2", "file"));
   }
+
+  @Test
+  public void testCreateStorageClient() {
+    com.google.auth.Credentials mockCredentials =
+        org.mockito.Mockito.mock(com.google.auth.Credentials.class);
+    com.google.cloud.storage.Storage storage = ArtifactUtils.createStorageClient(mockCredentials);
+    assertThat(storage).isNotNull();
+  }
+
+  @Test
+  public void testCreateStorageClientWithRetryStrategy() {
+    com.google.auth.Credentials mockCredentials =
+        org.mockito.Mockito.mock(com.google.auth.Credentials.class);
+    com.google.cloud.storage.Storage storage =
+        ArtifactUtils.createStorageClient(
+            mockCredentials,
+            com.google.cloud.storage.StorageRetryStrategy.getUniformStorageRetryStrategy());
+    assertThat(storage).isNotNull();
+  }
 }
