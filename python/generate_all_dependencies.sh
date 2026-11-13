@@ -36,5 +36,4 @@ cp $SCRIPTPATH/__build__/default_yaml_requirements.txt $SCRIPTPATH/../yaml/src/m
 cp $SCRIPTPATH/__build__/default_yaml_requirements.txt $SCRIPTPATH/../v2/googlecloud-to-elasticsearch/src/main/resources/requirements.txt
 cp $SCRIPTPATH/__build__/default_yaml_requirements.txt $SCRIPTPATH/../v2/googlecloud-to-googlecloud/src/main/resources/requirements.txt
 cp $SCRIPTPATH/__build__/default_yaml_requirements.txt $SCRIPTPATH/../v2/googlecloud-to-splunk/src/main/resources/requirements.txt
-cp $SCRIPTPATH/__build__/default_yaml_requirements.txt $SCRIPTPATH/../v2/pubsub-binary-to-bigquery/src/main/resources/requirements.txt
 cp $SCRIPTPATH/__build__/default_yaml_requirements.txt $SCRIPTPATH/../v2/googlecloud-and-mongodb/src/main/resources/requirements.txt

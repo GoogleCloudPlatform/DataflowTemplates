@@ -51,7 +51,7 @@ func TestModulesToBuild(t *testing.T) {
 		},
 		{
 			input:    "BIGTABLE",
-			expected: []string{"v2/bigtable-common/", "v2/bigquery-to-bigtable/", "v2/bigtable-changestreams-to-hbase/", "plugins/templates-maven-plugin"},
+			expected: []string{"v2/bigtable-common/", "v2/bigtable-changestreams-to-hbase/", "plugins/templates-maven-plugin"},
 		},
 		{
 			input: "DATASTREAM",

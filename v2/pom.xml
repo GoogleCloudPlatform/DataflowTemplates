@@ -655,8 +655,6 @@
         <module>astradb-to-bigquery</module>
         <module>bigtable-changestreams-to-hbase</module>
         <module>bigtable-common</module>
-        <module>bigquery-to-bigtable</module>
-        <module>bigquery-to-parquet</module>
         <module>common</module>
         <module>cdc-data-generator</module>
         <module>dataplex</module>
@@ -667,8 +665,6 @@
         <module>datastream-to-spanner</module>
         <module>datastream-to-sql</module>
         <module>elasticsearch-common</module>
-        <module>file-format-conversion</module>
-        <module>firestore-to-firestore</module>
         <module>gcs-spanner-dv</module>
         <module>googlecloud-to-elasticsearch</module>
         <module>googlecloud-to-googlecloud</module>
@@ -689,8 +685,6 @@
         <module>mysql-to-googlecloud</module>
         <module>oracle-to-googlecloud</module>
         <module>postgresql-to-googlecloud</module>
-        <module>pubsub-binary-to-bigquery</module>
-        <module>pubsub-cdc-to-bigquery</module>
         <module>pubsub-to-redis</module>
         <module>sourcedb-to-spanner</module>
         <module>spanner-common</module>
