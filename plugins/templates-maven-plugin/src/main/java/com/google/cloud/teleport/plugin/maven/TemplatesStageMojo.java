@@ -627,10 +627,10 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           String dateSuffix =
               LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm"));
           String deprecatedTag = "update-available-" + dateSuffix;
-          if (metadata.isHidden()) {
-            trackTag = "no-new-use-public-image-latest";
-          } else if (metadata.getName().contains("[Deprecated]")) {
+          if (containerStageTracker.isAllDeprecated(containerName, metadata)) {
             trackTag = "deprecated-public-image-latest";
+          } else if (containerStageTracker.isAllHiddenOrDeprecated(containerName, metadata)) {
+            trackTag = "no-new-use-public-image-latest";
           }
           // promote image
           PromoteHelper promoteHelper =
@@ -1698,11 +1698,32 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       return containers.get(containerName).filesToCopy.stream().toList();
     }
 
+    boolean isAllDeprecated(String containerName, ImageSpecMetadata metadata) {
+      ContainerCommandSpecs spec = containers.get(containerName);
+      if (spec == null) {
+        // not managed by ContainerStageTracker
+        return metadata.getName() != null && metadata.getName().contains("[Deprecated]");
+      }
+      return spec.allDeprecated;
+    }
+
+    boolean isAllHiddenOrDeprecated(String containerName, ImageSpecMetadata metadata) {
+      ContainerCommandSpecs spec = containers.get(containerName);
+      if (spec == null) {
+        // not managed by ContainerStageTracker
+        return metadata.isHidden()
+            || (metadata.getName() != null && metadata.getName().contains("[Deprecated]"));
+      }
+      return spec.allHiddenOrDeprecated;
+    }
+
     private static class ContainerCommandSpecs {
       Map<String, File> commandSpecFiles;
       final Set<String> filesToCopy;
       boolean staged;
       @Nullable String uniqueTemplateName;
+      boolean allDeprecated;
+      boolean allHiddenOrDeprecated;
 
       ContainerCommandSpecs() {
         commandSpecFiles = new HashMap<>();
@@ -1711,6 +1732,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         // if this container cannot be shared, track template name here (instead of
         // commandSpecFiles)
         uniqueTemplateName = null;
+        allDeprecated = true;
+        allHiddenOrDeprecated = true;
       }
 
       /** Add a Template to this ContainerCommandSpecs. */
@@ -1740,6 +1763,10 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         if (annotation.filesToCopy() != null) {
           Collections.addAll(filesToCopy, annotation.filesToCopy());
         }
+        boolean deprecated =
+            annotation.displayName() != null && annotation.displayName().contains("[Deprecated]");
+        allDeprecated &= deprecated;
+        allHiddenOrDeprecated &= annotation.hidden() || deprecated;
       }
 
       /** Check whether Templates declared spec incompatible to use same container images. */
