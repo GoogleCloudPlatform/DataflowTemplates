@@ -1,0 +1,77 @@
+template:
+  name: "Iceberg_To_Bigtable_Yaml"
+  category: "BATCH"
+  type: "YAML"
+  display_name: "Iceberg to Bigtable (YAML)"
+  description: >
+    The Iceberg to Bigtable template is a batch pipeline that reads data from an
+    Iceberg table, executes a user-defined mapping, and writes the resulting
+    records to Bigtable. Any errors which occur in the transformation of the
+    data are written to Cloud Storage in JSON format.
+  flex_container_name: "pipeline-yaml"
+  yamlTemplateFile: "IcebergToBigtable.yaml"
+  filesToCopy: >
+    {"main.py", "requirements.txt", "options/iceberg_options.yaml", "options/maptofields_options.yaml", "options/bigtable_options.yaml", "options/json_options.yaml"}
+  documentation: >
+    https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/iceberg-to-bigtable
+  contactInformation: "https://cloud.google.com/support"
+  requirements: {
+    "The input Iceberg table must exist and be accessible through the provided catalog.",
+    "The output Bigtable table must exist.",
+    "The Cloud Storage directory for error records must be accessible."
+  }
+  streaming: false
+  hidden: false
+
+  options_file:
+    - "iceberg_options"
+    - "maptofields_options"
+    - "bigtable_options"
+    - "json_options"
+
+  parameters:
+    - iceberg_common_options
+    - iceberg_read_options
+    - maptofields_common_options
+    - bigtable_common_options
+    - json_error_options
+
+pipeline:
+  type: composite
+  transforms:
+    - type: ReadFromIceberg
+      name: ReadFromIceberg
+      config:
+        table: {{ table }}
+        catalog_name: {{ catalogName }}
+        catalog_properties: {{ catalogProperties }}
+        config_properties: {{ configProperties }}
+        drop: {{ drop }}
+        filter: {{ filter }}
+        keep: {{ keep }}
+
+    - type: MapToFields
+      name: ConvertToBigtableMutations
+      input: ReadFromIceberg
+      config:
+        language: {{ language }}
+        fields: {{ fields }}
+        error_handling:
+          output: errors
+
+    - type: WriteToBigTable
+      name: WriteToBigtable
+      input: ConvertToBigtableMutations
+      config:
+        project: {{ projectId }}
+        instance: {{ instanceId }}
+        table: {{ tableId }}
+
+    - type: WriteToJson
+      name: WriteTransformationErrorsToDeadLetterQueue
+      input: ConvertToBigtableMutations.errors
+      config:
+        path: "{{ errorPath }}"
+
+options:
+  streaming: false
