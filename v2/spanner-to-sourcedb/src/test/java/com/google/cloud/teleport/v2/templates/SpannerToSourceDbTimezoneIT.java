@@ -87,7 +87,7 @@ public class SpannerToSourceDbTimezoneIT extends SpannerToSourceDbITBase {
             createSpannerDatabase(SpannerToSourceDbTimezoneIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-        jdbcResourceManager = MySQLResourceManager.builder(testName).build();
+        jdbcResourceManager = setUpMySQLResourceManager(testName);
 
         createMySQLSchema(
             jdbcResourceManager, SpannerToSourceDbTimezoneIT.MYSQL_SCHEMA_FILE_RESOURCE);

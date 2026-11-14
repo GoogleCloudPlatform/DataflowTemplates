@@ -105,7 +105,7 @@ public class SpannerToSourceDBMySQLRetryDLQIT extends SpannerToSourceDbITBase {
 
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-        jdbcResourceManager = MySQLResourceManager.builder(testName).build();
+        jdbcResourceManager = setUpMySQLResourceManager(testName);
 
         createMySQLSchema(
             jdbcResourceManager, SpannerToSourceDBMySQLRetryDLQIT.MYSQL_SCHEMA_FILE_RESOURCE);

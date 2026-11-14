@@ -91,7 +91,8 @@ public class SpannerToMySqlSourceDbWideRow10MbIT extends SpannerToSourceDbITBase
             createSpannerDatabase(SpannerToMySqlSourceDbWideRow10MbIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-        jdbcResourceManager = MySQLResourceManager.builder(testName).build();
+        // Uses its own container: the test changes max_allowed_packet with SET GLOBAL.
+        jdbcResourceManager = setUpDedicatedMySQLResourceManager(testName);
         increasePacketSize();
         createMySQLSchema(
             jdbcResourceManager, SpannerToMySqlSourceDbWideRow10MbIT.MYSQL_SCHEMA_FILE_RESOURCE);

@@ -103,7 +103,7 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
             createSpannerDatabase(SpannerToSourceDbCustomTransformationIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-        jdbcResourceManager = MySQLResourceManager.builder(testName).build();
+        jdbcResourceManager = setUpMySQLResourceManager(testName);
 
         createMySQLSchema(
             jdbcResourceManager,
