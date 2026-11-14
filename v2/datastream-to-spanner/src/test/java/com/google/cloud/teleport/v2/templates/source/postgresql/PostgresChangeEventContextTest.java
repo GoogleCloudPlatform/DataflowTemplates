@@ -26,10 +26,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.source.SourceConstants;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertorTest;
-import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import java.io.IOException;
 import java.util.Base64;
 import java.util.Map;
@@ -60,8 +60,7 @@ public final class PostgresChangeEventContextTest {
     JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");
     changeEvent.put(PostgresqlDsToSpSourceConnector.POSTGRES_TIMESTAMP_KEY, eventTimestamp);
     changeEvent.put(PostgresqlDsToSpSourceConnector.POSTGRES_LSN_KEY, "1/867");
-    changeEvent.put(
-        DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.POSTGRES_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, SourceConstants.POSTGRES_SOURCE_TYPE);
     changeEvent.put(
         "bytes_field", Base64.getEncoder().encodeToString(new byte[] {120, 53, 56, 48, 48}));
 
@@ -98,8 +97,7 @@ public final class PostgresChangeEventContextTest {
     JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");
     changeEvent.put(PostgresqlDsToSpSourceConnector.POSTGRES_TIMESTAMP_KEY, eventTimestamp);
     changeEvent.put(PostgresqlDsToSpSourceConnector.POSTGRES_LSN_KEY, JSONObject.NULL);
-    changeEvent.put(
-        DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.POSTGRES_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, SourceConstants.POSTGRES_SOURCE_TYPE);
     changeEvent.put(
         "bytes_field", Base64.getEncoder().encodeToString(new byte[] {120, 53, 56, 48, 48}));
 
@@ -135,8 +133,7 @@ public final class PostgresChangeEventContextTest {
     // Test Change Event
     JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");
     changeEvent.put(PostgresqlDsToSpSourceConnector.POSTGRES_TIMESTAMP_KEY, eventTimestamp);
-    changeEvent.put(
-        DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.POSTGRES_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, SourceConstants.POSTGRES_SOURCE_TYPE);
     changeEvent.put(
         "bytes_field", Base64.getEncoder().encodeToString(new byte[] {120, 53, 56, 48, 48}));
 
@@ -204,9 +201,8 @@ public final class PostgresChangeEventContextTest {
             .build();
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("lsn", 123);
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "MyTable");
-    changeEvent.put(
-        DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.POSTGRES_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "MyTable");
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, SourceConstants.POSTGRES_SOURCE_TYPE);
     changeEvent.put(PostgresqlDsToSpSourceConnector.POSTGRES_TIMESTAMP_KEY, eventTimestamp);
     changeEvent.put(PostgresqlDsToSpSourceConnector.POSTGRES_LSN_KEY, "1/ABC");
 

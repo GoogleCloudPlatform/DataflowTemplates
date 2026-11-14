@@ -29,10 +29,10 @@ import com.google.api.services.datastream.v1.model.OracleSourceConfig;
 import com.google.api.services.datastream.v1.model.SourceConfig;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.source.SourceConstants;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertorTest;
-import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import java.io.IOException;
 import org.json.JSONObject;
 import org.junit.Test;
@@ -78,7 +78,7 @@ public final class OracleDsToSpSourceConnectorTest {
     JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");
     changeEvent.put(OracleDsToSpSourceConnector.ORACLE_TIMESTAMP_KEY, 1615159728L);
     changeEvent.put(OracleDsToSpSourceConnector.ORACLE_SCN_KEY, "1");
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SourceConstants.ORACLE_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, SourceConstants.ORACLE_SOURCE_TYPE);
 
     ChangeEventContext context =
         connector.createChangeEventContext(

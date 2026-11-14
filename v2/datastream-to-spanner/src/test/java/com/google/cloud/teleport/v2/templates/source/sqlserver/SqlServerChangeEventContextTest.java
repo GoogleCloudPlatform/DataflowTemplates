@@ -28,10 +28,10 @@ import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventConvertorTest;
-import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import java.io.IOException;
 import java.util.Map;
 import org.json.JSONObject;
@@ -60,7 +60,7 @@ public final class SqlServerChangeEventContextTest {
     JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");
     changeEvent.put(SqlServerDsToSpSourceConnector.SQLSERVER_TIMESTAMP_KEY, eventTimestamp);
     changeEvent.put(SqlServerDsToSpSourceConnector.SQLSERVER_CHANGE_LSN_KEY, eventLsn);
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SQLSERVER_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, SQLSERVER_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
         new SqlServerDsToSpSourceConnector()
@@ -91,7 +91,7 @@ public final class SqlServerChangeEventContextTest {
     JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");
     changeEvent.put(SqlServerDsToSpSourceConnector.SQLSERVER_TIMESTAMP_KEY, eventTimestamp);
     changeEvent.put(SqlServerDsToSpSourceConnector.SQLSERVER_CHANGE_LSN_KEY, eventLsn);
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SQLSERVER_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, SQLSERVER_SOURCE_TYPE);
 
     SqlServerChangeEventContext context =
         new SqlServerChangeEventContext(getJsonNode(changeEvent.toString()), ddl, ddl, "shadow_");
@@ -112,7 +112,7 @@ public final class SqlServerChangeEventContextTest {
     JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");
     changeEvent.put(SqlServerDsToSpSourceConnector.SQLSERVER_TIMESTAMP_KEY, eventTimestamp);
     changeEvent.put(SqlServerDsToSpSourceConnector.SQLSERVER_CHANGE_LSN_KEY, JSONObject.NULL);
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SQLSERVER_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, SQLSERVER_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
         new SqlServerDsToSpSourceConnector()
@@ -142,7 +142,7 @@ public final class SqlServerChangeEventContextTest {
     JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");
     changeEvent.put(SqlServerDsToSpSourceConnector.SQLSERVER_TIMESTAMP_KEY, eventTimestamp);
     // Do not set SQLSERVER_CHANGE_LSN_KEY
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SQLSERVER_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, SQLSERVER_SOURCE_TYPE);
 
     ChangeEventContext changeEventContext =
         new SqlServerDsToSpSourceConnector()
@@ -201,8 +201,8 @@ public final class SqlServerChangeEventContextTest {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("id", 1L);
     changeEvent.put("name", "John");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SQLSERVER_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, SQLSERVER_SOURCE_TYPE);
     changeEvent.put(SqlServerDsToSpSourceConnector.SQLSERVER_TIMESTAMP_KEY, eventTimestamp);
     changeEvent.put(SqlServerDsToSpSourceConnector.SQLSERVER_CHANGE_LSN_KEY, eventLsn);
 
@@ -264,8 +264,8 @@ public final class SqlServerChangeEventContextTest {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("change_lsn", 42L);
     changeEvent.put("data", "test-data");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "MyTable");
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SQLSERVER_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "MyTable");
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, SQLSERVER_SOURCE_TYPE);
     changeEvent.put(SqlServerDsToSpSourceConnector.SQLSERVER_TIMESTAMP_KEY, eventTimestamp);
     changeEvent.put(SqlServerDsToSpSourceConnector.SQLSERVER_CHANGE_LSN_KEY, eventLsn);
 
@@ -330,8 +330,8 @@ public final class SqlServerChangeEventContextTest {
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("timestamp", 999L);
     changeEvent.put("data", "sample");
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "MyTable");
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SQLSERVER_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "MyTable");
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, SQLSERVER_SOURCE_TYPE);
     changeEvent.put(SqlServerDsToSpSourceConnector.SQLSERVER_TIMESTAMP_KEY, eventTimestamp);
     changeEvent.put(SqlServerDsToSpSourceConnector.SQLSERVER_CHANGE_LSN_KEY, eventLsn);
 
@@ -358,7 +358,7 @@ public final class SqlServerChangeEventContextTest {
     JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");
     // Missing SQLSERVER_TIMESTAMP_KEY
     changeEvent.put(SqlServerDsToSpSourceConnector.SQLSERVER_CHANGE_LSN_KEY, eventLsn);
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, SQLSERVER_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, SQLSERVER_SOURCE_TYPE);
 
     assertThrows(
         ChangeEventConvertorException.class,
