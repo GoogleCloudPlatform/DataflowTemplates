@@ -60,8 +60,8 @@ RUN_INFERENCE_DEPENDENCIES = {
     # TensorFlow also get `HUGGING_FACE_TENSORFLOW_DEPENDENCIES`. Uses the torch
     # and transformers versions of the `transformers` extra of apache-beam.
     'HuggingFacePipelineModelHandler': [
-        'torch>=1.9.0,<2.12.0',
-        'transformers>=4.28.0,<4.56.0',
+        'torch<2.12.0,>=2.3.0',
+        'transformers!=4.56.*,<5.21.0,>=4.41.0',
     ],
 }
 
