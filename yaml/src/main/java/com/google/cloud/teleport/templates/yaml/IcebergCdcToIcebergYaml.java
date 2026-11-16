@@ -45,8 +45,7 @@ public interface IcebergCdcToIcebergYaml {
       name = "sourceTable",
       optional = false,
       description = "A fully-qualified Iceberg CDC source table identifier.",
-      helpText =
-          "The Iceberg table to read change records from. The table must use format version 2 or higher.",
+      helpText = "The Iceberg table to read change records from.",
       example = "my_dataset.source_table")
   @Validation.Required
   String getSourceTable();
@@ -148,9 +147,20 @@ public interface IcebergCdcToIcebergYaml {
       order = 12,
       name = "equalityColumns",
       optional = true,
-      description = "Primary-key fields used to apply Iceberg CDC writes.",
+      description = "Primary-key fields used for merge-on-read writes.",
       helpText =
           "A list of field names used as equality columns for merge-on-read writes. Leave unset to use the sink table's identifier fields. Required when the pipeline creates the sink table and that table has no identifier fields.",
       example = "[\"id\"]")
   String getEqualityColumns();
+
+  @TemplateParameter.Text(
+      order = 13,
+      name = "errorTable",
+      optional = false,
+      description = "A fully-qualified Iceberg table identifier for failed records.",
+      helpText =
+          "The Iceberg table in the same catalog that receives records that fail merge-on-read writes. The table is created if it does not exist.",
+      example = "my_dataset.error_table")
+  @Validation.Required
+  String getErrorTable();
 }

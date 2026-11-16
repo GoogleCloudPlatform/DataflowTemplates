@@ -15,10 +15,11 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **sourceTable**: The Iceberg table to read change records from. The table must use format version 2 or higher. For example, `my_dataset.source_table`.
+* **sourceTable**: The Iceberg table to read change records from. For example, `my_dataset.source_table`.
 * **table**: A fully-qualified table identifier, e.g., my_dataset.my_table. For example, `my_dataset.my_table`.
 * **catalogName**: The name of the Iceberg catalog that contains the table. For example, `my_hadoop_catalog`.
 * **catalogProperties**: A map of properties for setting up the Iceberg catalog. For example, `{"type": "hadoop", "warehouse": "gs://your-bucket/warehouse"}`.
+* **errorTable**: The Iceberg table in the same catalog that receives records that fail merge-on-read writes. The table is created if it does not exist. For example, `my_dataset.error_table`.
 
 ### Optional parameters
 
@@ -126,6 +127,7 @@ export SOURCE_TABLE=<sourceTable>
 export TABLE=<table>
 export CATALOG_NAME=<catalogName>
 export CATALOG_PROPERTIES=<catalogProperties>
+export ERROR_TABLE=<errorTable>
 
 ### Optional
 export CONFIG_PROPERTIES=<configProperties>
@@ -145,6 +147,7 @@ gcloud dataflow flex-template run "iceberg-cdc-to-iceberg-yaml-job" \
   --parameters "table=$TABLE" \
   --parameters "catalogName=$CATALOG_NAME" \
   --parameters "catalogProperties=$CATALOG_PROPERTIES" \
+  --parameters "errorTable=$ERROR_TABLE" \
   --parameters "configProperties=$CONFIG_PROPERTIES" \
   --parameters "drop=$DROP" \
   --parameters "keep=$KEEP" \
@@ -175,6 +178,7 @@ export SOURCE_TABLE=<sourceTable>
 export TABLE=<table>
 export CATALOG_NAME=<catalogName>
 export CATALOG_PROPERTIES=<catalogProperties>
+export ERROR_TABLE=<errorTable>
 
 ### Optional
 export CONFIG_PROPERTIES=<configProperties>
@@ -193,7 +197,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="iceberg-cdc-to-iceberg-yaml-job" \
 -DtemplateName="Iceberg_Cdc_To_Iceberg_Yaml" \
--Dparameters="sourceTable=$SOURCE_TABLE,table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,keep=$KEEP,filter=$FILTER,only=$ONLY,partitionFields=$PARTITION_FIELDS,tableProperties=$TABLE_PROPERTIES,equalityColumns=$EQUALITY_COLUMNS" \
+-Dparameters="sourceTable=$SOURCE_TABLE,table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,errorTable=$ERROR_TABLE,configProperties=$CONFIG_PROPERTIES,drop=$DROP,keep=$KEEP,filter=$FILTER,only=$ONLY,partitionFields=$PARTITION_FIELDS,tableProperties=$TABLE_PROPERTIES,equalityColumns=$EQUALITY_COLUMNS" \
 -f yaml
 ```
 
@@ -242,6 +246,7 @@ resource "google_dataflow_flex_template_job" "iceberg_cdc_to_iceberg_yaml" {
     table = "<table>"
     catalogName = "<catalogName>"
     catalogProperties = "<catalogProperties>"
+    errorTable = "<errorTable>"
     # configProperties = "<configProperties>"
     # drop = "<drop>"
     # keep = "<keep>"

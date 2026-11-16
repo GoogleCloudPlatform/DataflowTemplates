@@ -36,10 +36,17 @@ import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
+import org.apache.iceberg.DataFile;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
+import org.apache.iceberg.Table;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.data.GenericRecord;
 import org.apache.iceberg.data.Record;
+import org.apache.iceberg.data.parquet.GenericParquetWriter;
+import org.apache.iceberg.io.DataWriter;
+import org.apache.iceberg.io.OutputFile;
+import org.apache.iceberg.parquet.Parquet;
 import org.apache.iceberg.types.Types;
 import org.junit.After;
 import org.junit.Before;
@@ -63,8 +70,10 @@ public class IcebergCdcToIcebergYamlIT extends TemplateTestBase {
       "iceberg_namespace_" + UUID.randomUUID().toString().replace("-", "");
   private static final String SOURCE_TABLE_NAME = "source_table";
   private static final String SINK_TABLE_NAME = "iceberg_table";
+  private static final String ERROR_TABLE_NAME = "error_table";
   private final String sourceTableIdentifier = namespace + "." + SOURCE_TABLE_NAME;
   private final String sinkTableIdentifier = namespace + "." + SINK_TABLE_NAME;
+  private final String errorTableIdentifier = namespace + "." + ERROR_TABLE_NAME;
 
   private IcebergResourceManager icebergResourceManager;
   private GcsResourceManager warehouseGcsResourceManager;
@@ -115,18 +124,23 @@ public class IcebergCdcToIcebergYamlIT extends TemplateTestBase {
             PartitionSpec.unpartitioned(),
             Map.of("format-version", "2"));
 
-    List<Map<String, Object>> sourceRecords =
-        List.of(
-            Map.of("id", 1, "name", "Alice", "active", 1),
-            Map.of("id", 2, "name", "Bob", "active", 0),
-            Map.of("id", 3, "name", "Charlie", "active", 1));
-    icebergResourceManager.write(sourceTableIdentifier, sourceRecords);
-    LOG.info("Iceberg source table populated with {} records", sourceRecords.size());
+    Table sourceTable = icebergResourceManager.loadTable(sourceTableIdentifier);
+    DataFile aliceFile = appendRecord(sourceTable, Map.of("id", 1, "name", "Alice", "active", 1));
+    DataFile bobFile = appendRecord(sourceTable, Map.of("id", 2, "name", "Bob", "active", 0));
+    appendRecord(sourceTable, Map.of("id", 3, "name", "Charlie", "active", 1));
+    sourceTable
+        .newOverwrite()
+        .deleteFile(aliceFile)
+        .addFile(writeDataFile(sourceTable, Map.of("id", 1, "name", "Alicia", "active", 1)))
+        .commit();
+    sourceTable.newDelete().deleteFile(bobFile).commit();
+    LOG.info("Iceberg source table seeded with INSERT, UPDATE, and DELETE snapshots");
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
             .addParameter("sourceTable", sourceTableIdentifier)
             .addParameter("table", sinkTableIdentifier)
+            .addParameter("errorTable", errorTableIdentifier)
             .addParameter("catalogName", CATALOG_NAME)
             .addParameter(
                 "catalogProperties", new org.json.JSONObject(getCatalogProperties()).toString())
@@ -142,21 +156,17 @@ public class IcebergCdcToIcebergYamlIT extends TemplateTestBase {
     List<Record> icebergRecords = icebergResourceManager.read(sinkTableIdentifier);
     LOG.info("Iceberg sink records: {}", icebergRecords);
     assertNotNull(icebergRecords);
-    assertEquals(3, icebergRecords.size());
+    assertEquals(2, icebergRecords.size());
     icebergRecords.sort(Comparator.comparingInt(r -> ((Number) r.getField("id")).intValue()));
 
     Record actualRecord1 = icebergRecords.get(0);
     Record actualRecord2 = icebergRecords.get(1);
-    Record actualRecord3 = icebergRecords.get(2);
     assertEquals(1, ((Number) actualRecord1.getField("id")).intValue());
-    assertEquals("Alice", actualRecord1.getField("name"));
+    assertEquals("Alicia", actualRecord1.getField("name"));
     assertEquals(1, ((Number) actualRecord1.getField("active")).intValue());
-    assertEquals(2, ((Number) actualRecord2.getField("id")).intValue());
-    assertEquals("Bob", actualRecord2.getField("name"));
-    assertEquals(0, ((Number) actualRecord2.getField("active")).intValue());
-    assertEquals(3, ((Number) actualRecord3.getField("id")).intValue());
-    assertEquals("Charlie", actualRecord3.getField("name"));
-    assertEquals(1, ((Number) actualRecord3.getField("active")).intValue());
+    assertEquals(3, ((Number) actualRecord2.getField("id")).intValue());
+    assertEquals("Charlie", actualRecord2.getField("name"));
+    assertEquals(1, ((Number) actualRecord2.getField("active")).intValue());
   }
 
   @Override
@@ -166,6 +176,31 @@ public class IcebergCdcToIcebergYamlIT extends TemplateTestBase {
         .setProject(PROJECT)
         .setRegion(REGION)
         .build();
+  }
+
+  private DataFile appendRecord(Table table, Map<String, Object> recordMap) throws IOException {
+    DataFile dataFile = writeDataFile(table, recordMap);
+    table.newAppend().appendFile(dataFile).commit();
+    return dataFile;
+  }
+
+  private DataFile writeDataFile(Table table, Map<String, Object> recordMap) throws IOException {
+    GenericRecord record = GenericRecord.create(table.schema());
+    for (Map.Entry<String, Object> entry : recordMap.entrySet()) {
+      record.setField(entry.getKey(), entry.getValue());
+    }
+    OutputFile outputFile =
+        table.io().newOutputFile(table.location() + "/data/" + UUID.randomUUID() + ".parquet");
+    DataWriter<Record> icebergDataWriter =
+        Parquet.writeData(outputFile)
+            .createWriterFunc(GenericParquetWriter::create)
+            .withSpec(table.spec())
+            .schema(table.schema())
+            .overwrite()
+            .build();
+    icebergDataWriter.write(record);
+    icebergDataWriter.close();
+    return icebergDataWriter.toDataFile();
   }
 
   private Map<String, String> getCatalogProperties() {
