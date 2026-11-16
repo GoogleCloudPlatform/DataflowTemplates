@@ -238,6 +238,7 @@ public class SQLServerSeparateShadowTableDatabasePKFocusedIT extends DataStreamT
           gcsResourceManager,
           pubsubResourceManager);
     } finally {
+      testInstances.clear();
       initialized = false;
       jobInfo = null;
       msSqlResourceManager = null;

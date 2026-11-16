@@ -219,6 +219,7 @@ public class SQLServerDataStreamToSpannerSessionIT extends DataStreamToSpannerIT
           gcsResourceManager,
           pubsubResourceManager);
     } finally {
+      testInstances.clear();
       initialized = false;
       jobInfo = null;
       msSqlResourceManager = null;
