@@ -14,5 +14,8 @@
  * the License.
  */
 
-/** Retry helpers for Spanner integration tests (skip re-running genuine failures). */
+/**
+ * Retry helpers for Spanner integration tests: skip re-running genuine failures, and reset
+ * per-class shared state so a rerun starts fresh.
+ */
 package com.google.cloud.teleport.v2.spanner.testutils.retry;

@@ -28,6 +28,12 @@
 
     <artifactId>datastream-to-spanner</artifactId>
 
+    <properties>
+        <!-- Reruns of a failed IT in this module (1 = the first run plus at most 1 retry) when the
+             rerunTransientItFailures profile is active; override with -DliveItRerunFailingTestsCount=N. -->
+        <liveItRerunFailingTestsCount>1</liveItRerunFailingTestsCount>
+    </properties>
+
     <description>
         Stream CDC Data from DataStream to Spanner via GCS
     </description>
@@ -178,6 +184,33 @@
                                  threadCount/2 (24) ITs run at once, regardless of how many tests a class has. -->
                             <threadCountClasses>1</threadCountClasses>
                             <threadCountMethods>1</threadCountMethods>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <!-- Re-runs failed ITs of this module, only where IT_SKIP_RERUN_OF_GENUINE_FAILURES=true
+                 is set (the Spanner PR workflow's IT step), so SkipRerunOfGenuineFailuresRule and
+                 RestoreStaticStateRule (see DataStreamToSpannerITBase) are on: only transient failures are retried, and a
+                 rerun creates new resources and a new job. Elsewhere (local runs, release workflows)
+                 the usual -Dsurefire.rerunFailingTestsCount applies. Set explicitly rather than via
+                 that property, so the PR workflow's default -Dsurefire.rerunFailingTestsCount=0 does
+                 not override it. -->
+            <id>rerunTransientItFailures</id>
+            <activation>
+                <property>
+                    <name>env.IT_SKIP_RERUN_OF_GENUINE_FAILURES</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <rerunFailingTestsCount>${liveItRerunFailingTestsCount}</rerunFailingTestsCount>
                         </configuration>
                     </plugin>
                 </plugins>
