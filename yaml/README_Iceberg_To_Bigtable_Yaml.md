@@ -22,7 +22,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **table**: A fully-qualified table identifier, e.g., my_dataset.my_table. For example, `my_dataset.my_table`.
 * **catalogName**: The name of the Iceberg catalog that contains the table. For example, `my_hadoop_catalog`.
 * **catalogProperties**: A map of properties for setting up the Iceberg catalog. For example, `{"type": "hadoop", "warehouse": "gs://your-bucket/warehouse"}`.
-* **fields**: The output fields to compute, each mapping to the expression or callable that creates them. For example, `{"key": {"expression": "key.encode('utf-8')", "output_type": "bytes"}}`.
+* **fields**: The output fields to compute, each mapping to the expression or callable that creates them. When writing to Bigtable, the expected mutation schema fields are: 'key' (bytes), 'type' (string: 'SetCell', 'DeleteFromColumn', 'DeleteFromFamily', or 'DeleteFromRow'), 'family_name' (string), 'column_qualifier' (bytes), 'value' (bytes), and 'timestamp_micros' (integer, optional; defaults to -1 for current Bigtable server time). For example, `{"key": {"expression": "key.encode('utf-8')", "output_type": "bytes"}, "type": {"expression": "'SetCell'", "output_type": "string"}, "family_name": {"expression": "'cf1'", "output_type": "string"}, "column_qualifier": {"expression": "b'cq1'", "output_type": "bytes"}, "value": {"expression": "value.encode('utf-8')", "output_type": "bytes"}, "timestamp_micros": {"expression": "timestamp_micros", "output_type": "integer"}}`.
 * **projectId**: The Google Cloud project ID of the Bigtable instance. For example, `my-gcp-project`.
 * **instanceId**: The Bigtable instance ID. For example, `my-bigtable-instance`.
 * **tableId**: Bigtable table ID to write the output to. For example, `my-bigtable-table`.
@@ -34,7 +34,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **drop**: A list of field names to drop. Mutually exclusive with 'keep' and 'only'. For example, `["field_to_drop_1", "field_to_drop_2"]`.
 * **keep**: A list of field names to keep. Mutually exclusive with 'drop' and 'only'. For example, `["field_to_keep_1", "field_to_keep_2"]`.
 * **filter**: A filter expression to apply to records from the Iceberg table. For example, `age > 18`.
-* **language**: The language used to define (and execute) the expressions and/or  callables in fields. Defaults to generic. For example, `python`.
+* **language**: The language used to define (and execute) the expressions and/or  callables in fields. Defaults to python. For example, `python`.
 
 
 
@@ -141,7 +141,7 @@ export CONFIG_PROPERTIES=<configProperties>
 export DROP=<drop>
 export KEEP=<keep>
 export FILTER=<filter>
-export LANGUAGE=generic
+export LANGUAGE=python
 
 gcloud dataflow flex-template run "iceberg-to-bigtable-yaml-job" \
   --project "$PROJECT" \
@@ -192,7 +192,7 @@ export CONFIG_PROPERTIES=<configProperties>
 export DROP=<drop>
 export KEEP=<keep>
 export FILTER=<filter>
-export LANGUAGE=generic
+export LANGUAGE=python
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -258,7 +258,7 @@ resource "google_dataflow_flex_template_job" "iceberg_to_bigtable_yaml" {
     # drop = "<drop>"
     # keep = "<keep>"
     # filter = "<filter>"
-    # language = "generic"
+    # language = "python"
   }
 }
 ```
