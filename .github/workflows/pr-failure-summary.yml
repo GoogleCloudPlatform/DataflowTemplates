@@ -68,7 +68,7 @@ jobs:
       checks: read
       statuses: read
       issues: write
-      pull-requests: read
+      pull-requests: write
     outputs:
       should_summarize: ${{ steps.resolve.outputs.should_summarize }}
       pr_number: ${{ steps.resolve.outputs.pr_number }}
@@ -163,7 +163,7 @@ jobs:
       actions: read
       statuses: read
       issues: write
-      pull-requests: read
+      pull-requests: write
 
     steps:
       - name: Setup Node.js
