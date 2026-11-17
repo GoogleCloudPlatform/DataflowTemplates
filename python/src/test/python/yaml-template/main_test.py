@@ -165,6 +165,41 @@ class MainTest(unittest.TestCase):
 
     mock_run.assert_called_once_with(argv)
 
+  def test_run_does_not_add_requirements_file_for_private_ips(self):
+    argv = [
+        f'--yaml_pipeline={_ML_PIPELINE}',
+        '--yaml_experimental_features=ML',
+        '--no_use_public_ips',
+    ]
+
+    with patch('main.main.run') as mock_run:
+      main.run(argv)
+
+    mock_run.assert_called_once_with(argv)
+
+  def test_run_does_not_add_requirements_file_for_private_ips_in_yaml(self):
+    pipeline = _ML_PIPELINE + '''
+options:
+  use_public_ips: false
+'''
+    argv = [f'--yaml_pipeline={pipeline}']
+
+    with patch('main.main.run') as mock_run:
+      main.run(argv)
+
+    mock_run.assert_called_once_with(argv)
+
+  def test_run_checks_private_ips_if_pipeline_cannot_be_parsed(self):
+    argv = [
+        '--yaml_pipeline_file=does/not/exist.yaml',
+        '--no_use_public_ips',
+    ]
+
+    with patch('main.main.run') as mock_run:
+      main.run(argv)
+
+    mock_run.assert_called_once_with(argv)
+
 
 if __name__ == '__main__':
   unittest.main()
