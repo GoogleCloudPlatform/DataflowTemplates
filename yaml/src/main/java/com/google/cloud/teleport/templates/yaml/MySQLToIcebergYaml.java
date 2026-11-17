@@ -239,4 +239,14 @@ public interface MySQLToIcebergYaml {
       helpText = "A map of Iceberg table properties to set when the table is created.",
       example = "{\"commit.retry.num-retries\": \"2\"}")
   String getTableProperties();
+
+  @TemplateParameter.Text(
+      order = 22,
+      name = "equalityColumns",
+      optional = true,
+      description = "Primary-key fields used for merge-on-read writes.",
+      helpText =
+          "A list of field names used as equality columns for merge-on-read writes. Leave unset to use the sink table's identifier fields. Required when the pipeline creates the sink table and that table has no identifier fields.",
+      example = "[\"id\"]")
+  String getEqualityColumns();
 }

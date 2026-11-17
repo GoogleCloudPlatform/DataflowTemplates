@@ -94,3 +94,23 @@ options:
         example: 60
         required: true
         type: integer
+
+  - name: "iceberg_cdc_source_options"
+    parameters:
+      - order: 1
+        name: "sourceTable"
+        description: "A fully-qualified Iceberg CDC source table identifier."
+        help: "The Iceberg table to read change records from."
+        example: "my_dataset.source_table"
+        required: true
+        type: text
+
+  - name: "iceberg_error_options"
+    parameters:
+      - order: 1
+        name: "errorTable"
+        description: "A fully-qualified Iceberg table identifier for failed records."
+        help: "The Iceberg table in the same catalog that receives records that fail merge-on-read writes. The table is created if it does not exist."
+        example: "my_dataset.error_table"
+        required: true
+        type: text
