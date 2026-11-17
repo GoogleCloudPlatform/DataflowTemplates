@@ -134,10 +134,13 @@ jobs:
           ' <<< "${PR_JSON}")"
 
           if [ "${FAILED_COUNT}" -eq 0 ]; then
-            COMMENT_ID="$(gh api "repos/${REPOSITORY}/issues/${PR_NUMBER}/comments" --paginate \
-              --jq "[.[] | select((.body // \"\") | contains(\"${MARKER}\"))][-1].id // empty")"
-            if [ -n "${COMMENT_ID}" ]; then
-              gh api -X DELETE "repos/${REPOSITORY}/issues/comments/${COMMENT_ID}"
+            COMMENT_IDS="$(gh api "repos/${REPOSITORY}/issues/${PR_NUMBER}/comments" --paginate \
+              --jq ".[] | select(((.body // \"\") | contains(\"${MARKER}\")) or (((.body // \"\") | gsub(\"^[[:space:]]+|[[:space:]]+$\"; \"\") | ascii_downcase) == \"/summarize-failures\")) | .id")"
+            if [ -n "${COMMENT_IDS}" ]; then
+              while IFS= read -r comment_id; do
+                [ -z "${comment_id}" ] && continue
+                gh api -X DELETE "repos/${REPOSITORY}/issues/comments/${comment_id}"
+              done <<< "${COMMENT_IDS}"
             fi
             echo "should_summarize=false" >> "${GITHUB_OUTPUT}"
             exit 0
