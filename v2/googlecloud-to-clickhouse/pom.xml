@@ -49,7 +49,7 @@
         <dependency>
             <groupId>com.clickhouse</groupId>
             <artifactId>clickhouse-jdbc</artifactId>
-            <version>0.9.6</version>
+            <version>0.11.2</version>
             <scope>test</scope>
             <classifier>all</classifier>
         </dependency>
