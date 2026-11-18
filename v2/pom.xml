@@ -466,7 +466,19 @@
                                             </excludes>
                                         </filter>
                                         <filter>
-                                            <artifact>org.apache.beam:beam-vendor-guava-32_1_2-jre</artifact>
+                                            <artifact>org.apache.beam:beam-vendor-*</artifact>
+                                            <excludes>
+                                                <exclude>META-INF/maven/**</exclude>
+                                            </excludes>
+                                        </filter>
+                                        <filter>
+                                            <artifact>com.google.cloud.bigtable:bigtable-hbase-2.x-shaded</artifact>
+                                            <excludes>
+                                                <exclude>META-INF/maven/**</exclude>
+                                            </excludes>
+                                        </filter>
+                                        <filter>
+                                            <artifact>org.apache.hadoop.thirdparty:hadoop-shaded-guava</artifact>
                                             <excludes>
                                                 <exclude>META-INF/maven/**</exclude>
                                             </excludes>

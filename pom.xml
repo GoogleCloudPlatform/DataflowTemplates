@@ -404,6 +404,13 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
+      <!-- Enforce updated version of Guava across all modules; overrides the older
+           version pinned in beam-sdks-java-google-cloud-platform-bom. -->
+      <dependency>
+        <groupId>com.google.guava</groupId>
+        <artifactId>guava</artifactId>
+        <version>${guava.version}</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
