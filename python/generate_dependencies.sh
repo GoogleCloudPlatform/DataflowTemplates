@@ -51,7 +51,7 @@ pip freeze
 
 # Generate hashes for new requirements file
 echo "Running pip-compile to generate hashes"
-pip-compile $BASE_REQUIREMENTS_PATH -o $TARGET_REQUIREMENTS_PATH --upgrade --generate-hashes --allow-unsafe
+pip-compile "$BASE_REQUIREMENTS_PATH" -o "$TARGET_REQUIREMENTS_PATH" --upgrade --generate-hashes --allow-unsafe
 
 cat <<EOT > "$TARGET_REQUIREMENTS_PATH"
 # Copyright 2025 Google Inc. All Rights Reserved.
