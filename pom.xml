@@ -163,6 +163,14 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
+      <!-- Must stay ahead of the Beam GCP BOM, which pins guava 33.1.0-jre. -->
+      <dependency>
+        <groupId>com.google.guava</groupId>
+        <artifactId>guava-bom</artifactId>
+        <version>${guava.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
       <dependency>
         <groupId>org.apache.beam</groupId>
         <artifactId>beam-sdks-java-google-cloud-platform-bom</artifactId>
