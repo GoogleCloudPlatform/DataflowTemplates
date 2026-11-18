@@ -139,9 +139,9 @@ public interface PubSubToBigtableYaml {
       optional = true,
       description = "Language used to define the expressions.",
       helpText =
-          "The language used to define (and execute) the expressions and/or  callables in fields. Defaults to generic.",
+          "The language used to define (and execute) the expressions and/or  callables in fields. Defaults to python.",
       example = "python")
-  @Default.String("generic")
+  @Default.String("python")
   String getLanguage();
 
   @TemplateParameter.Text(
@@ -150,8 +150,9 @@ public interface PubSubToBigtableYaml {
       optional = false,
       description = "Field mapping configuration",
       helpText =
-          "The output fields to compute, each mapping to the expression or callable that creates them.",
-      example = "{\"key\": {\"expression\": \"key.encode('utf-8')\", \"output_type\": \"bytes\"}}")
+          "The output fields to compute, each mapping to the expression or callable that creates them. When writing to Bigtable, the expected mutation schema fields are: 'key' (bytes), 'type' (string: 'SetCell', 'DeleteFromColumn', 'DeleteFromFamily', or 'DeleteFromRow'), 'family_name' (string), 'column_qualifier' (bytes), 'value' (bytes), and 'timestamp_micros' (integer, optional; defaults to -1 for current Bigtable server time).",
+      example =
+          "{\"key\": {\"expression\": \"key.encode('utf-8')\", \"output_type\": \"bytes\"}, \"type\": {\"expression\": \"'SetCell'\", \"output_type\": \"string\"}, \"family_name\": {\"expression\": \"'cf1'\", \"output_type\": \"string\"}, \"column_qualifier\": {\"expression\": \"b'cq1'\", \"output_type\": \"bytes\"}, \"value\": {\"expression\": \"value.encode('utf-8')\", \"output_type\": \"bytes\"}, \"timestamp_micros\": {\"expression\": \"timestamp_micros\", \"output_type\": \"integer\"}}")
   @Validation.Required
   String getFields();
 

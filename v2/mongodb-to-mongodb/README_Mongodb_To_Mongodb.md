@@ -25,15 +25,15 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **writeBatchSize**: Number of documents in a bulk write. Defaults to: 5000.
 * **maxConcurrentAsyncWrites**: Maximum number of concurrent asynchronous batch writes per worker. Defaults to: 10.
 * **maxWriteRetries**: Maximum number of retry attempts for transient failures during write. Defaults to: 3.
-* **initialWriteRatePerWorker**: Initial maximum documents/second written per worker thread during linear write rate ramp-up. Set to <= 0 to disable throttling. Defaults to: 5000.
-* **writeRateRampUpMinutes**: Number of minutes between linear rate limit increases during write rate ramp-up. Defaults to: 5.
-* **maxWriteRatePerWorker**: Maximum target documents/second per worker after completing ramp-up. Default is 25000.
-* **writeRateRampUpSteps**: Number of discrete linear step increases over the ramp-up period. Defaults to: 5.
+* **initialWriteRatePerWorker**: Initial maximum documents/second written per worker JVM during write rate ramp-up. Set to <= 0 to disable throttling. Defaults to: 5000.
+* **writeRateRampUpMinutes**: Duration in minutes for write rate ramp-up. Defaults to: 5.
+* **maxWriteRatePerWorker**: Maximum target documents/second per worker after completing ramp-up. Set to <= 0 to warm up exponentially over writeRateRampUpMinutes and then run uncapped. Default is 25000.
+* **writeRateRampUpSteps**: Number of discrete step increases over the ramp-up period. Defaults to: 5.
 * **dlqDirectory**: Base path to store failed events. Events will be grouped by date and time, and separated into 'retryable' and 'permanent' subdirectories.
 * **dlqMaxRetries**: Maximum number of times to retry events from DLQ. Defaults to: 3.
 * **reconsumeDlqPath**: Path to read files from DLQ for reprocessing. If not provided, write DLQ path will be used.
 * **readFromDlq**: If true, reads only from DLQ for retry. If false, reads from MongoDB. Defaults to: false.
-* **migrationMode**: Migration mode: 'BACKFILL_AND_STREAMING' (historical backfill and streaming CDC in parallel with stateful deduplication), 'STREAMING_CDC' (stream CDC only), or 'BACKFILL' (historical backfill only). Defaults to: BACKFILL_AND_STREAMING.
+* **migrationMode**: Migration mode: 'BACKFILL' (historical backfill only), 'BACKFILL_AND_STREAMING' (historical backfill and streaming CDC in parallel with stateful deduplication), or 'STREAMING_CDC' (stream CDC only). Default is 'BACKFILL'.
 * **numChangeStreamSplits**: Number of parallel change stream cursors per collection for high-throughput CDC streaming (e.g. 1, 4, 8, 16). Defaults to: 1.
 * **changeStreamFullDocument**: Strategy for fetching full document in change streams: 'updateLookup' (lookup full doc from collection on updates, compatible with MongoDB 4+), 'whenAvailable' (MongoDB 6+ post-image oplog extraction without extra lookup), 'required', or 'default'.
 * **startAtOperationTime**: Optional starting clusterTime (epoch seconds or ISO-8601 timestamp) to start change stream cursors from. If omitted in BACKFILL_AND_STREAMING mode, captures the current clusterTime before backfill starts.
@@ -42,7 +42,9 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **targetBackfillChunkSize**: Target number of documents per backfill split. Adaptive volume-based splitting uses this to calculate the number of splits per collection based on estimated count. Default is 200000.
 * **maxBackfillSplits**: Maximum number of backfill read splits allowed per collection during adaptive splitting. Default is 256.
 * **maxConcurrentBackfillReads**: Maximum number of concurrent in-flight backfill cursors allowed across the cluster. Partitions are distributed across virtual concurrency slots to strictly bound source database connections and cursor memory. Default is 128.
-* **dedupStateRetentionHours**: How long per-document deduplication state is retained after the most recent accepted event, in hours. Only applies when both backfill and change streams are enabled. Defaults to 0, meaning state is kept for the life of the job; this is recommended. Per-document state is only about a hundred bytes, so bounding it saves little, and if state expires while backfill is still running then a stale backfill record for that document is treated as unseen and re-applied over newer change stream data. Only set this if deduplication state size is a demonstrated problem, and set it comfortably above your longest expected backfill.
+* **dedupStateRetentionHours**: How long per-document deduplication state is retained after the most recent accepted event, in hours. Only applies when change streams are enabled. Defaults to 0, meaning state is kept for the life of the job; this is recommended. Per-document state is only about a hundred bytes, so bounding it saves little, and if state expires while backfill is still running then a stale backfill record for that document is treated as unseen and re-applied over newer change stream data. Only set this if deduplication state size is a demonstrated problem, and set it comfortably above your longest expected backfill.
+* **backfillCursorBatchSize**: Number of documents fetched per MongoDB cursor getMore network round-trip during historical backfill. Tune based on average document size (e.g. 5000 for 1-10 KiB docs, 500 for 250 KiB docs). Default is 5000.
+* **backfillMaxDocsPerSlice**: Maximum number of documents emitted per Splittable DoFn continuation slice before checkpointing progress to Windmill. Tune based on document size and target chunk size (e.g. 25000-50000 for 1 KiB docs, 1000-2000 for 250 KiB docs). Default is 25000.
 * **javascriptTextTransformGcsPath**: The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`.
 * **javascriptTextTransformFunctionName**: The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
 * **javascriptTextTransformReloadIntervalMinutes**: Specifies how frequently to reload the UDF, in minutes. If the value is greater than 0, Dataflow periodically checks the UDF file in Cloud Storage, and reloads the UDF if the file is modified. This parameter allows you to update the UDF while the pipeline is running, without needing to restart the job. If the value is `0`, UDF reloading is disabled. The default value is `0`.
@@ -167,7 +169,7 @@ export DLQ_DIRECTORY=<dlqDirectory>
 export DLQ_MAX_RETRIES=3
 export RECONSUME_DLQ_PATH=<reconsumeDlqPath>
 export READ_FROM_DLQ=false
-export MIGRATION_MODE=BACKFILL_AND_STREAMING
+export MIGRATION_MODE=BACKFILL
 export NUM_CHANGE_STREAM_SPLITS=1
 export CHANGE_STREAM_FULL_DOCUMENT=updateLookup
 export START_AT_OPERATION_TIME=<startAtOperationTime>
@@ -177,6 +179,8 @@ export TARGET_BACKFILL_CHUNK_SIZE=200000
 export MAX_BACKFILL_SPLITS=256
 export MAX_CONCURRENT_BACKFILL_READS=128
 export DEDUP_STATE_RETENTION_HOURS=0
+export BACKFILL_CURSOR_BATCH_SIZE=5000
+export BACKFILL_MAX_DOCS_PER_SLICE=25000
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
 export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=0
@@ -212,6 +216,8 @@ gcloud dataflow flex-template run "mongodb-to-mongodb-job" \
   --parameters "maxBackfillSplits=$MAX_BACKFILL_SPLITS" \
   --parameters "maxConcurrentBackfillReads=$MAX_CONCURRENT_BACKFILL_READS" \
   --parameters "dedupStateRetentionHours=$DEDUP_STATE_RETENTION_HOURS" \
+  --parameters "backfillCursorBatchSize=$BACKFILL_CURSOR_BATCH_SIZE" \
+  --parameters "backfillMaxDocsPerSlice=$BACKFILL_MAX_DOCS_PER_SLICE" \
   --parameters "javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH" \
   --parameters "javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
   --parameters "javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES"
@@ -252,7 +258,7 @@ export DLQ_DIRECTORY=<dlqDirectory>
 export DLQ_MAX_RETRIES=3
 export RECONSUME_DLQ_PATH=<reconsumeDlqPath>
 export READ_FROM_DLQ=false
-export MIGRATION_MODE=BACKFILL_AND_STREAMING
+export MIGRATION_MODE=BACKFILL
 export NUM_CHANGE_STREAM_SPLITS=1
 export CHANGE_STREAM_FULL_DOCUMENT=updateLookup
 export START_AT_OPERATION_TIME=<startAtOperationTime>
@@ -262,6 +268,8 @@ export TARGET_BACKFILL_CHUNK_SIZE=200000
 export MAX_BACKFILL_SPLITS=256
 export MAX_CONCURRENT_BACKFILL_READS=128
 export DEDUP_STATE_RETENTION_HOURS=0
+export BACKFILL_CURSOR_BATCH_SIZE=5000
+export BACKFILL_MAX_DOCS_PER_SLICE=25000
 export JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH=<javascriptTextTransformGcsPath>
 export JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME=<javascriptTextTransformFunctionName>
 export JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES=0
@@ -273,7 +281,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="mongodb-to-mongodb-job" \
 -DtemplateName="Mongodb_To_Mongodb" \
--Dparameters="sourceUri=$SOURCE_URI,targetUri=$TARGET_URI,sourceDatabase=$SOURCE_DATABASE,targetDatabase=$TARGET_DATABASE,sourceCollection=$SOURCE_COLLECTION,targetCollection=$TARGET_COLLECTION,writeBatchSize=$WRITE_BATCH_SIZE,maxConcurrentAsyncWrites=$MAX_CONCURRENT_ASYNC_WRITES,maxWriteRetries=$MAX_WRITE_RETRIES,initialWriteRatePerWorker=$INITIAL_WRITE_RATE_PER_WORKER,writeRateRampUpMinutes=$WRITE_RATE_RAMP_UP_MINUTES,maxWriteRatePerWorker=$MAX_WRITE_RATE_PER_WORKER,writeRateRampUpSteps=$WRITE_RATE_RAMP_UP_STEPS,dlqDirectory=$DLQ_DIRECTORY,dlqMaxRetries=$DLQ_MAX_RETRIES,reconsumeDlqPath=$RECONSUME_DLQ_PATH,readFromDlq=$READ_FROM_DLQ,migrationMode=$MIGRATION_MODE,numChangeStreamSplits=$NUM_CHANGE_STREAM_SPLITS,changeStreamFullDocument=$CHANGE_STREAM_FULL_DOCUMENT,startAtOperationTime=$START_AT_OPERATION_TIME,numWriteShards=$NUM_WRITE_SHARDS,maxBufferingDurationMs=$MAX_BUFFERING_DURATION_MS,targetBackfillChunkSize=$TARGET_BACKFILL_CHUNK_SIZE,maxBackfillSplits=$MAX_BACKFILL_SPLITS,maxConcurrentBackfillReads=$MAX_CONCURRENT_BACKFILL_READS,dedupStateRetentionHours=$DEDUP_STATE_RETENTION_HOURS,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES" \
+-Dparameters="sourceUri=$SOURCE_URI,targetUri=$TARGET_URI,sourceDatabase=$SOURCE_DATABASE,targetDatabase=$TARGET_DATABASE,sourceCollection=$SOURCE_COLLECTION,targetCollection=$TARGET_COLLECTION,writeBatchSize=$WRITE_BATCH_SIZE,maxConcurrentAsyncWrites=$MAX_CONCURRENT_ASYNC_WRITES,maxWriteRetries=$MAX_WRITE_RETRIES,initialWriteRatePerWorker=$INITIAL_WRITE_RATE_PER_WORKER,writeRateRampUpMinutes=$WRITE_RATE_RAMP_UP_MINUTES,maxWriteRatePerWorker=$MAX_WRITE_RATE_PER_WORKER,writeRateRampUpSteps=$WRITE_RATE_RAMP_UP_STEPS,dlqDirectory=$DLQ_DIRECTORY,dlqMaxRetries=$DLQ_MAX_RETRIES,reconsumeDlqPath=$RECONSUME_DLQ_PATH,readFromDlq=$READ_FROM_DLQ,migrationMode=$MIGRATION_MODE,numChangeStreamSplits=$NUM_CHANGE_STREAM_SPLITS,changeStreamFullDocument=$CHANGE_STREAM_FULL_DOCUMENT,startAtOperationTime=$START_AT_OPERATION_TIME,numWriteShards=$NUM_WRITE_SHARDS,maxBufferingDurationMs=$MAX_BUFFERING_DURATION_MS,targetBackfillChunkSize=$TARGET_BACKFILL_CHUNK_SIZE,maxBackfillSplits=$MAX_BACKFILL_SPLITS,maxConcurrentBackfillReads=$MAX_CONCURRENT_BACKFILL_READS,dedupStateRetentionHours=$DEDUP_STATE_RETENTION_HOURS,backfillCursorBatchSize=$BACKFILL_CURSOR_BATCH_SIZE,backfillMaxDocsPerSlice=$BACKFILL_MAX_DOCS_PER_SLICE,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME,javascriptTextTransformReloadIntervalMinutes=$JAVASCRIPT_TEXT_TRANSFORM_RELOAD_INTERVAL_MINUTES" \
 -f v2/mongodb-to-mongodb
 ```
 
@@ -335,7 +343,7 @@ resource "google_dataflow_flex_template_job" "mongodb_to_mongodb" {
     # dlqMaxRetries = "3"
     # reconsumeDlqPath = "<reconsumeDlqPath>"
     # readFromDlq = "false"
-    # migrationMode = "BACKFILL_AND_STREAMING"
+    # migrationMode = "BACKFILL"
     # numChangeStreamSplits = "1"
     # changeStreamFullDocument = "updateLookup"
     # startAtOperationTime = "<startAtOperationTime>"
@@ -345,6 +353,8 @@ resource "google_dataflow_flex_template_job" "mongodb_to_mongodb" {
     # maxBackfillSplits = "256"
     # maxConcurrentBackfillReads = "128"
     # dedupStateRetentionHours = "0"
+    # backfillCursorBatchSize = "5000"
+    # backfillMaxDocsPerSlice = "25000"
     # javascriptTextTransformGcsPath = "<javascriptTextTransformGcsPath>"
     # javascriptTextTransformFunctionName = "<javascriptTextTransformFunctionName>"
     # javascriptTextTransformReloadIntervalMinutes = "0"

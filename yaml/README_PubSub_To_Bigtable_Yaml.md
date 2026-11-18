@@ -22,7 +22,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **topic**: Pub/Sub topic to read the input from. For example, `projects/your-project-id/topics/your-topic-name`.
 * **format**: The message format. One of: AVRO, JSON, PROTO, RAW, or STRING.
 * **schema**: A schema is required if data format is JSON, AVRO or PROTO. For JSON,  this is a JSON schema. For AVRO and PROTO, this is the full schema  definition.
-* **fields**: The output fields to compute, each mapping to the expression or callable that creates them. For example, `{"key": {"expression": "key.encode('utf-8')", "output_type": "bytes"}}`.
+* **fields**: The output fields to compute, each mapping to the expression or callable that creates them. When writing to Bigtable, the expected mutation schema fields are: 'key' (bytes), 'type' (string: 'SetCell', 'DeleteFromColumn', 'DeleteFromFamily', or 'DeleteFromRow'), 'family_name' (string), 'column_qualifier' (bytes), 'value' (bytes), and 'timestamp_micros' (integer, optional; defaults to -1 for current Bigtable server time). For example, `{"key": {"expression": "key.encode('utf-8')", "output_type": "bytes"}, "type": {"expression": "'SetCell'", "output_type": "string"}, "family_name": {"expression": "'cf1'", "output_type": "string"}, "column_qualifier": {"expression": "b'cq1'", "output_type": "bytes"}, "value": {"expression": "value.encode('utf-8')", "output_type": "bytes"}, "timestamp_micros": {"expression": "timestamp_micros", "output_type": "integer"}}`.
 * **projectId**: The Google Cloud project ID of the Bigtable instance. For example, `my-gcp-project`.
 * **instanceId**: The Bigtable instance ID. For example, `my-bigtable-instance`.
 * **tableId**: Bigtable table ID to write the output to. For example, `my-bigtable-table`.
@@ -37,7 +37,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **timestampAttribute**: Message value to use as element timestamp. If None, uses message  publishing time as the timestamp. Timestamp values should be in one of two formats: 1). A numerical value representing the number of milliseconds since the Unix epoch. 2). A string in RFC 3339 format, UTC timezone. Example: ``2015-10-29T23:41:41.123Z``. The sub-second component of the timestamp is optional, and digits beyond the first three (i.e., time units smaller than milliseconds) may be ignored. For example, `timestamp`.
 * **errorHandling**: This option specifies whether and where to output error rows.
 * **subscription**: Pub/Sub subscription to read the input from. For example, `projects/your-project-id/subscriptions/your-subscription-name`.
-* **language**: The language used to define (and execute) the expressions and/or  callables in fields. Defaults to generic. For example, `python`.
+* **language**: The language used to define (and execute) the expressions and/or  callables in fields. Defaults to python. For example, `python`.
 
 
 
@@ -147,7 +147,7 @@ export ID_ATTRIBUTE=<idAttribute>
 export TIMESTAMP_ATTRIBUTE=<timestampAttribute>
 export ERROR_HANDLING=<errorHandling>
 export SUBSCRIPTION=<subscription>
-export LANGUAGE=generic
+export LANGUAGE=python
 
 gcloud dataflow flex-template run "pubsub-to-bigtable-yaml-job" \
   --project "$PROJECT" \
@@ -204,7 +204,7 @@ export ID_ATTRIBUTE=<idAttribute>
 export TIMESTAMP_ATTRIBUTE=<timestampAttribute>
 export ERROR_HANDLING=<errorHandling>
 export SUBSCRIPTION=<subscription>
-export LANGUAGE=generic
+export LANGUAGE=python
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -273,7 +273,7 @@ resource "google_dataflow_flex_template_job" "pubsub_to_bigtable_yaml" {
     # timestampAttribute = "<timestampAttribute>"
     # errorHandling = "<errorHandling>"
     # subscription = "<subscription>"
-    # language = "generic"
+    # language = "python"
   }
 }
 ```
