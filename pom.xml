@@ -54,7 +54,7 @@
     <!-- Beam and linked versions -->
     <beam.version>2.78.0</beam.version>
     <beam-python.version>2.78.0</beam-python.version>
-    <beam-maven-repo>https://repository.apache.org/content/repositories/orgapachebeam-1444</beam-maven-repo>
+    <beam-maven-repo></beam-maven-repo>
 
     <!-- Common dependency versions -->
     <autovalue.version>1.11.1</autovalue.version>
@@ -1100,7 +1100,7 @@
     <profile>
       <id>validateCandidate</id>
       <activation>
-        <jdk>[1.8,)</jdk>
+        <activeByDefault>false</activeByDefault>
       </activation>
       <repositories>
         <repository>
