@@ -22,16 +22,15 @@ import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ConnectionExce
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
-import com.google.cloud.teleport.v2.templates.model.LogicalType;
 import com.google.cloud.teleport.v2.templates.sink.DataWriter;
 import com.google.cloud.teleport.v2.templates.utils.Constants;
+import com.google.cloud.teleport.v2.templates.utils.DataGeneratorUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.sql.Types;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -354,7 +353,7 @@ public class MySqlDataWriter implements DataWriter {
       PreparedStatement statement, int index, DataGeneratorColumn column, Object value)
       throws SQLException {
     if (value == null) {
-      statement.setNull(index, jdbcTypeFor(column.logicalType()));
+      statement.setNull(index, DataGeneratorUtils.jdbcTypeFor(column.logicalType()));
       return;
     }
     switch (column.logicalType()) {
@@ -398,31 +397,6 @@ public class MySqlDataWriter implements DataWriter {
 
   private static java.sql.Timestamp toSqlTimestamp(Object value) {
     return new java.sql.Timestamp(((ReadableInstant) value).getMillis());
-  }
-
-  private static int jdbcTypeFor(LogicalType type) {
-    switch (type) {
-      case STRING:
-      case JSON:
-      case UUID:
-        return Types.VARCHAR;
-      case INT64:
-        return Types.BIGINT;
-      case FLOAT64:
-        return Types.DOUBLE;
-      case BOOLEAN:
-        return Types.BOOLEAN;
-      case BYTES:
-        return Types.VARBINARY;
-      case NUMERIC:
-        return Types.NUMERIC;
-      case DATE:
-        return Types.DATE;
-      case TIMESTAMP:
-        return Types.TIMESTAMP;
-      default:
-        return Types.OTHER;
-    }
   }
 
   private static String quote(String identifier) {

@@ -34,7 +34,8 @@ import org.apache.beam.sdk.options.Validation;
       "main.py",
       "requirements.txt",
       "options/bigquery_options.yaml",
-      "options/pubsub_options.yaml"
+      "options/pubsub_options.yaml",
+      "options/windowing_options.yaml"
     },
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/pubsub-subscription-to-bigquery",
@@ -171,4 +172,25 @@ public interface PubSubSubscriptionToBigQueryYaml {
       example = "1")
   @Default.Integer(1)
   Integer getNumStreams();
+
+  @TemplateParameter.Text(
+      order = 13,
+      name = "type",
+      optional = true,
+      description = "The type of windowing to apply.",
+      helpText =
+          "The type of windowing to apply (e.g., fixed, sliding, sessions, global). Defaults to fixed.",
+      example = "fixed")
+  @Default.String("fixed")
+  String getType();
+
+  @TemplateParameter.Integer(
+      order = 14,
+      name = "size",
+      optional = true,
+      description = "The window size in seconds.",
+      helpText = "The window size in seconds. Defaults to 60.",
+      example = "60")
+  @Default.Integer(60)
+  Integer getSize();
 }

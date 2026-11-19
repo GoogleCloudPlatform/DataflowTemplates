@@ -41,7 +41,9 @@ public class SqlServerDsToSpSourceConnector implements IDsToSpSourceConnector {
       Pair.of("timestamp", "INT64");
   public static final Pair<String, String> SQLSERVER_TIMESTAMP_SHADOW_INFO_PG_DIALECT =
       Pair.of("timestamp", "bigint");
-  public static final String SQLSERVER_CHANGE_LSN_KEY = "_metadata_change_lsn";
+  // Written by FormatDatastreamRecordToJson from Datastream's source_metadata.lsn (the CDC
+  // __$seqval of the change), which orders changes to the same row within one second.
+  public static final String SQLSERVER_CHANGE_LSN_KEY = "_metadata_lsn";
   public static final Pair<String, String> SQLSERVER_CHANGE_LSN_SHADOW_INFO =
       Pair.of("change_lsn", "STRING(MAX)");
   public static final Pair<String, String> SQLSERVER_CHANGE_LSN_SHADOW_INFO_PG_DIALECT =

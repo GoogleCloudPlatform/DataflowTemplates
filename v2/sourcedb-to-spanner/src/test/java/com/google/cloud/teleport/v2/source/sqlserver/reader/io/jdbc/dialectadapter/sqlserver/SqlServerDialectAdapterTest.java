@@ -164,7 +164,16 @@ public class SqlServerDialectAdapterTest {
     when(mockPreparedStatement.executeQuery()).thenReturn(mockResultSet);
 
     String[] types = {
-      "varchar", "bit", "decimal", "float", "real", "date", "datetime2", "binary", "geography"
+      "varchar",
+      "bit",
+      "decimal",
+      "float",
+      "real",
+      "date",
+      "datetime2",
+      "binary",
+      "uniqueidentifier",
+      "geography"
     };
     Boolean[] nextReturns = new Boolean[types.length];
     for (int i = 0; i < types.length - 1; i++) {
@@ -184,6 +193,7 @@ public class SqlServerDialectAdapterTest {
             "date",
             "datetime2",
             "binary",
+            "uniqueidentifier",
             "geography");
     when(mockResultSet.getString("column_name"))
         .thenReturn(
@@ -195,6 +205,7 @@ public class SqlServerDialectAdapterTest {
             "col_date",
             "col_dt",
             "col_bin",
+            "col_guid",
             "col_geo");
     when(mockResultSet.getString("index_name")).thenReturn("pk_idx");
     when(mockResultSet.getBoolean("is_unique")).thenReturn(true);
@@ -211,7 +222,7 @@ public class SqlServerDialectAdapterTest {
 
     assertThat(indexes).containsKey("table1");
     ImmutableList<SourceColumnIndexInfo> infoList = indexes.get("table1");
-    assertEquals(9, infoList.size());
+    assertEquals(10, infoList.size());
     assertEquals(IndexType.STRING, infoList.get(0).indexType());
     assertEquals(500L, infoList.get(0).cardinality());
     assertEquals(Integer.valueOf(200), infoList.get(0).stringMaxLength());
@@ -225,7 +236,8 @@ public class SqlServerDialectAdapterTest {
     assertEquals(IndexType.DATE, infoList.get(5).indexType());
     assertEquals(IndexType.TIME_STAMP, infoList.get(6).indexType());
     assertEquals(IndexType.BINARY, infoList.get(7).indexType());
-    assertEquals(IndexType.OTHER, infoList.get(8).indexType());
+    assertEquals(IndexType.BINARY, infoList.get(8).indexType());
+    assertEquals(IndexType.OTHER, infoList.get(9).indexType());
 
     String boundaryQueryRegular = adapter.getBoundaryQuery("table1", ImmutableList.of(), "col_str");
     assertEquals("SELECT MIN(col_str), MAX(col_str) FROM table1", boundaryQueryRegular);

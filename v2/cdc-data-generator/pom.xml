@@ -103,6 +103,16 @@
             <version>${mysql-connector-java.version}</version>
         </dependency>
         <dependency>
+            <groupId>com.oracle.database.jdbc</groupId>
+            <artifactId>ojdbc8</artifactId>
+            <version>${ojdbc8.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.oracle.database.nls</groupId>
+            <artifactId>orai18n</artifactId>
+            <version>${ojdbc8.version}</version>
+        </dependency>
+        <dependency>
             <groupId>com.google.cloud.teleport</groupId>
             <artifactId>it-jdbc</artifactId>
             <version>${project.version}</version>

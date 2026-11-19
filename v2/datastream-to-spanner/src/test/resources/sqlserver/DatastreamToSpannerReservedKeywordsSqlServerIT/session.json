@@ -1,0 +1,53 @@
+{
+  "SessionName": "SQLServerKeywordsSession",
+  "EditorName": "",
+  "DatabaseType": "sqlserver",
+  "DatabaseName": "SP_DATABASE",
+  "Dialect": "google_standard_sql",
+  "Notes": null,
+  "Tags": null,
+  "SpSchema": {
+    "t1": {
+      "Name": "true",
+      "ColIds": ["c1", "c2", "c3", "c4"],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c1": {"Name": "id", "T": {"Name": "INT64", "Len": 0, "IsArray": false}, "NotNull": true, "Id": "c1"},
+        "c2": {"Name": "ALL", "T": {"Name": "STRING", "Len": 0, "IsArray": false}, "NotNull": false, "Id": "c2"},
+        "c3": {"Name": "AND", "T": {"Name": "STRING", "Len": 0, "IsArray": false}, "NotNull": false, "Id": "c3"},
+        "c4": {"Name": "AS", "T": {"Name": "STRING", "Len": 0, "IsArray": false}, "NotNull": false, "Id": "c4"}
+      },
+      "PrimaryKeys": [{"ColId": "c1", "Desc": false, "Order": 1}],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentId": "",
+      "Comment": "",
+      "Id": "t1"
+    }
+  },
+  "SyntheticPKeys": {},
+  "SrcSchema": {
+    "t1": {
+      "Name": "true",
+      "Schema": "SRC_DATABASE",
+      "ColIds": ["c1", "c2", "c3", "c4"],
+      "ColDefs": {
+        "c1": {"Name": "id", "T": {"Name": "BIGINT", "Len": 0, "IsArray": false}, "NotNull": true, "Id": "c1"},
+        "c2": {"Name": "ALL", "T": {"Name": "VARCHAR", "Len": 8000, "IsArray": false}, "NotNull": false, "Id": "c2"},
+        "c3": {"Name": "AND", "T": {"Name": "VARCHAR", "Len": 8000, "IsArray": false}, "NotNull": false, "Id": "c3"},
+        "c4": {"Name": "AS", "T": {"Name": "VARCHAR", "Len": 8000, "IsArray": false}, "NotNull": false, "Id": "c4"}
+      },
+      "PrimaryKeys": [{"ColId": "c1", "Desc": false, "Order": 1}],
+      "Id": "t1"
+    }
+  },
+  "SchemaIssues": {},
+  "TimezoneOffset": "+00:00",
+  "SpDialect": "google_standard_sql",
+  "UniquePKey": {},
+  "Rules": [],
+  "IsSharded": false,
+  "SpRegion": "",
+  "ResourceValidation": false,
+  "UI": false
+}
