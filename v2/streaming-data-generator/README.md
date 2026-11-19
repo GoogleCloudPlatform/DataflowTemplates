@@ -19,6 +19,7 @@ Below table outlines supported sinks and output encoding formats:
 | Pub/Sub | Y | Y | |
 | BigQuery | Y | |  |
 | Google Cloud Storage | Y | Y | Y |
+| Kafka | Y | Y | |
 
 > Note the number of workers executing the pipeline must be large enough to support the supplied
 > QPS. Use a general rule of 2,500 QPS per core in the worker pool when configuring your pipeline.
@@ -115,6 +116,41 @@ Based on the above schema, the message payload will be as shown below and attrib
 }
 ```
 * Note: Template checks for presence of "^\\{\"?payload\"?:.+\"?attributes\"?:.+" pattern to determine whether to populate attributes or not
+
+#### Example Schema file to generate Kafka messages with key and headers
+By default the whole generated message is written as the Kafka record value, without a record key
+or headers. To also populate the record key and headers, wrap the message schema in an envelope with
+a mandatory `payload` member and optional `key` and `headers` members:
+```javascript
+{
+    "payload": {
+        "accountId": "{{put("accountId", long(100000000000, 999999999999))}}",
+        "transactionId": "{{toUpperCase(alphaNumeric(19))}}",
+        "amount": {{float(-500.0, 500.0, "%.2f")}}
+    },
+    "key": "{{get("accountId")}}",
+    "headers": {
+        "source": "streaming-data-generator",
+        "eventType": "transaction",
+        "correlationId": "{{uuid()}}"
+    }
+}
+```
+Based on the above schema, the Kafka record value will be the `payload` object only, the record key
+will be the generated `accountId` and the record will carry the headers `source`, `eventType` and
+`correlationId`.
+* `payload` is written as the record value, JSON or Avro encoded depending on `--outputType`. With
+  `--outputType=AVRO` the Avro schema must describe the `payload` member only.
+* `key` becomes the record key, serialized as UTF-8 string: primitives are used in their textual
+  form (so the key can be generated quoted or unquoted), objects and arrays as compact JSON. Without
+  a `key` member the record is written without a key.
+* Every member of `headers` becomes one record header holding the UTF-8 encoded textual form of its
+  value (compact JSON for objects and arrays). Members with a `null` value are skipped.
+* Note: A generated message is treated as an envelope only when it is a JSON object with a `payload`
+  member and no members other than `payload`, `key` and `headers`. Any other message is written as
+  is.
+* Note: json-data-generator resolves functions in document order, so a `key` or header that uses
+  `get()` must be placed after the `payload` member that `put()`s the value.
 
 #### Generate Avro Pub/Sub Messages
 To generate Avro encoded Pub/Sub messages supply following additional parameters:
