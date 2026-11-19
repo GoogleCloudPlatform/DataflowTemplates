@@ -37,7 +37,7 @@ options:
         name: "append"
         description: "Whether to append the created fields to the set of fields already present."
         help: "Whether to append the created fields to the set of fields already present, outputting a union of both the new fields and the original fields for each record. Defaults to false."
-        example: false
+        example: "false"
         required: false
         type: boolean
       - order: 2

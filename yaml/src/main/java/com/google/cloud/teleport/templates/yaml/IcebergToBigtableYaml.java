@@ -146,7 +146,7 @@ public interface IcebergToBigtableYaml {
       description = "Whether to append the created fields to the set of fields already present.",
       helpText =
           "Whether to append the created fields to the set of fields already present, outputting a union of both the new fields and the original fields for each record. Defaults to false.",
-      example = "False")
+      example = "false")
   Boolean getAppend();
 
   @TemplateParameter.Text(
