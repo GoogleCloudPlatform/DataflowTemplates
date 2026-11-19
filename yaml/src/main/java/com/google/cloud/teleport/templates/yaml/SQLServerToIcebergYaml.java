@@ -84,6 +84,16 @@ public interface SQLServerToIcebergYaml {
 
   @TemplateParameter.Text(
       order = 5,
+      name = "secretManager",
+      optional = true,
+      description = "Secret manager to use for fetching secret values.",
+      helpText =
+          "Secret manager to use for fetching secret values. Available options: GoogleCloudSecretManager, GoogleCloudHsmGeneratedSecretManager.",
+      example = "GoogleCloudSecretManager")
+  String getSecretManager();
+
+  @TemplateParameter.Text(
+      order = 6,
       name = "location",
       optional = true,
       description = "The name of the table to read from.",
@@ -92,7 +102,7 @@ public interface SQLServerToIcebergYaml {
   String getLocation();
 
   @TemplateParameter.Text(
-      order = 6,
+      order = 7,
       name = "readQuery",
       optional = true,
       description = "The SQL query to execute for reading data.",
@@ -101,7 +111,7 @@ public interface SQLServerToIcebergYaml {
   String getReadQuery();
 
   @TemplateParameter.Text(
-      order = 7,
+      order = 8,
       name = "partitionColumn",
       optional = true,
       description = "The name of a numeric column to be used for partitioning.",
@@ -110,7 +120,7 @@ public interface SQLServerToIcebergYaml {
   String getPartitionColumn();
 
   @TemplateParameter.Integer(
-      order = 8,
+      order = 9,
       name = "numPartitions",
       optional = true,
       description = "The number of partitions to divide the data into.",
@@ -119,7 +129,7 @@ public interface SQLServerToIcebergYaml {
   Integer getNumPartitions();
 
   @TemplateParameter.Integer(
-      order = 9,
+      order = 10,
       name = "fetchSize",
       optional = true,
       description = "The number of rows to fetch from the database at a time.",
@@ -129,7 +139,7 @@ public interface SQLServerToIcebergYaml {
   Integer getFetchSize();
 
   @TemplateParameter.Boolean(
-      order = 10,
+      order = 11,
       name = "disableAutoCommit",
       optional = true,
       description = "Whether to disable auto-commit on read.",
@@ -139,7 +149,7 @@ public interface SQLServerToIcebergYaml {
   Boolean getDisableAutoCommit();
 
   @TemplateParameter.Boolean(
-      order = 11,
+      order = 12,
       name = "outputParallelization",
       optional = true,
       description = "Whether to reshuffle the PCollection to distribute results to all workers.",
@@ -148,7 +158,7 @@ public interface SQLServerToIcebergYaml {
   Boolean getOutputParallelization();
 
   @TemplateParameter.Text(
-      order = 12,
+      order = 13,
       name = "table",
       optional = false,
       description = "A fully-qualified table identifier.",
@@ -158,7 +168,7 @@ public interface SQLServerToIcebergYaml {
   String getTable();
 
   @TemplateParameter.Text(
-      order = 13,
+      order = 14,
       name = "catalogName",
       optional = false,
       description = "Name of the catalog containing the table.",
@@ -168,7 +178,7 @@ public interface SQLServerToIcebergYaml {
   String getCatalogName();
 
   @TemplateParameter.Text(
-      order = 14,
+      order = 15,
       name = "catalogProperties",
       optional = false,
       description = "Properties used to set up the Iceberg catalog.",
@@ -178,7 +188,7 @@ public interface SQLServerToIcebergYaml {
   String getCatalogProperties();
 
   @TemplateParameter.Text(
-      order = 15,
+      order = 16,
       name = "configProperties",
       optional = true,
       description = "Properties passed to the Hadoop Configuration.",
@@ -187,7 +197,7 @@ public interface SQLServerToIcebergYaml {
   String getConfigProperties();
 
   @TemplateParameter.Text(
-      order = 16,
+      order = 17,
       name = "drop",
       optional = true,
       description = "A list of field names to drop from the input record before writing.",
@@ -196,7 +206,7 @@ public interface SQLServerToIcebergYaml {
   String getDrop();
 
   @TemplateParameter.Text(
-      order = 17,
+      order = 18,
       name = "keep",
       optional = true,
       description = "A list of field names to keep in the input record.",
@@ -205,7 +215,7 @@ public interface SQLServerToIcebergYaml {
   String getKeep();
 
   @TemplateParameter.Text(
-      order = 18,
+      order = 19,
       name = "only",
       optional = true,
       description = "The name of a single record field that should be written.",
@@ -214,7 +224,7 @@ public interface SQLServerToIcebergYaml {
   String getOnly();
 
   @TemplateParameter.Text(
-      order = 19,
+      order = 20,
       name = "partitionFields",
       optional = true,
       description = "Fields used to create a partition spec for new tables.",
@@ -223,7 +233,7 @@ public interface SQLServerToIcebergYaml {
   String getPartitionFields();
 
   @TemplateParameter.Text(
-      order = 20,
+      order = 21,
       name = "tableProperties",
       optional = true,
       description = "Iceberg table properties to be set on table creation.",

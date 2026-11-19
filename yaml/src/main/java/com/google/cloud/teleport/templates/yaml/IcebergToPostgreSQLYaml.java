@@ -167,8 +167,18 @@ public interface IcebergToPostgreSQLYaml {
       example = "SELECT * FROM my_table WHERE status = 'active'")
   String getQuery();
 
-  @TemplateParameter.Integer(
+  @TemplateParameter.Text(
       order = 14,
+      name = "secretManager",
+      optional = true,
+      description = "Secret manager to use for fetching secret values.",
+      helpText =
+          "Secret manager to use for fetching secret values. Available options: GoogleCloudSecretManager, GoogleCloudHsmGeneratedSecretManager.",
+      example = "GoogleCloudSecretManager")
+  String getSecretManager();
+
+  @TemplateParameter.Integer(
+      order = 15,
       name = "batchSize",
       optional = true,
       description = "The number of records to group for each write operation.",
@@ -178,7 +188,7 @@ public interface IcebergToPostgreSQLYaml {
   Integer getBatchSize();
 
   @TemplateParameter.Boolean(
-      order = 15,
+      order = 16,
       name = "autoSharding",
       optional = true,
       description = "If true, enables using a dynamically determined number of shards to write.",
