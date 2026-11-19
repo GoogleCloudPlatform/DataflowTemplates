@@ -21,8 +21,8 @@ import yaml
 import ml_dependencies
 
 _HUGGING_FACE_PIPELINE_DEPENDENCIES = [
-    'torch>=1.9.0,<2.12.0',
-    'transformers>=4.28.0,<4.56.0',
+    'torch<2.12.0,>=2.3.0',
+    'transformers!=4.56.*,<5.21.0,>=4.41.0',
 ]
 _HUGGING_FACE_TENSORFLOW_DEPENDENCIES = [
     'tensorflow==2.21.0',
