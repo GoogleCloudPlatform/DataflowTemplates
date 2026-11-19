@@ -176,7 +176,7 @@ public class PostgreSQLMultiSharded1024ShardsLT extends SourceDbToSpannerLTBase 
     params.put("maxNumWorkers", "16");
 
     LaunchConfig.Builder options =
-        LaunchConfig.builder(testName, SPEC_PATH)
+        LaunchConfig.builder(testName, getTemplateSpecPath())
             .setParameters(params)
             .addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
     PipelineLauncher.LaunchInfo jobInfo = launchJob(options);

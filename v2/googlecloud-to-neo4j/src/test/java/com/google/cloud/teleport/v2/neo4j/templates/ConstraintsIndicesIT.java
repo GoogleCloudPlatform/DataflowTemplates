@@ -37,6 +37,7 @@ import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.neo4j.Neo4jResourceManager;
 import org.apache.beam.it.neo4j.conditions.Neo4jQueryCheck;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -300,15 +301,15 @@ public abstract class ConstraintsIndicesIT extends TemplateTestBase {
   @RunWith(JUnit4.class)
   public static class Neo4j5CommunityIT extends ConstraintsIndicesIT {
 
-    private static Neo4jResourceManager neo4jClient;
+    private Neo4jResourceManager neo4jClient;
 
-    @BeforeClass
-    public static void setupClass() {
-      neo4jClient = setupClient(Neo4j5EnterpriseIT.class.getName(), "5", "neo4j");
+    @Before
+    public void setup() {
+      neo4jClient = setupClient(testName, "5", "neo4j");
     }
 
-    @AfterClass
-    public static void cleanUpClass() {
+    @After
+    public void cleanUp() {
       ResourceManagerUtils.cleanResources(neo4jClient);
     }
 
@@ -343,7 +344,7 @@ public abstract class ConstraintsIndicesIT extends TemplateTestBase {
 
     @BeforeClass
     public static void setupClass() {
-      neo4jClient = setupClient(Neo4j5EnterpriseIT.class.getName(), "4.4-enterprise", null);
+      neo4jClient = setupClient(Neo4j44EnterpriseIT.class.getName(), "4.4-enterprise", null);
     }
 
     @Before
@@ -381,15 +382,15 @@ public abstract class ConstraintsIndicesIT extends TemplateTestBase {
   @TemplateIntegrationTest(GoogleCloudToNeo4j.class)
   @RunWith(JUnit4.class)
   public static class Neo4j44CommunityIT extends ConstraintsIndicesIT {
-    private static Neo4jResourceManager neo4jClient;
+    private Neo4jResourceManager neo4jClient;
 
-    @BeforeClass
-    public static void setupClass() {
-      neo4jClient = setupClient(Neo4j5EnterpriseIT.class.getName(), "4.4", "neo4j");
+    @Before
+    public void setup() {
+      neo4jClient = setupClient(testName, "4.4", "neo4j");
     }
 
-    @AfterClass
-    public static void cleanUpClass() {
+    @After
+    public void cleanUp() {
       ResourceManagerUtils.cleanResources(neo4jClient);
     }
 

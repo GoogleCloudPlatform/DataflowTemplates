@@ -1,0 +1,19 @@
+options:
+  - name: "windowing_common_options"
+    parameters:
+      - order: 1
+        name: "type"
+        description: "The type of windowing to apply."
+        help: "The type of windowing to apply (e.g., fixed, sliding, sessions, global). Defaults to fixed."
+        example: "fixed"
+        required: false
+        default: "fixed"
+        type: text
+      - order: 2
+        name: "size"
+        description: "The window size in seconds."
+        help: "The window size in seconds. Defaults to 60."
+        example: "60"
+        required: false
+        default: 60
+        type: integer

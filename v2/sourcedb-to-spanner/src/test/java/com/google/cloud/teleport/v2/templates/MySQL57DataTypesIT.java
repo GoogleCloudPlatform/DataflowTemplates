@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.Before;
@@ -27,7 +27,7 @@ import org.junit.runners.JUnit4;
  * An integration test for {@link SourceDbToSpanner} Flex template which tests all data types
  * migration against MySQL 5.7.
  */
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
 public class MySQL57DataTypesIT extends MySQLDataTypesIT {

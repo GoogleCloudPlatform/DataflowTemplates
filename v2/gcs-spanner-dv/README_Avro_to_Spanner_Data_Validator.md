@@ -6,7 +6,7 @@ to validate migration correctness.
 
 
 :memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/gcs-spanner-dv)
+check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/avro-to-spanner-dv)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Avro_to_Spanner_Data_Validator).
 
 :bulb: This is a generated documentation based
@@ -35,6 +35,9 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **transformationJarPath**: Custom jar location in Cloud Storage that contains the custom transformation logic for processing records. Defaults to empty.
 * **transformationClassName**: Fully qualified class name having the custom transformation logic. It is a mandatory field in case transformationJarPath is specified. Defaults to empty.
 * **transformationCustomParameters**: String containing any custom parameters to be passed to the custom transformation class. Defaults to empty.
+* **tables**: A comma-separated list of source tables to include in the validation run. Defaults to empty.
+* **tableConfigurationFilePath**: A GCS file path containing a JSON list of source tables to validate. This must be a JSON file with the structure `{"tableNames": ["table1", "table2"]}`. Optionally, `optionalConfigurations.<sourceTable>.spannerQuery` sets the Spanner query used to read that table, e.g. to restrict it to the selected `shardIds`. Key a Spanner-only table by its Spanner name. See the 'Validating a subset of shards' section of the module README.md for the query rules. Defaults to empty.
+* **shardIds**: A comma-separated list of logical shard IDs (the IDs used by the sourcedb-to-spanner template, which appear as the `<table>/<shardId>/` directory in the Avro output). When set, only those shards are validated. Tables with a session file `ShardIdColumn` are filtered on that column; every other in-scope table needs a `spannerQuery` in `tableConfigurationFilePath`, otherwise the job fails. For example, `shard_001,shard_007`. Defaults to empty.
 
 
 
@@ -144,6 +147,9 @@ export RUN_ID=<runId>
 export TRANSFORMATION_JAR_PATH=""
 export TRANSFORMATION_CLASS_NAME=""
 export TRANSFORMATION_CUSTOM_PARAMETERS=""
+export TABLES=""
+export TABLE_CONFIGURATION_FILE_PATH=""
+export SHARD_IDS=""
 
 gcloud dataflow flex-template run "avro-to-spanner-data-validator-job" \
   --project "$PROJECT" \
@@ -163,7 +169,10 @@ gcloud dataflow flex-template run "avro-to-spanner-data-validator-job" \
   --parameters "runId=$RUN_ID" \
   --parameters "transformationJarPath=$TRANSFORMATION_JAR_PATH" \
   --parameters "transformationClassName=$TRANSFORMATION_CLASS_NAME" \
-  --parameters "transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS"
+  --parameters "transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS" \
+  --parameters "tables=$TABLES" \
+  --parameters "tableConfigurationFilePath=$TABLE_CONFIGURATION_FILE_PATH" \
+  --parameters "shardIds=$SHARD_IDS"
 ```
 
 For more information about the command, please check:
@@ -199,6 +208,9 @@ export RUN_ID=<runId>
 export TRANSFORMATION_JAR_PATH=""
 export TRANSFORMATION_CLASS_NAME=""
 export TRANSFORMATION_CUSTOM_PARAMETERS=""
+export TABLES=""
+export TABLE_CONFIGURATION_FILE_PATH=""
+export SHARD_IDS=""
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -207,7 +219,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="avro-to-spanner-data-validator-job" \
 -DtemplateName="Avro_to_Spanner_Data_Validator" \
--Dparameters="gcsInputDirectory=$GCS_INPUT_DIRECTORY,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerPriority=$SPANNER_PRIORITY,sessionFilePath=$SESSION_FILE_PATH,schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH,tableOverrides=$TABLE_OVERRIDES,columnOverrides=$COLUMN_OVERRIDES,bigQueryDataset=$BIG_QUERY_DATASET,runId=$RUN_ID,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS" \
+-Dparameters="gcsInputDirectory=$GCS_INPUT_DIRECTORY,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerPriority=$SPANNER_PRIORITY,sessionFilePath=$SESSION_FILE_PATH,schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH,tableOverrides=$TABLE_OVERRIDES,columnOverrides=$COLUMN_OVERRIDES,bigQueryDataset=$BIG_QUERY_DATASET,runId=$RUN_ID,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,tables=$TABLES,tableConfigurationFilePath=$TABLE_CONFIGURATION_FILE_PATH,shardIds=$SHARD_IDS" \
 -f v2/gcs-spanner-dv
 ```
 
@@ -267,6 +279,9 @@ resource "google_dataflow_flex_template_job" "avro_to_spanner_data_validator" {
     # transformationJarPath = ""
     # transformationClassName = ""
     # transformationCustomParameters = ""
+    # tables = ""
+    # tableConfigurationFilePath = ""
+    # shardIds = ""
   }
 }
 ```

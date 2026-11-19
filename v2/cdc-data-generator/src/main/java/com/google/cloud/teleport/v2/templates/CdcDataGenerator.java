@@ -19,11 +19,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.source.SourceConnectorFactory;
 import com.google.cloud.teleport.v2.templates.dofn.BatchAndWriteFn;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorSchema;
 import com.google.cloud.teleport.v2.templates.model.DataGeneratorTable;
 import com.google.cloud.teleport.v2.templates.model.GeneratedRecord;
-import com.google.cloud.teleport.v2.templates.model.MySqlSinkConfig;
 import com.google.cloud.teleport.v2.templates.model.SchemaConfig;
 import com.google.cloud.teleport.v2.templates.model.SinkConfig;
 import com.google.cloud.teleport.v2.templates.sink.SinkConfigParser;
@@ -212,30 +212,6 @@ public class CdcDataGenerator {
 
   static int resolveKeyParallelism(
       CdcDataGeneratorOptions.SinkType sinkType, SinkConfig sinkConfig) {
-    if (sinkType == CdcDataGeneratorOptions.SinkType.SPANNER) {
-      // High parallelism target for Spanner, representing a baseline of 500 DoFn acr
-      // ss a hypothetical maximum of 200 active workers to maximize horizontal write
-      // scaling.
-      return 100000;
-    } else if (sinkType == CdcDataGeneratorOptions.SinkType.MYSQL) {
-      if (!(sinkConfig instanceof MySqlSinkConfig)) {
-        throw new IllegalArgumentException(
-            "Sink configuration must be an instance of MySqlSinkConfig for MySQL sink type.");
-      }
-      MySqlSinkConfig mySqlConfig = (MySqlSinkConfig) sinkConfig;
-      int shardCount = 1;
-      if (mySqlConfig.getShards() != null && !mySqlConfig.getShards().isEmpty()) {
-        shardCount = mySqlConfig.getShards().size();
-      }
-      // MySQL is not horizontally scalable like Spanner and performs better with fewer concurrent
-      // write
-      //
-      // operations. We keep key-parallelism low to prevent connection pool exhaustion or lock
-      // contention on the target instance.
-      // 500 DoFn per workers * 10 workers per MySQL shard
-      return 5000 * shardCount;
-    } else {
-      throw new IllegalArgumentException("Unsupported sink type: " + sinkType);
-    }
+    return SourceConnectorFactory.getSourceConnector(sinkType).resolveKeyParallelism(sinkConfig);
   }
 }

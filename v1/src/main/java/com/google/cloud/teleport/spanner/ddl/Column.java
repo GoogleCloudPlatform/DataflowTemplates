@@ -160,12 +160,30 @@ public abstract class Column implements Serializable {
     if (isHidden()) {
       appendable.append(" HIDDEN");
     }
-    if (columnOptions() == null) {
+    if (columnOptions() == null || columnOptions().isEmpty()) {
       return;
     }
-    String optionsString = String.join(",", columnOptions());
-    if (!optionsString.isEmpty()) {
-      appendable.append(" OPTIONS (").append(optionsString).append(")");
+    if (dialect() == Dialect.POSTGRESQL) {
+      for (String option : columnOptions()) {
+        String[] parts = option.split("=", 2);
+        if (parts.length == 2 && parts[0].trim().equalsIgnoreCase("locality_group")) {
+          String lgName = parts[1].trim();
+          if (lgName.length() >= 2
+              && ((lgName.startsWith("'") && lgName.endsWith("'"))
+                  || (lgName.startsWith("\"") && lgName.endsWith("\"")))) {
+            lgName = lgName.substring(1, lgName.length() - 1);
+          }
+          appendable
+              .append(" LOCALITY GROUP ")
+              .append(
+                  "NULL".equalsIgnoreCase(lgName) ? "NULL" : quoteIdentifier(lgName, dialect()));
+        }
+      }
+    } else {
+      String optionsString = String.join(",", columnOptions());
+      if (!optionsString.isEmpty()) {
+        appendable.append(" OPTIONS (").append(optionsString).append(")");
+      }
     }
   }
 

@@ -1,0 +1,27 @@
+{
+  "SpSchema": {
+    "t136": {
+      "Name": "Users",
+      "ColIds": ["c142", "c143"],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c142": {"Name": "id", "T": {"Name": "INT64", "IsArray": false}},
+        "c143": {"Name": "time_colm", "T": {"Name": "TIMESTAMP", "IsArray": false}}
+      },
+      "PrimaryKeys": [{"ColId": "c142", "Order": 1}]
+    }
+  },
+  "SyntheticPKeys": {},
+  "SrcSchema": {
+    "t136": {
+      "Name": "Users",
+      "Schema": "",
+      "ColIds": ["c142", "c143"],
+      "ColDefs": {
+        "c142": {"Name": "id", "Type": {"Name": "integer", "ArrayBounds": null}},
+        "c143": {"Name": "time_colm", "Type": {"Name": "timestamp", "Mods": null, "ArrayBounds": null}}
+      },
+      "PrimaryKeys": [{"ColId": "c142", "Order": 1}]
+    }
+  }
+}

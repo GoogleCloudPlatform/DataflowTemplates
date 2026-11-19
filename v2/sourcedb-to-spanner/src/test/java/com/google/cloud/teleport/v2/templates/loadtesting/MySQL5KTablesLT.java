@@ -186,16 +186,18 @@ public class MySQL5KTablesLT extends SourceDbToSpannerLTBase {
     Map<String, String> params = getCommonParameters();
     params.putAll(
         getJdbcParameters(
-            mySQLResourceManager.getUri(),
+            mySQLResourceManager.getHost(),
+            mySQLResourceManager.getPort(),
             mySQLResourceManager.getUsername(),
             mySQLResourceManager.getPassword(),
+            mySQLResourceManager.getDatabaseName(),
             "com.mysql.jdbc.Driver"));
     params.put("maxConnections", "16");
     params.put("numWorkers", "16");
     params.put("maxNumWorkers", "16");
 
     LaunchConfig.Builder options =
-        LaunchConfig.builder(testName, SPEC_PATH)
+        LaunchConfig.builder(testName, getTemplateSpecPath())
             .setParameters(params)
             .addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
 

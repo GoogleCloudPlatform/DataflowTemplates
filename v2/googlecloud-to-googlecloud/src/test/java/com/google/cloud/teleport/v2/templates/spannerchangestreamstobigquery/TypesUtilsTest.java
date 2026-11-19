@@ -77,6 +77,14 @@ public final class TypesUtilsTest {
   }
 
   @Test
+  public void testIsInformationSchemaTokenlistType() {
+    assertThat(TypesUtils.isInformationSchemaTokenlistType("TOKENLIST")).isTrue();
+    assertThat(TypesUtils.isInformationSchemaTokenlistType("spanner.tokenlist")).isTrue();
+    assertThat(TypesUtils.isInformationSchemaTokenlistType("STRING(MAX)")).isFalse();
+    assertThat(TypesUtils.isInformationSchemaTokenlistType("ARRAY<STRING(MAX)>")).isFalse();
+  }
+
+  @Test
   public void testInformationSchemaPostgreSQLTypeToSpannerType() {
     assertThat(TypesUtils.informationSchemaPostgreSQLTypeToSpannerType("CHARACTER VARYING(256)[]"))
         .isEqualTo(Type.array(Type.string()));

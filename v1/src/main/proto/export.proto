@@ -63,6 +63,8 @@ message Export {
   repeated Table placements = 8;
   // The set of user-defined functions that were exported.
   repeated Table udfs = 9;
+  // The set of locality groups that were exported.
+  repeated Table locality_groups = 10;
 
   // Contains a protobuf-serialized google.protobuf.FileDescriptorSet for
   // proto_descriptors (from spanner_database_admin.proto)

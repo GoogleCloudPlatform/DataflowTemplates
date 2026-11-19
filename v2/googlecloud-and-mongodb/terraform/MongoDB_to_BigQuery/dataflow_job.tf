@@ -83,6 +83,18 @@ variable "useStorageWriteApiAtLeastOnce" {
   default     = null
 }
 
+variable "bucketAuto" {
+  type        = bool
+  description = "If `true`, the collection is split into partitions by `_id` using the `$bucketAuto` aggregation stage, so the read is parallelized across workers. Unlike `splitVector`, `$bucketAuto` is also permitted on MongoDB Atlas. The number of partitions is controlled by `numSplits`. Collections whose `_id` values are not ObjectIds require Apache Beam 2.77.0 or later. Defaults to `false`."
+  default     = null
+}
+
+variable "numSplits" {
+  type        = number
+  description = "The number of partitions to split the read into. When `bucketAuto` is `true`, `0` uses 10 partitions. When `bucketAuto` is `false`, a value greater than `0` splits the read with the `splitVector` command, which is not permitted on MongoDB Atlas, and `0` reads the collection as a single partition. Defaults to `0`."
+  default     = null
+}
+
 variable "outputTableSpec" {
   type        = string
   description = "The BigQuery table to write to. For example, `bigquery-project:dataset.output_table`."
@@ -240,6 +252,8 @@ resource "google_dataflow_flex_template_job" "generated" {
     filter                                  = var.filter
     useStorageWriteApi                      = tostring(var.useStorageWriteApi)
     useStorageWriteApiAtLeastOnce           = tostring(var.useStorageWriteApiAtLeastOnce)
+    bucketAuto                              = tostring(var.bucketAuto)
+    numSplits                               = tostring(var.numSplits)
     outputTableSpec                         = var.outputTableSpec
     bigQuerySchemaPath                      = var.bigQuerySchemaPath
     javascriptDocumentTransformGcsPath      = var.javascriptDocumentTransformGcsPath

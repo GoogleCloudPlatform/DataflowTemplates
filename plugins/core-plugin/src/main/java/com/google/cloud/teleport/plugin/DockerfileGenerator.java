@@ -230,6 +230,11 @@ public class DockerfileGenerator {
      * @throws IllegalArgumentException if basePythonContainerImage is null or empty.
      */
     public Builder setBasePythonContainerImage(String basePythonContainerImage) {
+      if (basePythonContainerImage != null && basePythonContainerImage.startsWith(":")) {
+        // tag provided
+        basePythonContainerImage =
+            BASE_PYTHON_CONTAINER_IMAGE.split(":")[0] + basePythonContainerImage;
+      }
       return addStringParameter("basePythonContainerImage", basePythonContainerImage);
     }
 
@@ -245,6 +250,10 @@ public class DockerfileGenerator {
      * @throws IllegalArgumentException if baseJavaContainerImage is null or empty.
      */
     public Builder setBaseJavaContainerImage(String baseJavaContainerImage) {
+      if (baseJavaContainerImage != null && baseJavaContainerImage.startsWith(":")) {
+        // tag provided
+        baseJavaContainerImage = BASE_CONTAINER_IMAGE.split(":")[0] + baseJavaContainerImage;
+      }
       return addStringParameter("baseJavaContainerImage", baseJavaContainerImage);
     }
 

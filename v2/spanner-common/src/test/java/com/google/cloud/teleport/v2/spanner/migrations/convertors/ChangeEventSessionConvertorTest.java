@@ -30,6 +30,7 @@ import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ColumnPK;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
@@ -428,6 +429,36 @@ public class ChangeEventSessionConvertorTest {
   }
 
   @Test
+  public void transformChangeEventViaShardingContextSqlServerTest() {
+    Schema schema = getShardedSchemaObject();
+    ShardingContext shardingContext = getShardingContext();
+    ChangeEventSessionConvertor changeEventSessionConvertor =
+        new ChangeEventSessionConvertor(
+            schema, null, new TransformationContext(), shardingContext, "sqlserver", false);
+
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("name", "A");
+    changeEvent.put(Constants.EVENT_STREAM_NAME, "stream1");
+    changeEvent.put(Constants.EVENT_SCHEMA_KEY, "db_01");
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "people");
+    changeEvent.put(Constants.EVENT_UUID_KEY, "abc-123");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+
+    JsonNode actualEvent = changeEventSessionConvertor.transformChangeEventViaSessionFile(ce);
+
+    JSONObject changeEventNew = new JSONObject();
+    changeEventNew.put("new_name", "A");
+    changeEventNew.put(Constants.EVENT_STREAM_NAME, "stream1");
+    changeEventNew.put(Constants.EVENT_SCHEMA_KEY, "db_01");
+    changeEventNew.put(Constants.EVENT_TABLE_NAME_KEY, "new_people");
+    changeEventNew.put(Constants.EVENT_UUID_KEY, "abc-123");
+    changeEventNew.put("migration_shard_id", "id1");
+    changeEventNew.put(Constants.SHARD_ID_COLUMN_NAME, "migration_shard_id");
+    JsonNode expectedEvent = parseChangeEvent(changeEventNew.toString());
+    assertEquals(expectedEvent, actualEvent);
+  }
+
+  @Test
   public void getShardIdInvalidSource() {
     Schema schema = getShardedSchemaObject();
     ShardingContext shardingContext = getShardingContext();
@@ -776,7 +807,7 @@ public class ChangeEventSessionConvertorTest {
     assertEquals("", shardId);
   }
 
-  @Test(expected = Exception.class)
+  @Test(expected = DroppedTableException.class)
   public void testTransformChangeEventData_TableNotFound() throws Exception {
     ChangeEventSessionConvertor convertor =
         new ChangeEventSessionConvertor(null, null, null, null, "", true);

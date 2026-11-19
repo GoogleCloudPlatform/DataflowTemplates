@@ -84,6 +84,7 @@ public class DatastreamResourceManagerTest {
   @Mock private JDBCSource mysqlSource;
   @Mock private OracleSource oracleSource;
   @Mock private PostgresqlSource postgresqlSource;
+  @Mock private SqlServerSource sqlServerSource;
 
   private DatastreamResourceManager testManager;
 
@@ -395,6 +396,49 @@ public class DatastreamResourceManagerTest {
 
     assertThat(config.getSourceConnectionProfile()).isEqualTo("test-connection-profile-name");
     assertThat(config.hasPostgresqlSourceConfig()).isTrue();
+  }
+
+  @Test
+  public void testBuildJDBCSourceConfigSqlServerShouldCreateSuccessfully()
+      throws ExecutionException, InterruptedException {
+    when(datastreamClient.createConnectionProfileAsync(any(CreateConnectionProfileRequest.class)))
+        .thenReturn(createConnectionProfileRequest);
+    when(createConnectionProfileRequest.get()).thenReturn(connectionProfile);
+    when(connectionProfile.getName()).thenReturn("test-connection-profile-name");
+
+    when(sqlServerSource.type()).thenReturn(JDBCSource.SourceType.SQLSERVER);
+    when(sqlServerSource.hostname()).thenReturn("localhost");
+    when(sqlServerSource.username()).thenReturn("user");
+    when(sqlServerSource.password()).thenReturn("password");
+    when(sqlServerSource.port()).thenReturn(1433);
+    when(sqlServerSource.database()).thenReturn("master");
+    when(sqlServerSource.config())
+        .thenReturn(com.google.cloud.datastream.v1.SqlServerSourceConfig.getDefaultInstance());
+
+    SourceConfig config = testManager.buildJDBCSourceConfig(CONNECTION_PROFILE_ID, sqlServerSource);
+
+    assertThat(config.getSourceConnectionProfile()).isEqualTo("test-connection-profile-name");
+    assertThat(config.hasSqlServerSourceConfig()).isTrue();
+  }
+
+  @Test
+  public void testCreateConnectionProfileRetriesOnFailedToExecuteCommand()
+      throws ExecutionException, InterruptedException {
+    when(datastreamClient.createConnectionProfileAsync(any(CreateConnectionProfileRequest.class)))
+        .thenReturn(createConnectionProfileRequest);
+    ExecutionException transientFailure =
+        new ExecutionException(
+            new RuntimeException(
+                "Operation failed with status = GrpcStatusCode{transportCode=INVALID_ARGUMENT}"
+                    + " and message = We failed to execute the command."));
+    when(createConnectionProfileRequest.get())
+        .thenThrow(transientFailure)
+        .thenReturn(connectionProfile);
+
+    assertThat(testManager.createBQDestinationConnectionProfile(CONNECTION_PROFILE_ID))
+        .isEqualTo(connectionProfile);
+    verify(datastreamClient, times(2))
+        .createConnectionProfileAsync(any(CreateConnectionProfileRequest.class));
   }
 
   @Test

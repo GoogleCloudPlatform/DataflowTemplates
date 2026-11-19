@@ -42,7 +42,9 @@ import com.google.cloud.teleport.v2.transforms.UDFTextTransformer.InputUDFOption
 import com.google.cloud.teleport.v2.transforms.UDFTextTransformer.InputUDFToTableRow;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Splitter;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -53,6 +55,7 @@ import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.SchemaUpdateOption;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.TableDestination;
@@ -570,24 +573,7 @@ public class DataStreamToBigQuery {
                               input.getValue());
                         }
                       }))
-              .apply(
-                  "Write Successful Records",
-                  BigQueryIO.<KV<String, TableRow>>write()
-                      .to(
-                          (SerializableFunction<
-                                  ValueInSingleWindow<KV<String, TableRow>>, TableDestination>)
-                              value -> {
-                                String tableSpec = value.getValue().getKey();
-                                return new TableDestination(tableSpec, "Table for " + tableSpec);
-                              })
-                      .withFormatFunction(
-                          element -> removeTableRowFields(element.getValue(), fieldsToIgnore))
-                      .withFormatRecordOnFailureFunction(element -> element.getValue())
-                      .withoutValidation()
-                      .ignoreInsertIds()
-                      .ignoreUnknownValues()
-                      .withCreateDisposition(CreateDisposition.CREATE_NEVER)
-                      .withWriteDisposition(WriteDisposition.WRITE_APPEND));
+              .apply("Write Successful Records", buildBigQueryStorageWrite(fieldsToIgnore));
     } else {
       writeResult =
           mappedStagingRecords.apply(
@@ -679,7 +665,29 @@ public class DataStreamToBigQuery {
     return new HashSet<>(Splitter.on(Pattern.compile("\\s*,\\s*")).splitToList(fields));
   }
 
-  private static TableRow removeTableRowFields(TableRow tableRow, Set<String> ignoreFields) {
+  @VisibleForTesting
+  static BigQueryIO.Write<KV<String, TableRow>> buildBigQueryStorageWrite(
+      Set<String> fieldsToIgnore) {
+    return BigQueryIO.<KV<String, TableRow>>write()
+        .to(
+            (SerializableFunction<ValueInSingleWindow<KV<String, TableRow>>, TableDestination>)
+                value -> {
+                  String tableSpec = value.getValue().getKey();
+                  return new TableDestination(tableSpec, "Table for " + tableSpec);
+                })
+        .withFormatFunction(element -> removeTableRowFields(element.getValue(), fieldsToIgnore))
+        .withFormatRecordOnFailureFunction(element -> element.getValue())
+        .withoutValidation()
+        .ignoreInsertIds()
+        .withSchemaUpdateOptions(
+            EnumSet.of(
+                SchemaUpdateOption.ALLOW_FIELD_ADDITION, SchemaUpdateOption.ALLOW_FIELD_RELAXATION))
+        .withCreateDisposition(CreateDisposition.CREATE_NEVER)
+        .withWriteDisposition(WriteDisposition.WRITE_APPEND);
+  }
+
+  @VisibleForTesting
+  static TableRow removeTableRowFields(TableRow tableRow, Set<String> ignoreFields) {
     LOG.debug("BigQuery Writes: {}", tableRow);
     TableRow cleanTableRow = tableRow.clone();
     Set<String> rowKeys = tableRow.keySet();

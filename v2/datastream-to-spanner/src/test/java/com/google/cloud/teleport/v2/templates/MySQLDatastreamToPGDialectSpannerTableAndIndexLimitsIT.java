@@ -173,7 +173,7 @@ public class MySQLDatastreamToPGDialectSpannerTableAndIndexLimitsIT
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(JOB_START_PROCESSING_WAIT_MINUTES)),
                 SpannerRowsCheck.builder(
                         spannerResourceManager, String.format("\"%s\"", LARGE_KEY_TABLE))
                     .setMinRows(1)
@@ -214,7 +214,7 @@ public class MySQLDatastreamToPGDialectSpannerTableAndIndexLimitsIT
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(JOB_START_PROCESSING_WAIT_MINUTES)),
                 SpannerRowsCheck.builder(
                         spannerResourceManager, String.format("\"%s\"", LARGE_CELL_TABLE))
                     .setMinRows(1)
@@ -242,7 +242,7 @@ public class MySQLDatastreamToPGDialectSpannerTableAndIndexLimitsIT
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(JOB_START_PROCESSING_WAIT_MINUTES)),
                 SpannerRowsCheck.builder(
                         spannerResourceManager, String.format("\"%s\"", WIDE_ROW_TABLE))
                     .setMinRows(1)

@@ -117,6 +117,7 @@ public final class SpannerResourceManager implements ResourceManager {
   private final String instanceId;
   private final boolean usingStaticInstance;
   private final String databaseId;
+  private final boolean usingStaticDatabase;
   private final String region;
   private final String spannerHost;
 
@@ -156,7 +157,6 @@ public final class SpannerResourceManager implements ResourceManager {
       testId = generateNewId(testId, MAX_BASE_ID_LENGTH);
     }
     this.projectId = builder.projectId;
-    this.databaseId = generateDatabaseId(testId);
     this.suppressVerboseLogs = builder.suppressVerboseLogs;
 
     if (builder.useStaticInstance) {
@@ -169,6 +169,20 @@ public final class SpannerResourceManager implements ResourceManager {
       this.instanceId = generateInstanceId(testId);
     }
     this.usingStaticInstance = builder.useStaticInstance;
+
+    if (builder.useStaticDatabase) {
+      if (builder.databaseId == null) {
+        throw new SpannerResourceManagerException(
+            "This manager was configured to use a static database, but the databaseId was not properly set.");
+      }
+      this.databaseId = builder.databaseId;
+      this.hasInstance = true;
+      this.hasDatabase = true;
+      this.startTime = Timestamp.newBuilder().setSeconds(Instant.now().getEpochSecond()).build();
+    } else {
+      this.databaseId = generateDatabaseId(testId);
+    }
+    this.usingStaticDatabase = builder.useStaticDatabase;
 
     this.region = builder.region;
     this.dialect = builder.dialect;
@@ -268,10 +282,15 @@ public final class SpannerResourceManager implements ResourceManager {
 
   private synchronized void maybeCreateDatabase() {
     checkIsUsable();
-    this.startTime = Timestamp.newBuilder().setSeconds(Instant.now().getEpochSecond()).build();
+    if (usingStaticDatabase) {
+      LOG.info("Not creating Spanner database - reusing static {}", databaseId);
+      hasDatabase = true;
+      return;
+    }
     if (hasDatabase) {
       return;
     }
+    this.startTime = Timestamp.newBuilder().setSeconds(Instant.now().getEpochSecond()).build();
     LOG.info("Creating database {} in instance {}.", databaseId, instanceId);
 
     try {
@@ -331,6 +350,15 @@ public final class SpannerResourceManager implements ResourceManager {
     if (!hasDatabase) {
       throw new IllegalStateException("There is no database for manager to perform operation on");
     }
+  }
+
+  /**
+   * Return the GCP project ID this Resource Manager is configured to use.
+   *
+   * @return the project ID.
+   */
+  public String getProjectId() {
+    return this.projectId;
   }
 
   /**
@@ -660,8 +688,9 @@ public final class SpannerResourceManager implements ResourceManager {
   @Override
   public synchronized void cleanupAll() {
     try {
-
-      if (usingStaticInstance) {
+      if (usingStaticDatabase) {
+        LOG.info("Not dropping static database {}.{}", instanceId, databaseId);
+      } else if (usingStaticInstance) {
         if (databaseAdminClient != null) {
           Failsafe.with(retryOnQuotaException())
               .run(() -> databaseAdminClient.dropDatabase(instanceId, databaseId));
@@ -749,6 +778,8 @@ public final class SpannerResourceManager implements ResourceManager {
     private final Dialect dialect;
     private @Nullable String instanceId;
     private boolean useStaticInstance;
+    private @Nullable String databaseId;
+    private boolean useStaticDatabase;
     private Credentials credentials;
     private String host;
     private int nodeCount;
@@ -765,6 +796,8 @@ public final class SpannerResourceManager implements ResourceManager {
       this.dialect = dialect;
       this.instanceId = null;
       this.useStaticInstance = false;
+      this.databaseId = null;
+      this.useStaticDatabase = false;
       this.host = DEFAULT_SPANNER_HOST;
       this.nodeCount = 1;
     }
@@ -842,6 +875,29 @@ public final class SpannerResourceManager implements ResourceManager {
      */
     public Builder setInstanceId(String instanceId) {
       this.instanceId = instanceId;
+      return this;
+    }
+
+    /**
+     * Configures the resource manager to use a pre-existing static Spanner database (and static
+     * instance) instead of creating or dropping the database. Requires {@link
+     * #setInstanceId(String)} and {@link #setDatabaseId(String)} to be set.
+     *
+     * @return this builder object with the useStaticDatabase and useStaticInstance options enabled.
+     */
+    public Builder useStaticDatabase() {
+      this.useStaticInstance = true;
+      this.useStaticDatabase = true;
+      return this;
+    }
+
+    /**
+     * Set the database ID of a static Spanner database for this Resource Manager to use.
+     *
+     * @return this builder with the database ID set.
+     */
+    public Builder setDatabaseId(String databaseId) {
+      this.databaseId = databaseId;
       return this;
     }
 

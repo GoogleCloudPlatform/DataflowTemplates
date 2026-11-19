@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.templates.oracle;
 
 import com.google.cloud.spanner.Struct;
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
 import com.google.cloud.teleport.v2.templates.SourceDbToSpannerITBase;
@@ -37,7 +37,7 @@ import org.junit.runners.JUnit4;
  * An integration test for {@link SourceDbToSpanner} Flex template which tests a basic migration on
  * a simple schema with Oracle reserved keywords.
  */
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
 public class OracleReservedKeywordsIT extends SourceDbToSpannerITBase {

@@ -40,6 +40,7 @@ public class CopySchemaTest {
             .setMaxBranchPerLevel(new int[] {5, 4, 3, 2, 2, 3, 3})
             .setMaxUdfs(3)
             .setMaxViews(3)
+            .setMaxLocalityGroups(3)
             .build()
             .generate();
     try {
@@ -64,6 +65,7 @@ public class CopySchemaTest {
             .setMaxPkComponents(2)
             .setMaxBranchPerLevel(new int[] {5, 4, 3, 2, 2, 3, 3})
             .setMaxViews(3)
+            .setMaxLocalityGroups(3)
             .build()
             .generate();
     try {

@@ -35,6 +35,9 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
             + "\n\n"
             + "For more information on Beam YAML, see https://beam.apache.org/documentation/sdks/yaml/",
     flexContainerName = "yaml-template",
+    // Files of src/main/python/yaml-template to copy into the container image. Only main.py and
+    // requirements.txt are copied if not specified.
+    filesToCopy = {"main.py", "ml_dependencies.py", "requirements.txt"},
     contactInformation = "https://cloud.google.com/support",
     requirements = {
       "A valid Beam YAML pipeline.",

@@ -36,6 +36,7 @@ import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.teleport.metadata.SpannerStagingTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.spanner.AvroSchemaToDdlConverter;
 import com.google.cloud.teleport.spanner.DdlToAvroSchemaConverter;
 import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.tests.TestMessage;
@@ -824,7 +825,72 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
         });
   }
 
-  // TODO(b/485601737): Add PG UDFs.
+  private SharedTestCase pgSimpleUdf() {
+    String namedSchemaDef = "CREATE SCHEMA \"s_pgSimpleUdf\"";
+    String udfDef1 =
+        "CREATE FUNCTION \"s_pgSimpleUdf\".\"u_pgSimpleUdf_foo\"() RETURNS bigint IMMUTABLE"
+            + " RETURN (1)";
+    String udfDef2 =
+        "CREATE FUNCTION \"s_pgSimpleUdf\".\"u_pgSimpleUdf_default_values\"("
+            + "a text, "
+            + "b text DEFAULT NULL, "
+            + "c text DEFAULT 'NULL', "
+            + "d text DEFAULT '') "
+            + "RETURNS text RETURN (CONCAT(a, '::', b, '::', c, '::', d))";
+
+    return new SharedTestCase(
+        Arrays.asList(namedSchemaDef, udfDef1, udfDef2),
+        ddl -> {
+          assertThat(ddl.schema("s_pgSimpleUdf"), notNullValue());
+
+          Udf udf1 = ddl.udf("s_pgSimpleUdf.u_pgSimpleUdf_foo");
+          assertThat(udf1, notNullValue());
+
+          Udf udf2 = ddl.udf("s_pgSimpleUdf.u_pgSimpleUdf_default_values");
+          assertThat(udf2, notNullValue());
+
+          assertThat(udf1.name(), equalTo("s_pgSimpleUdf.u_pgSimpleUdf_foo"));
+          assertThat(udf1.type(), equalTo("bigint"));
+          assertThat(udf1.definition(), equalTo("'1'::bigint"));
+          assertEquals(udf1.security(), Udf.SqlSecurity.INVOKER);
+          assertThat(udf1.spannerDeterminism(), equalTo("DETERMINISTIC"));
+
+          assertThat(udf2.name(), equalTo("s_pgSimpleUdf.u_pgSimpleUdf_default_values"));
+          assertThat(udf2.type(), equalTo("character varying"));
+          assertThat(
+              udf2.definition(), equalTo("concat(a, '::'::text, b, '::'::text, c, '::'::text, d)"));
+          assertEquals(udf2.security(), Udf.SqlSecurity.INVOKER);
+          // No volatility was declared, so spanner_determinism is NULL.
+          assertThat(udf2.spannerDeterminism(), nullValue());
+          assertThat(
+              udf2.parameters(),
+              hasItems(
+                  UdfParameter.builder(Dialect.POSTGRESQL)
+                      .functionSpecificName("s_pgSimpleUdf.u_pgSimpleUdf_default_values")
+                      .name("a")
+                      .type("character varying")
+                      .defaultExpression(null)
+                      .autoBuild(),
+                  UdfParameter.builder(Dialect.POSTGRESQL)
+                      .functionSpecificName("s_pgSimpleUdf.u_pgSimpleUdf_default_values")
+                      .name("b")
+                      .type("character varying")
+                      .defaultExpression("NULL::text")
+                      .autoBuild(),
+                  UdfParameter.builder(Dialect.POSTGRESQL)
+                      .functionSpecificName("s_pgSimpleUdf.u_pgSimpleUdf_default_values")
+                      .name("c")
+                      .type("character varying")
+                      .defaultExpression("'NULL'::text")
+                      .autoBuild(),
+                  UdfParameter.builder(Dialect.POSTGRESQL)
+                      .functionSpecificName("s_pgSimpleUdf.u_pgSimpleUdf_default_values")
+                      .name("d")
+                      .type("character varying")
+                      .defaultExpression("''::text")
+                      .autoBuild()));
+        });
+  }
 
   private SharedTestCase interleavedIn() {
     List<String> statements =
@@ -1761,6 +1827,151 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
         });
   }
 
+  private SharedTestCase localityGroups() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", true);
+    AvroSchemaToDdlConverter toDdlConverter =
+        new AvroSchemaToDdlConverter(Dialect.GOOGLE_STANDARD_SQL);
+    List<String> statements =
+        Arrays.asList(
+            "CREATE LOCALITY GROUP `lg_it_gsql` OPTIONS (storage = 'ssd', ssd_to_hdd_spill_timespan = '1d')",
+            "CREATE LOCALITY GROUP `lg_it_gsql_empty`",
+            "CREATE TABLE `t_localityGroups_Users` ("
+                + " `id` INT64 NOT NULL,"
+                + " `col_inherited` STRING(MAX),"
+                + " `col_override` STRING(MAX) OPTIONS (locality_group = 'default')"
+                + ") PRIMARY KEY (`id` ASC), OPTIONS (locality_group = 'lg_it_gsql')",
+            "CREATE INDEX `idx_localityGroups_Users` ON `t_localityGroups_Users`(`col_inherited`)"
+                + " OPTIONS (locality_group = 'lg_it_gsql')");
+
+    return new SharedTestCase(
+        statements,
+        ddl -> {
+          assertThat(ddl.localityGroup("lg_it_gsql"), notNullValue());
+          assertThat(
+              ddl.localityGroup("lg_it_gsql").prettyPrint(),
+              equalToCompressingWhiteSpace(
+                  "CREATE LOCALITY GROUP `lg_it_gsql`"
+                      + " OPTIONS (ssd_to_hdd_spill_timespan=\"1d\", storage=\"ssd\")"));
+          assertThat(ddl.localityGroup("lg_it_gsql_empty"), notNullValue());
+          assertThat(
+              ddl.localityGroup("lg_it_gsql_empty").prettyPrint(),
+              equalToCompressingWhiteSpace("CREATE LOCALITY GROUP `lg_it_gsql_empty`"));
+          assertThat(
+              ddl.table("t_localityGroups_Users").prettyPrint(),
+              equalToCompressingWhiteSpace(
+                  "CREATE TABLE `t_localityGroups_Users` ("
+                      + " `id` INT64 NOT NULL,"
+                      + " `col_inherited` STRING(MAX),"
+                      + " `col_override` STRING(MAX) OPTIONS (locality_group=\"default\"),"
+                      + " ) PRIMARY KEY (`id` ASC),"
+                      + " OPTIONS (locality_group=\"lg_it_gsql\")"
+                      + " CREATE INDEX `idx_localityGroups_Users` ON `t_localityGroups_Users`(`col_inherited` ASC)"
+                      + " OPTIONS (locality_group=\"lg_it_gsql\")"));
+
+          Collection<Schema> result = converter.convert(ddl);
+          Map<String, Schema> schemas =
+              result.stream().collect(Collectors.toMap(Schema::getName, s -> s));
+
+          Schema avroSchema = schemas.get("lg_it_gsql");
+          assertThat(avroSchema, notNullValue());
+          assertThat(avroSchema.getName(), equalTo("lg_it_gsql"));
+          assertThat(avroSchema.getProp("spannerEntity"), equalTo("LocalityGroup"));
+          assertThat(
+              avroSchema.getProp("spannerOption_0"), equalTo("ssd_to_hdd_spill_timespan=\"1d\""));
+          assertThat(avroSchema.getProp("spannerOption_1"), equalTo("storage=\"ssd\""));
+
+          Schema emptyAvroSchema = schemas.get("lg_it_gsql_empty");
+          assertThat(emptyAvroSchema, notNullValue());
+          assertThat(emptyAvroSchema.getName(), equalTo("lg_it_gsql_empty"));
+          assertThat(emptyAvroSchema.getProp("spannerEntity"), equalTo("LocalityGroup"));
+          assertThat(emptyAvroSchema.getProp("spannerOption_0"), nullValue());
+
+          Ddl roundTripDdl = toDdlConverter.toDdl(result);
+          assertThat(
+              roundTripDdl.localityGroup("lg_it_gsql").prettyPrint(),
+              equalToCompressingWhiteSpace(ddl.localityGroup("lg_it_gsql").prettyPrint()));
+          assertThat(
+              roundTripDdl.localityGroup("lg_it_gsql_empty").prettyPrint(),
+              equalToCompressingWhiteSpace(ddl.localityGroup("lg_it_gsql_empty").prettyPrint()));
+          assertThat(
+              roundTripDdl.table("t_localityGroups_Users").prettyPrint(),
+              equalToCompressingWhiteSpace(ddl.table("t_localityGroups_Users").prettyPrint()));
+        });
+  }
+
+  private SharedTestCase pgLocalityGroups() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", true);
+    AvroSchemaToDdlConverter toDdlConverter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+    List<String> statements =
+        Arrays.asList(
+            "CREATE LOCALITY GROUP \"lg_it_pg\" STORAGE 'ssd' SSD_TO_HDD_SPILL_TIMESPAN '1d'",
+            "CREATE LOCALITY GROUP \"lg_it_pg_empty\"",
+            "CREATE TABLE \"t_pgLocalityGroups_Users\" ("
+                + " \"id\" bigint NOT NULL,"
+                + " \"col_inherited\" character varying,"
+                + " \"col_override\" character varying LOCALITY GROUP \"default\","
+                + " PRIMARY KEY (\"id\")"
+                + ") LOCALITY GROUP \"lg_it_pg\"",
+            "CREATE INDEX \"idx_pgLocalityGroups_Users\" ON \"t_pgLocalityGroups_Users\"(\"col_inherited\")"
+                + " LOCALITY GROUP \"lg_it_pg\"");
+
+    return new SharedTestCase(
+        statements,
+        ddl -> {
+          assertThat(ddl.localityGroup("lg_it_pg"), notNullValue());
+          assertThat(
+              ddl.localityGroup("lg_it_pg").prettyPrint(),
+              equalToCompressingWhiteSpace(
+                  "CREATE LOCALITY GROUP \"lg_it_pg\" STORAGE 'ssd' SSD_TO_HDD_SPILL_TIMESPAN '1d'"));
+          assertThat(ddl.localityGroup("lg_it_pg_empty"), notNullValue());
+          assertThat(
+              ddl.localityGroup("lg_it_pg_empty").prettyPrint(),
+              equalToCompressingWhiteSpace("CREATE LOCALITY GROUP \"lg_it_pg_empty\""));
+          assertThat(
+              ddl.table("t_pgLocalityGroups_Users").prettyPrint(),
+              equalToCompressingWhiteSpace(
+                  "CREATE TABLE \"t_pgLocalityGroups_Users\" ("
+                      + " \"id\" bigint NOT NULL,"
+                      + " \"col_inherited\" character varying,"
+                      + " \"col_override\" character varying LOCALITY GROUP \"default\","
+                      + " PRIMARY KEY (\"id\")"
+                      + " ) LOCALITY GROUP \"lg_it_pg\""
+                      + " CREATE INDEX \"idx_pgLocalityGroups_Users\" ON \"t_pgLocalityGroups_Users\"(\"col_inherited\" ASC)"
+                      + " LOCALITY GROUP \"lg_it_pg\""));
+
+          Collection<Schema> result = converter.convert(ddl);
+          Map<String, Schema> schemas =
+              result.stream().collect(Collectors.toMap(Schema::getName, s -> s));
+
+          Schema avroSchema = schemas.get("lg_it_pg");
+          assertThat(avroSchema, notNullValue());
+          assertThat(avroSchema.getName(), equalTo("lg_it_pg"));
+          assertThat(avroSchema.getProp("spannerEntity"), equalTo("LocalityGroup"));
+          assertThat(
+              avroSchema.getProp("spannerOption_0"), equalTo("ssd_to_hdd_spill_timespan='1d'"));
+          assertThat(avroSchema.getProp("spannerOption_1"), equalTo("storage='ssd'"));
+
+          Schema emptyAvroSchema = schemas.get("lg_it_pg_empty");
+          assertThat(emptyAvroSchema, notNullValue());
+          assertThat(emptyAvroSchema.getName(), equalTo("lg_it_pg_empty"));
+          assertThat(emptyAvroSchema.getProp("spannerEntity"), equalTo("LocalityGroup"));
+          assertThat(emptyAvroSchema.getProp("spannerOption_0"), nullValue());
+
+          Ddl roundTripDdl = toDdlConverter.toDdl(result);
+          assertThat(
+              roundTripDdl.localityGroup("lg_it_pg").prettyPrint(),
+              equalToCompressingWhiteSpace(ddl.localityGroup("lg_it_pg").prettyPrint()));
+          assertThat(
+              roundTripDdl.localityGroup("lg_it_pg_empty").prettyPrint(),
+              equalToCompressingWhiteSpace(ddl.localityGroup("lg_it_pg_empty").prettyPrint()));
+          assertThat(
+              roundTripDdl.table("t_pgLocalityGroups_Users").prettyPrint(),
+              equalToCompressingWhiteSpace(ddl.table("t_pgLocalityGroups_Users").prettyPrint()));
+        });
+  }
+
   private SharedTestCase propertyGraphOnViewGroupBy() {
     List<String> statements =
         Arrays.asList(
@@ -1963,6 +2174,7 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
             databaseOptions(),
             changeStreams(),
             sequences(),
+            localityGroups(),
             propertyGraphOnViewGroupBy(),
             propertyGraphOnViewSimple(),
             propertyGraphOnViewMixedOrder(),
@@ -1988,6 +2200,7 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
         Arrays.asList(
             tableWithAllPgTypes(),
             pgSimpleView(),
+            pgSimpleUdf(),
             pgInterleavedIn(),
             pgReserved(),
             pgSearchIndexes(),
@@ -2002,7 +2215,8 @@ public class InformationSchemaScannerIT extends SpannerTemplateITBase {
             pgIdentityColumns(),
             pgDatabaseOptions(),
             pgChangeStreams(),
-            pgSequences());
+            pgSequences(),
+            pgLocalityGroups());
 
     List<String> allStatements = new ArrayList<>();
     for (SharedTestCase testCase : testCases) {

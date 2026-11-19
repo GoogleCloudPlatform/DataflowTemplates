@@ -138,6 +138,19 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
               .getPath());
     }
 
+    if (Objects.equals(subdirectory, "postgres")) {
+      for (String udf : ImmutableList.of("pg_add", "pg_multiply")) {
+        gcsClient.uploadArtifact(
+            "input/" + udf + ".avro-00000-of-00001",
+            Resources.getResource("ImportPipelineIT/" + subdirectory + "/" + udf + ".avro")
+                .getPath());
+        gcsClient.uploadArtifact(
+            "input/" + udf + "-manifest.json",
+            Resources.getResource("ImportPipelineIT/" + subdirectory + "/" + udf + "-manifest.json")
+                .getPath());
+      }
+    }
+
     gcsClient.uploadArtifact(
         "input/spanner-export.json",
         Resources.getResource("ImportPipelineIT/" + subdirectory + "/spanner-export.json")
@@ -328,7 +341,22 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
     assertThat(float32Records).hasSize(9);
     assertThatStructs(float32Records).hasRecordsUnordered(getFloat32TableExpectedRows());
 
-    // TODO(b/485601737): Add PG UDFs.
+    assertThat(
+            spannerResourceManager
+                .runQuery(
+                    "SELECT CONCAT(routine_schema, '.', routine_name) FROM"
+                        + " information_schema.routines WHERE routine_schema = 'UdfSchema'")
+                .stream()
+                .map(row -> row.getString(0))
+                .collect(Collectors.toList()))
+        .containsExactly("UdfSchema.pg_add", "UdfSchema.pg_multiply");
+    assertThat(
+            spannerResourceManager
+                .runQuery("SELECT \"UdfSchema\".pg_add(2, 3), \"UdfSchema\".pg_multiply(2, 3)")
+                .stream()
+                .map(row -> ImmutableList.of(row.getLong(0), row.getLong(1)))
+                .collect(Collectors.toList()))
+        .containsExactly(ImmutableList.of(5L, 6L));
   }
 
   // TODO(b/395532087): Consolidate this with other tests after UUID launch.

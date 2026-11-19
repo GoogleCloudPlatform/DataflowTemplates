@@ -144,8 +144,24 @@ public class CassandraIOTest implements Serializable {
 
   @AfterClass
   public static void afterClass() throws Exception {
-    embeddedCassandra.close();
-    embeddedCassandra = null;
+    try {
+      try {
+        if (session != null) {
+          session.close();
+          session = null;
+        }
+      } finally {
+        if (cluster != null) {
+          cluster.close();
+          cluster = null;
+        }
+      }
+    } finally {
+      if (embeddedCassandra != null) {
+        embeddedCassandra.close();
+        embeddedCassandra = null;
+      }
+    }
   }
 
   private static void insertData() throws Exception {

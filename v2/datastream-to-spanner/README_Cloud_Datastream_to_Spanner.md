@@ -85,6 +85,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **shadowTableSpannerInstanceId**: Optional separate instance for shadow tables. If not specified, shadow tables will be created in the main instance. If specified, ensure shadowTableSpannerDatabaseId is specified as well. Defaults to empty.
 * **shadowTableSpannerDatabaseId**: Optional separate database for shadow tables. If not specified, shadow tables will be created in the main database. If specified, ensure shadowTableSpannerInstanceId is specified as well. Defaults to empty.
 * **failureInjectionParameter**: Failure injection parameter. Only used for testing. Defaults to empty.
+* **skipDirectoryName**: Records skipped from migration are written to this directory. Default directory name is skip.
 
 
 
@@ -214,6 +215,7 @@ export SCHEMA_OVERRIDES_FILE_PATH=""
 export SHADOW_TABLE_SPANNER_INSTANCE_ID=""
 export SHADOW_TABLE_SPANNER_DATABASE_ID=""
 export FAILURE_INJECTION_PARAMETER=""
+export SKIP_DIRECTORY_NAME=skip
 
 gcloud dataflow flex-template run "cloud-datastream-to-spanner-job" \
   --project "$PROJECT" \
@@ -253,7 +255,8 @@ gcloud dataflow flex-template run "cloud-datastream-to-spanner-job" \
   --parameters "schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH" \
   --parameters "shadowTableSpannerInstanceId=$SHADOW_TABLE_SPANNER_INSTANCE_ID" \
   --parameters "shadowTableSpannerDatabaseId=$SHADOW_TABLE_SPANNER_DATABASE_ID" \
-  --parameters "failureInjectionParameter=$FAILURE_INJECTION_PARAMETER"
+  --parameters "failureInjectionParameter=$FAILURE_INJECTION_PARAMETER" \
+  --parameters "skipDirectoryName=$SKIP_DIRECTORY_NAME"
 ```
 
 For more information about the command, please check:
@@ -309,6 +312,7 @@ export SCHEMA_OVERRIDES_FILE_PATH=""
 export SHADOW_TABLE_SPANNER_INSTANCE_ID=""
 export SHADOW_TABLE_SPANNER_DATABASE_ID=""
 export FAILURE_INJECTION_PARAMETER=""
+export SKIP_DIRECTORY_NAME=skip
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -317,7 +321,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-datastream-to-spanner-job" \
 -DtemplateName="Cloud_Datastream_to_Spanner" \
--Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,sessionFilePath=$SESSION_FILE_PATH,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,streamName=$STREAM_NAME,shadowTablePrefix=$SHADOW_TABLE_PREFIX,shouldCreateShadowTables=$SHOULD_CREATE_SHADOW_TABLES,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,datastreamSourceType=$DATASTREAM_SOURCE_TYPE,roundJsonDecimals=$ROUND_JSON_DECIMALS,runMode=$RUN_MODE,transformationContextFilePath=$TRANSFORMATION_CONTEXT_FILE_PATH,directoryWatchDurationInMinutes=$DIRECTORY_WATCH_DURATION_IN_MINUTES,spannerPriority=$SPANNER_PRIORITY,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,filteredEventsDirectory=$FILTERED_EVENTS_DIRECTORY,sourceConfigURL=$SOURCE_CONFIG_URL,tableOverrides=$TABLE_OVERRIDES,columnOverrides=$COLUMN_OVERRIDES,schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH,shadowTableSpannerInstanceId=$SHADOW_TABLE_SPANNER_INSTANCE_ID,shadowTableSpannerDatabaseId=$SHADOW_TABLE_SPANNER_DATABASE_ID,failureInjectionParameter=$FAILURE_INJECTION_PARAMETER" \
+-Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,sessionFilePath=$SESSION_FILE_PATH,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,streamName=$STREAM_NAME,shadowTablePrefix=$SHADOW_TABLE_PREFIX,shouldCreateShadowTables=$SHOULD_CREATE_SHADOW_TABLES,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,datastreamSourceType=$DATASTREAM_SOURCE_TYPE,roundJsonDecimals=$ROUND_JSON_DECIMALS,runMode=$RUN_MODE,transformationContextFilePath=$TRANSFORMATION_CONTEXT_FILE_PATH,directoryWatchDurationInMinutes=$DIRECTORY_WATCH_DURATION_IN_MINUTES,spannerPriority=$SPANNER_PRIORITY,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,filteredEventsDirectory=$FILTERED_EVENTS_DIRECTORY,sourceConfigURL=$SOURCE_CONFIG_URL,tableOverrides=$TABLE_OVERRIDES,columnOverrides=$COLUMN_OVERRIDES,schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH,shadowTableSpannerInstanceId=$SHADOW_TABLE_SPANNER_INSTANCE_ID,shadowTableSpannerDatabaseId=$SHADOW_TABLE_SPANNER_DATABASE_ID,failureInjectionParameter=$FAILURE_INJECTION_PARAMETER,skipDirectoryName=$SKIP_DIRECTORY_NAME" \
 -f v2/datastream-to-spanner
 ```
 
@@ -397,6 +401,7 @@ resource "google_dataflow_flex_template_job" "cloud_datastream_to_spanner" {
     # shadowTableSpannerInstanceId = ""
     # shadowTableSpannerDatabaseId = ""
     # failureInjectionParameter = ""
+    # skipDirectoryName = "skip"
   }
 }
 ```

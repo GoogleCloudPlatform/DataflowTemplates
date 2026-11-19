@@ -41,6 +41,8 @@ The most important parameters you need to configure are:
 - **databaseId**: Destination Cloud Spanner database.
 - **bigQueryDataset**: BigQuery dataset ID where validation results will be stored.
 
+To validate only some tables, set `tables` or the `tableNames` list in the `tableConfigurationFilePath` file (not both). Use source table names. For a Spanner-only table (one with no source table), use its Spanner name. Spanner-only tables are validated by default unless you leave them out this way.
+
 You can run the template using `gcloud`, Dataflow REST API, or via Terraform.
 
 ### Step 3: Observe the Dataflow Pipeline
@@ -82,6 +84,47 @@ SELECT table_name, status, source_row_count, destination_row_count
 FROM `your_project.your_dataset.TableValidationStats`
 WHERE run_id = 'your_run_id';
 ```
+
+## Validating a subset of shards
+
+To validate only some shards of a sharded bulk migration:
+
+1. Set `shardIds` to the logical shard IDs to validate, i.e. the `<shardId>` directory names under `gcsInputDirectory/<table>/`:
+   ```shell
+   --parameters "shardIds=shard_001,shard_007"
+   ```
+2. Every table being validated, including Spanner-only tables, must be filtered to the same shards on the Spanner side, in one of two ways. A table with neither makes the job fail; leave tables you don't want to validate out of `tableNames`.
+   - The session file has a `ShardIdColumn` for the table. Nothing more to do.
+   - Otherwise, add a non-blank `spannerQuery` for the table in the `tableConfigurationFilePath` file. A Spanner-only table always needs one.
+   - If a table has both, its `spannerQuery` is used and the `ShardIdColumn` is ignored.
+3. Write each `spannerQuery` as follows:
+   1. Under `optionalConfigurations`, use the table's **source** (pre-migration) name as the key. Use the Spanner table name **only** for Spanner-only tables.
+   2. Write it **strictly** in the format `SELECT * FROM <spanner-table-name> WHERE <condition>`.
+   3. The template reads the table's Spanner rows with this query, so its `WHERE` condition must match all rows of the shards in `shardIds`, and only those. Update it whenever `shardIds` changes.
+
+   > [!IMPORTANT]
+   > The query runs on your Spanner database. `<spanner-table-name>` and every column must be named exactly as in your **Spanner DDL** (after any renames), and the SQL must be in your **Spanner database's dialect** (GoogleSQL or PostgreSQL, including its identifier quoting).
+
+Example `tableConfigurationFilePath` file. `AccountRolesSrc` is the source table name; the migration renamed it to `AccountRoles` in Spanner, so the query uses `AccountRoles`. `AuditLog` exists only in Spanner, so it is keyed by its Spanner name:
+```json
+{
+  "tableNames": ["Users", "AccountRolesSrc", "AuditLog"],
+  "optionalConfigurations": {
+    "Users": {
+      "spannerQuery": "SELECT * FROM Users WHERE user_id <= 2"
+    },
+    "AccountRolesSrc": {
+      "spannerQuery": "SELECT * FROM AccountRoles WHERE role_id <= 1"
+    },
+    "AuditLog": {
+      "spannerQuery": "SELECT * FROM AuditLog WHERE log_id <= 1"
+    }
+  }
+}
+```
+
+Notes:
+- Validating a subset only reads less from Spanner when the `spannerQuery` filters on the table's primary-key columns or on indexed columns. Otherwise Spanner still scans the whole table.
 
 ## References
 - See [README_Avro_to_Spanner_Data_Validator.md](README_Avro_to_Spanner_Data_Validator.md) for full commands to build and run the template.

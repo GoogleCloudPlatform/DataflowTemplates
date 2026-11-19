@@ -150,8 +150,14 @@ public class FormatDatastreamRecordToJson
     if (sourceType.equals("mysql")) {
       // MySQL Specific Metadata
       outputObject.put("_metadata_schema", getMetadataDatabase(record));
-      outputObject.put("_metadata_log_file", getSourceMetadata(record, "log_file"));
-      outputObject.put("_metadata_log_position", getSourceMetadata(record, "log_position"));
+      if (getSourceMetadata(record, "gtid") != null) {
+        // GTID mode
+        outputObject.put("_metadata_log_file", getSourceMetadata(record, "binlog_file"));
+        outputObject.put("_metadata_log_position", getSourceMetadata(record, "binlog_position"));
+      } else {
+        outputObject.put("_metadata_log_file", getSourceMetadata(record, "log_file"));
+        outputObject.put("_metadata_log_position", getSourceMetadata(record, "log_position"));
+      }
     } else if (sourceType.equals("postgresql")) {
       // PostgreSQL Specific Metadata
       outputObject.put("_metadata_schema", getMetadataSchema(record));
@@ -652,6 +658,22 @@ public class FormatDatastreamRecordToJson
               fullDate
                   .withZoneSameInstant(ZoneId.of("UTC"))
                   .format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
+          break;
+        case "datetime":
+          // Datastream's zone-less datetime (SQL Server datetime, datetime2, smalldatetime):
+          // days since the epoch plus microseconds of day. The wall-clock value is rendered as a
+          // UTC timestamp, consistent with GenericRecordTypeConvertor in bulk migration.
+          long datetimeMicros =
+              TimeUnit.DAYS.toMicros(((Number) element.get("date")).longValue())
+                  + ((Number) element.get("time")).longValue();
+          Instant datetime =
+              Instant.ofEpochSecond(
+                  Math.floorDiv(datetimeMicros, TimeUnit.SECONDS.toMicros(1)),
+                  TimeUnit.MICROSECONDS.toNanos(
+                      Math.floorMod(datetimeMicros, TimeUnit.SECONDS.toMicros(1))));
+          jsonObject.put(
+              fieldName,
+              datetime.atOffset(ZoneOffset.UTC).format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
           break;
         case "timeTz":
           long timeTzNanos =

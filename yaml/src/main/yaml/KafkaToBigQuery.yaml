@@ -62,7 +62,8 @@ pipeline:
         format: {{ format  | default('JSON') }}
         topic: {{ topic }}
         bootstrap_servers: {{ bootstrapServers }}
-        auto_offset_reset_config: 'earliest'
+        max_read_time_seconds: {{ maxReadTimeSeconds }}
+        auto_offset_reset_config: {{ autoOffsetResetConfig | default('earliest') }}
         error_handling:
           output: errors
     - type: WriteToBigQuery
@@ -70,7 +71,7 @@ pipeline:
       input: ReadFromKafka
       config:
         table: {{ table }}
-        create_disposition: {{ createDisposition | default('CREATE_IF_NEEDED') }}
+        create_disposition: {{ createDisposition | default('CREATE_NEVER') }}
         write_disposition: {{ writeDisposition | default('WRITE_APPEND') }}
         num_streams: {{ numStreams | default(1) }}
         error_handling:

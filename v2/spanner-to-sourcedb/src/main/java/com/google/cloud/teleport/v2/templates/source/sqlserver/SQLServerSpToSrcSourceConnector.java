@@ -188,26 +188,23 @@ public class SQLServerSpToSrcSourceConnector implements ISpToSrcSourceConnector 
       // 207: Invalid column name '...'
       // 208: Invalid object name '...'
       // 245: Conversion failed when converting the varchar value '...' to data type ...
-      // 547: The INSERT/UPDATE/DELETE statement conflicted with the CHECK/FOREIGN KEY constraint
-      // 2601: Cannot insert duplicate key row in object '...' with unique index '...'
-      // 2627: Violation of PRIMARY KEY constraint '...'
       // 8114: Error converting data type varchar to ...
       // 8152: String or binary data would be truncated
+      //
+      // Integrity constraint violations (547: CHECK/FOREIGN KEY conflict, 2601: duplicate key
+      // with unique index, 2627: PRIMARY KEY violation, SQLSTATE class 23) are intentionally NOT
+      // classified as permanent, consistent with the other JDBC source connectors. They are
+      // typically caused by out-of-order delivery (e.g. a child row arriving before its parent
+      // on another shard) and succeed on retry once the dependent row has been written.
       if (errorCode == 102
           || errorCode == 207
           || errorCode == 208
           || errorCode == 245
-          || errorCode == 547
-          || errorCode == 2601
-          || errorCode == 2627
           || errorCode == 8114
           || errorCode == 8152) {
         return Constants.PERMANENT_ERROR_TAG;
       }
-      if (sqlState != null
-          && (sqlState.startsWith("42")
-              || sqlState.startsWith("22")
-              || sqlState.startsWith("23"))) {
+      if (sqlState != null && (sqlState.startsWith("42") || sqlState.startsWith("22"))) {
         return Constants.PERMANENT_ERROR_TAG;
       }
     }

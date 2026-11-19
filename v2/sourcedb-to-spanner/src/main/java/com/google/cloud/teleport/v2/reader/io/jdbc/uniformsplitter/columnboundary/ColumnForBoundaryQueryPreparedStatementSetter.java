@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.columnboundary;
 
 import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcCommonConstants;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.BoundaryExtractorFactory;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.Range;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
@@ -53,11 +54,25 @@ public class ColumnForBoundaryQueryPreparedStatementSetter
                     TableSplitSpecification::tableIdentifier, Function.identity()));
   }
 
+  /**
+   * Convert raw byte[] boundaries of UUID-like columns into the representation expected by the JDBC
+   * driver: {@link java.util.UUID} for PostgreSQL {@code uuid} (avoids a BYTEA vs UUID type
+   * mismatch), and a canonical UUID string for SQL Server {@code uniqueidentifier} (whose bytes are
+   * held in SQL Server comparison order, see {@link
+   * BoundaryExtractorFactory#sqlServerSortableBytesToUuidString}).
+   *
+   * <p>TODO(#4489): The uniqueidentifier branches are dialect-specific; route them through a
+   * SQLServer connector.
+   */
   private static Object convertIfUuid(Object val, PartitionColumn pc) {
     if (val instanceof byte[] bytes
         && JdbcCommonConstants.UUID_TYPE.equalsIgnoreCase(pc.columnTypeName())) {
       java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(bytes);
       return new java.util.UUID(bb.getLong(), bb.getLong());
+    }
+    if (val instanceof byte[] bytes
+        && JdbcCommonConstants.UNIQUEIDENTIFIER_TYPE.equalsIgnoreCase(pc.columnTypeName())) {
+      return BoundaryExtractorFactory.sqlServerSortableBytesToUuidString(bytes);
     }
     return val;
   }

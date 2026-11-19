@@ -255,6 +255,8 @@ public class WriteDataChangeRecordsToAvro {
           return com.google.cloud.teleport.v2.TypeCode.NUMERIC;
         case "JSON":
           return com.google.cloud.teleport.v2.TypeCode.JSON;
+        case "UUID":
+          return com.google.cloud.teleport.v2.TypeCode.UUID;
         default:
           return com.google.cloud.teleport.v2.TypeCode.TYPE_CODE_UNSPECIFIED;
       }

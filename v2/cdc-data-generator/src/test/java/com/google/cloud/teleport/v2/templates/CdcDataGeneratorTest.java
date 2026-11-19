@@ -18,9 +18,9 @@ package com.google.cloud.teleport.v2.templates;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 
+import com.google.cloud.teleport.v2.source.mysql.MySqlSinkConfig;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.templates.CdcDataGeneratorOptions.SinkType;
-import com.google.cloud.teleport.v2.templates.model.MySqlSinkConfig;
 import com.google.cloud.teleport.v2.templates.model.SinkConfig;
 import java.util.Arrays;
 import java.util.Collections;

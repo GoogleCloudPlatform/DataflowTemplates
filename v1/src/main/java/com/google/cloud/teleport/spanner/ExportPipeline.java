@@ -249,6 +249,17 @@ public class ExportPipeline {
     ValueProvider<ChecksumAlgorithm> getChecksumAlgorithm();
 
     void setChecksumAlgorithm(ValueProvider<ChecksumAlgorithm> value);
+
+    @TemplateParameter.Integer(
+        order = 15,
+        groupName = "Source",
+        optional = true,
+        description = "Maximum Data Boost parallelism",
+        helpText =
+            "The maximum number of concurrent Data Boost requests allowed for this job. If not set, the template queries the Cloud Spanner Data Boost quota for the project and region, falling back to 400 if the quota cannot be fetched.")
+    ValueProvider<Integer> getMaxDataBoostParallelism();
+
+    void setMaxDataBoostParallelism(ValueProvider<Integer> value);
   }
 
   /**
@@ -293,7 +304,8 @@ public class ExportPipeline {
                 options.getShouldExportRelatedTables(),
                 options.getShouldExportTimestampAsLogicalType(),
                 options.getAvroTempDirectory(),
-                options.getChecksumAlgorithm()));
+                options.getChecksumAlgorithm(),
+                options.getMaxDataBoostParallelism()));
     PipelineResult result = p.run();
     if (options.getWaitUntilFinish()
         &&

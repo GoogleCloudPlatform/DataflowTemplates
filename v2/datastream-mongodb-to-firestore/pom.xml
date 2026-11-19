@@ -32,10 +32,6 @@
         Stream CDC Data from DataStream to Firestore via GCS
     </description>
 
-    <properties>
-        <mongo-java-driver.version>5.6.5</mongo-java-driver.version>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>com.google.cloud.teleport.v2</groupId>
@@ -63,7 +59,7 @@
         <dependency>
             <groupId>dnsjava</groupId>
             <artifactId>dnsjava</artifactId>
-            <version>3.6.3</version>
+            <version>${dnsjava.version}</version>
         </dependency>
         <dependency>
             <groupId>org.mongodb</groupId>

@@ -74,7 +74,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.annotations.VisibleForTesting;
-import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.maven.artifact.DependencyResolutionRequiredException;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Plugin;
@@ -207,8 +206,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   protected boolean generateSBOM;
 
   private boolean internalMaven;
-  // used to track if same images are scanned
-  private static final Set<ImmutablePair<String, TemplateType>> SCANNED_TYPES = new HashSet<>();
 
   private String mavenRepo;
 
@@ -516,6 +513,20 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     String currentTemplateName = definition.getTemplateAnnotation().name();
     TemplateSpecsGenerator generator = new TemplateSpecsGenerator();
 
+    if (!containerStageTracker.isStaged(containerName, currentTemplateName)
+        && !Strings.isNullOrEmpty(
+            PromoteHelper.getDigestFromTag(
+                targetImagePath,
+                new PromoteHelper.ArtifactRegImageSpec(targetImagePath),
+                stagePrefix))) {
+      LOG.info(
+          "Container image {}:{} already exists, marking {} as staged.",
+          targetImagePath,
+          stagePrefix,
+          containerName);
+      containerStageTracker.setStaged(containerName);
+    }
+
     boolean stageImageBeforePromote =
         generateSBOM && !Strings.isNullOrEmpty(stagingArtifactRegistry);
     String imagePath =
@@ -601,10 +612,12 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       if (!containerStageTracker.isStaged(containerName, currentTemplateName)) {
         // generate SBOM
         File buildDir = new File(outputClassesDirectory.getAbsolutePath());
-        performVulnerabilityScanAndGenerateUserSBOM(
-            imagePathTag, buildProjectId, buildDir, definition.getTemplateAnnotation().type());
+        generateUserSBOM(imagePathTag, buildProjectId, buildDir);
         GenerateSBOMRunnable runnable = new GenerateSBOMRunnable(imagePathTag);
-        Failsafe.with(GenerateSBOMRunnable.sbomRetryPolicy()).run(runnable);
+        Failsafe.with(
+                GenerateSBOMRunnable.sbomRetryPolicy(),
+                GenerateSBOMRunnable.sbomScanningRetryPolicy())
+            .run(runnable);
         String digest = runnable.getDigest();
 
         if (stageImageBeforePromote) {
@@ -614,10 +627,10 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           String dateSuffix =
               LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm"));
           String deprecatedTag = "update-available-" + dateSuffix;
-          if (metadata.isHidden()) {
-            trackTag = "no-new-use-public-image-latest";
-          } else if (metadata.getName().contains("[Deprecated]")) {
+          if (containerStageTracker.isAllDeprecated(containerName, metadata)) {
             trackTag = "deprecated-public-image-latest";
+          } else if (containerStageTracker.isAllHiddenOrDeprecated(containerName, metadata)) {
+            trackTag = "no-new-use-public-image-latest";
           }
           // promote image
           PromoteHelper promoteHelper =
@@ -794,6 +807,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       List<Element> elements = new ArrayList<>();
 
       // Base image to use
+      if (baseContainerImage != null && baseContainerImage.startsWith(":")) {
+        baseContainerImage = BASE_CONTAINER_IMAGE.split(":")[0] + baseContainerImage;
+      }
       elements.add(element("from", element("image", baseContainerImage)));
 
       // Target image to stage
@@ -1285,8 +1301,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
                       + "']\n"
                       + "options:\n"
                       + "  logging: CLOUD_LOGGING_ONLY\n"
-                      + "  requestedVerifyOption: VERIFIED"
-                  : "\noptions:\n" + "  logging: CLOUD_LOGGING_ONLY\n"));
+                      + "  requestedVerifyOption: VERIFIED\n"
+                      + "  workerRelease: regular"
+                  : "\noptions:\n" + "  logging: CLOUD_LOGGING_ONLY\n  workerRelease: regular\n"));
     }
 
     LOG.info("Submitting Cloud Build job with config: " + cloudbuildFile.getAbsolutePath());
@@ -1508,25 +1525,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     }
   }
 
-  private void performVulnerabilityScanAndGenerateUserSBOM(
-      String imagePathTag, String buildProjectId, File buildDir, TemplateType imageType)
+  private static void generateUserSBOM(String imagePathTag, String buildProjectId, File buildDir)
       throws IOException, InterruptedException {
-    LOG.info("Generating user SBOM and Performing security scan for {}...", imagePathTag);
-
-    // Continuous scanning is expensive. Images are built on identical dependencies and only differ
-    // by entry point. We only need to check once.
-    ImmutablePair<String, TemplateType> uniqueImage =
-        ImmutablePair.of(buildDir.getPath(), imageType);
-    String maybeScan = "";
-    if (!SCANNED_TYPES.contains(uniqueImage)) {
-      maybeScan =
-          "- name: 'us-docker.pkg.dev/scaevola-builder-integration/release/scanvola/scanvola'\n"
-              + "  args:\n"
-              + "  - --image="
-              + imagePathTag
-              + "\n";
-      SCANNED_TYPES.add(uniqueImage);
-    }
+    LOG.info("Generating user SBOM for {}...", imagePathTag);
 
     File cloudbuildFile = File.createTempFile("cloudbuild", ".yaml");
     try (FileWriter writer = new FileWriter(cloudbuildFile)) {
@@ -1552,7 +1553,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               + "  - --uri="
               + imagePathTag
               + "\n"
-              + maybeScan
               + "options:\n"
               + "  logging: CLOUD_LOGGING_ONLY\n");
     }
@@ -1698,11 +1698,32 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       return containers.get(containerName).filesToCopy.stream().toList();
     }
 
+    boolean isAllDeprecated(String containerName, ImageSpecMetadata metadata) {
+      ContainerCommandSpecs spec = containers.get(containerName);
+      if (spec == null) {
+        // not managed by ContainerStageTracker
+        return metadata.getName() != null && metadata.getName().contains("[Deprecated]");
+      }
+      return spec.allDeprecated;
+    }
+
+    boolean isAllHiddenOrDeprecated(String containerName, ImageSpecMetadata metadata) {
+      ContainerCommandSpecs spec = containers.get(containerName);
+      if (spec == null) {
+        // not managed by ContainerStageTracker
+        return metadata.isHidden()
+            || (metadata.getName() != null && metadata.getName().contains("[Deprecated]"));
+      }
+      return spec.allHiddenOrDeprecated;
+    }
+
     private static class ContainerCommandSpecs {
       Map<String, File> commandSpecFiles;
       final Set<String> filesToCopy;
       boolean staged;
       @Nullable String uniqueTemplateName;
+      boolean allDeprecated;
+      boolean allHiddenOrDeprecated;
 
       ContainerCommandSpecs() {
         commandSpecFiles = new HashMap<>();
@@ -1711,6 +1732,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         // if this container cannot be shared, track template name here (instead of
         // commandSpecFiles)
         uniqueTemplateName = null;
+        allDeprecated = true;
+        allHiddenOrDeprecated = true;
       }
 
       /** Add a Template to this ContainerCommandSpecs. */
@@ -1740,6 +1763,10 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         if (annotation.filesToCopy() != null) {
           Collections.addAll(filesToCopy, annotation.filesToCopy());
         }
+        boolean deprecated =
+            annotation.displayName() != null && annotation.displayName().contains("[Deprecated]");
+        allDeprecated &= deprecated;
+        allHiddenOrDeprecated &= annotation.hidden() || deprecated;
       }
 
       /** Check whether Templates declared spec incompatible to use same container images. */
@@ -1794,14 +1821,33 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       digest = matcher.group("DIGEST");
     }
 
+    private static boolean isScanningInProgress(Throwable throwable) {
+      return throwable.getCause() != null
+          && throwable.getCause().getMessage() != null
+          && throwable.getCause().getMessage().contains("discovery occurrence has status SCANNING");
+    }
+
     private static <T> RetryPolicy<T> sbomRetryPolicy() {
       return RetryPolicy.<T>builder()
           .handleIf(
               throwable ->
                   throwable.getMessage() != null
-                      && throwable.getMessage().contains("Error generating SBOM."))
+                      && throwable.getMessage().contains("Error generating SBOM.")
+                      && !isScanningInProgress(throwable))
           .withBackoff(Duration.ofSeconds(10), Duration.ofSeconds(60))
           .withMaxRetries(5)
+          .build();
+    }
+
+    private static <T> RetryPolicy<T> sbomScanningRetryPolicy() {
+      return RetryPolicy.<T>builder()
+          .handleIf(
+              throwable ->
+                  throwable.getMessage() != null
+                      && throwable.getMessage().contains("Error generating SBOM.")
+                      && isScanningInProgress(throwable))
+          .withBackoff(Duration.ofSeconds(20), Duration.ofSeconds(60))
+          .withMaxRetries(20) // up to 20 minutes waiting for scan to be finished
           .build();
     }
   }

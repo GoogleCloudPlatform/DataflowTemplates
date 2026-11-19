@@ -170,16 +170,18 @@ public class PostgreSQL5KTablesLT extends SourceDbToSpannerLTBase {
     Map<String, String> params = getCommonParameters();
     params.putAll(
         getJdbcParameters(
-            postgresResourceManager.getUri(),
+            postgresResourceManager.getHost(),
+            postgresResourceManager.getPort(),
             postgresResourceManager.getUsername(),
             postgresResourceManager.getPassword(),
+            postgresResourceManager.getDatabaseName(),
             "org.postgresql.Driver"));
     params.put("maxConnections", "16");
     params.put("numWorkers", "16");
     params.put("maxNumWorkers", "16");
 
     LaunchConfig.Builder options =
-        LaunchConfig.builder(testName, SPEC_PATH)
+        LaunchConfig.builder(testName, getTemplateSpecPath())
             .setParameters(params)
             .addEnvironment("additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
 

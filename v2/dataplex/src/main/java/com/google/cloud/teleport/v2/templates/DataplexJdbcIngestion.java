@@ -103,7 +103,7 @@ import org.slf4j.LoggerFactory;
             + " Bearer $(gcloud auth application-default print-access-token)\"  -H \"Content-Type:"
             + " application/json\"",
     optionsClass = DataplexJdbcIngestionOptions.class,
-    flexContainerName = "dataplex-jdbc-ingestion",
+    flexContainerName = "dataplex",
     contactInformation = "https://cloud.google.com/support")
 public class DataplexJdbcIngestion {
 

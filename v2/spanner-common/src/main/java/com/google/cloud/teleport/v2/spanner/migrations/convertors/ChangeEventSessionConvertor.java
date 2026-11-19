@@ -23,6 +23,7 @@ import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constant
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.ORACLE_SOURCE_TYPE;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.SHARD_ID_COLUMN_NAME;
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.SQLSERVER_SOURCE_TYPE;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -30,6 +31,7 @@ import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaOverridesParser;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
@@ -112,8 +114,14 @@ public class ChangeEventSessionConvertor {
     return changeEvent;
   }
 
+  private boolean isShardingSupportedSource() {
+    return MYSQL_SOURCE_TYPE.equals(this.sourceType)
+        || ORACLE_SOURCE_TYPE.equals(this.sourceType)
+        || SQLSERVER_SOURCE_TYPE.equals(this.sourceType);
+  }
+
   public String getShardId(JsonNode changeEvent) {
-    if ((!MYSQL_SOURCE_TYPE.equals(this.sourceType) && !ORACLE_SOURCE_TYPE.equals(this.sourceType))
+    if (!isShardingSupportedSource()
         || ((shardingContext.getStreamToDbAndShardMap() == null
                 || shardingContext.getStreamToDbAndShardMap().isEmpty())
             && (transformationContext.getSchemaToShardId() == null
@@ -156,7 +164,7 @@ public class ChangeEventSessionConvertor {
     /*
      * TODO: Check if PG needs to be part of this check or not
      */
-    if ((!MYSQL_SOURCE_TYPE.equals(this.sourceType) && !ORACLE_SOURCE_TYPE.equals(this.sourceType))
+    if (!isShardingSupportedSource()
         || ((shardingContext.getStreamToDbAndShardMap() == null
                 || shardingContext.getStreamToDbAndShardMap().isEmpty())
             && (transformationContext.getSchemaToShardId() == null
@@ -273,7 +281,8 @@ public class ChangeEventSessionConvertor {
     }
     String tableName = changeEvent.get(EVENT_TABLE_NAME_KEY).asText();
     if (ddl.table(tableName) == null) {
-      throw new Exception("Table from change event does not exist in Spanner. table=" + tableName);
+      throw new DroppedTableException(
+          "Table from change event does not exist in Spanner. table=" + tableName);
     }
     Iterator<String> fieldNames = changeEvent.fieldNames();
     List<String> columnNames =

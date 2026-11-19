@@ -30,6 +30,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **filter**: Bson filter in json format. For example, `{ "val": { $gt: 0, $lt: 9 }}`.
 * **useStorageWriteApi**: If `true`, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
 * **useStorageWriteApiAtLeastOnce**: When using the Storage Write API, specifies the write semantics. To use at-least-once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to `true`. To use exactly-once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`.
+* **bucketAuto**: If `true`, the collection is split into partitions by `_id` using the `$bucketAuto` aggregation stage, so the read is parallelized across workers. Unlike `splitVector`, `$bucketAuto` is also permitted on MongoDB Atlas. The number of partitions is controlled by `numSplits`. Collections whose `_id` values are not ObjectIds require Apache Beam 2.77.0 or later. Defaults to `false`.
+* **numSplits**: The number of partitions to split the read into. When `bucketAuto` is `true`, `0` uses 10 partitions. When `bucketAuto` is `false`, a value greater than `0` splits the read with the `splitVector` command, which is not permitted on MongoDB Atlas, and `0` reads the collection as a single partition. Defaults to `0`.
 * **bigQuerySchemaPath**: The Cloud Storage path for the BigQuery JSON schema. For example, `gs://your-bucket/your-schema.json`.
 * **javascriptDocumentTransformGcsPath**: The Cloud Storage URI of the `.js` file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://your-bucket/your-transforms/*.js`.
 * **javascriptDocumentTransformFunctionName**: The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is myTransform. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples). For example, `transform`.
@@ -136,6 +138,8 @@ export KMSENCRYPTION_KEY=<KMSEncryptionKey>
 export FILTER=<filter>
 export USE_STORAGE_WRITE_API=false
 export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
+export BUCKET_AUTO=false
+export NUM_SPLITS=0
 export BIG_QUERY_SCHEMA_PATH=<bigQuerySchemaPath>
 export JAVASCRIPT_DOCUMENT_TRANSFORM_GCS_PATH=<javascriptDocumentTransformGcsPath>
 export JAVASCRIPT_DOCUMENT_TRANSFORM_FUNCTION_NAME=<javascriptDocumentTransformFunctionName>
@@ -152,6 +156,8 @@ gcloud dataflow flex-template run "mongodb-to-bigquery-job" \
   --parameters "filter=$FILTER" \
   --parameters "useStorageWriteApi=$USE_STORAGE_WRITE_API" \
   --parameters "useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
+  --parameters "bucketAuto=$BUCKET_AUTO" \
+  --parameters "numSplits=$NUM_SPLITS" \
   --parameters "outputTableSpec=$OUTPUT_TABLE_SPEC" \
   --parameters "bigQuerySchemaPath=$BIG_QUERY_SCHEMA_PATH" \
   --parameters "javascriptDocumentTransformGcsPath=$JAVASCRIPT_DOCUMENT_TRANSFORM_GCS_PATH" \
@@ -185,6 +191,8 @@ export KMSENCRYPTION_KEY=<KMSEncryptionKey>
 export FILTER=<filter>
 export USE_STORAGE_WRITE_API=false
 export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
+export BUCKET_AUTO=false
+export NUM_SPLITS=0
 export BIG_QUERY_SCHEMA_PATH=<bigQuerySchemaPath>
 export JAVASCRIPT_DOCUMENT_TRANSFORM_GCS_PATH=<javascriptDocumentTransformGcsPath>
 export JAVASCRIPT_DOCUMENT_TRANSFORM_FUNCTION_NAME=<javascriptDocumentTransformFunctionName>
@@ -196,7 +204,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="mongodb-to-bigquery-job" \
 -DtemplateName="MongoDB_to_BigQuery" \
--Dparameters="mongoDbUri=$MONGO_DB_URI,database=$DATABASE,collection=$COLLECTION,userOption=$USER_OPTION,KMSEncryptionKey=$KMSENCRYPTION_KEY,filter=$FILTER,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,outputTableSpec=$OUTPUT_TABLE_SPEC,bigQuerySchemaPath=$BIG_QUERY_SCHEMA_PATH,javascriptDocumentTransformGcsPath=$JAVASCRIPT_DOCUMENT_TRANSFORM_GCS_PATH,javascriptDocumentTransformFunctionName=$JAVASCRIPT_DOCUMENT_TRANSFORM_FUNCTION_NAME" \
+-Dparameters="mongoDbUri=$MONGO_DB_URI,database=$DATABASE,collection=$COLLECTION,userOption=$USER_OPTION,KMSEncryptionKey=$KMSENCRYPTION_KEY,filter=$FILTER,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,bucketAuto=$BUCKET_AUTO,numSplits=$NUM_SPLITS,outputTableSpec=$OUTPUT_TABLE_SPEC,bigQuerySchemaPath=$BIG_QUERY_SCHEMA_PATH,javascriptDocumentTransformGcsPath=$JAVASCRIPT_DOCUMENT_TRANSFORM_GCS_PATH,javascriptDocumentTransformFunctionName=$JAVASCRIPT_DOCUMENT_TRANSFORM_FUNCTION_NAME" \
 -f v2/googlecloud-and-mongodb
 ```
 
@@ -250,6 +258,8 @@ resource "google_dataflow_flex_template_job" "mongodb_to_bigquery" {
     # filter = "<filter>"
     # useStorageWriteApi = "false"
     # useStorageWriteApiAtLeastOnce = "false"
+    # bucketAuto = "false"
+    # numSplits = "0"
     # bigQuerySchemaPath = "<bigQuerySchemaPath>"
     # javascriptDocumentTransformGcsPath = "<javascriptDocumentTransformGcsPath>"
     # javascriptDocumentTransformFunctionName = "<javascriptDocumentTransformFunctionName>"

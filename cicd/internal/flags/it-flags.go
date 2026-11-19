@@ -40,8 +40,11 @@ var (
 	dOracleHost                         string
 	dCloudOracleSysPassword             string
 	dUnifiedWorkerHarnessContainerImage string
+	dBaseContainerImage                 string
+	dBasePythonContainerImage           string
 	dIntegrationTestParallelism         string
 	dThreadCount                        string
+	dRedirectLog                        bool
 )
 
 // Registers all it flags. Must be called before flag.Parse().
@@ -62,8 +65,11 @@ func RegisterItFlags() {
 	flag.StringVar(&dOracleHost, "it-oracle-host", "10.128.0.90", "Hostname or IP address of static Oracle DB")
 	flag.StringVar(&dCloudOracleSysPassword, "it-oracle-sys-password", "oracle", "sys password of static Oracle DB")
 	flag.StringVar(&dUnifiedWorkerHarnessContainerImage, "it-unified-worker-harness-container-image", "", "Runner harness image to run tests against")
+	flag.StringVar(&dBaseContainerImage, "it-base-container-image", "", "(optional) Base container image to use for Java Flex templates")
+	flag.StringVar(&dBasePythonContainerImage, "it-base-python-container-image", "", "(optional) Base container image to use for Python/YAML Flex templates")
 	flag.StringVar(&dIntegrationTestParallelism, "it-integration-test-parallelism", "3", "The level of parallelism for integration tests")
 	flag.StringVar(&dThreadCount, "it-thread-count", "4", "The IT thread count to use for maven, which is the number of threads per core")
+	flag.BoolVar(&dRedirectLog, "redirect-log-to-file", false, "Whether to Redirect Logs to File")
 }
 
 func Region() string {
@@ -121,6 +127,20 @@ func FailureMode() string {
 	return "-fae"
 }
 
+func BaseContainerImage() string {
+	if dBaseContainerImage != "" {
+		return "-DbaseContainerImage=" + dBaseContainerImage
+	}
+	return ""
+}
+
+func BasePythonContainerImage() string {
+	if dBasePythonContainerImage != "" {
+		return "-DbasePythonContainerImage=" + dBasePythonContainerImage
+	}
+	return ""
+}
+
 func RetryFailures() string {
 	return "-Dsurefire.rerunFailingTestsCount=" + dRetryFailures
 }
@@ -166,4 +186,8 @@ func ThreadCount() int {
 	i := 4
 	fmt.Sscan(dThreadCount, &i)
 	return i
+}
+
+func RedirectLog() bool {
+	return dRedirectLog
 }

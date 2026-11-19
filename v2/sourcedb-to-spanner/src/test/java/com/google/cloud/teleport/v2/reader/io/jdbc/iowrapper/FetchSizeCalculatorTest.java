@@ -41,7 +41,7 @@ public final class FetchSizeCalculatorTest {
   public void testGetFetchSize_NoMachineType() {
     // Test when machine type (memory/cores) is not provided.
     int fetchSize = FetchSizeCalculator.getFetchSize(tableConfig, 100L, null, null);
-    assertEquals(0, fetchSize);
+    assertEquals(FetchSizeCalculator.DEFAULT_FETCH_SIZE, fetchSize);
   }
 
   @Test
@@ -60,7 +60,7 @@ public final class FetchSizeCalculatorTest {
   public void testGetFetchSize_ZeroRowSize() {
     // Test when estimated row size is 0.
     int fetchSize = FetchSizeCalculator.getFetchSize(tableConfig, 0L, 17179869184L, 4);
-    assertEquals(0, fetchSize);
+    assertEquals(FetchSizeCalculator.DEFAULT_FETCH_SIZE, fetchSize);
   }
 
   @Test
@@ -111,15 +111,19 @@ public final class FetchSizeCalculatorTest {
     // >=1, but testing calculator logic).
     // In this case, providing 0 cores.
     int fetchSize = FetchSizeCalculator.getFetchSize(tableConfig, 100L, 17179869184L, 0);
-    assertEquals(0, fetchSize);
+    assertEquals(FetchSizeCalculator.DEFAULT_FETCH_SIZE, fetchSize);
   }
 
   @Test
   public void testGetFetchSize_nullInputs() {
     // Null memory
-    assertEquals(0, (int) FetchSizeCalculator.getFetchSize(tableConfig, 100L, null, 4));
+    assertEquals(
+        FetchSizeCalculator.DEFAULT_FETCH_SIZE,
+        (int) FetchSizeCalculator.getFetchSize(tableConfig, 100L, null, 4));
     // Null cores
-    assertEquals(0, (int) FetchSizeCalculator.getFetchSize(tableConfig, 100L, 17179869184L, null));
+    assertEquals(
+        FetchSizeCalculator.DEFAULT_FETCH_SIZE,
+        (int) FetchSizeCalculator.getFetchSize(tableConfig, 100L, 17179869184L, null));
   }
 
   @Test
@@ -152,6 +156,6 @@ public final class FetchSizeCalculatorTest {
         .thenReturn("mock_table");
 
     int fetchSize = FetchSizeCalculator.getFetchSize(mockTableConfig, 100L, 17179869184L, 4);
-    assertEquals(0, fetchSize);
+    assertEquals(FetchSizeCalculator.DEFAULT_FETCH_SIZE, fetchSize);
   }
 }

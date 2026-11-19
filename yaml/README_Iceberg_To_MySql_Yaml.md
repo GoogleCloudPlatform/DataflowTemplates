@@ -24,18 +24,15 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **username**: The database username. For example, `my_user`.
 * **password**: The database password. For example, `my_secret_password`.
-* **driverClassName**: The fully-qualified class name of the JDBC driver to use. For example, `com.mysql.jdbc.Driver`. Defaults to: com.mysql.jdbc.Driver.
-* **driverJars**: A comma-separated list of GCS paths to the JDBC driver JAR files. For example, `gs://your-bucket/mysql-42.2.23.jar`.
 * **connectionProperties**: A semicolon-separated list of key-value pairs for the JDBC connection. For example, `key1=value1;key2=value2`.
 * **connectionInitSql**: A list of SQL statements to execute when a new connection is established. For example, `["SET TIME ZONE UTC"]`.
-* **jdbcType**: Specifies the type of JDBC source. An appropriate default driver will be packaged. For example, `mysql`.
 * **writeStatement**: The SQL query for inserting records, with placeholders for values. For example, `INSERT INTO my_table (col1, col2) VALUES(?, ?)`.
 * **batchSize**: The number of records to group together for each write. For example, `1000`. Defaults to: 1000.
 * **autoSharding**: If true, a dynamic number of shards will be used for writing. For example, `False`.
 * **configProperties**: A map of properties to pass to the Hadoop Configuration. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`.
 * **drop**: A list of field names to drop. Mutually exclusive with 'keep' and 'only'. For example, `["field_to_drop_1", "field_to_drop_2"]`.
-* **filter**: A filter expression to apply to records from the Iceberg table. For example, `age > 18`.
 * **keep**: A list of field names to keep. Mutually exclusive with 'drop' and 'only'. For example, `["field_to_keep_1", "field_to_keep_2"]`.
+* **filter**: A filter expression to apply to records from the Iceberg table. For example, `age > 18`.
 
 
 
@@ -137,18 +134,15 @@ export CATALOG_PROPERTIES=<catalogProperties>
 ### Optional
 export USERNAME=<username>
 export PASSWORD=<password>
-export DRIVER_CLASS_NAME=com.mysql.jdbc.Driver
-export DRIVER_JARS=<driverJars>
 export CONNECTION_PROPERTIES=<connectionProperties>
 export CONNECTION_INIT_SQL=<connectionInitSql>
-export JDBC_TYPE=mysql
 export WRITE_STATEMENT=<writeStatement>
 export BATCH_SIZE=1000
 export AUTO_SHARDING=<autoSharding>
 export CONFIG_PROPERTIES=<configProperties>
 export DROP=<drop>
-export FILTER=<filter>
 export KEEP=<keep>
+export FILTER=<filter>
 
 gcloud dataflow flex-template run "iceberg-to-mysql-yaml-job" \
   --project "$PROJECT" \
@@ -157,11 +151,8 @@ gcloud dataflow flex-template run "iceberg-to-mysql-yaml-job" \
   --parameters "jdbcUrl=$JDBC_URL" \
   --parameters "username=$USERNAME" \
   --parameters "password=$PASSWORD" \
-  --parameters "driverClassName=$DRIVER_CLASS_NAME" \
-  --parameters "driverJars=$DRIVER_JARS" \
   --parameters "connectionProperties=$CONNECTION_PROPERTIES" \
   --parameters "connectionInitSql=$CONNECTION_INIT_SQL" \
-  --parameters "jdbcType=$JDBC_TYPE" \
   --parameters "location=$LOCATION" \
   --parameters "writeStatement=$WRITE_STATEMENT" \
   --parameters "batchSize=$BATCH_SIZE" \
@@ -171,8 +162,8 @@ gcloud dataflow flex-template run "iceberg-to-mysql-yaml-job" \
   --parameters "catalogProperties=$CATALOG_PROPERTIES" \
   --parameters "configProperties=$CONFIG_PROPERTIES" \
   --parameters "drop=$DROP" \
-  --parameters "filter=$FILTER" \
-  --parameters "keep=$KEEP"
+  --parameters "keep=$KEEP" \
+  --parameters "filter=$FILTER"
 ```
 
 For more information about the command, please check:
@@ -200,18 +191,15 @@ export CATALOG_PROPERTIES=<catalogProperties>
 ### Optional
 export USERNAME=<username>
 export PASSWORD=<password>
-export DRIVER_CLASS_NAME=com.mysql.jdbc.Driver
-export DRIVER_JARS=<driverJars>
 export CONNECTION_PROPERTIES=<connectionProperties>
 export CONNECTION_INIT_SQL=<connectionInitSql>
-export JDBC_TYPE=mysql
 export WRITE_STATEMENT=<writeStatement>
 export BATCH_SIZE=1000
 export AUTO_SHARDING=<autoSharding>
 export CONFIG_PROPERTIES=<configProperties>
 export DROP=<drop>
-export FILTER=<filter>
 export KEEP=<keep>
+export FILTER=<filter>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -220,7 +208,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="iceberg-to-mysql-yaml-job" \
 -DtemplateName="Iceberg_To_MySql_Yaml" \
--Dparameters="jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,driverClassName=$DRIVER_CLASS_NAME,driverJars=$DRIVER_JARS,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,jdbcType=$JDBC_TYPE,location=$LOCATION,writeStatement=$WRITE_STATEMENT,batchSize=$BATCH_SIZE,autoSharding=$AUTO_SHARDING,table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,filter=$FILTER,keep=$KEEP" \
+-Dparameters="jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,location=$LOCATION,writeStatement=$WRITE_STATEMENT,batchSize=$BATCH_SIZE,autoSharding=$AUTO_SHARDING,table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,keep=$KEEP,filter=$FILTER" \
 -f yaml
 ```
 
@@ -272,18 +260,15 @@ resource "google_dataflow_flex_template_job" "iceberg_to_mysql_yaml" {
     catalogProperties = "<catalogProperties>"
     # username = "<username>"
     # password = "<password>"
-    # driverClassName = "com.mysql.jdbc.Driver"
-    # driverJars = "<driverJars>"
     # connectionProperties = "<connectionProperties>"
     # connectionInitSql = "<connectionInitSql>"
-    # jdbcType = "mysql"
     # writeStatement = "<writeStatement>"
     # batchSize = "1000"
     # autoSharding = "<autoSharding>"
     # configProperties = "<configProperties>"
     # drop = "<drop>"
-    # filter = "<filter>"
     # keep = "<keep>"
+    # filter = "<filter>"
   }
 }
 ```

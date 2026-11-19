@@ -17,20 +17,21 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **deltaLakeTable**: The GCS path to the Delta Lake table, e.g., gs://your-bucket/path/to/table. For example, `gs://your-bucket/path/to/table`.
 * **lakehouseTable**: A fully-qualified table identifier, e.g., my_dataset.my_table. For example, `my_dataset.my_table`.
 * **lakehouseCatalogName**: The name of the Lakehouse catalog that contains the table. For example, `my_hadoop_catalog`.
-* **lakehouseCatalogProperties**: A map of properties for setting up the Lakehouse catalog. For example, `{"type": "hadoop", "warehouse": "gs://your-bucket/warehouse"}`.
 
 ### Optional parameters
 
 * **deltaLakeVersion**: Version of the Delta Lake table to read. Cannot be set if timestamp is set. For example, `0`.
 * **deltaLakeTimestamp**: Timestamp of the Delta Lake table to read (in UTC ISO 8601 format, e.g. 2026-05-20T15:43:26Z). Cannot be set if version is set. For example, `2026-05-20T15:43:26Z`.
 * **deltaLakeHadoopConfig**: A map of properties to pass to Hadoop Configuration, e.g. key-value pairs. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`. Defaults to: {"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem", "fs.AbstractFileSystem.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS", "fs.gs.auth.type": "APPLICATION_DEFAULT", "fs.gs.project.id": ""}.
+* **lakehouseCatalogProperties**: A map of properties for setting up the Lakehouse catalog. For example, `{"type": "hadoop", "warehouse": "gs://your-bucket/warehouse"}`.
 * **lakehouseConfigProperties**: A map of properties to pass to the Hadoop Configuration. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`.
-* **lakehouseDrop**: A list of field names to drop. Mutually exclusive with 'keep' and 'only'. For example, `["field_to_drop_1", "field_to_drop_2"]`.
-* **lakehouseFilter**: A filter expression to apply to records from the Lakehouse table. For example, `age > 18`.
-* **lakehouseKeep**: A list of field names to keep. Mutually exclusive with 'drop' and 'only'. For example, `["field_to_keep_1", "field_to_keep_2"]`.
-* **lakehouseOnly**: The name of a single field to write. Mutually exclusive with 'keep' and 'drop'. For example, `my_record_field`.
 * **lakehousePartitionFields**: A list of fields and transforms for partitioning, e.g., ['day(ts)', 'category']. For example, `["day(ts)", "bucket(id, 4)"]`.
 * **lakehouseTableProperties**: A map of Lakehouse table properties to set when the table is created. For example, `{"commit.retry.num-retries": "2"}`.
+* **lakehouseDrop**: A list of field names to drop. Mutually exclusive with 'keep' and 'only'. For example, `["field_to_drop_1", "field_to_drop_2"]`.
+* **lakehouseKeep**: A list of field names to keep. Mutually exclusive with 'drop' and 'only'. For example, `["field_to_keep_1", "field_to_keep_2"]`.
+* **lakehouseOnly**: The name of a single field to write. Mutually exclusive with 'keep' and 'drop'. For example, `my_record_field`.
+* **lakehouseDistributionMode**: Defines distribution of write data. Supported distributions are 'none' (don't shuffle rows, default) and 'hash' (shuffle rows by partition key before writing data). For example, `none`.
+* **lakehouseAutosharding**: If true, enables dynamic sharding to automatically adjust the number of parallel writers based on data volume. Only available with 'hash' distribution mode. For example, `False`.
 
 
 
@@ -126,19 +127,20 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/DeltaLake_To_Lake
 export DELTA_LAKE_TABLE=<deltaLakeTable>
 export LAKEHOUSE_TABLE=<lakehouseTable>
 export LAKEHOUSE_CATALOG_NAME=<lakehouseCatalogName>
-export LAKEHOUSE_CATALOG_PROPERTIES=<lakehouseCatalogProperties>
 
 ### Optional
 export DELTA_LAKE_VERSION=<deltaLakeVersion>
 export DELTA_LAKE_TIMESTAMP=<deltaLakeTimestamp>
 export DELTA_LAKE_HADOOP_CONFIG="{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem", "fs.AbstractFileSystem.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS", "fs.gs.auth.type": "APPLICATION_DEFAULT", "fs.gs.project.id": ""}"
+export LAKEHOUSE_CATALOG_PROPERTIES=<lakehouseCatalogProperties>
 export LAKEHOUSE_CONFIG_PROPERTIES=<lakehouseConfigProperties>
-export LAKEHOUSE_DROP=<lakehouseDrop>
-export LAKEHOUSE_FILTER=<lakehouseFilter>
-export LAKEHOUSE_KEEP=<lakehouseKeep>
-export LAKEHOUSE_ONLY=<lakehouseOnly>
 export LAKEHOUSE_PARTITION_FIELDS=<lakehousePartitionFields>
 export LAKEHOUSE_TABLE_PROPERTIES=<lakehouseTableProperties>
+export LAKEHOUSE_DROP=<lakehouseDrop>
+export LAKEHOUSE_KEEP=<lakehouseKeep>
+export LAKEHOUSE_ONLY=<lakehouseOnly>
+export LAKEHOUSE_DISTRIBUTION_MODE=<lakehouseDistributionMode>
+export LAKEHOUSE_AUTOSHARDING=<lakehouseAutosharding>
 
 gcloud dataflow flex-template run "deltalake-to-lakehouse-yaml-job" \
   --project "$PROJECT" \
@@ -149,15 +151,16 @@ gcloud dataflow flex-template run "deltalake-to-lakehouse-yaml-job" \
   --parameters "deltaLakeTimestamp=$DELTA_LAKE_TIMESTAMP" \
   --parameters "deltaLakeHadoopConfig=$DELTA_LAKE_HADOOP_CONFIG" \
   --parameters "lakehouseTable=$LAKEHOUSE_TABLE" \
-  --parameters "lakehouseCatalogName=$LAKEHOUSE_CATALOG_NAME" \
   --parameters "lakehouseCatalogProperties=$LAKEHOUSE_CATALOG_PROPERTIES" \
   --parameters "lakehouseConfigProperties=$LAKEHOUSE_CONFIG_PROPERTIES" \
+  --parameters "lakehousePartitionFields=$LAKEHOUSE_PARTITION_FIELDS" \
+  --parameters "lakehouseTableProperties=$LAKEHOUSE_TABLE_PROPERTIES" \
+  --parameters "lakehouseCatalogName=$LAKEHOUSE_CATALOG_NAME" \
   --parameters "lakehouseDrop=$LAKEHOUSE_DROP" \
-  --parameters "lakehouseFilter=$LAKEHOUSE_FILTER" \
   --parameters "lakehouseKeep=$LAKEHOUSE_KEEP" \
   --parameters "lakehouseOnly=$LAKEHOUSE_ONLY" \
-  --parameters "lakehousePartitionFields=$LAKEHOUSE_PARTITION_FIELDS" \
-  --parameters "lakehouseTableProperties=$LAKEHOUSE_TABLE_PROPERTIES"
+  --parameters "lakehouseDistributionMode=$LAKEHOUSE_DISTRIBUTION_MODE" \
+  --parameters "lakehouseAutosharding=$LAKEHOUSE_AUTOSHARDING"
 ```
 
 For more information about the command, please check:
@@ -179,19 +182,20 @@ export REGION=us-central1
 export DELTA_LAKE_TABLE=<deltaLakeTable>
 export LAKEHOUSE_TABLE=<lakehouseTable>
 export LAKEHOUSE_CATALOG_NAME=<lakehouseCatalogName>
-export LAKEHOUSE_CATALOG_PROPERTIES=<lakehouseCatalogProperties>
 
 ### Optional
 export DELTA_LAKE_VERSION=<deltaLakeVersion>
 export DELTA_LAKE_TIMESTAMP=<deltaLakeTimestamp>
 export DELTA_LAKE_HADOOP_CONFIG="{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem", "fs.AbstractFileSystem.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS", "fs.gs.auth.type": "APPLICATION_DEFAULT", "fs.gs.project.id": ""}"
+export LAKEHOUSE_CATALOG_PROPERTIES=<lakehouseCatalogProperties>
 export LAKEHOUSE_CONFIG_PROPERTIES=<lakehouseConfigProperties>
-export LAKEHOUSE_DROP=<lakehouseDrop>
-export LAKEHOUSE_FILTER=<lakehouseFilter>
-export LAKEHOUSE_KEEP=<lakehouseKeep>
-export LAKEHOUSE_ONLY=<lakehouseOnly>
 export LAKEHOUSE_PARTITION_FIELDS=<lakehousePartitionFields>
 export LAKEHOUSE_TABLE_PROPERTIES=<lakehouseTableProperties>
+export LAKEHOUSE_DROP=<lakehouseDrop>
+export LAKEHOUSE_KEEP=<lakehouseKeep>
+export LAKEHOUSE_ONLY=<lakehouseOnly>
+export LAKEHOUSE_DISTRIBUTION_MODE=<lakehouseDistributionMode>
+export LAKEHOUSE_AUTOSHARDING=<lakehouseAutosharding>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -200,7 +204,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="deltalake-to-lakehouse-yaml-job" \
 -DtemplateName="DeltaLake_To_Lakehouse_Yaml" \
--Dparameters="deltaLakeTable=$DELTA_LAKE_TABLE,deltaLakeVersion=$DELTA_LAKE_VERSION,deltaLakeTimestamp=$DELTA_LAKE_TIMESTAMP,deltaLakeHadoopConfig=$DELTA_LAKE_HADOOP_CONFIG,lakehouseTable=$LAKEHOUSE_TABLE,lakehouseCatalogName=$LAKEHOUSE_CATALOG_NAME,lakehouseCatalogProperties=$LAKEHOUSE_CATALOG_PROPERTIES,lakehouseConfigProperties=$LAKEHOUSE_CONFIG_PROPERTIES,lakehouseDrop=$LAKEHOUSE_DROP,lakehouseFilter=$LAKEHOUSE_FILTER,lakehouseKeep=$LAKEHOUSE_KEEP,lakehouseOnly=$LAKEHOUSE_ONLY,lakehousePartitionFields=$LAKEHOUSE_PARTITION_FIELDS,lakehouseTableProperties=$LAKEHOUSE_TABLE_PROPERTIES" \
+-Dparameters="deltaLakeTable=$DELTA_LAKE_TABLE,deltaLakeVersion=$DELTA_LAKE_VERSION,deltaLakeTimestamp=$DELTA_LAKE_TIMESTAMP,deltaLakeHadoopConfig=$DELTA_LAKE_HADOOP_CONFIG,lakehouseTable=$LAKEHOUSE_TABLE,lakehouseCatalogProperties=$LAKEHOUSE_CATALOG_PROPERTIES,lakehouseConfigProperties=$LAKEHOUSE_CONFIG_PROPERTIES,lakehousePartitionFields=$LAKEHOUSE_PARTITION_FIELDS,lakehouseTableProperties=$LAKEHOUSE_TABLE_PROPERTIES,lakehouseCatalogName=$LAKEHOUSE_CATALOG_NAME,lakehouseDrop=$LAKEHOUSE_DROP,lakehouseKeep=$LAKEHOUSE_KEEP,lakehouseOnly=$LAKEHOUSE_ONLY,lakehouseDistributionMode=$LAKEHOUSE_DISTRIBUTION_MODE,lakehouseAutosharding=$LAKEHOUSE_AUTOSHARDING" \
 -f yaml
 ```
 
@@ -248,17 +252,18 @@ resource "google_dataflow_flex_template_job" "deltalake_to_lakehouse_yaml" {
     deltaLakeTable = "<deltaLakeTable>"
     lakehouseTable = "<lakehouseTable>"
     lakehouseCatalogName = "<lakehouseCatalogName>"
-    lakehouseCatalogProperties = "<lakehouseCatalogProperties>"
     # deltaLakeVersion = "<deltaLakeVersion>"
     # deltaLakeTimestamp = "<deltaLakeTimestamp>"
     # deltaLakeHadoopConfig = ""{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem", "fs.AbstractFileSystem.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS", "fs.gs.auth.type": "APPLICATION_DEFAULT", "fs.gs.project.id": }""
+    # lakehouseCatalogProperties = "<lakehouseCatalogProperties>"
     # lakehouseConfigProperties = "<lakehouseConfigProperties>"
-    # lakehouseDrop = "<lakehouseDrop>"
-    # lakehouseFilter = "<lakehouseFilter>"
-    # lakehouseKeep = "<lakehouseKeep>"
-    # lakehouseOnly = "<lakehouseOnly>"
     # lakehousePartitionFields = "<lakehousePartitionFields>"
     # lakehouseTableProperties = "<lakehouseTableProperties>"
+    # lakehouseDrop = "<lakehouseDrop>"
+    # lakehouseKeep = "<lakehouseKeep>"
+    # lakehouseOnly = "<lakehouseOnly>"
+    # lakehouseDistributionMode = "<lakehouseDistributionMode>"
+    # lakehouseAutosharding = "<lakehouseAutosharding>"
   }
 }
 ```

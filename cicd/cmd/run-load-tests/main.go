@@ -75,6 +75,7 @@ func main() {
 		flags.CloudProxyMySqlPort(),
 		flags.CloudProxyPostgresPort(),
 		flags.CloudProxyPassword(),
+		flags.SpecPath(),
 		mvnFlags.SpecificTest(flags.TestToRun()),
 		mvnFlags.FailIfNoTests(flags.TestToRun() != ""))
 	if err != nil {

@@ -19,6 +19,7 @@ import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import java.io.IOException;
 import java.text.ParseException;
+import java.time.Duration;
 import java.util.HashMap;
 import org.apache.beam.it.gcp.datastream.JDBCSource;
 import org.junit.Test;
@@ -31,6 +32,12 @@ import org.junit.runners.JUnit4;
 @TemplateLoadTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
 public class DataStreamToSpannerTallTableLT extends DataStreamToSpannerLTBase {
+
+  @Override
+  protected Duration getLoadTestTimeout() {
+    return Duration.ofHours(7);
+  }
+
   @Test
   public void backfill100GbTallTable() throws IOException, ParseException, InterruptedException {
     setUpResourceManagers("DataStreamToSpanner100GbLT/spanner-schema-tall-table.sql");

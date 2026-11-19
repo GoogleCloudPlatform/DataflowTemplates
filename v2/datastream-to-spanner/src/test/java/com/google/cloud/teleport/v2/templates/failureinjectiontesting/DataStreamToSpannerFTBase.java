@@ -227,8 +227,12 @@ public abstract class DataStreamToSpannerFTBase extends TemplateTestBase {
             .addParameter("dlqGcsPubSubSubscription", dlqPubSubSubscription)
             .addParameter("datastreamSourceType", "mysql")
             .addParameter("inputFileFormat", "avro")
+            // Streaming right fitting requires horizontal autoscaling to be enabled.
+            .addParameter("autoscalingAlgorithm", "THROUGHPUT_BASED")
             .addEnvironmentVariable(
-                "additionalPipelineOptions", List.of("resourceHints=cpu_count=4"));
+                "additionalPipelineOptions", List.of("resourceHints=cpu_count=4"))
+            .addEnvironmentVariable(
+                "additionalExperiments", List.of("use_runner_v2", "enable_streaming_rightfitting"));
 
     if (shadowTableSpannerResourceManager != null) {
       flexTemplateBuilder.addParameter(

@@ -23,21 +23,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional parameters
 
-* **allowDuplicates**: If the Kafka read allows duplicates. For example: true For example, `true`.
+* **autoOffsetResetConfig**: What to do when there is no initial offset in Kafka or if the current offset does not exist any more on the server. (1) earliest: automatically reset the offset to the earliest offset. (2) latest: automatically reset the offset to the latest offset (3) none: throw exception to the consumer if no previous offset is found for the consumer's group. For example: earliest For example, `earliest`. Defaults to: earliest.
 * **confluentSchemaRegistrySubject**: The subject name for the Confluent Schema Registry. For example: my_subject For example, `my_subject`.
 * **confluentSchemaRegistryUrl**: The URL for the Confluent Schema Registry. For example: http://schema-registry:8081 For example, `http://schema-registry:8081`.
 * **consumerConfigUpdates**: A list of key-value pairs that act as configuration parameters for Kafka consumers. For example: {'group.id': 'my_group'} For example, `{"group.id": "my_group"}`.
 * **fileDescriptorPath**: The path to the Protocol Buffer File Descriptor Set file. For example: gs://bucket/path/to/descriptor.pb For example, `gs://bucket/path/to/descriptor.pb`.
 * **format**: The encoding format for the data stored in Kafka. Valid options are: RAW,STRING,AVRO,JSON,PROTO. For example: JSON For example, `JSON`. Defaults to: JSON.
+* **maxReadTimeSeconds**: Upper bound of how long to read from Kafka in seconds. For example: 60 For example, `60`.
 * **messageName**: The name of the Protocol Buffer message to be used for schema extraction and data conversion. For example: MyMessage For example, `MyMessage`.
-* **offsetDeduplication**: If the redistribute is using offset deduplication mode. For example: true For example, `true`.
-* **redistributeByRecordKey**: If the redistribute keys by the Kafka record key. For example: true For example, `true`.
-* **redistributeNumKeys**: The number of keys for redistributing Kafka inputs. For example: 10 For example, `10`.
-* **redistributed**: If the Kafka read should be redistributed. For example: true For example, `true`.
 * **schema**: The schema in which the data is encoded in the Kafka topic.  For example: {'type': 'record', 'name': 'User', 'fields': [{'name': 'name', 'type': 'string'}]}. A schema is required if data format is JSON, AVRO or PROTO. For example, `{"type": "record", "name": "User", "fields": [{"name": "name", "type": "string"}]}`.
 * **configProperties**: A map of properties to pass to the Hadoop Configuration. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`.
 * **drop**: A list of field names to drop. Mutually exclusive with 'keep' and 'only'. For example, `["field_to_drop_1", "field_to_drop_2"]`.
-* **filter**: A filter expression to apply to records from the Iceberg table. For example, `age > 18`.
 * **keep**: A list of field names to keep. Mutually exclusive with 'drop' and 'only'. For example, `["field_to_keep_1", "field_to_keep_2"]`.
 * **only**: The name of a single field to write. Mutually exclusive with 'keep' and 'drop'. For example, `my_record_field`.
 * **partitionFields**: A list of fields and transforms for partitioning, e.g., ['day(ts)', 'category']. For example, `["day(ts)", "bucket(id, 4)"]`.
@@ -144,21 +140,17 @@ export CATALOG_PROPERTIES=<catalogProperties>
 export TRIGGERING_FREQUENCY_SECONDS=<triggeringFrequencySeconds>
 
 ### Optional
-export ALLOW_DUPLICATES=<allowDuplicates>
+export AUTO_OFFSET_RESET_CONFIG=earliest
 export CONFLUENT_SCHEMA_REGISTRY_SUBJECT=<confluentSchemaRegistrySubject>
 export CONFLUENT_SCHEMA_REGISTRY_URL=<confluentSchemaRegistryUrl>
 export CONSUMER_CONFIG_UPDATES=<consumerConfigUpdates>
 export FILE_DESCRIPTOR_PATH=<fileDescriptorPath>
 export FORMAT=JSON
+export MAX_READ_TIME_SECONDS=<maxReadTimeSeconds>
 export MESSAGE_NAME=<messageName>
-export OFFSET_DEDUPLICATION=<offsetDeduplication>
-export REDISTRIBUTE_BY_RECORD_KEY=<redistributeByRecordKey>
-export REDISTRIBUTE_NUM_KEYS=<redistributeNumKeys>
-export REDISTRIBUTED=<redistributed>
 export SCHEMA=<schema>
 export CONFIG_PROPERTIES=<configProperties>
 export DROP=<drop>
-export FILTER=<filter>
 export KEEP=<keep>
 export ONLY=<only>
 export PARTITION_FIELDS=<partitionFields>
@@ -172,24 +164,20 @@ gcloud dataflow flex-template run "kafka-to-iceberg-yaml-job" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
   --parameters "bootstrapServers=$BOOTSTRAP_SERVERS" \
   --parameters "topic=$TOPIC" \
-  --parameters "allowDuplicates=$ALLOW_DUPLICATES" \
+  --parameters "autoOffsetResetConfig=$AUTO_OFFSET_RESET_CONFIG" \
   --parameters "confluentSchemaRegistrySubject=$CONFLUENT_SCHEMA_REGISTRY_SUBJECT" \
   --parameters "confluentSchemaRegistryUrl=$CONFLUENT_SCHEMA_REGISTRY_URL" \
   --parameters "consumerConfigUpdates=$CONSUMER_CONFIG_UPDATES" \
   --parameters "fileDescriptorPath=$FILE_DESCRIPTOR_PATH" \
   --parameters "format=$FORMAT" \
+  --parameters "maxReadTimeSeconds=$MAX_READ_TIME_SECONDS" \
   --parameters "messageName=$MESSAGE_NAME" \
-  --parameters "offsetDeduplication=$OFFSET_DEDUPLICATION" \
-  --parameters "redistributeByRecordKey=$REDISTRIBUTE_BY_RECORD_KEY" \
-  --parameters "redistributeNumKeys=$REDISTRIBUTE_NUM_KEYS" \
-  --parameters "redistributed=$REDISTRIBUTED" \
   --parameters "schema=$SCHEMA" \
   --parameters "table=$TABLE" \
   --parameters "catalogName=$CATALOG_NAME" \
   --parameters "catalogProperties=$CATALOG_PROPERTIES" \
   --parameters "configProperties=$CONFIG_PROPERTIES" \
   --parameters "drop=$DROP" \
-  --parameters "filter=$FILTER" \
   --parameters "keep=$KEEP" \
   --parameters "only=$ONLY" \
   --parameters "partitionFields=$PARTITION_FIELDS" \
@@ -223,21 +211,17 @@ export CATALOG_PROPERTIES=<catalogProperties>
 export TRIGGERING_FREQUENCY_SECONDS=<triggeringFrequencySeconds>
 
 ### Optional
-export ALLOW_DUPLICATES=<allowDuplicates>
+export AUTO_OFFSET_RESET_CONFIG=earliest
 export CONFLUENT_SCHEMA_REGISTRY_SUBJECT=<confluentSchemaRegistrySubject>
 export CONFLUENT_SCHEMA_REGISTRY_URL=<confluentSchemaRegistryUrl>
 export CONSUMER_CONFIG_UPDATES=<consumerConfigUpdates>
 export FILE_DESCRIPTOR_PATH=<fileDescriptorPath>
 export FORMAT=JSON
+export MAX_READ_TIME_SECONDS=<maxReadTimeSeconds>
 export MESSAGE_NAME=<messageName>
-export OFFSET_DEDUPLICATION=<offsetDeduplication>
-export REDISTRIBUTE_BY_RECORD_KEY=<redistributeByRecordKey>
-export REDISTRIBUTE_NUM_KEYS=<redistributeNumKeys>
-export REDISTRIBUTED=<redistributed>
 export SCHEMA=<schema>
 export CONFIG_PROPERTIES=<configProperties>
 export DROP=<drop>
-export FILTER=<filter>
 export KEEP=<keep>
 export ONLY=<only>
 export PARTITION_FIELDS=<partitionFields>
@@ -252,7 +236,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="kafka-to-iceberg-yaml-job" \
 -DtemplateName="Kafka_To_Iceberg_Yaml" \
--Dparameters="bootstrapServers=$BOOTSTRAP_SERVERS,topic=$TOPIC,allowDuplicates=$ALLOW_DUPLICATES,confluentSchemaRegistrySubject=$CONFLUENT_SCHEMA_REGISTRY_SUBJECT,confluentSchemaRegistryUrl=$CONFLUENT_SCHEMA_REGISTRY_URL,consumerConfigUpdates=$CONSUMER_CONFIG_UPDATES,fileDescriptorPath=$FILE_DESCRIPTOR_PATH,format=$FORMAT,messageName=$MESSAGE_NAME,offsetDeduplication=$OFFSET_DEDUPLICATION,redistributeByRecordKey=$REDISTRIBUTE_BY_RECORD_KEY,redistributeNumKeys=$REDISTRIBUTE_NUM_KEYS,redistributed=$REDISTRIBUTED,schema=$SCHEMA,table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,filter=$FILTER,keep=$KEEP,only=$ONLY,partitionFields=$PARTITION_FIELDS,tableProperties=$TABLE_PROPERTIES,triggeringFrequencySeconds=$TRIGGERING_FREQUENCY_SECONDS,sdfCheckpointAfterDuration=$SDF_CHECKPOINT_AFTER_DURATION,sdfCheckpointAfterOutputBytes=$SDF_CHECKPOINT_AFTER_OUTPUT_BYTES" \
+-Dparameters="bootstrapServers=$BOOTSTRAP_SERVERS,topic=$TOPIC,autoOffsetResetConfig=$AUTO_OFFSET_RESET_CONFIG,confluentSchemaRegistrySubject=$CONFLUENT_SCHEMA_REGISTRY_SUBJECT,confluentSchemaRegistryUrl=$CONFLUENT_SCHEMA_REGISTRY_URL,consumerConfigUpdates=$CONSUMER_CONFIG_UPDATES,fileDescriptorPath=$FILE_DESCRIPTOR_PATH,format=$FORMAT,maxReadTimeSeconds=$MAX_READ_TIME_SECONDS,messageName=$MESSAGE_NAME,schema=$SCHEMA,table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,keep=$KEEP,only=$ONLY,partitionFields=$PARTITION_FIELDS,tableProperties=$TABLE_PROPERTIES,triggeringFrequencySeconds=$TRIGGERING_FREQUENCY_SECONDS,sdfCheckpointAfterDuration=$SDF_CHECKPOINT_AFTER_DURATION,sdfCheckpointAfterOutputBytes=$SDF_CHECKPOINT_AFTER_OUTPUT_BYTES" \
 -f yaml
 ```
 
@@ -303,21 +287,17 @@ resource "google_dataflow_flex_template_job" "kafka_to_iceberg_yaml" {
     catalogName = "<catalogName>"
     catalogProperties = "<catalogProperties>"
     triggeringFrequencySeconds = "<triggeringFrequencySeconds>"
-    # allowDuplicates = "<allowDuplicates>"
+    # autoOffsetResetConfig = "earliest"
     # confluentSchemaRegistrySubject = "<confluentSchemaRegistrySubject>"
     # confluentSchemaRegistryUrl = "<confluentSchemaRegistryUrl>"
     # consumerConfigUpdates = "<consumerConfigUpdates>"
     # fileDescriptorPath = "<fileDescriptorPath>"
     # format = "JSON"
+    # maxReadTimeSeconds = "<maxReadTimeSeconds>"
     # messageName = "<messageName>"
-    # offsetDeduplication = "<offsetDeduplication>"
-    # redistributeByRecordKey = "<redistributeByRecordKey>"
-    # redistributeNumKeys = "<redistributeNumKeys>"
-    # redistributed = "<redistributed>"
     # schema = "<schema>"
     # configProperties = "<configProperties>"
     # drop = "<drop>"
-    # filter = "<filter>"
     # keep = "<keep>"
     # only = "<only>"
     # partitionFields = "<partitionFields>"

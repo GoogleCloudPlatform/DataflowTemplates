@@ -23,6 +23,7 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.teleport.spanner.ddl.ChangeStream;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
+import com.google.cloud.teleport.spanner.ddl.LocalityGroup;
 import com.google.cloud.teleport.spanner.ddl.Model;
 import com.google.cloud.teleport.spanner.ddl.NamedSchema;
 import com.google.cloud.teleport.spanner.ddl.Placement;
@@ -143,6 +144,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
   private final ValueProvider<String> avroTempDirectory;
   private final ValueProvider<ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm>
       checksumAlgorithm;
+  private final ValueProvider<Integer> maxDataBoostParallelism;
 
   public ExportTransform(
       SpannerConfig spannerConfig,
@@ -158,7 +160,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
         /* shouldExportTimestampAsLogicalType= */ ValueProvider.StaticValueProvider.of(false),
         outputDir,
         /* checksumAlgorithm= */ ValueProvider.StaticValueProvider.of(
-            ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.MD5));
+            ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.MD5),
+        /* maxDataBoostParallelism= */ null);
   }
 
   public ExportTransform(
@@ -180,7 +183,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
         shouldExportTimestampAsLogicalType,
         avroTempDirectory,
         /* checksumAlgorithm= */ ValueProvider.StaticValueProvider.of(
-            ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.MD5));
+            ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm.MD5),
+        /* maxDataBoostParallelism= */ null);
   }
 
   public ExportTransform(
@@ -192,7 +196,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
       ValueProvider<Boolean> exportRelatedTables,
       ValueProvider<Boolean> shouldExportTimestampAsLogicalType,
       ValueProvider<String> avroTempDirectory,
-      ValueProvider<ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm> checksumAlgorithm) {
+      ValueProvider<ExportPipeline.ExportPipelineOptions.ChecksumAlgorithm> checksumAlgorithm,
+      ValueProvider<Integer> maxDataBoostParallelism) {
     this.spannerConfig = spannerConfig;
     this.outputDir = outputDir;
     this.testJobId = testJobId;
@@ -202,6 +207,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
     this.shouldExportTimestampAsLogicalType = shouldExportTimestampAsLogicalType;
     this.avroTempDirectory = avroTempDirectory;
     this.checksumAlgorithm = checksumAlgorithm;
+    this.maxDataBoostParallelism = maxDataBoostParallelism;
   }
 
   /**
@@ -221,8 +227,13 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
      * ParDo class CreateTransactionFnWithTimestamp had to be created for this
      * purpose.
      */
+    PCollection<Integer> verified =
+        p.apply(
+            "Verify DataBoost Parallelism",
+            new VerifyDataBoostParallelism(spannerConfig, maxDataBoostParallelism));
+
     PCollectionView<Transaction> tx =
-        p.apply("CreateTransaction", Create.of(1))
+        verified
             .apply(
                 "Create transaction",
                 ParDo.of(new CreateTransactionFnWithTimestamp(spannerConfig, snapshotTime)))
@@ -425,6 +436,21 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   }
                 }));
 
+    PCollection<String> allLocalityGroupNames =
+        ddl.apply(
+            "List all locality group names",
+            ParDo.of(
+                new DoFn<Ddl, String>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    Ddl ddl = c.element();
+                    for (LocalityGroup localityGroup : ddl.localityGroups()) {
+                      c.output(localityGroup.name());
+                    }
+                  }
+                }));
+
     PCollection<String> allUdfNames =
         ddl.apply(
             "List all user-defined function names",
@@ -520,7 +546,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                 .to(
                     new SchemaBasedDynamicDestinations(
                         avroSchemas, outputDirectoryName, dialectView, resource))
-                .withTempDirectory(tempResource));
+                .withTempDirectory(tempResource)
+                .withEvictWritersWhenFull());
 
     // Generate the manifest file.
     PCollection<KV<String, Iterable<String>>> tableFiles =
@@ -665,6 +692,24 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   }
                 }));
 
+    PCollection<KV<String, Iterable<String>>> localityGroups =
+        allLocalityGroupNames.apply(
+            "Export locality groups",
+            ParDo.of(
+                new DoFn<String, KV<String, Iterable<String>>>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    String localityGroupName = c.element();
+                    LOG.info("Exporting locality group: " + localityGroupName);
+                    // This file will contain the schema definition for the locality group.
+                    c.output(
+                        KV.of(
+                            localityGroupName,
+                            Collections.singleton(localityGroupName + ".avro-00000-of-00001")));
+                  }
+                }));
+
     PCollection<KV<String, Iterable<String>>> udfs =
         allUdfNames.apply(
             "Export user-defined functions",
@@ -690,6 +735,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
             .and(sequences)
             .and(namedSchemas)
             .and(placements)
+            .and(localityGroups)
             .and(udfs)
             .and(propertyGraphs)
             .apply("Combine all empty schema files", Flatten.pCollections());
@@ -1036,6 +1082,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
           exportManifest.addSequences(obj);
         } else if (ddl.placement(obj.getName()) != null) {
           exportManifest.addPlacements(obj);
+        } else if (ddl.localityGroup(obj.getName()) != null) {
+          exportManifest.addLocalityGroups(obj);
         } else if (ddl.udf(obj.getName()) != null) {
           exportManifest.addUdfs(obj);
         } else {

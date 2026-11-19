@@ -203,6 +203,12 @@ public class SpannerChangeStreamsUtils {
 
         int ordinalPosition = (int) columnsResultSet.getLong(informationSchemaOrdinalPosition());
         String spannerType = columnsResultSet.getString(informationSchemaSpannerType());
+        // Skip TOKENLIST columns used by full-text search indexes, since they are not tracked by
+        // change streams.
+        if (TypesUtils.isInformationSchemaTokenlistType(spannerType)) {
+          LOG.info("Skipping TOKENLIST column {} of table {}", columnName, tableName);
+          continue;
+        }
         result.putIfAbsent(tableName, new ArrayList<>());
         // Set primary key ordinal position for primary key column.
         int pkOrdinalPosition = -1;

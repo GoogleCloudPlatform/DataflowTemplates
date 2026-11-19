@@ -1,5 +1,0 @@
-apache-beam[gcp]==2.76.0
-torch
-transformers
-torchvision
-setuptools

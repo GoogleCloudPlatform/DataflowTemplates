@@ -16,12 +16,13 @@ options:
         required: true
         type: text
       - order: 3
-        name: "allowDuplicates"
-        description: "If the Kafka read allows duplicates."
-        help: "If the Kafka read allows duplicates. For example: true"
-        example: "true"
+        name: "autoOffsetResetConfig"
+        description: "What to do when there is no initial offset in Kafka or if the current offset does not exist any more on the server."
+        help: "What to do when there is no initial offset in Kafka or if the current offset does not exist any more on the server. (1) earliest: automatically reset the offset to the earliest offset. (2) latest: automatically reset the offset to the latest offset (3) none: throw exception to the consumer if no previous offset is found for the consumer's group. For example: earliest"
+        example: "earliest"
         required: false
-        type: boolean
+        default: "earliest"
+        type: text
       - order: 4
         name: "confluentSchemaRegistrySubject"
         description: "The subject name for the Confluent Schema Registry."
@@ -59,41 +60,20 @@ options:
         default: "JSON"
         type: text
       - order: 9
+        name: "maxReadTimeSeconds"
+        description: "Upper bound of how long to read from Kafka."
+        help: "Upper bound of how long to read from Kafka in seconds. For example: 60"
+        example: "60"
+        required: false
+        type: integer
+      - order: 10
         name: "messageName"
         description: "The name of the Protocol Buffer message to be used for schema extraction and data conversion."
         help: "The name of the Protocol Buffer message to be used for schema extraction and data conversion. For example: MyMessage"
         example: "MyMessage"
         required: false
         type: text
-      - order: 10
-        name: "offsetDeduplication"
-        description: "If the redistribute is using offset deduplication mode."
-        help: "If the redistribute is using offset deduplication mode. For example: true"
-        example: "true"
-        required: false
-        type: boolean
       - order: 11
-        name: "redistributeByRecordKey"
-        description: "If the redistribute keys by the Kafka record key."
-        help: "If the redistribute keys by the Kafka record key. For example: true"
-        example: "true"
-        required: false
-        type: boolean
-      - order: 12
-        name: "redistributeNumKeys"
-        description: "The number of keys for redistributing Kafka inputs."
-        help: "The number of keys for redistributing Kafka inputs. For example: 10"
-        example: "10"
-        required: false
-        type: integer
-      - order: 13
-        name: "redistributed"
-        description: "If the Kafka read should be redistributed."
-        help: "If the Kafka read should be redistributed. For example: true"
-        example: "true"
-        required: false
-        type: boolean
-      - order: 14
         name: "schema"
         description: "The schema in which the data is encoded in the Kafka topic."
         help: >

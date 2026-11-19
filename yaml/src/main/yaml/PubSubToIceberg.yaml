@@ -23,6 +23,7 @@ template:
     - "iceberg_options"
 
   parameters:
+    - pubsub_topic_read_options
     - pubsub_common_options
     - pubsub_read_options
     - iceberg_common_options
@@ -56,7 +57,7 @@ pipeline:
         format: {{ format }}
         schema: {{ schema }}
         attributes: {{ attributes }}
-        attribute_map: {{ attributesMap }}
+        attributes_map: {{ attributesMap }}
         id_attribute: {{ idAttribute }}
         timestamp_attribute: {{ timestampAttribute }}
 

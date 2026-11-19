@@ -1451,7 +1451,7 @@ public class DdlTest {
     String expectedDdlString =
         "\nCREATE FUNCTION \"Foo1\"() RETURN (SELECT 'bar')\n"
             + "CREATE FUNCTION \"Foo2\"(\"arg0\" TEXT, \"arg1\" TEXT DEFAULT 'bar')"
-            + " RETURNS STRING SQL SECURITY INVOKER RETURN (SELECT 'bar')\n"
+            + " RETURNS STRING SECURITY INVOKER RETURN (SELECT 'bar')\n"
             + "CREATE FUNCTION \"Foo3\"(\"arg0\" BIGINT) RETURNS STRING VOLATILE LANGUAGE REMOTE"
             + " AS '{\"endpoint\": \"https://us-central1-myproject.cloudfunctions.net/myfunc\", \"max_batching_rows\": 50}'";
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdlString));
@@ -1465,7 +1465,7 @@ public class DdlTest {
         statements.get(1),
         equalToCompressingWhiteSpace(
             "CREATE FUNCTION \"Foo2\"(\"arg0\" TEXT, \"arg1\" TEXT DEFAULT 'bar')"
-                + " RETURNS STRING SQL SECURITY INVOKER RETURN (SELECT 'bar')"));
+                + " RETURNS STRING SECURITY INVOKER RETURN (SELECT 'bar')"));
     assertThat(
         statements.get(2),
         equalToCompressingWhiteSpace(
@@ -1475,6 +1475,84 @@ public class DdlTest {
 
     assertThat(
         ddl.toBuilder().build().prettyPrint(), equalToCompressingWhiteSpace(expectedDdlString));
+  }
+
+  @Test
+  public void pgUdfsWithDeterminism() {
+    Ddl.Builder ddlBuilder =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createUdf("spanner.Foo1")
+            .dialect(Dialect.POSTGRESQL)
+            .name("Foo1")
+            .definition("(SELECT 'bar')")
+            .endUdf()
+            .createUdf("spanner.Foo2")
+            .dialect(Dialect.POSTGRESQL)
+            .name("Foo2")
+            .definition("(SELECT 'bar')")
+            .security(SqlSecurity.INVOKER)
+            .type("TEXT")
+            .spannerDeterminism("DETERMINISTIC")
+            .addParameter(UdfParameter.parse("arg0 TEXT", "spanner.Foo2", Dialect.POSTGRESQL))
+            .addParameter(
+                UdfParameter.parse("arg1 TEXT DEFAULT 'bar'", "spanner.Foo2", Dialect.POSTGRESQL))
+            .endUdf()
+            .createUdf("spanner.Foo3")
+            .dialect(Dialect.POSTGRESQL)
+            .name("Foo3")
+            .definition("(SELECT 'bar')")
+            .type("TEXT")
+            .spannerDeterminism("NOT_DETERMINISTIC_STABLE")
+            .addParameter(UdfParameter.parse("arg0 TEXT", "spanner.Foo3", Dialect.POSTGRESQL))
+            .endUdf();
+    assertThat(ddlBuilder.hasUdf("spanner.Foo1"));
+    assertThat(ddlBuilder.createUdf("spanner.Foo1").name().equals("Foo1"));
+    Ddl ddl = ddlBuilder.build();
+
+    String expectedDdlString =
+        "\nCREATE FUNCTION \"Foo1\"() RETURN (SELECT 'bar')\n"
+            + "CREATE FUNCTION \"Foo2\"(\"arg0\" TEXT, \"arg1\" TEXT DEFAULT 'bar')"
+            + " RETURNS TEXT IMMUTABLE SECURITY INVOKER RETURN (SELECT 'bar')\n"
+            + "CREATE FUNCTION \"Foo3\"(\"arg0\" TEXT) RETURNS TEXT STABLE RETURN (SELECT 'bar')";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdlString));
+
+    List<String> statements = ddl.statements();
+    assertEquals(3, statements.size());
+    assertThat(
+        statements.get(0),
+        equalToCompressingWhiteSpace("CREATE FUNCTION \"Foo1\"() RETURN (SELECT 'bar')"));
+    assertThat(
+        statements.get(1),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION \"Foo2\"(\"arg0\" TEXT, \"arg1\" TEXT DEFAULT 'bar')"
+                + " RETURNS TEXT IMMUTABLE SECURITY INVOKER RETURN (SELECT 'bar')"));
+    assertThat(
+        statements.get(2),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION \"Foo3\"(\"arg0\" TEXT)"
+                + " RETURNS TEXT STABLE RETURN (SELECT 'bar')"));
+    assertNotNull(ddl.hashCode());
+
+    assertThat(
+        ddl.toBuilder().build().prettyPrint(), equalToCompressingWhiteSpace(expectedDdlString));
+  }
+
+  @Test
+  public void pgUdfVolatile() {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createUdf("spanner.Foo")
+            .dialect(Dialect.POSTGRESQL)
+            .name("Foo")
+            .definition("(SELECT 'bar')")
+            .type("TEXT")
+            .spannerDeterminism("NOT_DETERMINISTIC_VOLATILE")
+            .endUdf()
+            .build();
+
+    String expectedDdlString =
+        "CREATE FUNCTION \"Foo\"() RETURNS TEXT VOLATILE RETURN (SELECT 'bar')";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdlString));
   }
 
   @Test
@@ -1562,6 +1640,253 @@ public class DdlTest {
         equalToCompressingWhiteSpace(
             "CREATE SEQUENCE \"MyPGSequence3\" SKIP RANGE 1 1000 START COUNTER WITH 30"));
     assertNotNull(ddl.hashCode());
+  }
+
+  @Test
+  public void localityGroups() {
+    Ddl ddl =
+        Ddl.builder()
+            .createLocalityGroup("default")
+            .options(ImmutableList.of("storage=\"hdd\""))
+            .endLocalityGroup()
+            .createLocalityGroup("lg1")
+            .options(ImmutableList.of("storage=\"ssd\""))
+            .endLocalityGroup()
+            .createLocalityGroup("lg2")
+            .options(ImmutableList.of("storage=\"ssd\"", "ssd_to_hdd_spill_timespan=\"30d\""))
+            .endLocalityGroup()
+            .build();
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "ALTER LOCALITY GROUP `default` SET OPTIONS (storage=\"hdd\")"
+                + " CREATE LOCALITY GROUP `lg1` OPTIONS (storage=\"ssd\")"
+                + " CREATE LOCALITY GROUP `lg2` OPTIONS (storage=\"ssd\", ssd_to_hdd_spill_timespan=\"30d\")"));
+
+    List<String> statements = ddl.statements();
+    assertEquals(3, statements.size());
+    assertThat(
+        statements.get(0),
+        equalToCompressingWhiteSpace(
+            "ALTER LOCALITY GROUP `default` SET OPTIONS (storage=\"hdd\")"));
+    assertThat(
+        statements.get(1),
+        equalToCompressingWhiteSpace("CREATE LOCALITY GROUP `lg1` OPTIONS (storage=\"ssd\")"));
+    assertThat(
+        statements.get(2),
+        equalToCompressingWhiteSpace(
+            "CREATE LOCALITY GROUP `lg2` OPTIONS (storage=\"ssd\", ssd_to_hdd_spill_timespan=\"30d\")"));
+    assertNotNull(ddl.hashCode());
+    assertEquals(3, ddl.localityGroups().size());
+    assertNotNull(ddl.localityGroup("lg1"));
+  }
+
+  @Test
+  public void pgLocalityGroups() {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createLocalityGroup("default")
+            .options(ImmutableList.of("storage='hdd'"))
+            .endLocalityGroup()
+            .createLocalityGroup("lg1")
+            .options(ImmutableList.of("ssd_to_hdd_spill_timespan='30d'", "storage='ssd'"))
+            .endLocalityGroup()
+            .build();
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "ALTER LOCALITY GROUP \"default\" STORAGE 'hdd'"
+                + " CREATE LOCALITY GROUP \"lg1\" STORAGE 'ssd' SSD_TO_HDD_SPILL_TIMESPAN '30d'"));
+
+    List<String> statements = ddl.statements();
+    assertEquals(2, statements.size());
+    assertThat(
+        statements.get(0),
+        equalToCompressingWhiteSpace("ALTER LOCALITY GROUP \"default\" STORAGE 'hdd'"));
+    assertThat(
+        statements.get(1),
+        equalToCompressingWhiteSpace(
+            "CREATE LOCALITY GROUP \"lg1\" STORAGE 'ssd' SSD_TO_HDD_SPILL_TIMESPAN '30d'"));
+    assertNotNull(ddl.hashCode());
+    assertEquals(2, ddl.localityGroups().size());
+    assertNotNull(ddl.localityGroup("lg1"));
+  }
+
+  @Test
+  public void createLocalityGroupUpdatesExistingLocalityGroup() {
+    Ddl.Builder builder = Ddl.builder();
+    builder
+        .createLocalityGroup("lg1")
+        .options(ImmutableList.of("storage=\"ssd\""))
+        .endLocalityGroup();
+
+    assertTrue(builder.hasLocalityGroup("LG1"));
+    assertFalse(builder.hasLocalityGroup("lg2"));
+
+    builder
+        .createLocalityGroup("lg1")
+        .options(ImmutableList.of("storage=\"hdd\""))
+        .endLocalityGroup();
+    Ddl ddl = builder.build();
+
+    assertEquals(1, ddl.localityGroups().size());
+    assertEquals(ImmutableList.of("storage=\"hdd\""), ddl.localityGroup("lg1").options());
+  }
+
+  @Test
+  public void ddlEqualityIncludesLocalityGroups() {
+    Ddl ddl = Ddl.builder().createLocalityGroup("lg1").endLocalityGroup().build();
+    Ddl sameDdl = Ddl.builder().createLocalityGroup("lg1").endLocalityGroup().build();
+    Ddl otherDdl = Ddl.builder().createLocalityGroup("lg2").endLocalityGroup().build();
+
+    assertEquals(ddl, sameDdl);
+    assertEquals(ddl.hashCode(), sameDdl.hashCode());
+    assertNotEquals(ddl, otherDdl);
+  }
+
+  @Test
+  public void localityGroupsBeforeTables() {
+    Index idx =
+        Index.builder()
+            .name("UsersByFirstName")
+            .table("Users")
+            .columns()
+            .create()
+            .name("first_name")
+            .asc()
+            .endIndexColumn()
+            .end()
+            .options(ImmutableList.of("locality_group=\"lg1\""))
+            .build();
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("Users")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("first_name")
+            .string()
+            .max()
+            .columnOptions(ImmutableList.of("locality_group=\"default\""))
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .options(ImmutableList.of("locality_group=\"lg1\""))
+            .indexes(ImmutableList.of(idx.prettyPrint()))
+            .endTable()
+            .createLocalityGroup("lg1")
+            .options(ImmutableList.of("storage=\"ssd\""))
+            .endLocalityGroup()
+            .build();
+
+    List<String> statements = ddl.statements();
+    assertEquals(3, statements.size());
+    assertThat(
+        statements.get(0),
+        equalToCompressingWhiteSpace("CREATE LOCALITY GROUP `lg1` OPTIONS (storage=\"ssd\")"));
+    assertThat(
+        statements.get(1),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE `Users` ("
+                + " `id` INT64 NOT NULL,"
+                + " `first_name` STRING(MAX) OPTIONS (locality_group=\"default\"),"
+                + " ) PRIMARY KEY (`id` ASC),"
+                + " OPTIONS (locality_group=\"lg1\")"));
+    assertThat(
+        statements.get(2),
+        equalToCompressingWhiteSpace(
+            "CREATE INDEX `UsersByFirstName` ON `Users`(`first_name` ASC) OPTIONS (locality_group=\"lg1\")"));
+  }
+
+  @Test
+  public void pgLocalityGroupsWithTablesColumnsAndIndexes() {
+    Index idx1 =
+        Index.builder(Dialect.POSTGRESQL)
+            .name("UsersByFirstName")
+            .table("Users")
+            .columns()
+            .create()
+            .name("first_name")
+            .asc()
+            .endIndexColumn()
+            .end()
+            .options(ImmutableList.of("locality_group='lg1'"))
+            .build();
+    Index idx2 =
+        Index.builder(Dialect.POSTGRESQL)
+            .name("UsersInterleavedIdx")
+            .table("Users")
+            .interleaveIn("ParentUsers")
+            .columns()
+            .create()
+            .name("id")
+            .asc()
+            .endIndexColumn()
+            .end()
+            .options(ImmutableList.of("locality_group='lg1'"))
+            .build();
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("ParentUsers")
+            .column("id")
+            .pgInt8()
+            .notNull()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .createTable("Users")
+            .column("id")
+            .pgInt8()
+            .notNull()
+            .endColumn()
+            .column("first_name")
+            .pgVarchar()
+            .columnOptions(ImmutableList.of("locality_group='default'"))
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .interleaveInParent("ParentUsers")
+            .interleaveType(Table.InterleaveType.IN_PARENT)
+            .onDeleteCascade(true)
+            .options(ImmutableList.of("locality_group='lg1'"))
+            .indexes(ImmutableList.of(idx1.prettyPrint(), idx2.prettyPrint()))
+            .endTable()
+            .createLocalityGroup("lg1")
+            .options(ImmutableList.of("storage='ssd'"))
+            .endLocalityGroup()
+            .build();
+
+    List<String> statements = ddl.statements();
+    assertEquals(5, statements.size());
+    assertThat(
+        statements.get(0),
+        equalToCompressingWhiteSpace("CREATE LOCALITY GROUP \"lg1\" STORAGE 'ssd'"));
+    assertThat(
+        statements.get(1),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE \"ParentUsers\" ( \"id\" bigint NOT NULL, PRIMARY KEY (\"id\") )"));
+    assertThat(
+        statements.get(2),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE \"Users\" ("
+                + " \"id\" bigint NOT NULL,"
+                + " \"first_name\" character varying LOCALITY GROUP \"default\","
+                + " PRIMARY KEY (\"id\")"
+                + " ) LOCALITY GROUP \"lg1\""
+                + " INTERLEAVE IN PARENT \"ParentUsers\" ON DELETE CASCADE"));
+    assertThat(
+        statements.get(3),
+        equalToCompressingWhiteSpace(
+            "CREATE INDEX \"UsersByFirstName\" ON \"Users\"(\"first_name\" ASC) LOCALITY GROUP \"lg1\""));
+    assertThat(
+        statements.get(4),
+        equalToCompressingWhiteSpace(
+            "CREATE INDEX \"UsersInterleavedIdx\" ON \"Users\"(\"id\" ASC) LOCALITY GROUP \"lg1\" INTERLEAVE IN \"ParentUsers\""));
   }
 
   @Test
@@ -1764,21 +2089,31 @@ public class DdlTest {
     ForeignKey fkWithDeleteNoAction = fkWithDeleteNoActionBuilder.build();
     assertTrue(fkWithDeleteNoAction.equals(fkWithDeleteNoAction));
     assertFalse(fkWithDeleteCascade1.equals(fkWithDeleteNoAction));
+
+    ForeignKey.Builder fkWithDeleteSetNullBuilder =
+        ForeignKey.builder().name("fk_odsn").table("Users").referencedTable("AllowedNames");
+    fkWithDeleteSetNullBuilder.columnsBuilder().add("first_name", "last_name");
+    fkWithDeleteSetNullBuilder.referencedColumnsBuilder().add("first_name", "last_name");
+    fkWithDeleteSetNullBuilder.referentialAction(Optional.of(ReferentialAction.ON_DELETE_SET_NULL));
+    ForeignKey fkWithDeleteSetNull = fkWithDeleteSetNullBuilder.build();
+    assertTrue(fkWithDeleteSetNull.equals(fkWithDeleteSetNull));
+    assertFalse(fkWithDeleteCascade1.equals(fkWithDeleteSetNull));
+    assertFalse(fkWithDeleteNoAction.equals(fkWithDeleteSetNull));
   }
 
   @Test
   public void testUnsupportedForeignKeyBuilderActionThrowsError() {
     ForeignKey.Builder fkWithUnsupportedActionBuilder =
-        ForeignKey.builder().name("fk_odsn").table("Users").referencedTable("AllowedNames");
+        ForeignKey.builder().name("fk_odr").table("Users").referencedTable("AllowedNames");
     fkWithUnsupportedActionBuilder.columnsBuilder().add("first_name", "last_name");
     fkWithUnsupportedActionBuilder.referencedColumnsBuilder().add("first_name", "last_name");
     fkWithUnsupportedActionBuilder.referentialAction(
-        Optional.of(ReferentialAction.ON_DELETE_SET_NULL));
+        Optional.of(ReferentialAction.ON_DELETE_RESTRICT));
     ForeignKey fkWithUnsupportedAction = fkWithUnsupportedActionBuilder.build();
     Throwable exception =
         assertThrows(IllegalArgumentException.class, () -> fkWithUnsupportedAction.prettyPrint());
     assertThat(exception.getMessage())
-        .matches("Foreign Key action not supported: ON DELETE SET NULL");
+        .matches("Foreign Key action not supported: ON DELETE RESTRICT");
   }
 
   @Test

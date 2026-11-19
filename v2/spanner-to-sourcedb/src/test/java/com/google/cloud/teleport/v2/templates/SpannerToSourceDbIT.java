@@ -222,7 +222,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
     // Write row in Spanner
     writeRowInSpanner();
     // Assert events on Mysql
-    assertRowInMySQL();
+    assertRowInSourceDb();
   }
 
   private void writeRowInSpanner() {
@@ -270,7 +270,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
                 });
   }
 
-  private void assertRowInMySQL() throws InterruptedException {
+  private void assertRowInSourceDb() throws InterruptedException {
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
@@ -368,7 +368,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
     Map<String, List<Map<String, Object>>> expectedData = new HashMap<>();
     SpannerGeneratedColumnUtils.addInitialGeneratedColumnData(expectedData);
     // Assert events on Mysql
-    SpannerGeneratedColumnUtils.assertRowInMySQL(expectedData, jdbcResourceManager);
+    SpannerGeneratedColumnUtils.assertRowInSourceDb(expectedData, jdbcResourceManager);
 
     // Validating update and delete events.
     Map<String, List<Map<String, Value>>> updateSpannerTableData =
@@ -384,7 +384,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
 
     expectedData = new HashMap<>();
     SpannerGeneratedColumnUtils.addUpdatedGeneratedColumnData(expectedData);
-    SpannerGeneratedColumnUtils.assertRowInMySQL(expectedData, jdbcResourceManager);
+    SpannerGeneratedColumnUtils.assertRowInSourceDb(expectedData, jdbcResourceManager);
   }
 
   private void writeMaxColRowsInSpanner() {

@@ -24,10 +24,19 @@ import static org.junit.Assert.assertThat;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
+import com.google.cloud.teleport.spanner.ddl.Udf;
+import com.google.cloud.teleport.spanner.ddl.UdfParameter;
+import com.google.common.io.Resources;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import org.apache.avro.Schema;
+import org.apache.avro.file.DataFileReader;
+import org.apache.avro.generic.GenericDatumReader;
+import org.apache.avro.generic.GenericRecord;
 import org.junit.Test;
 
 /** Tests {@link AvroSchemaToDdlConverter}. */
@@ -248,9 +257,12 @@ public class AvroSchemaToDdlConverterTest {
             + "  \"ALTER TABLE `Users` ADD CONSTRAINT `fk_odc` FOREIGN KEY (`last_name`) "
             + "  REFERENCES `AllowedNames` (`last_name`) ON DELETE CASCADE\","
             + "  \"spannerForeignKey_2\" : "
+            + "  \"ALTER TABLE `Users` ADD CONSTRAINT `fk_odsn` FOREIGN KEY (`last_name`) "
+            + "  REFERENCES `AllowedNames` (`last_name`) ON DELETE SET NULL\","
+            + "  \"spannerForeignKey_3\" : "
             + "  \"ALTER TABLE `Users` ADD CONSTRAINT `fk_not_enforced_no_action` FOREIGN KEY (`last_name`) "
             + "  REFERENCES `AllowedNames` (`last_name`) ON DELETE NO ACTION NOT ENFORCED\","
-            + "  \"spannerForeignKey_3\" : "
+            + "  \"spannerForeignKey_4\" : "
             + "  \"ALTER TABLE `Users` ADD CONSTRAINT `fk_enforced` FOREIGN KEY (`last_name`) "
             + "  REFERENCES `AllowedNames` (`last_name`) ENFORCED\","
             + "  \"spannerCheckConstraint_0\" : "
@@ -318,6 +330,9 @@ public class AvroSchemaToDdlConverterTest {
                 + " ALTER TABLE `Users` ADD CONSTRAINT `fk_odc`"
                 + " FOREIGN KEY (`last_name`) REFERENCES "
                 + "`AllowedNames` (`last_name`) ON DELETE CASCADE"
+                + " ALTER TABLE `Users` ADD CONSTRAINT `fk_odsn`"
+                + " FOREIGN KEY (`last_name`) REFERENCES "
+                + "`AllowedNames` (`last_name`) ON DELETE SET NULL"
                 + " ALTER TABLE `Users` ADD CONSTRAINT `fk_not_enforced_no_action`"
                 + " FOREIGN KEY (`last_name`) REFERENCES "
                 + "`AllowedNames` (`last_name`) ON DELETE NO ACTION NOT ENFORCED"
@@ -544,6 +559,9 @@ public class AvroSchemaToDdlConverterTest {
             + " \"spannerForeignKey_1\" :   \"ALTER TABLE \\\"Users\\\" ADD CONSTRAINT "
             + "\\\"fk_odc\\\" FOREIGN KEY (\\\"last_name\\\")   REFERENCES \\\"AllowedNames\\\""
             + " (\\\"last_name\\\") ON DELETE CASCADE\", "
+            + " \"spannerForeignKey_2\" :   \"ALTER TABLE \\\"Users\\\" ADD CONSTRAINT "
+            + "\\\"fk_odsn\\\" FOREIGN KEY (\\\"last_name\\\")   REFERENCES \\\"AllowedNames\\\""
+            + " (\\\"last_name\\\") ON DELETE SET NULL\", "
             + " \"spannerCheckConstraint_0\" :   \"CONSTRAINT \\\"ck\\\""
             + " CHECK(\\\"first_name\\\" != \\\"last_name\\\")\"}";
 
@@ -606,7 +624,9 @@ public class AvroSchemaToDdlConverterTest {
                 + " ALTER TABLE \"Users\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"first_name\")"
                 + " REFERENCES \"AllowedNames\" (\"first_name\")"
                 + " ALTER TABLE \"Users\" ADD CONSTRAINT \"fk_odc\" FOREIGN KEY (\"last_name\")"
-                + " REFERENCES \"AllowedNames\" (\"last_name\") ON DELETE CASCADE"));
+                + " REFERENCES \"AllowedNames\" (\"last_name\") ON DELETE CASCADE"
+                + " ALTER TABLE \"Users\" ADD CONSTRAINT \"fk_odsn\" FOREIGN KEY (\"last_name\")"
+                + " REFERENCES \"AllowedNames\" (\"last_name\") ON DELETE SET NULL"));
   }
 
   @Test
@@ -952,7 +972,60 @@ public class AvroSchemaToDdlConverterTest {
         ddl.prettyPrint(),
         equalToCompressingWhiteSpace(
             "CREATE FUNCTION \"Foo\"(\"arg0\" TEXT, \"arg1\" TEXT DEFAULT \"bar\")"
-                + " RETURNS TEXT SQL SECURITY INVOKER RETURN SELECT 1"));
+                + " RETURNS TEXT SECURITY INVOKER RETURN SELECT 1"));
+  }
+
+  @Test
+  public void pgUdfsFromImportPipelineResources() throws IOException {
+    Schema udfSchema = readAvroSchema("ImportPipelineIT/postgres/UdfSchema.avro");
+    Schema pgAddSchema = readAvroSchema("ImportPipelineIT/postgres/pg_add.avro");
+    Schema pgMultiplySchema = readAvroSchema("ImportPipelineIT/postgres/pg_multiply.avro");
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+    Ddl ddl = converter.toDdl(Arrays.asList(udfSchema, pgAddSchema, pgMultiplySchema));
+    assertThat(ddl.schemas(), hasSize(1));
+    assertThat(ddl.udfs(), hasSize(2));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE SCHEMA \"UdfSchema\"\n"
+                + "CREATE FUNCTION \"UdfSchema\".\"pg_add\"(\"a\" bigint, \"b\" bigint)"
+                + " RETURNS bigint IMMUTABLE SECURITY INVOKER RETURN (a + b)\n"
+                + "CREATE FUNCTION \"UdfSchema\".\"pg_multiply\"(\"a\" bigint, \"b\" bigint)"
+                + " RETURNS bigint IMMUTABLE SECURITY INVOKER RETURN (SELECT (a * b))"));
+  }
+
+  @Test
+  public void pgUdfsRoundTrip() {
+    Ddl sourceDdl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createSchema("s1")
+            .endNamedSchema()
+            .createUdf("s1.Foo1")
+            .name("s1.Foo1")
+            .definition("(SELECT 'bar')")
+            .type("text")
+            .endUdf()
+            .createUdf("s1.Foo2")
+            .name("s1.Foo2")
+            .definition("(SELECT 'bar')")
+            .security(Udf.SqlSecurity.INVOKER)
+            .type("text")
+            .spannerDeterminism("DETERMINISTIC")
+            .addParameter(UdfParameter.parse("arg0 text", "s1.Foo2", Dialect.POSTGRESQL))
+            .addParameter(
+                UdfParameter.parse("arg1 text DEFAULT 'bar'", "s1.Foo2", Dialect.POSTGRESQL))
+            .endUdf()
+            .build();
+
+    DdlToAvroSchemaConverter ddlToAvro =
+        new DdlToAvroSchemaConverter("spannerexport", "1.0.0", false);
+    Collection<Schema> avroSchemas = ddlToAvro.convert(sourceDdl);
+
+    AvroSchemaToDdlConverter avroToDdl = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+    Ddl destinationDdl = avroToDdl.toDdl(avroSchemas);
+
+    assertThat(destinationDdl.prettyPrint(), equalToCompressingWhiteSpace(sourceDdl.prettyPrint()));
   }
 
   @Test
@@ -1504,6 +1577,205 @@ public class AvroSchemaToDdlConverterTest {
         equalToCompressingWhiteSpace(
             "\nCREATE PLACEMENT `Placement1`\n\t"
                 + " OPTIONS (instance_partition='mr-partition', default_leader='us-east1')"));
+  }
+
+  @Test
+  public void localityGroups() {
+    String defaultLgAvroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"default\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerEntity\":\"LocalityGroup\", "
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerOption_0\" : \"storage=\\\"hdd\\\"\""
+            + "}";
+    String lgAvroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"LocalityGroup1\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerEntity\":\"LocalityGroup\", "
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerOption_0\" : \"storage=\\\"ssd\\\"\","
+            + "  \"spannerOption_1\" : \"ssd_to_hdd_spill_timespan=\\\"30d\\\"\""
+            + "}";
+    String emptyLgAvroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"lg_empty\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerEntity\":\"LocalityGroup\", "
+            + "  \"googleFormatVersion\" : \"booleans\""
+            + "}";
+    String tableAvroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Users\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"id\","
+            + "    \"type\" : \"long\","
+            + "    \"sqlType\" : \"INT64\""
+            + "  }, {"
+            + "    \"name\" : \"description\","
+            + "    \"type\" : [ \"null\", \"string\" ],"
+            + "    \"sqlType\" : \"STRING(MAX)\""
+            + "  }, {"
+            + "    \"name\" : \"name\","
+            + "    \"type\" : [ \"null\", \"string\" ],"
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"spannerOption_0\" : \"locality_group=\\\"default\\\"\""
+            + "  } ],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"`id` ASC\","
+            + "  \"spannerOption_0\" : \"locality_group=\\\"LocalityGroup1\\\"\","
+            + "  \"spannerIndex_0\" : \"CREATE INDEX `UsersByName` ON `Users`(`name` ASC) OPTIONS (locality_group=\\\"LocalityGroup1\\\")\""
+            + "}";
+    Collection<Schema> schemas = new ArrayList<>();
+    Schema.Parser parser = new Schema.Parser();
+    schemas.add(parser.parse(defaultLgAvroString));
+    schemas.add(parser.parse(lgAvroString));
+    schemas.add(parser.parse(emptyLgAvroString));
+    schemas.add(parser.parse(tableAvroString));
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(schemas);
+    assertThat(ddl.localityGroups(), hasSize(3));
+    assertThat(ddl.allTables(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE `Users` ("
+                + " `id` INT64 NOT NULL,"
+                + " `description` STRING(MAX),"
+                + " `name` STRING(MAX) OPTIONS (locality_group=\"default\"),"
+                + " ) PRIMARY KEY (`id` ASC),"
+                + " OPTIONS (locality_group=\"LocalityGroup1\")"
+                + " CREATE INDEX `UsersByName` ON `Users`(`name` ASC) OPTIONS (locality_group=\"LocalityGroup1\")"
+                + " ALTER LOCALITY GROUP `default` SET OPTIONS (storage=\"hdd\")"
+                + " CREATE LOCALITY GROUP `lg_empty`"
+                + " CREATE LOCALITY GROUP `LocalityGroup1`"
+                + " OPTIONS (storage=\"ssd\", ssd_to_hdd_spill_timespan=\"30d\")"));
+  }
+
+  @Test
+  public void pgLocalityGroups() {
+    String defaultLgAvroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"default\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerEntity\":\"LocalityGroup\", "
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerOption_0\" : \"storage='hdd'\""
+            + "}";
+    String lgAvroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"LocalityGroup1\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerEntity\":\"LocalityGroup\", "
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerOption_0\" : \"ssd_to_hdd_spill_timespan='30d'\","
+            + "  \"spannerOption_1\" : \"storage='ssd'\""
+            + "}";
+    String emptyLgAvroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"lg_empty\","
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerEntity\":\"LocalityGroup\", "
+            + "  \"googleFormatVersion\" : \"booleans\""
+            + "}";
+    String tableAvroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"Users\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"id\","
+            + "    \"type\" : \"long\","
+            + "    \"sqlType\" : \"bigint\""
+            + "  }, {"
+            + "    \"name\" : \"description\","
+            + "    \"type\" : [ \"null\", \"string\" ],"
+            + "    \"sqlType\" : \"character varying\""
+            + "  }, {"
+            + "    \"name\" : \"name\","
+            + "    \"type\" : [ \"null\", \"string\" ],"
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"spannerOption_0\" : \"locality_group='default'\""
+            + "  } ],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"\\\"id\\\" ASC\","
+            + "  \"spannerOption_0\" : \"locality_group='LocalityGroup1'\","
+            + "  \"spannerIndex_0\" : \"CREATE INDEX \\\"UsersByName\\\" ON \\\"Users\\\"(\\\"name\\\" ASC) LOCALITY GROUP \\\"LocalityGroup1\\\"\""
+            + "}";
+    Collection<Schema> schemas = new ArrayList<>();
+    Schema.Parser parser = new Schema.Parser();
+    schemas.add(parser.parse(defaultLgAvroString));
+    schemas.add(parser.parse(lgAvroString));
+    schemas.add(parser.parse(emptyLgAvroString));
+    schemas.add(parser.parse(tableAvroString));
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+    Ddl ddl = converter.toDdl(schemas);
+    assertThat(ddl.localityGroups(), hasSize(3));
+    assertThat(ddl.allTables(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE \"Users\" ("
+                + " \"id\" bigint NOT NULL,"
+                + " \"description\" character varying,"
+                + " \"name\" character varying LOCALITY GROUP \"default\","
+                + " PRIMARY KEY (\"id\")"
+                + " ) LOCALITY GROUP \"LocalityGroup1\""
+                + " CREATE INDEX \"UsersByName\" ON \"Users\"(\"name\" ASC) LOCALITY GROUP \"LocalityGroup1\""
+                + " ALTER LOCALITY GROUP \"default\" STORAGE 'hdd'"
+                + " CREATE LOCALITY GROUP \"lg_empty\""
+                + " CREATE LOCALITY GROUP \"LocalityGroup1\" STORAGE 'ssd' SSD_TO_HDD_SPILL_TIMESPAN '30d'"));
+  }
+
+  @Test
+  public void localityGroupNameFromSchema() {
+    Schema schema =
+        new Schema.Parser()
+            .parse(
+                "{"
+                    + "  \"type\" : \"record\","
+                    + "  \"name\" : \"lg_avro_name\","
+                    + "  \"fields\" : [],"
+                    + "  \"namespace\" : \"spannertest\","
+                    + "  \"googleStorage\" : \"CloudSpanner\","
+                    + "  \"spannerEntity\":\"LocalityGroup\", "
+                    + "  \"spannerName\" : \"lg1\","
+                    + "  \"googleFormatVersion\" : \"booleans\","
+                    + "  \"spannerOption_0\" : \"storage=\\\"ssd\\\"\""
+                    + "}");
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+
+    assertEquals("lg1", converter.toLocalityGroup(null, schema).name());
+    assertEquals("lg_explicit", converter.toLocalityGroup("lg_explicit", schema).name());
+    assertEquals(
+        Collections.singletonList("storage=\"ssd\""),
+        converter.toLocalityGroup(null, schema).options());
   }
 
   @Test
@@ -2084,5 +2356,13 @@ public class AvroSchemaToDdlConverterTest {
             + " KEY (AccountID)\n"
             + "LABEL Sch2.V2 PROPERTIES(AccountID, Money))";
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedPg));
+  }
+
+  private static Schema readAvroSchema(String resourceName) throws IOException {
+    try (DataFileReader<GenericRecord> reader =
+        new DataFileReader<>(
+            new File(Resources.getResource(resourceName).getFile()), new GenericDatumReader<>())) {
+      return reader.getSchema();
+    }
   }
 }

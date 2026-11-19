@@ -47,6 +47,10 @@ public class DatastreamToSpannerConstants {
   public static final TupleTag<KV<Long, FailsafeElement<String, String>>>
       SUCCESSFUL_KEYED_EVENT_TAG = new TupleTag<KV<Long, FailsafeElement<String, String>>>() {};
 
+  /* The tag for skipped table events. */
+  public static final TupleTag<FailsafeElement<String, String>> SKIPPED_TABLE_EVENT_TAG =
+      new TupleTag<FailsafeElement<String, String>>() {};
+
   /* Max DoFns per dataflow worker in a streaming pipeline. */
   public static final int MAX_DOFN_PER_WORKER = 500;
 
@@ -61,6 +65,9 @@ public class DatastreamToSpannerConstants {
 
   /* The counter name for Conversion errors */
   public static final String CONVERSION_ERRORS_COUNTER_NAME = "Conversion errors";
+
+  /* The counter name for Dropped table exceptions */
+  public static final String DROPPED_TABLE_EXCEPTIONS_COUNTER_NAME = "Dropped table exceptions";
 
   /* The counter name for Retryable errors */
   public static final String RETRYABLE_ERRORS_COUNTER_NAME = "Retryable errors";

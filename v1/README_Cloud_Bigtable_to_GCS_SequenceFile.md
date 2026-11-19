@@ -35,6 +35,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **bigtableReadRpcTimeoutMs**: Bigtable read RPC timeout in milliseconds.
 * **bigtableReadRpcAttemptTimeoutMs**: Bigtable read RPC attempt timeout in milliseconds.
 * **bigtableMaxAttempts**: The maximum number of retry attempts for the Bigtable client.
+* **bigtableReadPartialRowTimeoutMs**: How long a scan may go without receiving a response, in milliseconds, before it is cancelled and retried.
 
 
 
@@ -261,6 +262,7 @@ resource "google_dataflow_job" "cloud_bigtable_to_gcs_sequencefile" {
     # bigtableReadRpcTimeoutMs = "<bigtableReadRpcTimeoutMs>"
     # bigtableReadRpcAttemptTimeoutMs = "<bigtableReadRpcAttemptTimeoutMs>"
     # bigtableMaxAttempts = "<bigtableMaxAttempts>"
+    # bigtableReadPartialRowTimeoutMs = "<bigtableReadPartialRowTimeoutMs>"
   }
 }
 ```

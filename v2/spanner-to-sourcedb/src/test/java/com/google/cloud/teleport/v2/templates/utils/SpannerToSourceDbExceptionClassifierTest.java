@@ -115,6 +115,15 @@ public class SpannerToSourceDbExceptionClassifierTest {
   }
 
   @Test
+  public void testClassifyWrappedNullPointerException() {
+    SpannerException ex =
+        SpannerExceptionFactory.newSpannerException(
+            ErrorCode.UNKNOWN, "test", new NullPointerException("test"));
+    TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex, null);
+    assertEquals(Constants.PERMANENT_ERROR_TAG, tag);
+  }
+
+  @Test
   public void testClassifyGenericException() {
     Exception ex = new RuntimeException("test");
     TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex, null);
