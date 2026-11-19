@@ -112,14 +112,23 @@ public class SeparateShadowTableDatabasePKFocusedIT extends DataStreamToSpannerI
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (SeparateShadowTableDatabasePKFocusedIT instance : testInstances) {
-      instance.tearDownBase();
+    try {
+      for (SeparateShadowTableDatabasePKFocusedIT instance : testInstances) {
+        instance.tearDownBase();
+      }
+      ResourceManagerUtils.cleanResources(
+          spannerResourceManager,
+          shadowSpannerResourceManager,
+          pubsubResourceManager,
+          gcsResourceManager);
+    } finally {
+      testInstances.clear();
+      jobInfo = null;
+      pubsubResourceManager = null;
+      spannerResourceManager = null;
+      shadowSpannerResourceManager = null;
+      gcsResourceManager = null;
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        shadowSpannerResourceManager,
-        pubsubResourceManager,
-        gcsResourceManager);
   }
 
   /**

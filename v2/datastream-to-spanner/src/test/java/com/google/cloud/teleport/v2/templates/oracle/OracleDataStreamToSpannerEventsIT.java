@@ -148,7 +148,11 @@ public class OracleDataStreamToSpannerEventsIT extends DataStreamToSpannerITBase
 
   @AfterClass
   public static void cleanUp() {
-    cleanUpSharedResources(testInstances);
+    try {
+      cleanUpSharedResources(testInstances);
+    } finally {
+      testInstances.clear();
+    }
   }
 
   /**
@@ -171,6 +175,7 @@ public class OracleDataStreamToSpannerEventsIT extends DataStreamToSpannerITBase
       gcsResourceManager = null;
       datastreamResourceManager = null;
       oracleUser = null;
+      jobInfo = null;
     }
   }
 

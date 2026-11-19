@@ -121,12 +121,21 @@ public class SpannerToCassandraReservedKeywordsIT extends SpannerToSourceDbITBas
 
   @AfterClass
   public static void cleanUp() throws IOException {
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        cassandraResourceManager,
-        spannerMetadataResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager);
+    try {
+      ResourceManagerUtils.cleanResources(
+          spannerResourceManager,
+          cassandraResourceManager,
+          spannerMetadataResourceManager,
+          gcsResourceManager,
+          pubsubResourceManager);
+    } finally {
+      jobInfo = null;
+      spannerResourceManager = null;
+      spannerMetadataResourceManager = null;
+      cassandraResourceManager = null;
+      gcsResourceManager = null;
+      pubsubResourceManager = null;
+    }
   }
 
   @Test

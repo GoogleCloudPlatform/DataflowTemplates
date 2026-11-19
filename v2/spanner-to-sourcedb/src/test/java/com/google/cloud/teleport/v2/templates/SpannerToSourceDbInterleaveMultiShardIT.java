@@ -142,16 +142,27 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (SpannerToSourceDbInterleaveMultiShardIT instance : testInstances) {
-      instance.tearDownBase();
+    try {
+      for (SpannerToSourceDbInterleaveMultiShardIT instance : testInstances) {
+        instance.tearDownBase();
+      }
+      ResourceManagerUtils.cleanResources(
+          spannerResourceManager,
+          jdbcResourceManagerShardA,
+          jdbcResourceManagerShardB,
+          spannerMetadataResourceManager,
+          gcsResourceManager,
+          pubsubResourceManager);
+    } finally {
+      testInstances.clear();
+      jobInfo = null;
+      spannerResourceManager = null;
+      spannerMetadataResourceManager = null;
+      jdbcResourceManagerShardA = null;
+      jdbcResourceManagerShardB = null;
+      gcsResourceManager = null;
+      pubsubResourceManager = null;
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        jdbcResourceManagerShardA,
-        jdbcResourceManagerShardB,
-        spannerMetadataResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager);
   }
 
   @Test

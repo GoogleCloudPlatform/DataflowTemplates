@@ -153,15 +153,25 @@ public class SeparateShadowTableDatabaseShardedMigrationWithoutMigrationShardIdC
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (SeparateShadowTableDatabaseShardedMigrationWithoutMigrationShardIdColumnIT instance :
-        testInstances) {
-      instance.tearDownBase();
+    try {
+      for (SeparateShadowTableDatabaseShardedMigrationWithoutMigrationShardIdColumnIT instance :
+          testInstances) {
+        instance.tearDownBase();
+      }
+      ResourceManagerUtils.cleanResources(
+          spannerResourceManager,
+          pubsubResourceManager,
+          shadowSpannerResourceManager,
+          gcsResourceManager);
+    } finally {
+      testInstances.clear();
+      jobInfo1 = null;
+      jobInfo2 = null;
+      pubsubResourceManager = null;
+      spannerResourceManager = null;
+      shadowSpannerResourceManager = null;
+      gcsResourceManager = null;
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        pubsubResourceManager,
-        shadowSpannerResourceManager,
-        gcsResourceManager);
   }
 
   @Test

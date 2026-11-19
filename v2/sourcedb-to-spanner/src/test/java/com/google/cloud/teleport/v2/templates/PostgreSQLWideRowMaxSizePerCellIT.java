@@ -72,8 +72,16 @@ public class PostgreSQLWideRowMaxSizePerCellIT extends SourceDbToSpannerITBase {
 
   @AfterClass
   public static void cleanUp() throws Exception {
-    ResourceManagerUtils.cleanResources(
-        postgresResourceManager, spannerResourceManager, pgDialectSpannerResourceManager);
+    try {
+      ResourceManagerUtils.cleanResources(
+          postgresResourceManager, spannerResourceManager, pgDialectSpannerResourceManager);
+    } finally {
+      initialized = false;
+      jobInfo = null;
+      postgresResourceManager = null;
+      spannerResourceManager = null;
+      pgDialectSpannerResourceManager = null;
+    }
   }
 
   @Test

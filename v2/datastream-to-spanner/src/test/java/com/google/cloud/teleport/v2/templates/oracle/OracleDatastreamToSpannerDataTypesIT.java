@@ -218,7 +218,11 @@ public class OracleDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITB
 
   @AfterClass
   public static void cleanUp() {
-    cleanUpSharedResources(testInstances);
+    try {
+      cleanUpSharedResources(testInstances);
+    } finally {
+      testInstances.clear();
+    }
   }
 
   /**

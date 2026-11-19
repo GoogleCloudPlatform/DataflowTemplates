@@ -175,11 +175,23 @@ public class DataStreamToSpannerMySQLRetryAllDLQIT extends DataStreamToSpannerIT
 
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (DataStreamToSpannerMySQLRetryAllDLQIT instance : testInstances) {
-      instance.tearDownBase();
+    try {
+      for (DataStreamToSpannerMySQLRetryAllDLQIT instance : testInstances) {
+        instance.tearDownBase();
+      }
+      ResourceManagerUtils.cleanResources(
+          spannerResourceManager,
+          jdbcResourceManager,
+          gcsResourceManager,
+          datastreamResourceManager);
+    } finally {
+      testInstances.clear();
+      jobInfo = null;
+      spannerResourceManager = null;
+      jdbcResourceManager = null;
+      gcsResourceManager = null;
+      datastreamResourceManager = null;
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager, jdbcResourceManager, gcsResourceManager, datastreamResourceManager);
   }
 
   @Test

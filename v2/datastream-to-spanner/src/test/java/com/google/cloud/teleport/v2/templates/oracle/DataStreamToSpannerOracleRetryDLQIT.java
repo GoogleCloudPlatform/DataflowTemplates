@@ -208,7 +208,11 @@ public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBa
 
   @AfterClass
   public static void cleanUp() {
-    cleanUpSharedResources(testInstances);
+    try {
+      cleanUpSharedResources(testInstances);
+    } finally {
+      testInstances.clear();
+    }
   }
 
   /**
@@ -233,6 +237,7 @@ public class DataStreamToSpannerOracleRetryDLQIT extends DataStreamToSpannerITBa
       pubsubResourceManager = null;
       oracleUserShardA = null;
       oracleUserShardB = null;
+      jobInfo = null;
     }
   }
 

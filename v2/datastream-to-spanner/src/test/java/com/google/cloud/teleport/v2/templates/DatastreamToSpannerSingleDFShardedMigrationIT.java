@@ -89,7 +89,7 @@ public class DatastreamToSpannerSingleDFShardedMigrationIT extends DataStreamToS
   public void setUp() throws IOException, InterruptedException {
     // Prevent cleaning up of dataflow job after a test method is executed.
     skipBaseCleanup = true;
-    synchronized (DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT.class) {
+    synchronized (DatastreamToSpannerSingleDFShardedMigrationIT.class) {
       testInstances.add(this);
       if (spannerResourceManager == null) {
         spannerResourceManager = setUpSpannerResourceManager();
@@ -130,11 +130,19 @@ public class DatastreamToSpannerSingleDFShardedMigrationIT extends DataStreamToS
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (DatastreamToSpannerSingleDFShardedMigrationIT instance : testInstances) {
-      instance.tearDownBase();
+    try {
+      for (DatastreamToSpannerSingleDFShardedMigrationIT instance : testInstances) {
+        instance.tearDownBase();
+      }
+      ResourceManagerUtils.cleanResources(
+          spannerResourceManager, pubsubResourceManager, gcsResourceManager);
+    } finally {
+      testInstances.clear();
+      jobInfo = null;
+      pubsubResourceManager = null;
+      spannerResourceManager = null;
+      gcsResourceManager = null;
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager, pubsubResourceManager, gcsResourceManager);
   }
 
   @Test

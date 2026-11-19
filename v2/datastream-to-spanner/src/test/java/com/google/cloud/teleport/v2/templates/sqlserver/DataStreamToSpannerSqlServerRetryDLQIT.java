@@ -147,22 +147,31 @@ public class DataStreamToSpannerSqlServerRetryDLQIT extends DataStreamToSpannerI
 
   @AfterClass
   public static void cleanUp() throws IOException {
-    // A failing teardown of one instance must not prevent the other instances' Dataflow jobs and
-    // the shared resource managers below from being cleaned up.
-    for (DataStreamToSpannerSqlServerRetryDLQIT instance : testInstances) {
-      try {
-        instance.tearDownBase();
-      } catch (Exception e) {
-        LOG.error("Failed to tear down test instance {}", instance.testName, e);
+    try {
+      // A failing teardown of one instance must not prevent the other instances' Dataflow jobs and
+      // the shared resource managers below from being cleaned up.
+      for (DataStreamToSpannerSqlServerRetryDLQIT instance : testInstances) {
+        try {
+          instance.tearDownBase();
+        } catch (Exception e) {
+          LOG.error("Failed to tear down test instance {}", instance.testName, e);
+        }
       }
+      // Datastream streams are deleted first, before the CDC-enabled source database is dropped.
+      ResourceManagerUtils.cleanResources(
+          datastreamResourceManager,
+          spannerResourceManager,
+          jdbcResourceManager,
+          gcsResourceManager,
+          pubsubResourceManager);
+    } finally {
+      jobInfo = null;
+      spannerResourceManager = null;
+      jdbcResourceManager = null;
+      gcsResourceManager = null;
+      datastreamResourceManager = null;
+      pubsubResourceManager = null;
     }
-    // Datastream streams are deleted first, before the CDC-enabled source database is dropped.
-    ResourceManagerUtils.cleanResources(
-        datastreamResourceManager,
-        spannerResourceManager,
-        jdbcResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager);
   }
 
   @Test

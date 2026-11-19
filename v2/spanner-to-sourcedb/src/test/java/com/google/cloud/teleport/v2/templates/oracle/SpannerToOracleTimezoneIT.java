@@ -154,6 +154,13 @@ public class SpannerToOracleTimezoneIT extends SpannerToSourceDbITBase {
     } finally {
       SharedOracleReverseITContainer.dropIsolatedUser(oracleUsername);
       oracleUsername = null;
+      testInstances.clear();
+      jobInfo = null;
+      spannerResourceManager = null;
+      spannerMetadataResourceManager = null;
+      jdbcResourceManager = null;
+      gcsResourceManager = null;
+      pubsubResourceManager = null;
     }
   }
 

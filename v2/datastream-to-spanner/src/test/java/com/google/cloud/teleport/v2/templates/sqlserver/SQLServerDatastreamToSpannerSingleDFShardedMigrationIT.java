@@ -232,24 +232,34 @@ public class SQLServerDatastreamToSpannerSingleDFShardedMigrationIT
   /** Cleanup dataflow job and all the resources and resource managers. */
   @AfterClass
   public static void cleanUp() throws IOException {
-    LOG.info("Cleaning up resources...");
-    // A failing teardown of one instance must not prevent the other instances' Dataflow jobs and
-    // the shared resource managers below from being cleaned up.
-    for (SQLServerDatastreamToSpannerSingleDFShardedMigrationIT instance : testInstances) {
-      try {
-        instance.tearDownBase();
-      } catch (Exception e) {
-        LOG.error("Failed to tear down test instance {}", instance.testName, e);
+    try {
+      LOG.info("Cleaning up resources...");
+      // A failing teardown of one instance must not prevent the other instances' Dataflow jobs and
+      // the shared resource managers below from being cleaned up.
+      for (SQLServerDatastreamToSpannerSingleDFShardedMigrationIT instance : testInstances) {
+        try {
+          instance.tearDownBase();
+        } catch (Exception e) {
+          LOG.error("Failed to tear down test instance {}", instance.testName, e);
+        }
       }
-    }
 
-    // Datastream streams are deleted first, before the CDC-enabled source database is dropped.
-    ResourceManagerUtils.cleanResources(
-        datastreamResourceManager,
-        msSqlResourceManager,
-        spannerResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager);
+      // Datastream streams are deleted first, before the CDC-enabled source database is dropped.
+      ResourceManagerUtils.cleanResources(
+          datastreamResourceManager,
+          msSqlResourceManager,
+          spannerResourceManager,
+          gcsResourceManager,
+          pubsubResourceManager);
+    } finally {
+      initialized = false;
+      jobInfo = null;
+      msSqlResourceManager = null;
+      spannerResourceManager = null;
+      pubsubResourceManager = null;
+      gcsResourceManager = null;
+      datastreamResourceManager = null;
+    }
   }
 
   @Test

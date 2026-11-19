@@ -80,7 +80,7 @@ public class SpannerToSourceDbTimezoneIT extends SpannerToSourceDbITBase {
   @Before
   public void setUp() throws IOException {
     skipBaseCleanup = true;
-    synchronized (SpannerToSourceDbIT.class) {
+    synchronized (SpannerToSourceDbTimezoneIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
         spannerResourceManager =
@@ -135,15 +135,25 @@ public class SpannerToSourceDbTimezoneIT extends SpannerToSourceDbITBase {
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (SpannerToSourceDbTimezoneIT instance : testInstances) {
-      instance.tearDownBase();
+    try {
+      for (SpannerToSourceDbTimezoneIT instance : testInstances) {
+        instance.tearDownBase();
+      }
+      ResourceManagerUtils.cleanResources(
+          spannerResourceManager,
+          jdbcResourceManager,
+          spannerMetadataResourceManager,
+          gcsResourceManager,
+          pubsubResourceManager);
+    } finally {
+      testInstances.clear();
+      jobInfo = null;
+      spannerResourceManager = null;
+      spannerMetadataResourceManager = null;
+      jdbcResourceManager = null;
+      gcsResourceManager = null;
+      pubsubResourceManager = null;
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        jdbcResourceManager,
-        spannerMetadataResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager);
   }
 
   @Test

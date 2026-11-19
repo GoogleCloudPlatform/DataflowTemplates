@@ -120,15 +120,24 @@ public class SeparateShadowTableDatabaseEventsIT extends DataStreamToSpannerITBa
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (SeparateShadowTableDatabaseEventsIT instance : testInstances) {
-      instance.tearDownBase();
-    }
+    try {
+      for (SeparateShadowTableDatabaseEventsIT instance : testInstances) {
+        instance.tearDownBase();
+      }
 
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        pubsubResourceManager,
-        shadowSpannerResourceManager,
-        gcsResourceManager);
+      ResourceManagerUtils.cleanResources(
+          spannerResourceManager,
+          pubsubResourceManager,
+          shadowSpannerResourceManager,
+          gcsResourceManager);
+    } finally {
+      testInstances.clear();
+      jobInfo = null;
+      pubsubResourceManager = null;
+      spannerResourceManager = null;
+      shadowSpannerResourceManager = null;
+      gcsResourceManager = null;
+    }
   }
 
   @Test

@@ -72,7 +72,11 @@ public class DatastreamToSpannerExceptionClassifierIT {
 
   @AfterClass
   public static void cleanUp() throws IOException {
-    ResourceManagerUtils.cleanResources(spannerResourceManager);
+    try {
+      ResourceManagerUtils.cleanResources(spannerResourceManager);
+    } finally {
+      spannerResourceManager = null;
+    }
   }
 
   @Test

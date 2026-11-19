@@ -153,7 +153,11 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
 
   @AfterClass
   public static void cleanUp() {
-    cleanUpSharedResources(testInstances);
+    try {
+      cleanUpSharedResources(testInstances);
+    } finally {
+      testInstances.clear();
+    }
   }
 
   /**
@@ -178,6 +182,8 @@ public class OracleSeparateShadowTableDatabasePKFocusedIT extends DataStreamToSp
       pubsubResourceManager = null;
       datastreamResourceManager = null;
       oracleUser = null;
+      initialized = false;
+      jobInfo = null;
     }
   }
 

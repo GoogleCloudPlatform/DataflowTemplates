@@ -56,7 +56,7 @@ public class PostgreSQLWideRowMaxSizeTableKeyIT extends SourceDbToSpannerITBase 
 
   @Before
   public void setUp() throws Exception {
-    synchronized (PostgreSQLWideRowMaxSizePerCellIT.class) {
+    synchronized (PostgreSQLWideRowMaxSizeTableKeyIT.class) {
       if (!initialized) {
         postgresResourceManager = setUpPostgreSQLResourceManager();
         spannerResourceManager = setUpSpannerResourceManager();
@@ -71,8 +71,16 @@ public class PostgreSQLWideRowMaxSizeTableKeyIT extends SourceDbToSpannerITBase 
 
   @AfterClass
   public static void cleanUp() throws Exception {
-    ResourceManagerUtils.cleanResources(
-        postgresResourceManager, spannerResourceManager, pgDialectSpannerResourceManager);
+    try {
+      ResourceManagerUtils.cleanResources(
+          postgresResourceManager, spannerResourceManager, pgDialectSpannerResourceManager);
+    } finally {
+      initialized = false;
+      jobInfo = null;
+      postgresResourceManager = null;
+      spannerResourceManager = null;
+      pgDialectSpannerResourceManager = null;
+    }
   }
 
   @Test

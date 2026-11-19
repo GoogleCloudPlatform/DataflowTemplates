@@ -250,15 +250,27 @@ public class DataStreamToSpannerShardedMySQLRetryAllDLQIT extends DataStreamToSp
 
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (DataStreamToSpannerShardedMySQLRetryAllDLQIT instance : testInstances) {
-      instance.tearDownBase();
+    try {
+      for (DataStreamToSpannerShardedMySQLRetryAllDLQIT instance : testInstances) {
+        instance.tearDownBase();
+      }
+      ResourceManagerUtils.cleanResources(
+          spannerResourceManager,
+          jdbcResourceManagerShardA,
+          jdbcResourceManagerShardB,
+          gcsResourceManager,
+          datastreamResourceManager);
+    } finally {
+      testInstances.clear();
+      jobInfo = null;
+      spannerResourceManager = null;
+      jdbcResourceManagerShardA = null;
+      jdbcResourceManagerShardB = null;
+      gcsResourceManager = null;
+      datastreamResourceManager = null;
+      streamNameA = null;
+      streamNameB = null;
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        jdbcResourceManagerShardA,
-        jdbcResourceManagerShardB,
-        gcsResourceManager,
-        datastreamResourceManager);
   }
 
   @Test

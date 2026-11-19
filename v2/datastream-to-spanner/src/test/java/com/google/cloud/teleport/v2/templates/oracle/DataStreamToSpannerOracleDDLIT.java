@@ -193,7 +193,11 @@ public class DataStreamToSpannerOracleDDLIT extends DataStreamToSpannerITBase {
   /** Cleanup dataflow job and all the resources and resource managers. */
   @AfterClass
   public static void cleanUp() {
-    cleanUpSharedResources(testInstances);
+    try {
+      cleanUpSharedResources(testInstances);
+    } finally {
+      testInstances.clear();
+    }
   }
 
   /**
@@ -215,6 +219,7 @@ public class DataStreamToSpannerOracleDDLIT extends DataStreamToSpannerITBase {
       gcsResourceManager = null;
       datastreamResourceManager = null;
       oracleUser = null;
+      jobInfo = null;
     }
   }
 

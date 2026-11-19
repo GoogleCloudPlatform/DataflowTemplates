@@ -141,7 +141,11 @@ public class OracleDataStreamToSpannerTimezoneIT extends DataStreamToSpannerITBa
 
   @AfterClass
   public static void cleanUp() {
-    cleanUpSharedResources(testInstances);
+    try {
+      cleanUpSharedResources(testInstances);
+    } finally {
+      testInstances.clear();
+    }
   }
 
   /**
@@ -164,6 +168,7 @@ public class OracleDataStreamToSpannerTimezoneIT extends DataStreamToSpannerITBa
       gcsResourceManager = null;
       datastreamResourceManager = null;
       oracleUser = null;
+      jobInfo = null;
     }
   }
 
