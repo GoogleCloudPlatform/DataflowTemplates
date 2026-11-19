@@ -85,16 +85,14 @@ To identify the files which must be manually updated, look for all file paths us
 For example, if you see the following lines:
 
 ```
-sh $SCRIPTPATH/generate_dependencies.sh $SCRIPTPATH/../python/src/main/python/streaming-llm/base_requirements.txt $SCRIPTPATH/../python/src/main/python/streaming-llm/requirements.txt
-sh $SCRIPTPATH/generate_dependencies.sh $SCRIPTPATH/../python/default_base_python_requirements.txt $SCRIPTPATH/__build__/default_python_requirements.txt
-sh $SCRIPTPATH/generate_dependencies.sh $SCRIPTPATH/../python/default_base_yaml_requirements.txt $SCRIPTPATH/__build__/default_yaml_requirements.txt
+sh $SCRIPTPATH/generate_dependencies.sh $SCRIPTPATH/default_base_bqmonitor_requirements.txt $SCRIPTPATH/__build__/bqmonitor_requirements.txt
+sh $SCRIPTPATH/generate_dependencies.sh $SCRIPTPATH/default_base_yaml_requirements.txt $SCRIPTPATH/__build__/default_yaml_requirements.txt
 ```
 
 That indicates that the following files need to be updated:
 
 ```
-python/src/main/python/streaming-llm/base_requirements.txt 
-python/default_base_python_requirements.txt
+python/default_base_bqmonitor_requirements.txt
 python/default_base_yaml_requirements.txt
 ```
 
@@ -119,7 +117,7 @@ For other operating systems or for managing multiple Python versions, please ref
 
 To add or update a dependency for a Python template:
 
-1.  **Identify the base requirements file**: Locate the correct base requirements file that corresponds to your template. The `generate_all_dependencies.sh` script shows which base file maps to which final `requirements.txt`. For most templates, this will be either `python/default_base_python_requirements.txt` or `python/default_base_yaml_requirements.txt`.
+1.  **Identify the base requirements file**: Locate the correct base requirements file that corresponds to your template. The `generate_all_dependencies.sh` script shows which base file maps to which final `requirements.txt` (e.g., `python/default_base_yaml_requirements.txt` or `python/default_base_bqmonitor_requirements.txt`).
 2.  **Modify the base file**: Add or change the version specifier for your desired package in the base requirements file. It is recommended to specify a version range or a minimum version.
 3.  **Regenerate the pinned dependencies**: Run the `generate_all_dependencies.sh` script as described above.
 4.  **Commit the changes**: Commit the changes to both the base requirements file and all the `requirements.txt` files that were updated by the script.
