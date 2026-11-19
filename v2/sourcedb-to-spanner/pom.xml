@@ -229,8 +229,8 @@
         </dependency>
         <dependency>
             <groupId>org.bouncycastle</groupId>
-            <artifactId>bcpkix-jdk15on</artifactId>
-            <version>1.70</version>
+            <artifactId>bcpkix-jdk18on</artifactId>
+            <version>1.84</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -251,6 +251,11 @@
                 <groupId>org.apache.cassandra</groupId>
                 <artifactId>java-driver-core</artifactId>
                 <version>${cassandra-java-driver-core.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcprov-jdk18on</artifactId>
+                <version>1.84</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
