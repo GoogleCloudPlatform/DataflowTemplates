@@ -15,6 +15,17 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import static com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants.MATCHED_TAG;
+import static com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants.MISSING_IN_SOURCE_TAG;
+import static com.google.cloud.teleport.v2.constants.GCSSpannerDVConstants.MISSING_IN_SPANNER_TAG;
+import static org.junit.Assert.assertEquals;
+
+import com.google.api.services.bigquery.model.ErrorProto;
+import com.google.api.services.bigquery.model.Table;
+import com.google.api.services.bigquery.model.TableDataInsertAllResponse.InsertErrors;
+import com.google.api.services.bigquery.model.TableReference;
+import com.google.api.services.bigquery.model.TableRow;
+import com.google.cloud.teleport.v2.dto.BigQuerySchemas;
 import com.google.cloud.teleport.v2.dto.Column;
 import com.google.cloud.teleport.v2.dto.ComparisonRecord;
 import com.google.cloud.teleport.v2.dto.MismatchedRecord;
@@ -23,28 +34,35 @@ import com.google.cloud.teleport.v2.dto.ValidationSummary;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collections;
+import org.apache.beam.sdk.io.gcp.testing.FakeBigQueryServices;
+import org.apache.beam.sdk.io.gcp.testing.FakeDatasetService;
+import org.apache.beam.sdk.io.gcp.testing.FakeJobService;
 import org.apache.beam.sdk.schemas.NoSuchSchemaException;
 import org.apache.beam.sdk.schemas.SchemaCoder;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TypeDescriptor;
+import org.joda.time.DateTimeUtils;
 import org.joda.time.Instant;
 import org.junit.Rule;
 import org.junit.Test;
 
+
+
+
 /**
- * This unit test does not test the expand() method of the {@link ReportResultsTransform} directly,
- * but instead tests all the logical units inside it (transforming records for BQ write, and
- * calculation of stats). This is because testing the full expand() method requires instrumenting
- * BigQuery writes, which is hard in a unit testing environment. While testing the BQ sink from a
- * functionality standpoint is not really a validation concern, we will cover this in the
- * integration tests for completeness.
+ * Tests the logical units of {@link ReportResultsTransform} and its full DAG 
+ * expand() method using {@link FakeBigQueryServices} and a local temporary 
+ * folder to avoid external GCS and BigQuery dependencies.
  */
 public class ReportResultsTransformTest implements Serializable {
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
+
+  @Rule public final org.junit.rules.TemporaryFolder tmp = new org.junit.rules.TemporaryFolder();
 
   @org.junit.Before
   public void setUp() throws NoSuchSchemaException {
@@ -66,6 +84,75 @@ public class ReportResultsTransformTest implements Serializable {
                 TypeDescriptor.of(ValidationSummary.class),
                 pipeline.getSchemaRegistry().getToRowFunction(ValidationSummary.class),
                 pipeline.getSchemaRegistry().getFromRowFunction(ValidationSummary.class)));
+  }
+
+
+
+
+  @Test
+  public void testExpandWithTransientErrors() throws Exception {
+    DateTimeUtils.setCurrentMillisFixed(1000000L);
+    try {
+        FakeDatasetService.setUp();
+        FakeDatasetService fakeDatasetService = new FakeDatasetService();
+        FakeJobService fakeJobService = new FakeJobService();
+        fakeDatasetService.createDataset("project", "dataset", "", "", null);
+        
+        TableReference matchedRef = new TableReference().setProjectId("project").setDatasetId("dataset").setTableId("ValidationSummary");
+        fakeDatasetService.createTable(new Table().setTableReference(matchedRef).setSchema(BigQuerySchemas.VALIDATION_SUMMARY_SCHEMA));
+        
+        TableReference mismatchesRef = new TableReference().setProjectId("project").setDatasetId("dataset").setTableId("MismatchedRecords");
+        fakeDatasetService.createTable(new Table().setTableReference(mismatchesRef).setSchema(BigQuerySchemas.MISMATCHED_RECORDS_SCHEMA));
+        
+        TableReference statsRef = new TableReference().setProjectId("project").setDatasetId("dataset").setTableId("TableValidationStats");
+        fakeDatasetService.createTable(new Table().setTableReference(statsRef).setSchema(BigQuerySchemas.TABLE_VALIDATION_STATS_SCHEMA));
+
+        FakeBigQueryServices fakeBigQueryServices = new FakeBigQueryServices()
+                .withDatasetService(fakeDatasetService)
+                .withJobService(fakeJobService);
+
+        Instant now = Instant.now();
+        ReportResultsTransform transform = new ReportResultsTransform("project:dataset", "run1", now)
+                .withTestServices(fakeBigQueryServices, tmp.newFolder("bq-temp").getAbsolutePath());
+
+        ComparisonRecord matched = ComparisonRecord.builder().setTableName("Table1").setHash("hash1").setPrimaryKeyColumns(Collections.emptyList()).build();
+        PCollection<ComparisonRecord> pMatched = pipeline.apply("CreateMatched", Create.of(matched));
+        PCollection<ComparisonRecord> pMissingInSpanner = pipeline.apply("CreateMissingInSpanner", Create.empty(TypeDescriptor.of(ComparisonRecord.class)));
+        PCollection<ComparisonRecord> pMissingInSource = pipeline.apply("CreateMissingInSource", Create.empty(TypeDescriptor.of(ComparisonRecord.class)));
+
+        PCollectionTuple input = PCollectionTuple.of(MATCHED_TAG, pMatched)
+                .and(MISSING_IN_SPANNER_TAG, pMissingInSpanner)
+                .and(MISSING_IN_SOURCE_TAG, pMissingInSource);
+
+        input.apply("TestTransform", transform);
+
+        // Inject failure
+        TableRow expectedSummaryRow = new TableRow()
+            .set(ValidationSummary.RUN_ID_COLUMN_NAME, "run1")
+            .set(ValidationSummary.SOURCE_DATABASE_COLUMN_NAME, ReportResultsTransform.GCS_SOURCE)
+            .set(ValidationSummary.DESTINATION_DATABASE_COLUMN_NAME, ReportResultsTransform.SPANNER_DESTINATION)
+            .set(ValidationSummary.STATUS_COLUMN_NAME, "MATCH")
+            .set(ValidationSummary.TOTAL_TABLES_VALIDATED_COLUMN_NAME, 1L)
+            .set(ValidationSummary.TABLES_WITH_MISMATCHES_COLUMN_NAME, "")
+            .set(ValidationSummary.TOTAL_ROWS_MATCHED_COLUMN_NAME, 1L)
+            .set(ValidationSummary.TOTAL_ROWS_MISMATCHED_COLUMN_NAME, 0L)
+            .set(ValidationSummary.START_TIMESTAMP_COLUMN_NAME, now.toString())
+            .set(ValidationSummary.END_TIMESTAMP_COLUMN_NAME, now.toString());
+
+        InsertErrors error = new InsertErrors().setErrors(Collections.singletonList(new ErrorProto().setReason("timeout")));
+
+        fakeDatasetService.failOnInsert(Collections.singletonMap(expectedSummaryRow, Collections.singletonList(error)));
+
+
+        pipeline.run();
+        
+        assertEquals(1, fakeDatasetService.getAllRows("project", "dataset", "ValidationSummary").size());
+        assertEquals(1, fakeDatasetService.getAllRows("project", "dataset", "TableValidationStats").size());
+        assertEquals(0, fakeDatasetService.getAllRows("project", "dataset", "MismatchedRecords").size());
+
+    } finally {
+        DateTimeUtils.setCurrentMillisSystem();
+    }
   }
 
   @Test
