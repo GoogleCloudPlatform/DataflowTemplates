@@ -54,7 +54,8 @@ public class MySQLSourceDBToSpannerWideRowMaxColumnAndTableSizeIT extends Source
 
   @Before
   public void setUp() throws Exception {
-    mySQLResourceManager = setUpMySQLResourceManager();
+    // Uses its own container: the test changes max_allowed_packet with SET GLOBAL.
+    mySQLResourceManager = setUpDedicatedMySQLResourceManager();
     spannerResourceManager = setUpSpannerResourceManager();
   }
 

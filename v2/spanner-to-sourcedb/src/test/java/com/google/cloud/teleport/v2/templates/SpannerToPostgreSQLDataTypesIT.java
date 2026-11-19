@@ -82,7 +82,7 @@ public class SpannerToPostgreSQLDataTypesIT extends SpannerToSourceDbITBase {
         createSpannerDatabase(SpannerToPostgreSQLDataTypesIT.SPANNER_DDL_RESOURCE);
     spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-    jdbcResourceManager = PostgresResourceManager.builder("rr-pg-" + testName).build();
+    jdbcResourceManager = setUpPostgreSQLResourceManager("rr-pg-" + testName);
     loadSQLFileResource(jdbcResourceManager, POSTGRES_SCHEMA_FILE_RESOURCE);
 
     gcsResourceManager = setUpSpannerITGcsResourceManager();
