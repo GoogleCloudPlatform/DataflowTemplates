@@ -32,6 +32,7 @@
         <!-- Reruns of a failed IT in this module (1 = the first run plus at most 1 retry) when the
              rerunTransientItFailures profile is active; override with -DbulkItRerunFailingTestsCount=N. -->
         <bulkItRerunFailingTestsCount>1</bulkItRerunFailingTestsCount>
+        <bouncycastle.version>1.84</bouncycastle.version>
     </properties>
 
     <dependencies>
@@ -230,7 +231,7 @@
         <dependency>
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcpkix-jdk18on</artifactId>
-            <version>1.84</version>
+            <version>${bouncycastle.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -255,7 +256,7 @@
             <dependency>
                 <groupId>org.bouncycastle</groupId>
                 <artifactId>bcprov-jdk18on</artifactId>
-                <version>1.84</version>
+                <version>${bouncycastle.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
