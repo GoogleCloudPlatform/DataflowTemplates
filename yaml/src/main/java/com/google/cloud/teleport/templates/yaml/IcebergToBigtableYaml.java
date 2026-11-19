@@ -139,8 +139,38 @@ public interface IcebergToBigtableYaml {
   @Validation.Required
   String getFields();
 
-  @TemplateParameter.Text(
+  @TemplateParameter.Boolean(
       order = 10,
+      name = "append",
+      optional = true,
+      description = "Whether to append the created fields to the set of fields already present.",
+      helpText =
+          "Whether to append the created fields to the set of fields already present, outputting a union of both the new fields and the original fields for each record. Defaults to false.",
+      example = "False")
+  Boolean getAppend();
+
+  @TemplateParameter.Text(
+      order = 11,
+      name = "dropFields",
+      optional = true,
+      description = "List of fields from the original record to exclude when append is true.",
+      helpText =
+          "If append is true, enumerates a subset of fields from the original record that should not be kept.",
+      example = "[\"field_to_drop_1\", \"field_to_drop_2\"]")
+  String getDropFields();
+
+  @TemplateParameter.Text(
+      order = 12,
+      name = "dependencies",
+      optional = true,
+      description = "Extra dependencies needed for user-defined functions.",
+      helpText =
+          "An optional list of extra dependencies that are needed for these UDFs. The interpretation of these strings is language-dependent.",
+      example = "[\"pkg1==1.0.0\"]")
+  String getDependencies();
+
+  @TemplateParameter.Text(
+      order = 13,
       name = "projectId",
       optional = false,
       description = "Bigtable project ID",
@@ -150,7 +180,7 @@ public interface IcebergToBigtableYaml {
   String getProjectId();
 
   @TemplateParameter.Text(
-      order = 11,
+      order = 14,
       name = "instanceId",
       optional = false,
       description = "Bigtable instance ID",
@@ -160,7 +190,7 @@ public interface IcebergToBigtableYaml {
   String getInstanceId();
 
   @TemplateParameter.Text(
-      order = 12,
+      order = 15,
       name = "tableId",
       optional = false,
       description = "Bigtable output table",
@@ -170,7 +200,7 @@ public interface IcebergToBigtableYaml {
   String getTableId();
 
   @TemplateParameter.Text(
-      order = 13,
+      order = 16,
       name = "errorPath",
       optional = false,
       description = "Output path for error records.",
