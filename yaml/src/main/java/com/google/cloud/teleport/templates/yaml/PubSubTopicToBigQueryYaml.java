@@ -128,6 +128,16 @@ public interface PubSubTopicToBigQueryYaml {
 
   @TemplateParameter.Text(
       order = 9,
+      name = "publishTimeField",
+      optional = true,
+      description = "Field to add to output messages with the Pub/Sub message publish time.",
+      helpText =
+          "Field to add to output messages with the Pub/Sub message publish time. If None, no such field is added.",
+      example = "publish_time")
+  String getPublishTimeField();
+
+  @TemplateParameter.Text(
+      order = 10,
       name = "table",
       optional = false,
       description = "BigQuery table",
@@ -138,7 +148,7 @@ public interface PubSubTopicToBigQueryYaml {
   String getTable();
 
   @TemplateParameter.Text(
-      order = 10,
+      order = 11,
       name = "createDisposition",
       optional = true,
       description = "How to create",
@@ -149,7 +159,7 @@ public interface PubSubTopicToBigQueryYaml {
   String getCreateDisposition();
 
   @TemplateParameter.Text(
-      order = 11,
+      order = 12,
       name = "writeDisposition",
       optional = true,
       description = "How to write",
@@ -160,7 +170,7 @@ public interface PubSubTopicToBigQueryYaml {
   String getWriteDisposition();
 
   @TemplateParameter.Integer(
-      order = 12,
+      order = 13,
       name = "numStreams",
       optional = true,
       description = "Number of streams for BigQuery Storage Write API",
@@ -171,7 +181,7 @@ public interface PubSubTopicToBigQueryYaml {
   Integer getNumStreams();
 
   @TemplateParameter.Text(
-      order = 13,
+      order = 14,
       name = "type",
       optional = true,
       description = "The type of windowing to apply.",
@@ -182,7 +192,7 @@ public interface PubSubTopicToBigQueryYaml {
   String getType();
 
   @TemplateParameter.Integer(
-      order = 14,
+      order = 15,
       name = "size",
       optional = true,
       description = "The window size in seconds.",

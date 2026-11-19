@@ -48,6 +48,7 @@ pipeline:
         attributes_map: {{ attributesMap }}
         id_attribute: {{ idAttribute }}
         timestamp_attribute: {{ timestampAttribute }}
+        publish_time_field: {{ publishTimeField }}
     - type: WriteToSpanner
       name: WriteToSpanner
       config:

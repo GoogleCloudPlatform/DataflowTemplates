@@ -61,6 +61,7 @@ pipeline:
         attributes_map: {{ attributesMap }}
         id_attribute: {{ idAttribute }}
         timestamp_attribute: {{ timestampAttribute }}
+        publish_time_field: {{ publishTimeField }}
     - type: MapToFields
       name: ConvertStringsToBytes
       input: ReadMessages
