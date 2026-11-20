@@ -64,6 +64,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
@@ -260,7 +261,13 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
                     // If the user sets shouldRelatedTables to true without providing
                     // a list of export tables, throw an exception.
-                    if (tableNames.get().trim().isEmpty() && exportRelatedTables.get()) {
+                    String tableNamesVal = tableNames.get();
+                    boolean hasTableNames =
+                        tableNamesVal != null && !tableNamesVal.trim().isEmpty();
+
+                    // If the user sets shouldRelatedTables to true without providing
+                    // a list of export tables, throw an exception.
+                    if (!hasTableNames && exportRelatedTables.get()) {
                       throw new Exception(
                           "Invalid usage of --tableNames and --shouldExportRelatedTables. Set"
                               + " --shouldExportRelatedTables=true only if --tableNames is given"
@@ -268,8 +275,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                     }
 
                     // If the user provides a comma-separated list of strings, parse it into a List
-                    if (!tableNames.get().trim().isEmpty()) {
-                      tablesList = Arrays.asList(tableNames.get().split(",\\s*"));
+                    if (hasTableNames) {
+                      tablesList = Arrays.asList(tableNamesVal.split(",\\s*"));
                     }
 
                     // If the user provided any invalid table names, throw an exception.
@@ -334,14 +341,22 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   @ProcessElement
                   public void processElement(ProcessContext c) {
                     Ddl ddl = c.element();
-                    for (Table t : ddl.allTables()) {
-                      c.output(KV.of(t.name(), null));
-                    }
-                    // We want the resulting collection to contain the names of all entities that
-                    // need to be exported, both tables and views.  Ddl holds these separately, so
-                    // we need to add the names of all views separately here.
-                    for (com.google.cloud.teleport.spanner.ddl.View v : ddl.views()) {
-                      c.output(KV.of(v.name(), null));
+                    String tableNamesVal = tableNames.get();
+                    if (tableNamesVal == null || tableNamesVal.trim().isEmpty()) {
+                      for (Table t : ddl.allTables()) {
+                        c.output(KV.of(t.name(), null));
+                      }
+                      // We want the resulting collection to contain the names of all entities that
+                      // need to be exported, both tables and views. Ddl holds these separately, so
+                      // we need to add the names of all views separately here.
+                      for (com.google.cloud.teleport.spanner.ddl.View v : ddl.views()) {
+                        c.output(KV.of(v.name(), null));
+                      }
+                    } else {
+                      List<String> tablesList = Arrays.asList(tableNamesVal.split(",\\s*"));
+                      for (Table t : getFilteredTables(ddl, tablesList)) {
+                        c.output(KV.of(t.name(), null));
+                      }
                     }
                   }
                 }));
@@ -354,9 +369,12 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
                   @ProcessElement
                   public void processElement(ProcessContext c) {
-                    Ddl ddl = c.element();
-                    for (Model model : ddl.models()) {
-                      c.output(model.name());
+                    String tableNamesVal = tableNames.get();
+                    if (tableNamesVal == null || tableNamesVal.trim().isEmpty()) {
+                      Ddl ddl = c.element();
+                      for (Model model : ddl.models()) {
+                        c.output(model.name());
+                      }
                     }
                   }
                 }));
@@ -369,9 +387,12 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
                   @ProcessElement
                   public void processElement(ProcessContext c) {
-                    Ddl ddl = c.element();
-                    for (PropertyGraph graph : ddl.propertyGraphs()) {
-                      c.output(graph.name());
+                    String tableNamesVal = tableNames.get();
+                    if (tableNamesVal == null || tableNamesVal.trim().isEmpty()) {
+                      Ddl ddl = c.element();
+                      for (PropertyGraph graph : ddl.propertyGraphs()) {
+                        c.output(graph.name());
+                      }
                     }
                   }
                 }));
@@ -384,9 +405,12 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
                   @ProcessElement
                   public void processElement(ProcessContext c) {
-                    Ddl ddl = c.element();
-                    for (ChangeStream changeStream : ddl.changeStreams()) {
-                      c.output(changeStream.name());
+                    String tableNamesVal = tableNames.get();
+                    if (tableNamesVal == null || tableNamesVal.trim().isEmpty()) {
+                      Ddl ddl = c.element();
+                      for (ChangeStream changeStream : ddl.changeStreams()) {
+                        c.output(changeStream.name());
+                      }
                     }
                   }
                 }));
@@ -400,8 +424,25 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   @ProcessElement
                   public void processElement(ProcessContext c) {
                     Ddl ddl = c.element();
-                    for (Sequence sequence : ddl.sequences()) {
-                      c.output(sequence.name());
+                    String tableNamesVal = tableNames.get();
+                    if (tableNamesVal == null || tableNamesVal.trim().isEmpty()) {
+                      for (Sequence sequence : ddl.sequences()) {
+                        c.output(sequence.name());
+                      }
+                    } else {
+                      List<String> tablesList = Arrays.asList(tableNamesVal.split(",\\s*"));
+                      Collection<Table> filteredTables = getFilteredTables(ddl, tablesList);
+                      List<String> prettyPrintedTables =
+                          filteredTables.stream()
+                              .map(t -> t.prettyPrint().toLowerCase())
+                              .collect(Collectors.toList());
+                      for (Sequence sequence : ddl.sequences()) {
+                        String seqName = sequence.name().toLowerCase();
+                        Pattern pattern = Pattern.compile("\\b" + Pattern.quote(seqName) + "\\b");
+                        if (prettyPrintedTables.stream().anyMatch(t -> pattern.matcher(t).find())) {
+                          c.output(sequence.name());
+                        }
+                      }
                     }
                   }
                 }));
@@ -415,8 +456,20 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   @ProcessElement
                   public void processElement(ProcessContext c) {
                     Ddl ddl = c.element();
-                    for (NamedSchema t : ddl.schemas()) {
-                      c.output(t.name());
+                    String tableNamesVal = tableNames.get();
+                    if (tableNamesVal == null || tableNamesVal.trim().isEmpty()) {
+                      for (NamedSchema t : ddl.schemas()) {
+                        c.output(t.name());
+                      }
+                    } else {
+                      List<String> tablesList = Arrays.asList(tableNamesVal.split(",\\s*"));
+                      Collection<Table> filteredTables = getFilteredTables(ddl, tablesList);
+                      for (NamedSchema schema : ddl.schemas()) {
+                        String prefix = schema.name() + ".";
+                        if (filteredTables.stream().anyMatch(t -> t.name().startsWith(prefix))) {
+                          c.output(schema.name());
+                        }
+                      }
                     }
                   }
                 }));
@@ -429,9 +482,12 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
                   @ProcessElement
                   public void processElement(ProcessContext c) {
-                    Ddl ddl = c.element();
-                    for (Placement placement : ddl.placements()) {
-                      c.output(placement.name());
+                    String tableNamesVal = tableNames.get();
+                    if (tableNamesVal == null || tableNamesVal.trim().isEmpty()) {
+                      Ddl ddl = c.element();
+                      for (Placement placement : ddl.placements()) {
+                        c.output(placement.name());
+                      }
                     }
                   }
                 }));
@@ -459,9 +515,12 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
 
                   @ProcessElement
                   public void processElement(ProcessContext c) {
-                    Ddl ddl = c.element();
-                    for (Udf udf : ddl.udfs()) {
-                      c.output(udf.specificName());
+                    String tableNamesVal = tableNames.get();
+                    if (tableNamesVal == null || tableNamesVal.trim().isEmpty()) {
+                      Ddl ddl = c.element();
+                      for (Udf udf : ddl.udfs()) {
+                        c.output(udf.specificName());
+                      }
                     }
                   }
                 }));
