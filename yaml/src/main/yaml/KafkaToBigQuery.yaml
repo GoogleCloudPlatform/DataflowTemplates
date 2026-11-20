@@ -62,7 +62,12 @@ pipeline:
         format: {{ format  | default('JSON') }}
         topic: {{ topic }}
         bootstrap_servers: {{ bootstrapServers }}
+        confluent_schema_registry_subject: {{ confluentSchemaRegistrySubject }}
+        confluent_schema_registry_url: {{ confluentSchemaRegistryUrl }}
+        consumer_config: {{ consumerConfigUpdates }}
+        file_descriptor_path: {{ fileDescriptorPath }}
         max_read_time_seconds: {{ maxReadTimeSeconds }}
+        message_name: {{ messageName }}
         auto_offset_reset_config: {{ autoOffsetResetConfig | default('earliest') }}
         error_handling:
           output: errors
