@@ -822,6 +822,78 @@ public class DdlTest {
   }
 
   @Test
+  public void testArrayPartitionedSearchIndex() {
+    Index.Builder builder =
+        Index.builder(Dialect.GOOGLE_STANDARD_SQL)
+            .name("SearchIndex")
+            .type("SEARCH")
+            .table("Messages")
+            .interleaveIn("Users")
+            .unnest(ImmutableList.of("Receivers Receiver"))
+            .partitionBy(ImmutableList.of("Receiver"))
+            .options(ImmutableList.of("sort_order_sharding=TRUE"));
+    builder
+        .columns()
+        .create()
+        .name("Subject_Tokens")
+        .none()
+        .endIndexColumn()
+        .create()
+        .name("Body_Tokens")
+        .none()
+        .endIndexColumn()
+        .create()
+        .name("Data")
+        .storing()
+        .endIndexColumn()
+        .end();
+    Index index = builder.build();
+    assertThat(
+        index.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE SEARCH INDEX `SearchIndex` ON `Messages`(`Subject_Tokens` , `Body_Tokens` )"
+                + " UNNEST(`Receivers`) AS `Receiver` STORING (`Data`) PARTITION BY `Receiver`,"
+                + " INTERLEAVE IN `Users` OPTIONS (sort_order_sharding=TRUE)"));
+  }
+
+  @Test
+  public void testpgArrayPartitionedSearchIndex() {
+    Index.Builder builder =
+        Index.builder(Dialect.POSTGRESQL)
+            .name("SearchIndex")
+            .type("SEARCH")
+            .table("Messages")
+            .interleaveIn("Users")
+            .unnest(ImmutableList.of("receivers receiver", "bccs bcc"))
+            .partitionBy(ImmutableList.of("receiver", "bcc"))
+            .orderBy(ImmutableList.of("orderid"))
+            .options(ImmutableList.of("sort_order_sharding=TRUE"));
+    builder
+        .columns()
+        .create()
+        .name("subject_tokens")
+        .none()
+        .endIndexColumn()
+        .create()
+        .name("body_tokens")
+        .none()
+        .endIndexColumn()
+        .create()
+        .name("data")
+        .storing()
+        .endIndexColumn()
+        .end();
+    Index index = builder.build();
+    assertThat(
+        index.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE SEARCH INDEX \"SearchIndex\" ON \"Messages\"(\"subject_tokens\" ,"
+                + " \"body_tokens\" ) UNNEST(\"receivers\") AS \"receiver\", UNNEST(\"bccs\") AS"
+                + " \"bcc\" INCLUDE (\"data\") PARTITION BY \"receiver\",\"bcc\" ORDER BY"
+                + " \"orderid\" INTERLEAVE IN \"Users\" WITH (sort_order_sharding=TRUE)"));
+  }
+
+  @Test
   public void testVectorIndex() {
     Index.Builder builder =
         Index.builder(Dialect.GOOGLE_STANDARD_SQL)
