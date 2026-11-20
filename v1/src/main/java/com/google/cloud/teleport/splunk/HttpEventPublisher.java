@@ -54,6 +54,7 @@ import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Joiner;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableList;
 import org.apache.http.client.config.CookieSpecs;
 import org.apache.http.client.config.RequestConfig;
+import org.apache.http.config.SocketConfig;
 import org.apache.http.conn.ssl.DefaultHostnameVerifier;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
@@ -76,6 +77,10 @@ public abstract class HttpEventPublisher {
   private static final int DEFAULT_MAX_CONNECTIONS = 1;
 
   private static final boolean DEFAULT_DISABLE_CERTIFICATE_VALIDATION = false;
+
+  @VisibleForTesting protected static final int DEFAULT_SOCKET_TIMEOUT = 5000;
+
+  @VisibleForTesting protected static final int DEFAULT_CONNECT_TIMEOUT = 5000;
 
   private static final Gson GSON =
       new GsonBuilder().setFieldNamingStrategy(f -> f.getName().toLowerCase()).create();
@@ -346,7 +351,13 @@ public abstract class HttpEventPublisher {
               DEFAULT_MAX_CONNECTIONS, disableCertificateValidation(), rootCaCertificate());
 
       setTransport(new ApacheHttpTransport(httpClient));
-      setRequestFactory(transport().createRequestFactory());
+      setRequestFactory(
+          transport()
+              .createRequestFactory(
+                  request -> {
+                    request.setConnectTimeout(DEFAULT_CONNECT_TIMEOUT);
+                    request.setReadTimeout(DEFAULT_SOCKET_TIMEOUT);
+                  }));
 
       return autoBuild();
     }
@@ -410,8 +421,14 @@ public abstract class HttpEventPublisher {
       }
 
       builder.setMaxConnTotal(maxConnections);
+      builder.setDefaultSocketConfig(
+          SocketConfig.custom().setSoTimeout(DEFAULT_SOCKET_TIMEOUT).build());
       builder.setDefaultRequestConfig(
-          RequestConfig.custom().setCookieSpec(CookieSpecs.STANDARD).build());
+          RequestConfig.custom()
+              .setCookieSpec(CookieSpecs.STANDARD)
+              .setSocketTimeout(DEFAULT_SOCKET_TIMEOUT)
+              .setConnectTimeout(DEFAULT_CONNECT_TIMEOUT)
+              .build());
 
       return builder.build();
     }
