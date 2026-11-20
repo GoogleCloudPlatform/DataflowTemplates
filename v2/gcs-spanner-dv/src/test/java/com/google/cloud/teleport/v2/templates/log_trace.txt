@@ -1,0 +1,245 @@
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 0, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] 
+[INFO] --- jacoco:0.8.13:report (default-report) @ sourcedb-to-spanner ---
+[INFO] Skipping JaCoCo execution because property jacoco.skip is set.
+[INFO] 
+[INFO] --- jar:3.5.0:jar (default-jar) @ sourcedb-to-spanner ---
+[INFO] Building jar: /home/runner/actions-runner/_work/DataflowTemplates/DataflowTemplates/v2/sourcedb-to-spanner/target/sourcedb-to-spanner-1.0-SNAPSHOT.jar
+[INFO] 
+[INFO] --- dependency:3.10.0:copy-dependencies (copy-dependencies) @ sourcedb-to-spanner ---
+[INFO] org.conscrypt:conscrypt-openjdk-uber:jar:2.5.2 already exists in destination.
+[INFO] 
+[INFO] --- dependency:3.10.0:analyze-only (analyze-dependencies) @ sourcedb-to-spanner ---
+[INFO] Skipping plugin execution
+[INFO] 
+[INFO] >>> source:3.4.0:jar (attach-sources) > generate-sources @ sourcedb-to-spanner >>>
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (enforce) @ sourcedb-to-spanner ---
+[INFO] Rule 0: org.codehaus.mojo.extraenforcer.dependencies.EnforceBytecodeVersion passed
+[INFO] 
+[INFO] --- enforcer:3.6.2:enforce (enforce-banned-dependencies) @ sourcedb-to-spanner ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.dependency.BannedDependencies passed
+[INFO] 
+[INFO] --- jacoco:0.8.13:prepare-agent (default-prepare-agent) @ sourcedb-to-spanner ---
+[INFO] Skipping JaCoCo execution because property jacoco.skip is set.
+[INFO] 
+[INFO] --- protobuf:0.6.1:compile (default) @ sourcedb-to-spanner ---
+[INFO] /home/runner/actions-runner/_work/DataflowTemplates/DataflowTemplates/v2/sourcedb-to-spanner/src/main/proto does not exist. Review the configuration or consider disabling the plugin.
+[INFO] 
+[INFO] <<< source:3.4.0:jar (attach-sources) < generate-sources @ sourcedb-to-spanner <<<
+[INFO] 
+[INFO] 
+[INFO] --- source:3.4.0:jar (attach-sources) @ sourcedb-to-spanner ---
+[INFO] Building jar: /home/runner/actions-runner/_work/DataflowTemplates/DataflowTemplates/v2/sourcedb-to-spanner/target/sourcedb-to-spanner-1.0-SNAPSHOT-sources.jar
+[INFO] 
+[INFO] --- shade:3.6.2:shade (bundle-and-repackage) @ sourcedb-to-spanner ---
+[INFO] Running com.google.cloud.teleport.v2.templates.GCSSpannerDVCoreMatchingIT
+SLF4J(W): Class path contains multiple SLF4J providers.
+SLF4J(W): Found provider [org.slf4j.simple.SimpleServiceProvider@32c4a6d9]
+SLF4J(W): Found provider [ch.qos.logback.classic.spi.LogbackServiceProvider@1aaf1a5d]
+SLF4J(W): See https://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J(I): Actual provider is of type [org.slf4j.simple.SimpleServiceProvider@32c4a6d9]
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.TemplateTestBase - Starting integration test com.google.cloud.teleport.v2.templates.GCSSpannerDVCoreMatchingIT.validationTestWithMatchingAndMismatchedRecords
+[pool-3-thread-2] INFO com.google.cloud.teleport.v2.templates.GCSSpannerDVCoreMatchingIT - Setting up Spanner and BigQuery resources
+Jul 26, 2026 12:28:16 PM com.google.cloud.grpc.GcpManagedChannel initMetrics
+INFO: pool-1: OpenTelemetry meter detected. Using OpenTelemetry metrics.
+Jul 26, 2026 12:28:17 PM com.google.cloud.grpc.GcpManagedChannel initMetrics
+INFO: pool-2: OpenTelemetry meter detected. Using OpenTelemetry metrics.
+Jul 26, 2026 12:28:17 PM io.grpc.netty.shaded.io.grpc.netty.TcpMetrics loadEpollInfo
+INFO: Epoll available during static init of TcpMetrics:true
+Jul 26, 2026 12:28:17 PM com.google.cloud.grpc.GcpManagedChannel initMetrics
+INFO: pool-3: OpenTelemetry meter detected. Using OpenTelemetry metrics.
+Jul 26, 2026 12:28:17 PM com.google.cloud.spanner.SpannerImpl logSpannerOptions
+INFO: Spanner options: 
+Project ID: span-cloud-teleport-testing
+Host: https://batch-spanner.googleapis.com
+Num gRPC channels: 8
+Leader aware routing enabled: true
+Direct access enabled: false
+Active Tracing Framework: OPEN_CENSUS
+API tracing enabled: false
+Extended tracing enabled: false
+End to end tracing enabled: false
+Built-in metrics enabled: true
+Jul 26, 2026 12:28:17 PM com.google.cloud.spanner.SpannerImpl logSpannerOptions
+INFO: Session pool options (deprecated, no longer used): 
+Session pool min sessions: 100
+Session pool max sessions: 400
+Multiplexed sessions enabled: true
+Multiplexed sessions enabled for RW: true
+Multiplexed sessions enabled for blind write: true
+Multiplexed sessions enabled for partitioned ops: true
+Jul 26, 2026 12:28:17 PM com.google.cloud.grpc.GcpManagedChannel initMetrics
+INFO: pool-4: OpenTelemetry meter detected. Using OpenTelemetry metrics.
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.bigquery.BigQueryResourceManager - Creating dataset validationtestwithmatchingandmismatchedrecords_20260726_122817_a3sxy5 in project span-cloud-teleport-testing.
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.bigquery.BigQueryResourceManager - Dataset validationtestwithmatchingandmismatchedrecords_20260726_122817_a3sxy5 created successfully
+[pool-3-thread-2] INFO com.google.cloud.teleport.v2.templates.GCSSpannerDVCoreMatchingIT - BigQuery dataset created
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.spanner.SpannerResourceManager - Not creating Spanner instance - reusing static teleport1
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.spanner.SpannerResourceManager - Creating database validat_20260726_122817_pxukqn in instance teleport1.
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.spanner.SpannerResourceManager - Successfully created database validat_20260726_122817_pxukqn: READY.
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.spanner.SpannerResourceManager - Executing DDL statements '[CREATE TABLE Users (
+    user_id INT64 NOT NULL,
+    event_id STRING(MAX) NOT NULL,
+    full_name STRING(MAX),
+    age INT64,
+    created_at TIMESTAMP
+) PRIMARY KEY (user_id, event_id), CREATE TABLE AccountRoles (
+    role_id INT64 NOT NULL,
+    role_name STRING(MAX)
+) PRIMARY KEY (role_id)]' on database validat_20260726_122817_pxukqn.
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.spanner.SpannerResourceManager - Successfully executed DDL statements '[CREATE TABLE Users (
+    user_id INT64 NOT NULL,
+    event_id STRING(MAX) NOT NULL,
+    full_name STRING(MAX),
+    age INT64,
+    created_at TIMESTAMP
+) PRIMARY KEY (user_id, event_id), CREATE TABLE AccountRoles (
+    role_id INT64 NOT NULL,
+    role_name STRING(MAX)
+) PRIMARY KEY (role_id)]' on database validat_20260726_122817_pxukqn.
+[pool-3-thread-2] INFO com.google.cloud.teleport.v2.templates.GCSSpannerDVCoreMatchingIT - Spanner instance created
+[pool-3-thread-2] INFO com.google.cloud.teleport.v2.templates.GCSSpannerDVCoreMatchingIT - Generating and Uploading Avro Records to GCS
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.storage.GcsResourceManager - Uploading '/tmp/test-avro-14217737169310825961.avro' to file 'input/users.avro' under 'GCSSpannerDVCoreMatchingIT/20260726-be56ffd8-4c29-4734-870f-041f5a7b3f5b'
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.storage.GcsResourceManager - Uploading 811 bytes to 'GCSSpannerDVCoreMatchingIT/20260726-be56ffd8-4c29-4734-870f-041f5a7b3f5b/input/users.avro' under bucket 'span-cloud-teleport-testing-it-gitactions'
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.storage.GcsResourceManager - Successfully uploaded 811 bytes to 'GCSSpannerDVCoreMatchingIT/20260726-be56ffd8-4c29-4734-870f-041f5a7b3f5b/input/users.avro' under bucket 'span-cloud-teleport-testing-it-gitactions'
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.storage.GcsResourceManager - Uploading '/tmp/test-avro-3674847094176741624.avro' to file 'input/roles.avro' under 'GCSSpannerDVCoreMatchingIT/20260726-be56ffd8-4c29-4734-870f-041f5a7b3f5b'
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.storage.GcsResourceManager - Uploading 546 bytes to 'GCSSpannerDVCoreMatchingIT/20260726-be56ffd8-4c29-4734-870f-041f5a7b3f5b/input/roles.avro' under bucket 'span-cloud-teleport-testing-it-gitactions'
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.storage.GcsResourceManager - Successfully uploaded 546 bytes to 'GCSSpannerDVCoreMatchingIT/20260726-be56ffd8-4c29-4734-870f-041f5a7b3f5b/input/roles.avro' under bucket 'span-cloud-teleport-testing-it-gitactions'
+[pool-3-thread-2] INFO com.google.cloud.teleport.v2.templates.GCSSpannerDVCoreMatchingIT - Injecting Spanner records
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.spanner.SpannerResourceManager - Sending 6 mutations to teleport1.validat_20260726_122817_pxukqn
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.spanner.SpannerResourceManager - Successfully sent mutations to teleport1.validat_20260726_122817_pxukqn
+[pool-3-thread-2] INFO com.google.cloud.teleport.v2.templates.GCSSpannerDVCoreMatchingIT - Launching Dataflow validation job
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.dataflow.DirectRunnerClient - Getting ready to launch validation-test-with-matching-and-mismatched-records-20260726122937574-6mrznzbx in us-central1 under span-cloud-teleport-testing
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.dataflow.DirectRunnerClient - Using parameters:
+{
+  "tempLocation": "gs://span-cloud-teleport-testing-it-gitactions/temp/",
+  "instanceId": "teleport1",
+  "workerMachineType": "n2-standard-4",
+  "bigQueryDataset": "validationtestwithmatchingandmismatchedrecords_20260726_122817_a3sxy5",
+  "runId": "validation-test-with-matching-and-mismatched-records-20260726122937574",
+  "databaseId": "validat_20260726_122817_pxukqn",
+  "projectId": "span-cloud-teleport-testing",
+  "gcsInputDirectory": "gs://span-cloud-teleport-testing-it-gitactions/GCSSpannerDVCoreMatchingIT/20260726-be56ffd8-4c29-4734-870f-041f5a7b3f5b/input"
+}
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.TemplateTestBase - Dataflow Console link for validationTestWithMatchingAndMismatchedRecords: https://console.cloud.google.com/dataflow/jobs/us-central1/direct-2026-07-26_12_29_37-1785068977618?project=span-cloud-teleport-testing
+[Thread-25] INFO org.apache.beam.it.gcp.dataflow.DirectRunnerClient - Starting job direct-2026-07-26_12_29_37-1785068977618...
+[pool-3-thread-2] INFO org.apache.beam.it.common.PipelineOperator - Job direct-2026-07-26_12_29_37-1785068977618 is in state JOB_STATE_RUNNING
+[pool-3-thread-2] INFO org.apache.beam.it.common.PipelineOperator - Job not finished and conditions not met. Will check again in 5 seconds (total wait: 0s of max 240s)
+[pool-3-thread-2] INFO org.apache.beam.it.common.PipelineOperator - Job direct-2026-07-26_12_29_37-1785068977618 is in state JOB_STATE_RUNNING
+[pool-3-thread-2] INFO org.apache.beam.it.common.PipelineOperator - Job direct-2026-07-26_12_29_37-1785068977618 is in state JOB_STATE_RUNNING
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor - Connecting to SpannerConfig{projectId=span-cloud-teleport-testing, instanceId=teleport1, databaseId=validat_20260726_122817_pxukqn, host=https://batch-spanner.googleapis.com, emulatorHost=null, experimentalHost=null, isLocalChannelProvider=null, commitDeadline=PT15S, maxCumulativeBackoff=PT900S, executeStreamingSqlRetrySettings=null, commitRetrySettings=null, retryableCodes=null, rpcPriority=HIGH, maxCommitDelay=null, databaseRole=null, partitionQueryTimeout=null, partitionReadTimeout=null, plainText=null, clientCertPath=null, clientCertKeyPath=null, serviceFactory=null, dataBoostEnabled=null, credentials=null, waitForSessionCreationDuration=null}
+Jul 26, 2026 12:29:48 PM com.google.cloud.spanner.SpannerImpl logSpannerOptions
+INFO: Spanner options: 
+Project ID: span-cloud-teleport-testing
+Host: https://batch-spanner.googleapis.com
+Num gRPC channels: 4
+Leader aware routing enabled: true
+Direct access enabled: false
+Active Tracing Framework: OPEN_CENSUS
+API tracing enabled: false
+Extended tracing enabled: false
+End to end tracing enabled: false
+Built-in metrics enabled: true
+Jul 26, 2026 12:29:48 PM com.google.cloud.spanner.SpannerImpl logSpannerOptions
+INFO: Session pool options (deprecated, no longer used): 
+Session pool min sessions: 100
+Session pool max sessions: 400
+Multiplexed sessions enabled: true
+Multiplexed sessions enabled for RW: true
+Multiplexed sessions enabled for blind write: true
+Multiplexed sessions enabled for partitioned ops: true
+[direct-runner-worker] INFO org.apache.beam.sdk.io.FileIO - Matched 2 files for pattern gs://span-cloud-teleport-testing-it-gitactions/GCSSpannerDVCoreMatchingIT/20260726-be56ffd8-4c29-4734-870f-041f5a7b3f5b/input/**.avro
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.bigquery.BatchLoads - Writing BigQuery temporary files to gs://span-cloud-teleport-testing-it-gitactions/temp/BigQueryWriteTemp/beam_bq_job_LOAD_gcsspannerdvrunner0726122948c9fc05ce_21f68071f0ef4157837b9793733d2d7b/ before loading them.
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.bigquery.BatchLoads - Writing BigQuery temporary files to gs://span-cloud-teleport-testing-it-gitactions/temp/BigQueryWriteTemp/beam_bq_job_LOAD_gcsspannerdvrunner07261229485a2b99a3_2275d8c8ab1b4248805d8ae888a0f13b/ before loading them.
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor - Successfully connected to SpannerConfig{projectId=span-cloud-teleport-testing, instanceId=teleport1, databaseId=validat_20260726_122817_pxukqn, host=https://batch-spanner.googleapis.com, emulatorHost=null, experimentalHost=null, isLocalChannelProvider=null, commitDeadline=PT15S, maxCumulativeBackoff=PT900S, executeStreamingSqlRetrySettings=null, commitRetrySettings=null, retryableCodes=null, rpcPriority=HIGH, maxCommitDelay=null, databaseRole=null, partitionQueryTimeout=null, partitionReadTimeout=null, plainText=null, clientCertPath=null, clientCertKeyPath=null, serviceFactory=null, dataBoostEnabled=null, credentials=null, waitForSessionCreationDuration=null}
+[direct-runner-worker] INFO com.google.cloud.teleport.v2.spanner.ddl.InformationSchemaScanner - spanner ddl: CREATE TABLE `AccountRoles` (
+	`role_id`                               INT64 NOT NULL,
+	`role_name`                             STRING(MAX),
+) PRIMARY KEY (`role_id` ASC)
+
+
+CREATE TABLE `Users` (
+	`user_id`                               INT64 NOT NULL,
+	`event_id`                              STRING(MAX) NOT NULL,
+	`full_name`                             STRING(MAX),
+	`age`                                   INT64,
+	`created_at`                            TIMESTAMP,
+) PRIMARY KEY (`user_id` ASC, `event_id` ASC)
+
+
+[direct-runner-worker] INFO com.google.cloud.teleport.v2.fn.SchemaMapperProviderFn - Using IdentityMapper
+[direct-runner-worker] INFO com.google.cloud.teleport.v2.fn.SchemaMapperProviderFn - Using IdentityMapper
+[direct-runner-worker] INFO com.google.cloud.teleport.v2.spanner.ddl.annotations.cassandra.CassandraAnnotations - Cassandra Type for column user_id is [], Annotation is CassandraAnnotations{cassandraType=CassandraType{none}}
+[direct-runner-worker] INFO com.google.cloud.teleport.v2.spanner.ddl.annotations.cassandra.CassandraAnnotations - Cassandra Type for column role_id is [], Annotation is CassandraAnnotations{cassandraType=CassandraType{none}}
+[direct-runner-worker] INFO com.google.cloud.teleport.v2.spanner.ddl.annotations.cassandra.CassandraAnnotations - Cassandra Type for column role_name is [], Annotation is CassandraAnnotations{cassandraType=CassandraType{none}}
+[direct-runner-worker] INFO com.google.cloud.teleport.v2.spanner.ddl.annotations.cassandra.CassandraAnnotations - Cassandra Type for column event_id is [], Annotation is CassandraAnnotations{cassandraType=CassandraType{none}}
+[direct-runner-worker] INFO com.google.cloud.teleport.v2.spanner.ddl.annotations.cassandra.CassandraAnnotations - Cassandra Type for column full_name is [], Annotation is CassandraAnnotations{cassandraType=CassandraType{none}}
+[direct-runner-worker] INFO com.google.cloud.teleport.v2.spanner.ddl.annotations.cassandra.CassandraAnnotations - Cassandra Type for column age is [], Annotation is CassandraAnnotations{cassandraType=CassandraType{none}}
+[direct-runner-worker] INFO com.google.cloud.teleport.v2.spanner.ddl.annotations.cassandra.CassandraAnnotations - Cassandra Type for column created_at is [], Annotation is CassandraAnnotations{cassandraType=CassandraType{none}}
+[direct-runner-worker] INFO com.google.cloud.teleport.v2.fn.SchemaMapperProviderFn - Using IdentityMapper
+[direct-runner-worker] INFO com.google.cloud.teleport.v2.fn.SchemaMapperProviderFn - Using IdentityMapper
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.bigquery.BigQueryRowWriter - Opening TableRowWriter to gs://span-cloud-teleport-testing-it-gitactions/temp/BigQueryWriteTemp/beam_bq_job_LOAD_gcsspannerdvrunner07261229485a2b99a3_2275d8c8ab1b4248805d8ae888a0f13b/2a8a365a-95f5-4042-988a-553e3db45a52.
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.bigquery.BigQueryRowWriter - Opening TableRowWriter to gs://span-cloud-teleport-testing-it-gitactions/temp/BigQueryWriteTemp/beam_bq_job_LOAD_gcsspannerdvrunner07261229485a2b99a3_2275d8c8ab1b4248805d8ae888a0f13b/4c548004-f22e-4ecd-87a6-17a2a45c400d.
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.bigquery.BigQueryRowWriter - Opening TableRowWriter to gs://span-cloud-teleport-testing-it-gitactions/temp/BigQueryWriteTemp/beam_bq_job_LOAD_gcsspannerdvrunner07261229485a2b99a3_2275d8c8ab1b4248805d8ae888a0f13b/7b91a382-36c8-4bd5-90c8-ab6643e0942d.
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.bigquery.BigQueryRowWriter - Opening TableRowWriter to gs://span-cloud-teleport-testing-it-gitactions/temp/BigQueryWriteTemp/beam_bq_job_LOAD_gcsspannerdvrunner07261229485a2b99a3_2275d8c8ab1b4248805d8ae888a0f13b/81bee7dd-d17d-4d2b-8da0-88b98f5636b1.
+[direct-runner-worker] WARN org.apache.beam.sdk.util.MutationDetectors - Coder of type class org.apache.beam.sdk.coders.KvCoder has a #structuralValue method which does not return true when the encoding of the elements is equal. Element KV{null, com.google.cloud.teleport.v2.dto.ValidationSummaryAccumulator@1a717b46}
+[direct-runner-worker] WARN org.apache.beam.sdk.util.MutationDetectors - Coder of type class org.apache.beam.sdk.coders.KvCoder has a #structuralValue method which does not return true when the encoding of the elements is equal. Element KV{null, com.google.cloud.teleport.v2.dto.ValidationSummaryAccumulator@66c7d25e}
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.bigquery.BigQueryRowWriter - Opening TableRowWriter to gs://span-cloud-teleport-testing-it-gitactions/temp/BigQueryWriteTemp/beam_bq_job_LOAD_gcsspannerdvrunner0726122948c9fc05ce_21f68071f0ef4157837b9793733d2d7b/1b704622-24a2-4a71-a145-045be9a169c3.
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.bigquery.BigQueryRowWriter - Opening TableRowWriter to gs://span-cloud-teleport-testing-it-gitactions/temp/BigQueryWriteTemp/beam_bq_job_LOAD_gcsspannerdvrunner0726122948c9fc05ce_21f68071f0ef4157837b9793733d2d7b/d0f8fcb0-76e7-4ca1-8d38-c0853e7c53d4.
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.bigquery.BigQueryServicesImpl - Trying to create BigQuery table: span-cloud-teleport-testing:validationtestwithmatchingandmismatchedrecords_20260726_122817_a3sxy5.ValidationSummary
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.bigquery.BigQueryHelpers - Job beam_bq_job_LOAD_gcsspannerdvrunner0726122948c9fc05ce_21f68071f0ef4157837b9793733d2d7b_d1294d1d6593e088e0e66249018b01c0_00001_00000-0 pending. retrying.
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.bigquery.BigQueryHelpers - Job beam_bq_job_LOAD_gcsspannerdvrunner07261229485a2b99a3_2275d8c8ab1b4248805d8ae888a0f13b_66d84893371661872d0d9f453e88876e_00001_00000-0 pending. retrying.
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.bigquery.WriteTables - Loading 4 files into GenericData{classInfo=[datasetId, projectId, tableId], {datasetId=validationtestwithmatchingandmismatchedrecords_20260726_122817_a3sxy5, projectId=span-cloud-teleport-testing, tableId=MismatchedRecords}} using job GenericData{classInfo=[jobId, location, projectId], {jobId=beam_bq_job_LOAD_gcsspannerdvrunner07261229485a2b99a3_2275d8c8ab1b4248805d8ae888a0f13b_66d84893371661872d0d9f453e88876e_00001_00000-0, location=us-central1, projectId=span-cloud-teleport-testing}}, job id iteration 0
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.bigquery.BigQueryServicesImpl - Started BigQuery job: GenericData{classInfo=[jobId, location, projectId], {jobId=beam_bq_job_LOAD_gcsspannerdvrunner07261229485a2b99a3_2275d8c8ab1b4248805d8ae888a0f13b_66d84893371661872d0d9f453e88876e_00001_00000-0, location=us-central1, projectId=span-cloud-teleport-testing}}.
+bq show -j --format=prettyjson --project_id=span-cloud-teleport-testing beam_bq_job_LOAD_gcsspannerdvrunner07261229485a2b99a3_2275d8c8ab1b4248805d8ae888a0f13b_66d84893371661872d0d9f453e88876e_00001_00000-0
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.bigquery.BigQueryHelpers - job beam_bq_job_LOAD_gcsspannerdvrunner07261229485a2b99a3_2275d8c8ab1b4248805d8ae888a0f13b_66d84893371661872d0d9f453e88876e_00001_00000-0 started
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.bigquery.BigQueryServicesImpl - Still waiting for BigQuery job beam_bq_job_LOAD_gcsspannerdvrunner07261229485a2b99a3_2275d8c8ab1b4248805d8ae888a0f13b_66d84893371661872d0d9f453e88876e_00001_00000-0, currently in status {"state":"RUNNING"}
+bq show -j --format=prettyjson --project_id=span-cloud-teleport-testing beam_bq_job_LOAD_gcsspannerdvrunner07261229485a2b99a3_2275d8c8ab1b4248805d8ae888a0f13b_66d84893371661872d0d9f453e88876e_00001_00000-0
+[pool-3-thread-2] INFO org.apache.beam.it.common.PipelineOperator - Job direct-2026-07-26_12_29_37-1785068977618 is in state JOB_STATE_RUNNING
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.bigquery.WriteTables - Loading 2 files into GenericData{classInfo=[datasetId, projectId, tableId], {datasetId=validationtestwithmatchingandmismatchedrecords_20260726_122817_a3sxy5, projectId=span-cloud-teleport-testing, tableId=TableValidationStats}} using job GenericData{classInfo=[jobId, location, projectId], {jobId=beam_bq_job_LOAD_gcsspannerdvrunner0726122948c9fc05ce_21f68071f0ef4157837b9793733d2d7b_d1294d1d6593e088e0e66249018b01c0_00001_00000-0, location=us-central1, projectId=span-cloud-teleport-testing}}, job id iteration 0
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.bigquery.BigQueryServicesImpl - Started BigQuery job: GenericData{classInfo=[jobId, location, projectId], {jobId=beam_bq_job_LOAD_gcsspannerdvrunner0726122948c9fc05ce_21f68071f0ef4157837b9793733d2d7b_d1294d1d6593e088e0e66249018b01c0_00001_00000-0, location=us-central1, projectId=span-cloud-teleport-testing}}.
+bq show -j --format=prettyjson --project_id=span-cloud-teleport-testing beam_bq_job_LOAD_gcsspannerdvrunner0726122948c9fc05ce_21f68071f0ef4157837b9793733d2d7b_d1294d1d6593e088e0e66249018b01c0_00001_00000-0
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.bigquery.BigQueryHelpers - job beam_bq_job_LOAD_gcsspannerdvrunner0726122948c9fc05ce_21f68071f0ef4157837b9793733d2d7b_d1294d1d6593e088e0e66249018b01c0_00001_00000-0 started
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.bigquery.BigQueryServicesImpl - Still waiting for BigQuery job beam_bq_job_LOAD_gcsspannerdvrunner0726122948c9fc05ce_21f68071f0ef4157837b9793733d2d7b_d1294d1d6593e088e0e66249018b01c0_00001_00000-0, currently in status {"state":"RUNNING"}
+bq show -j --format=prettyjson --project_id=span-cloud-teleport-testing beam_bq_job_LOAD_gcsspannerdvrunner0726122948c9fc05ce_21f68071f0ef4157837b9793733d2d7b_d1294d1d6593e088e0e66249018b01c0_00001_00000-0
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.bigquery.BigQueryServicesImpl - Still waiting for BigQuery job beam_bq_job_LOAD_gcsspannerdvrunner07261229485a2b99a3_2275d8c8ab1b4248805d8ae888a0f13b_66d84893371661872d0d9f453e88876e_00001_00000-0, currently in status {"state":"RUNNING"}
+bq show -j --format=prettyjson --project_id=span-cloud-teleport-testing beam_bq_job_LOAD_gcsspannerdvrunner07261229485a2b99a3_2275d8c8ab1b4248805d8ae888a0f13b_66d84893371661872d0d9f453e88876e_00001_00000-0
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.bigquery.BigQueryServicesImpl - Still waiting for BigQuery job beam_bq_job_LOAD_gcsspannerdvrunner0726122948c9fc05ce_21f68071f0ef4157837b9793733d2d7b_d1294d1d6593e088e0e66249018b01c0_00001_00000-0, currently in status {"state":"RUNNING"}
+bq show -j --format=prettyjson --project_id=span-cloud-teleport-testing beam_bq_job_LOAD_gcsspannerdvrunner0726122948c9fc05ce_21f68071f0ef4157837b9793733d2d7b_d1294d1d6593e088e0e66249018b01c0_00001_00000-0
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.bigquery.BigQueryServicesImpl - BigQuery job GenericData{classInfo=[jobId, location, projectId], {jobId=beam_bq_job_LOAD_gcsspannerdvrunner07261229485a2b99a3_2275d8c8ab1b4248805d8ae888a0f13b_66d84893371661872d0d9f453e88876e_00001_00000-0, location=us-central1, projectId=span-cloud-teleport-testing}} completed in state DONE
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.bigquery.BigQueryHelpers - Load job beam_bq_job_LOAD_gcsspannerdvrunner07261229485a2b99a3_2275d8c8ab1b4248805d8ae888a0f13b_66d84893371661872d0d9f453e88876e_00001_00000-0 succeeded. Statistics: {"completionRatio":0.0,"creationTime":"1785068992300","endTime":"1785068994108","finalExecutionDurationMs":"907","load":{"badRecords":"0","inputFileBytes":"1110","inputFiles":"4","outputBytes":"670","outputRows":"4","timeline":[{"activeUnits":"1","completedUnits":"0","elapsedMs":"556","estimatedRunnableUnits":"0","pendingUnits":"1","totalSlotMs":"623"},{"completedUnits":"1","elapsedMs":"1082","estimatedRunnableUnits":"0","pendingUnits":"0","totalSlotMs":"623"}]},"reservation_id":"default-pipeline","startTime":"1785068992444","totalSlotMs":"623"}
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.bigquery.BigQueryHelpers - Job beam_bq_job_LOAD_gcsspannerdvrunner07261229485a2b99a3_2275d8c8ab1b4248805d8ae888a0f13b_66d84893371661872d0d9f453e88876e_00001_00000-0 completed successfully.
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.bigquery.BigQueryServicesImpl - BigQuery job GenericData{classInfo=[jobId, location, projectId], {jobId=beam_bq_job_LOAD_gcsspannerdvrunner0726122948c9fc05ce_21f68071f0ef4157837b9793733d2d7b_d1294d1d6593e088e0e66249018b01c0_00001_00000-0, location=us-central1, projectId=span-cloud-teleport-testing}} completed in state DONE
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.bigquery.BigQueryHelpers - Load job beam_bq_job_LOAD_gcsspannerdvrunner0726122948c9fc05ce_21f68071f0ef4157837b9793733d2d7b_d1294d1d6593e088e0e66249018b01c0_00001_00000-0 succeeded. Statistics: {"creationTime":"1785068992841","endTime":"1785068994418","finalExecutionDurationMs":"677","load":{"badRecords":"0","inputFileBytes":"652","inputFiles":"2","outputBytes":"278","outputRows":"2","timeline":[{"completedUnits":"1","elapsedMs":"842","estimatedRunnableUnits":"0","pendingUnits":"0","shuffleRamUsageRatio":3.0517578125E-5,"totalSlotMs":"503"}]},"reservation_id":"default-pipeline","startTime":"1785068992984","totalSlotMs":"503"}
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.bigquery.BigQueryHelpers - Job beam_bq_job_LOAD_gcsspannerdvrunner0726122948c9fc05ce_21f68071f0ef4157837b9793733d2d7b_d1294d1d6593e088e0e66249018b01c0_00001_00000-0 completed successfully.
+[direct-runner-worker] INFO org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor - Closing SpannerConfig{projectId=span-cloud-teleport-testing, instanceId=teleport1, databaseId=validat_20260726_122817_pxukqn, host=https://batch-spanner.googleapis.com, emulatorHost=null, experimentalHost=null, isLocalChannelProvider=null, commitDeadline=PT15S, maxCumulativeBackoff=PT900S, executeStreamingSqlRetrySettings=null, commitRetrySettings=null, retryableCodes=null, rpcPriority=HIGH, maxCommitDelay=null, databaseRole=null, partitionQueryTimeout=null, partitionReadTimeout=null, plainText=null, clientCertPath=null, clientCertKeyPath=null, serviceFactory=null, dataBoostEnabled=null, credentials=null, waitForSessionCreationDuration=null} 
+[pool-3-thread-2] INFO org.apache.beam.it.common.PipelineOperator - Job direct-2026-07-26_12_29_37-1785068977618 is in state JOB_STATE_DONE
+[pool-3-thread-2] INFO org.apache.beam.it.common.PipelineOperator - Detected that launch was finished, checking conditions once more.
+[pool-3-thread-2] INFO org.apache.beam.it.common.PipelineOperator - Launch was finished, stop checking.
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.bigquery.BigQueryResourceManager - Reading all rows from validationtestwithmatchingandmismatchedrecords_20260726_122817_a3sxy5.ValidationSummary
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.bigquery.BigQueryResourceManager - Loaded 1 rows from SELECT TO_JSON_STRING(t) FROM `span-cloud-teleport-testing.validationtestwithmatchingandmismatchedrecords_20260726_122817_a3sxy5.ValidationSummary` AS t;
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.bigquery.BigQueryResourceManager - Reading all rows from validationtestwithmatchingandmismatchedrecords_20260726_122817_a3sxy5.TableValidationStats
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.bigquery.BigQueryResourceManager - Loaded 2 rows from SELECT TO_JSON_STRING(t) FROM `span-cloud-teleport-testing.validationtestwithmatchingandmismatchedrecords_20260726_122817_a3sxy5.TableValidationStats` AS t;
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.bigquery.BigQueryResourceManager - Reading all rows from validationtestwithmatchingandmismatchedrecords_20260726_122817_a3sxy5.MismatchedRecords
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.bigquery.BigQueryResourceManager - Loaded 4 rows from SELECT TO_JSON_STRING(t) FROM `span-cloud-teleport-testing.validationtestwithmatchingandmismatchedrecords_20260726_122817_a3sxy5.MismatchedRecords` AS t;
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.TemplateTestBase - Invoking tearDownBase cleanups for validationTestWithMatchingAndMismatchedRecords - test-20260726122813879-dtvofavtb4
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.storage.GcsResourceManager - managed temp dir size : 1
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.storage.GcsResourceManager - Cleaning up everything under 'GCSSpannerDVCoreMatchingIT/20260726-be56ffd8-4c29-4734-870f-041f5a7b3f5b' under bucket 'span-cloud-teleport-testing-it-gitactions'
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.spanner.SpannerResourceManager - Manager successfully cleaned up.
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.bigquery.BigQueryResourceManager - Attempting to cleanup manager.
+[pool-3-thread-2] INFO org.apache.beam.it.gcp.bigquery.BigQueryResourceManager - Manager successfully cleaned up.
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 114.6 s -- in com.google.cloud.teleport.v2.templates.GCSSpannerDVCoreMatchingIT
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] 

@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.dofn;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,6 +27,11 @@ import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.common.collect.ImmutableList;
+import java.io.Closeable;
+import java.io.IOException;
+import org.apache.beam.runners.core.metrics.MetricsContainerImpl;
+import org.apache.beam.sdk.metrics.MetricName;
+import org.apache.beam.sdk.metrics.MetricsEnvironment;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollectionView;
@@ -38,7 +44,7 @@ import org.mockito.ArgumentCaptor;
 public class SpannerHashFnTest {
 
   @Test
-  public void testProcessElement() {
+  public void testProcessElement() throws IOException {
     // Mock dependencies
     PCollectionView<Ddl> ddlView = mock(PCollectionView.class);
     SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider =
@@ -66,13 +72,19 @@ public class SpannerHashFnTest {
 
     // Execute
     SpannerHashFn fn = new SpannerHashFn(ddlView, schemaMapperProvider);
-    fn.processElement(context);
-    fn.processElement(context);
+    MetricsContainerImpl metricsContainer = new MetricsContainerImpl("step");
+    try (Closeable ignored = MetricsEnvironment.scopedMetricsContainer(metricsContainer)) {
+      fn.processElement(context);
+      fn.processElement(context);
+    }
 
     // Verify output
     ArgumentCaptor<ComparisonRecord> captor = ArgumentCaptor.forClass(ComparisonRecord.class);
     verify(context, org.mockito.Mockito.times(2)).output(captor.capture());
-
-    // We can verify properties if needed
+    assertThat(
+            metricsContainer
+                .getCounter(MetricName.named(SpannerHashFn.class, "spanner_records_processed"))
+                .getCumulative())
+        .isEqualTo(2L);
   }
 }
