@@ -111,3 +111,45 @@ options:
         example: "your-project-id"
         required: false
         type: text
+      - order: 2
+        name: "lakehouseSchemaEvolutionOptions"
+        description: "Allowed schema evolution changes when adding files."
+        help: "A list of allowed table schema changes (ALLOW_FIELD_ADDITION, ALLOW_FIELD_RELAXATION, ALLOW_TYPE_PROMOTION) when adding Parquet files in batch jobs."
+        example: '["ALLOW_FIELD_ADDITION"]'
+        required: false
+        type: text
+      - order: 3
+        name: "lakehouseRequiredColumns"
+        description: "Columns that must be present and non-null in added files."
+        help: "A list of column names (using dotted paths for nested fields) that must always be present and non-null when schema evolution is enabled."
+        example: '["id", "address.city"]'
+        required: false
+        type: text
+      - order: 4
+        name: "lakehouseIncompatibleSchemaHandling"
+        description: "How to handle files whose schema is incompatible with the table."
+        help: "Behavior when a file schema cannot be made compatible with the table (FAIL_PIPELINE or ROUTE_TO_ERRORS)."
+        example: "FAIL_PIPELINE"
+        required: false
+        type: text
+      - order: 5
+        name: "lakehouseUnverifiableFileHandling"
+        description: "How to handle files whose schema cannot be checked."
+        help: "Behavior when a file schema cannot be verified (REJECT or ACCEPT)."
+        example: "REJECT"
+        required: false
+        type: text
+      - order: 6
+        name: "lakehouseManifestFileSize"
+        description: "Target size in bytes for generated Iceberg manifest files."
+        help: "Target size in bytes for Iceberg manifest files written when committing data files."
+        example: 8388608
+        required: false
+        type: integer
+      - order: 7
+        name: "lakehouseTriggeringFrequencySeconds"
+        description: "Frequency in seconds at which snapshots are produced in streaming mode."
+        help: "The frequency in seconds for committing Iceberg snapshots when running in streaming mode."
+        example: 60
+        required: false
+        type: integer
