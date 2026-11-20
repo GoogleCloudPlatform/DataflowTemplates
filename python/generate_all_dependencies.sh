@@ -39,7 +39,7 @@ update_if_present() {
   BASE_REQ="$1"
   BUILD_REQ="$2"
   DEST_REQ="$3"
-  if [ -f "$DEST_REQ" ] && grep -q -- "--hash=" "$DEST_REQ"; then
+  if [ -f "$BASE_REQ" ] && [ -f "$DEST_REQ" ] && grep -q -- "--hash=" "$DEST_REQ"; then
     sh "$SCRIPTPATH/generate_dependencies.sh" "$BASE_REQ" "$BUILD_REQ"
     cp "$BUILD_REQ" "$DEST_REQ"
   fi
