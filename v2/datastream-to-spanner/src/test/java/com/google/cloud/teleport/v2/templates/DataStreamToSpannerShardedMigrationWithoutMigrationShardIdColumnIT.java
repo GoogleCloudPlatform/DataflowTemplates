@@ -138,12 +138,21 @@ public class DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT instance :
-        testInstances) {
-      instance.tearDownBase();
+    try {
+      for (DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT instance :
+          testInstances) {
+        instance.tearDownBase();
+      }
+      ResourceManagerUtils.cleanResources(
+          spannerResourceManager, pubsubResourceManager, gcsResourceManager);
+    } finally {
+      testInstances.clear();
+      jobInfo1 = null;
+      jobInfo2 = null;
+      pubsubResourceManager = null;
+      spannerResourceManager = null;
+      gcsResourceManager = null;
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager, pubsubResourceManager, gcsResourceManager);
   }
 
   @Test

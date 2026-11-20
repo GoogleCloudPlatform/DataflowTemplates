@@ -163,26 +163,36 @@ public class SQLServerDatastreamToSpannerDataTypesIT extends DataStreamToSpanner
 
   @AfterClass
   public static void cleanUp() throws IOException {
-    LOG.info("Cleaning up resources...");
-    // A failing teardown of one instance must not prevent the other instances' Dataflow jobs and
-    // the shared resource managers below from being cleaned up.
-    for (SQLServerDatastreamToSpannerDataTypesIT instance : testInstances) {
-      try {
-        instance.tearDownBase();
-      } catch (Exception e) {
-        LOG.error("Failed to tear down test instance {}", instance.testName, e);
+    try {
+      LOG.info("Cleaning up resources...");
+      // A failing teardown of one instance must not prevent the other instances' Dataflow jobs and
+      // the shared resource managers below from being cleaned up.
+      for (SQLServerDatastreamToSpannerDataTypesIT instance : testInstances) {
+        try {
+          instance.tearDownBase();
+        } catch (Exception e) {
+          LOG.error("Failed to tear down test instance {}", instance.testName, e);
+        }
       }
+
+      // Datastream streams must be deleted before the CDC-enabled source database is dropped.
+      ResourceManagerUtils.cleanResources(datastreamResourceManager);
+
+      ResourceManagerUtils.cleanResources(
+          msSqlResourceManager,
+          spannerResourceManager,
+          pgDialectSpannerResourceManager,
+          gcsResourceManager,
+          pubsubResourceManager);
+    } finally {
+      initialized = false;
+      msSqlResourceManager = null;
+      spannerResourceManager = null;
+      pgDialectSpannerResourceManager = null;
+      gcsResourceManager = null;
+      pubsubResourceManager = null;
+      datastreamResourceManager = null;
     }
-
-    // Datastream streams must be deleted before the CDC-enabled source database is dropped.
-    ResourceManagerUtils.cleanResources(datastreamResourceManager);
-
-    ResourceManagerUtils.cleanResources(
-        msSqlResourceManager,
-        spannerResourceManager,
-        pgDialectSpannerResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager);
   }
 
   @Test

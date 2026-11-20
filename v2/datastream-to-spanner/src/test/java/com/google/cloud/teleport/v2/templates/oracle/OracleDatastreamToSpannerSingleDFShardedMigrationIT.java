@@ -219,7 +219,11 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
 
   @AfterClass
   public static void cleanUp() {
-    cleanUpSharedResources(testInstances);
+    try {
+      cleanUpSharedResources(testInstances);
+    } finally {
+      testInstances.clear();
+    }
   }
 
   /**
@@ -243,6 +247,7 @@ public class OracleDatastreamToSpannerSingleDFShardedMigrationIT extends DataStr
       gcsResourceManager = null;
       datastreamResourceManager = null;
       oracleUsers.clear();
+      jobInfo = null;
     }
   }
 

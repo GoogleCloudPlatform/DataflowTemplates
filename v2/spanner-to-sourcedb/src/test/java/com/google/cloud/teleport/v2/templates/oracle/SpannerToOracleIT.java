@@ -169,6 +169,13 @@ public class SpannerToOracleIT extends SpannerToSourceDbITBase {
     } finally {
       SharedOracleReverseITContainer.dropIsolatedUser(classLevelTestUsername);
       classLevelTestUsername = null;
+      testInstances.clear();
+      jobInfo = null;
+      spannerResourceManager = null;
+      spannerMetadataResourceManager = null;
+      jdbcResourceManager = null;
+      gcsResourceManager = null;
+      pubsubResourceManager = null;
     }
   }
 

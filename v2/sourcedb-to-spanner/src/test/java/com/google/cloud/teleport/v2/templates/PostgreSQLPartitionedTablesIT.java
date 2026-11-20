@@ -74,8 +74,15 @@ public class PostgreSQLPartitionedTablesIT extends SourceDbToSpannerITBase {
 
   @AfterClass
   public static void cleanUp() {
-    ResourceManagerUtils.cleanResources(
-        postgresSQLResourceManager, gsqlSpannerResourceManager, pgDialectSpannerResourceManager);
+    try {
+      ResourceManagerUtils.cleanResources(
+          postgresSQLResourceManager, gsqlSpannerResourceManager, pgDialectSpannerResourceManager);
+    } finally {
+      initialized = false;
+      postgresSQLResourceManager = null;
+      gsqlSpannerResourceManager = null;
+      pgDialectSpannerResourceManager = null;
+    }
   }
 
   @Test

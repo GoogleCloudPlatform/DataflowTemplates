@@ -152,16 +152,26 @@ public class MySQLDatastreamToSpannerTableAndIndexLimitsIT extends DataStreamToS
 
   @AfterClass
   public static void cleanUp() throws IOException {
-    LOG.info("Cleaning up resources...");
-    for (MySQLDatastreamToSpannerTableAndIndexLimitsIT instance : testInstances) {
-      instance.tearDownBase();
+    try {
+      LOG.info("Cleaning up resources...");
+      for (MySQLDatastreamToSpannerTableAndIndexLimitsIT instance : testInstances) {
+        instance.tearDownBase();
+      }
+      ResourceManagerUtils.cleanResources(
+          mySQLResourceManager,
+          spannerResourceManager,
+          gcsResourceManager,
+          pubsubResourceManager,
+          datastreamResourceManager);
+    } finally {
+      mySQLResourceManager = null;
+      spannerResourceManager = null;
+      gcsResourceManager = null;
+      pubsubResourceManager = null;
+      datastreamResourceManager = null;
+      testInstances.clear();
+      jobInfo = null;
     }
-    ResourceManagerUtils.cleanResources(
-        mySQLResourceManager,
-        spannerResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager,
-        datastreamResourceManager);
   }
 
   @Test

@@ -167,6 +167,14 @@ public class SpannerToOracleInterleaveMultiShardIT extends SpannerToSourceDbITBa
       SharedOracleReverseITContainer.dropIsolatedUser(oracleUsernameShardB);
       oracleUsernameShardA = null;
       oracleUsernameShardB = null;
+      testInstances.clear();
+      jobInfo = null;
+      spannerResourceManager = null;
+      spannerMetadataResourceManager = null;
+      jdbcResourceManagerShardA = null;
+      jdbcResourceManagerShardB = null;
+      gcsResourceManager = null;
+      pubsubResourceManager = null;
     }
   }
 

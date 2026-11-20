@@ -139,24 +139,38 @@ public class PostgreSQLDatastreamToSpannerInheritanceIT extends DataStreamToSpan
 
   @AfterClass
   public static void cleanUp() throws IOException {
-    LOG.info("Cleaning up resources...");
-    for (PostgreSQLDatastreamToSpannerInheritanceIT instance : testInstances) {
-      try {
-        instance.tearDownBase();
-      } catch (Exception e) {
-        LOG.error("Failed to tear down base for instance: {}", instance, e);
+    try {
+      LOG.info("Cleaning up resources...");
+      for (PostgreSQLDatastreamToSpannerInheritanceIT instance : testInstances) {
+        try {
+          instance.tearDownBase();
+        } catch (Exception e) {
+          LOG.error("Failed to tear down base for instance: {}", instance, e);
+        }
       }
-    }
 
-    // It is important to clean up Datastream before trying to drop the replication slot.
-    ResourceManagerUtils.cleanResources(
-        datastreamResourceManager,
-        postgresResourceManager,
-        pgDialectPostgresResourceManager,
-        spannerResourceManager,
-        pgDialectSpannerResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager);
+      // It is important to clean up Datastream before trying to drop the replication slot.
+      ResourceManagerUtils.cleanResources(
+          datastreamResourceManager,
+          postgresResourceManager,
+          pgDialectPostgresResourceManager,
+          spannerResourceManager,
+          pgDialectSpannerResourceManager,
+          gcsResourceManager,
+          pubsubResourceManager);
+    } finally {
+      replicationInfo = null;
+      pgDialectReplicationInfo = null;
+      initialized = false;
+      postgresResourceManager = null;
+      pgDialectPostgresResourceManager = null;
+      spannerResourceManager = null;
+      pgDialectSpannerResourceManager = null;
+      gcsResourceManager = null;
+      pubsubResourceManager = null;
+      datastreamResourceManager = null;
+      testInstances.clear();
+    }
   }
 
   @Test

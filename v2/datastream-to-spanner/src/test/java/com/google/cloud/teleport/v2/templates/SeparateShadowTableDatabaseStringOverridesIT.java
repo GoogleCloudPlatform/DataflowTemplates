@@ -119,14 +119,23 @@ public class SeparateShadowTableDatabaseStringOverridesIT extends DataStreamToSp
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (SeparateShadowTableDatabaseStringOverridesIT instance : testInstances) {
-      instance.tearDownBase();
+    try {
+      for (SeparateShadowTableDatabaseStringOverridesIT instance : testInstances) {
+        instance.tearDownBase();
+      }
+      ResourceManagerUtils.cleanResources(
+          spannerResourceManager,
+          pubsubResourceManager,
+          shadowSpannerResourceManager,
+          gcsResourceManager);
+    } finally {
+      jobInfo = null;
+      testInstances.clear();
+      pubsubResourceManager = null;
+      spannerResourceManager = null;
+      shadowSpannerResourceManager = null;
+      gcsResourceManager = null;
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        pubsubResourceManager,
-        shadowSpannerResourceManager,
-        gcsResourceManager);
   }
 
   @Test

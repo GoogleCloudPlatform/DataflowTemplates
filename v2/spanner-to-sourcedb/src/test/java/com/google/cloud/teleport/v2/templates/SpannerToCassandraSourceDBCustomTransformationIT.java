@@ -127,15 +127,25 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (SpannerToCassandraSourceDBCustomTransformationIT instance : testInstances) {
-      instance.tearDownBase();
+    try {
+      for (SpannerToCassandraSourceDBCustomTransformationIT instance : testInstances) {
+        instance.tearDownBase();
+      }
+      ResourceManagerUtils.cleanResources(
+          spannerResourceManager,
+          cassandraResourceManager,
+          spannerMetadataResourceManager,
+          gcsResourceManager,
+          pubsubResourceManager);
+    } finally {
+      testInstances.clear();
+      jobInfo = null;
+      spannerResourceManager = null;
+      spannerMetadataResourceManager = null;
+      cassandraResourceManager = null;
+      gcsResourceManager = null;
+      pubsubResourceManager = null;
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        cassandraResourceManager,
-        spannerMetadataResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager);
   }
 
   /**

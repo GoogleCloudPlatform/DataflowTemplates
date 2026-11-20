@@ -217,25 +217,36 @@ public class SQLServerSeparateShadowTableDatabasePKFocusedIT extends DataStreamT
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    LOG.info("Cleaning up resources...");
-    // A failing teardown of one instance must not prevent the other instances' Dataflow jobs and
-    // the shared resource managers below from being cleaned up.
-    for (SQLServerSeparateShadowTableDatabasePKFocusedIT instance : testInstances) {
-      try {
-        instance.tearDownBase();
-      } catch (Exception e) {
-        LOG.error("Failed to tear down test instance {}", instance.testName, e);
+    try {
+      LOG.info("Cleaning up resources...");
+      // A failing teardown of one instance must not prevent the other instances' Dataflow jobs and
+      // the shared resource managers below from being cleaned up.
+      for (SQLServerSeparateShadowTableDatabasePKFocusedIT instance : testInstances) {
+        try {
+          instance.tearDownBase();
+        } catch (Exception e) {
+          LOG.error("Failed to tear down test instance {}", instance.testName, e);
+        }
       }
-    }
 
-    // Datastream streams are deleted first, before the CDC-enabled source database is dropped.
-    ResourceManagerUtils.cleanResources(
-        datastreamResourceManager,
-        msSqlResourceManager,
-        spannerResourceManager,
-        shadowSpannerResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager);
+      // Datastream streams are deleted first, before the CDC-enabled source database is dropped.
+      ResourceManagerUtils.cleanResources(
+          datastreamResourceManager,
+          msSqlResourceManager,
+          spannerResourceManager,
+          shadowSpannerResourceManager,
+          gcsResourceManager,
+          pubsubResourceManager);
+    } finally {
+      initialized = false;
+      jobInfo = null;
+      msSqlResourceManager = null;
+      spannerResourceManager = null;
+      shadowSpannerResourceManager = null;
+      gcsResourceManager = null;
+      pubsubResourceManager = null;
+      datastreamResourceManager = null;
+    }
   }
 
   /**

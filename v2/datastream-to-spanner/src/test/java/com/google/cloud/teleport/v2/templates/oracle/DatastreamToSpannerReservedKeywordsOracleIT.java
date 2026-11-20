@@ -132,8 +132,12 @@ public class DatastreamToSpannerReservedKeywordsOracleIT extends DataStreamToSpa
    */
   @AfterClass
   public static void cleanUp() {
-    LOG.info("Cleaning up resources...");
-    cleanUpSharedResources(testInstances);
+    try {
+      LOG.info("Cleaning up resources...");
+      cleanUpSharedResources(testInstances);
+    } finally {
+      testInstances.clear();
+    }
   }
 
   /**

@@ -117,14 +117,23 @@ public class SeparateShadowTableDatabaseSessionIT extends DataStreamToSpannerITB
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (SeparateShadowTableDatabaseSessionIT instance : testInstances) {
-      instance.tearDownBase();
+    try {
+      for (SeparateShadowTableDatabaseSessionIT instance : testInstances) {
+        instance.tearDownBase();
+      }
+      ResourceManagerUtils.cleanResources(
+          spannerResourceManager,
+          pubsubResourceManager,
+          shadowSpannerResourceManager,
+          gcsResourceManager);
+    } finally {
+      jobInfo = null;
+      testInstances.clear();
+      pubsubResourceManager = null;
+      spannerResourceManager = null;
+      shadowSpannerResourceManager = null;
+      gcsResourceManager = null;
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        pubsubResourceManager,
-        shadowSpannerResourceManager,
-        gcsResourceManager);
   }
 
   /** Test checks for the following use-cases: 1. Drop Column. 2. Rename Column. 3. Drop Table */

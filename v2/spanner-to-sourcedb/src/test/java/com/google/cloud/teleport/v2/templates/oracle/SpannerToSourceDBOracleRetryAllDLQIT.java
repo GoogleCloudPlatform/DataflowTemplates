@@ -176,6 +176,12 @@ public class SpannerToSourceDBOracleRetryAllDLQIT extends SpannerToSourceDbITBas
     } finally {
       SharedOracleReverseITContainer.dropIsolatedUser(oracleUsername);
       oracleUsername = null;
+      testInstances.clear();
+      jobInfo = null;
+      spannerResourceManager = null;
+      spannerMetadataResourceManager = null;
+      jdbcResourceManager = null;
+      gcsResourceManager = null;
     }
   }
 

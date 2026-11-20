@@ -118,11 +118,19 @@ public class DataStreamToSpannerFileOverridesIT extends DataStreamToSpannerITBas
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (DataStreamToSpannerFileOverridesIT instance : testInstances) {
-      instance.tearDownBase();
+    try {
+      for (DataStreamToSpannerFileOverridesIT instance : testInstances) {
+        instance.tearDownBase();
+      }
+      ResourceManagerUtils.cleanResources(
+          spannerResourceManager, pubsubResourceManager, gcsResourceManager);
+    } finally {
+      jobInfo = null;
+      testInstances.clear();
+      pubsubResourceManager = null;
+      spannerResourceManager = null;
+      gcsResourceManager = null;
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager, pubsubResourceManager, gcsResourceManager);
   }
 
   @Test

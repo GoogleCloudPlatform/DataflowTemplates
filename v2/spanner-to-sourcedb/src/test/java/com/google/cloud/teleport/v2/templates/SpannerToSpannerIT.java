@@ -143,14 +143,24 @@ public class SpannerToSpannerIT extends SpannerToSourceDbITBase {
 
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (SpannerToSpannerIT instance : testInstances) {
-      instance.tearDownBase();
+    try {
+      for (SpannerToSpannerIT instance : testInstances) {
+        instance.tearDownBase();
+      }
+      ResourceManagerUtils.cleanResources(
+          spannerResourceManager,
+          spannerDestinationResourceManager,
+          gcsResourceManager,
+          pubsubResourceManager);
+    } finally {
+      testInstances.clear();
+      jobInfo = null;
+      spannerResourceManager = null;
+      spannerDestinationResourceManager = null;
+      spannerMetadataResourceManager = null;
+      gcsResourceManager = null;
+      pubsubResourceManager = null;
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        spannerDestinationResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager);
   }
 
   @Test

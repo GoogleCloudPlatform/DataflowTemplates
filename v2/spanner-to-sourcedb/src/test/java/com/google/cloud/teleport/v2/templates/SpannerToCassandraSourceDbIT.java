@@ -173,15 +173,25 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (SpannerToCassandraSourceDbIT instance : testInstances) {
-      instance.tearDownBase();
+    try {
+      for (SpannerToCassandraSourceDbIT instance : testInstances) {
+        instance.tearDownBase();
+      }
+      ResourceManagerUtils.cleanResources(
+          spannerResourceManager,
+          spannerMetadataResourceManager,
+          cassandraResourceManager,
+          gcsResourceManager,
+          pubsubResourceManager);
+    } finally {
+      testInstances.clear();
+      jobInfo = null;
+      spannerResourceManager = null;
+      spannerMetadataResourceManager = null;
+      cassandraResourceManager = null;
+      gcsResourceManager = null;
+      pubsubResourceManager = null;
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        spannerMetadataResourceManager,
-        cassandraResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager);
   }
 
   @Test
