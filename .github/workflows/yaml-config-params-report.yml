@@ -27,7 +27,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: python -m pip install beautifulsoup4 jinja2 pyyaml tabulate
+        run: python -m pip install --require-hashes -r .github/workflows/requirements/yaml-config-params-report-hashes.txt
 
       - name: Run YAML Blueprint Config Parameter Check
         id: check-params
