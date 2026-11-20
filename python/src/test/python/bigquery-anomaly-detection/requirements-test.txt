@@ -1,1 +1,4 @@
-apache-beam[gcp,test]
+# Test-only dependencies installed alongside requirements_all.txt (with --require-hashes).
+parameterized==0.9.0 \
+    --hash=sha256:4e0758e3d41bea3bbd05ec14fc2c24736723f243b28d702081aef438c9372b1b \
+    --hash=sha256:7fc905272cefa4f364c1a3429cbbe9c0f98b793988efb5bf90aac80f08db09b1
