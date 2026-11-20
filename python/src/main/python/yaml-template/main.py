@@ -15,8 +15,13 @@
 
 
 import argparse
+import logging
 import tempfile
 
+import yaml
+
+from apache_beam.options.pipeline_options import PipelineOptions
+from apache_beam.options.pipeline_options import WorkerOptions
 from apache_beam.yaml import main
 
 import ml_dependencies
@@ -46,6 +51,20 @@ def _get_runtime_dependencies(args):
   return list(dict.fromkeys(dependencies))
 
 
+def _uses_private_ips(args):
+  """Returns whether the workers of a pipeline only use private IPs."""
+  try:
+    _, pipeline_args, _, pipeline_yaml = (
+        main._build_pipeline_yaml_from_argv(args))
+    pipeline_spec = yaml.safe_load(pipeline_yaml)
+    if not isinstance(pipeline_spec, dict):
+      pipeline_spec = {}
+    options = main._build_pipeline_options(pipeline_spec, pipeline_args)
+  except Exception:  # pylint: disable=broad-except
+    options = PipelineOptions(args)
+  return options.view_as(WorkerOptions).use_public_ips is False
+
+
 def run(argv=None):
   parser = argparse.ArgumentParser()
   _, args = parser.parse_known_args(argv)
@@ -56,7 +75,12 @@ def run(argv=None):
       has_req_file = True
       break
 
-  if not has_req_file:
+  if not has_req_file and _uses_private_ips(args):
+    # Without public IPs there is usually no access to PyPI.
+    logging.info(
+        'Workers only use private IPs, not adding the default runtime '
+        'dependencies.')
+  elif not has_req_file:
     # Default dependencies, and any additional dependencies needed by ML
     # transforms used by the pipeline.
     dependencies = _get_runtime_dependencies(args)
@@ -72,6 +96,5 @@ def run(argv=None):
 
 
 if __name__ == '__main__':
-  import logging
   logging.getLogger().setLevel(logging.INFO)
   run()
