@@ -131,6 +131,16 @@ public interface PubSubToSpannerYaml {
 
   @TemplateParameter.Text(
       order = 9,
+      name = "publishTimeField",
+      optional = true,
+      description = "Field to add to output messages with the Pub/Sub message publish time.",
+      helpText =
+          "Field to add to output messages with the Pub/Sub message publish time. If None, no such field is added.",
+      example = "publish_time")
+  String getPublishTimeField();
+
+  @TemplateParameter.Text(
+      order = 10,
       name = "subscription",
       optional = true,
       description = "Pub/Sub subscription",
@@ -139,7 +149,7 @@ public interface PubSubToSpannerYaml {
   String getSubscription();
 
   @TemplateParameter.Text(
-      order = 10,
+      order = 11,
       name = "projectId",
       optional = true,
       description = "Cloud Spanner Project ID.",
@@ -148,7 +158,7 @@ public interface PubSubToSpannerYaml {
   String getProjectId();
 
   @TemplateParameter.Text(
-      order = 11,
+      order = 12,
       name = "instanceId",
       optional = false,
       description = "Cloud Spanner Instance ID.",
@@ -158,7 +168,7 @@ public interface PubSubToSpannerYaml {
   String getInstanceId();
 
   @TemplateParameter.Text(
-      order = 12,
+      order = 13,
       name = "databaseId",
       optional = false,
       description = "Cloud Spanner Database ID.",
@@ -168,7 +178,7 @@ public interface PubSubToSpannerYaml {
   String getDatabaseId();
 
   @TemplateParameter.Text(
-      order = 13,
+      order = 14,
       name = "tableId",
       optional = false,
       description = "Cloud Spanner Table ID.",
@@ -178,7 +188,7 @@ public interface PubSubToSpannerYaml {
   String getTableId();
 
   @TemplateParameter.Text(
-      order = 14,
+      order = 15,
       name = "type",
       optional = true,
       description = "The type of windowing to apply.",
@@ -189,7 +199,7 @@ public interface PubSubToSpannerYaml {
   String getType();
 
   @TemplateParameter.Integer(
-      order = 15,
+      order = 16,
       name = "size",
       optional = true,
       description = "The window size in seconds.",

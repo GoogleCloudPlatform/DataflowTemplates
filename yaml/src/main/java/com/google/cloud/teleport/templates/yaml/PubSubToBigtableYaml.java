@@ -126,6 +126,16 @@ public interface PubSubToBigtableYaml {
 
   @TemplateParameter.Text(
       order = 9,
+      name = "publishTimeField",
+      optional = true,
+      description = "Field to add to output messages with the Pub/Sub message publish time.",
+      helpText =
+          "Field to add to output messages with the Pub/Sub message publish time. If None, no such field is added.",
+      example = "publish_time")
+  String getPublishTimeField();
+
+  @TemplateParameter.Text(
+      order = 10,
       name = "subscription",
       optional = true,
       description = "Pub/Sub subscription",
@@ -134,7 +144,7 @@ public interface PubSubToBigtableYaml {
   String getSubscription();
 
   @TemplateParameter.Text(
-      order = 10,
+      order = 11,
       name = "language",
       optional = true,
       description = "Language used to define the expressions.",
@@ -145,7 +155,7 @@ public interface PubSubToBigtableYaml {
   String getLanguage();
 
   @TemplateParameter.Text(
-      order = 11,
+      order = 12,
       name = "fields",
       optional = false,
       description = "Field mapping configuration",
@@ -157,7 +167,7 @@ public interface PubSubToBigtableYaml {
   String getFields();
 
   @TemplateParameter.Text(
-      order = 12,
+      order = 13,
       name = "projectId",
       optional = false,
       description = "Bigtable project ID",
@@ -167,7 +177,7 @@ public interface PubSubToBigtableYaml {
   String getProjectId();
 
   @TemplateParameter.Text(
-      order = 13,
+      order = 14,
       name = "instanceId",
       optional = false,
       description = "Bigtable instance ID",
@@ -177,7 +187,7 @@ public interface PubSubToBigtableYaml {
   String getInstanceId();
 
   @TemplateParameter.Text(
-      order = 14,
+      order = 15,
       name = "tableId",
       optional = false,
       description = "Bigtable output table",
@@ -187,7 +197,7 @@ public interface PubSubToBigtableYaml {
   String getTableId();
 
   @TemplateParameter.Text(
-      order = 15,
+      order = 16,
       name = "windowing",
       optional = false,
       description = "Windowing options",
@@ -198,7 +208,7 @@ public interface PubSubToBigtableYaml {
   String getWindowing();
 
   @TemplateParameter.Text(
-      order = 16,
+      order = 17,
       name = "outputDeadLetterPubSubTopic",
       optional = false,
       description = "Pub/Sub transformation error topic",

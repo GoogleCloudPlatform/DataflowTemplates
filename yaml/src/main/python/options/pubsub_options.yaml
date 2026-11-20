@@ -73,6 +73,13 @@ options:
         help: "This option specifies whether and where to output error rows."
         required: false
         type: text
+      - order: 8
+        name: "publishTimeField"
+        description: "Field to add to output messages with the Pub/Sub message publish time."
+        help: "Field to add to output messages with the Pub/Sub message publish time. If None, no such field is added."
+        example: "publish_time"
+        required: false
+        type: text
 
   - name: "pubsub_read_options"
     parameters:
