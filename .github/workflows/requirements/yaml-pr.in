@@ -1,0 +1,2 @@
+# Direct CI workflow dependencies compiled into yaml-pr-hashes.txt via python/generate_all_dependencies.sh
+pyyaml

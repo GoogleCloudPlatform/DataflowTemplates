@@ -1,0 +1,2 @@
+# Direct CI workflow dependencies compiled into poetry-requirements-hashes.txt via python/generate_all_dependencies.sh
+poetry

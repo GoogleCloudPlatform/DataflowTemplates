@@ -1,0 +1,5 @@
+# Direct CI workflow dependencies compiled into yaml-config-params-report-hashes.txt via python/generate_all_dependencies.sh
+beautifulsoup4
+jinja2
+pyyaml
+tabulate
