@@ -1,7 +1,6 @@
 certifi==2026.10.23 \
     --hash=sha256:a9895e6e2758b371e0545e321a3a8fd1fcfd9829ada8824a936dfb16aaaf36cd \
     --hash=sha256:e9b54de76e530bb6cf0ccd036787103acb58fd42ba930ea8bf948ddbaa2f61d1
-    # via requests
 cffi==2.1.1 \
     --hash=sha256:046bfc24911b37851ee1b51aab8bffe713d89c68c6a057b09484ce9fd5f69b4e \
     --hash=sha256:06c72bb76605a4b0cd0aad6930b69d4baf7dd5d806cfc409b824191099700e66 \
@@ -103,7 +102,6 @@ cffi==2.1.1 \
     --hash=sha256:f8ec5e643a9a937f64e1999eb9f75d072263751912dc5cd06d3c85f8f44be7c3 \
     --hash=sha256:fb92203a88b3d3053034db775110081c49d28be6551923805e039924093761e4 \
     --hash=sha256:fcd22650c908d7b7da162bbfaab594a1227a15d1643a98c68b122ac642fa2264
-    # via cryptography
 charset-normalizer==3.5.2 \
     --hash=sha256:01077390b03f7988f11d700a2194e69b119741a86b1a638b1db88891e3eced8e \
     --hash=sha256:01b0c0d2262a9e28e8484a278c7e1b5d650e3ac8cf2683d2967e25899f208bdf \
@@ -277,7 +275,6 @@ charset-normalizer==3.5.2 \
     --hash=sha256:fcff63213e8e6e47770541a4607175404f47cbb3ebea7b6058cc82d524a0e424 \
     --hash=sha256:fd1fbe0f116b6e55da77aca2c6ddcddcfac2186cbf78bdebf40fc156efca389d \
     --hash=sha256:fe9753dfee015c570d73df76f899f18444d41388bffcde097deba51c4fadbb9f
-    # via requests
 cryptography==50.0.2 \
     --hash=sha256:0ddc924c04591c2811ca024d62ecad4f7f6f08af8939c211438f48a16bd23602 \
     --hash=sha256:0ec5f09541743261e66e291b4a0cbf0fb2997aeaab6d9e9c740b9dba1b58d1c2 \
@@ -338,48 +335,27 @@ cryptography==50.0.2 \
     --hash=sha256:f9f6143a8c75945eb960d9eb98905a441394abfa24afaae239d514ffb2586480 \
     --hash=sha256:fa8f5efb344d6908a1ce62f4a24e2e5780f825d6f53f5f50ec5ffacac72936cb \
     --hash=sha256:fdd28f912fccfec1846a94e2e1e8f9b0012f557f0c46fe4f3eb0d7a87afcf90b
-    # via google-auth
 google-api-core==2.44.0 \
     --hash=sha256:5ab9a396965c1227d7dea4581e562b7018aa2bca96d2de0be5eb70dc9c8ab3a1 \
     --hash=sha256:8cb9ad8af28de9bc75121686d69b697ce0937e21fad2ad80c9a7e89f22b26e1f
-    # via
-    #   google-cloud-core
-    #   google-cloud-datastream
-    #   google-cloud-monitoring
-    #   google-cloud-spanner
-    #   google-cloud-storage
 google-auth==2.62.2 \
     --hash=sha256:046c61a72d3a847d6df6417a7f0d5cf054e3b82bbcb54fb1e69d47880964049c \
     --hash=sha256:e9bcdb0679b6a4369ac327c5c59f06d92f7b4cd2624e7100294c14632f55a36b
-    # via
-    #   google-api-core
-    #   google-cloud-core
-    #   google-cloud-datastream
-    #   google-cloud-monitoring
-    #   google-cloud-spanner
-    #   google-cloud-storage
 google-cloud-core==2.8.0 \
     --hash=sha256:365f8e4518ae81c8101b8dea5fc1c32a960badedb8b511f19db2843cbbd285d2 \
     --hash=sha256:e235b0952f7ffe7b9c71a4cf96b506d9cfb557e22557c412f0df9b7068b5d007
-    # via
-    #   google-cloud-spanner
-    #   google-cloud-storage
 google-cloud-datastream==1.21.0 \
     --hash=sha256:5be91202df3a51fd37dae1587b4862c50e0993bc4e62d155a7a2b321f20d9d3f \
     --hash=sha256:78b83797dcdf607720a46dc2520e10b43abeb6c004a70e073f46788e14514023
-    # via -r /usr/local/google/home/derrickaw/.gemini/jetski/brain/5e00d776-eeb7-4506-afbd-297c8582821c/scratch/spanner_test_infra.in
 google-cloud-monitoring==2.32.0 \
     --hash=sha256:507501ce1c39161c071754f7ed14cd527788b4ea44a1d052bd815c115a70ea48 \
     --hash=sha256:b6c026a5780330aa26c6151279194daa241369b324c96fd6c52c703137bc6b5b
-    # via google-cloud-spanner
 google-cloud-spanner==3.72.0 \
     --hash=sha256:965a2eda001acbf66a10b978ca308545f30e56441ab963ebe628318aa8c8114a \
     --hash=sha256:a515cd4ae93e2e4227379996f4a4a7d7d4275de86aa45bfcf7c4abd8bed6c112
-    # via -r /usr/local/google/home/derrickaw/.gemini/jetski/brain/5e00d776-eeb7-4506-afbd-297c8582821c/scratch/spanner_test_infra.in
 google-cloud-storage==3.17.1 \
     --hash=sha256:287c7919d7bcda710eae6f6b60c756e89140475d9a4daec01b6174e737488ca8 \
     --hash=sha256:b24df37900f5e0a93518bd7d3a2a7b7b48d8a1e72add8eb57d53a38b8b2b0640
-    # via -r /usr/local/google/home/derrickaw/.gemini/jetski/brain/5e00d776-eeb7-4506-afbd-297c8582821c/scratch/spanner_test_infra.in
 google-crc32c==1.9.0 \
     --hash=sha256:0568b17ed90ac596f29400d99e243fd0cc6276766183def888d1bf8d1dc13827 \
     --hash=sha256:0abe7e202c25909869c35672ab0f2fe748a7acf276eb78577332a7c38999740f \
@@ -412,30 +388,18 @@ google-crc32c==1.9.0 \
     --hash=sha256:f97c3806dcea41c29c04965347b0e12481561b75e0045dc7a4f69d75dec5d9b1 \
     --hash=sha256:fb63a8d7fa2e95dcff1ca16af2f4d88b526fa5ff72d1696285884ac2d49b6963 \
     --hash=sha256:fbef61a3794e011c65fb4396a196cf123a7f474fe5a443db8e5dd7d751b9e6d4
-    # via
-    #   google-cloud-storage
-    #   google-resumable-media
 google-resumable-media==2.11.0 \
     --hash=sha256:f43d15e6a7f818f762eaead0f369c551f8275a4179c9d6225d0d259f49b87b5d \
     --hash=sha256:febd83686752799661b4de575f0b993c5c25c349a5362556fc4d7be164056a37
-    # via google-cloud-storage
 googleapis-common-protos==1.76.0 \
     --hash=sha256:59e13344a9f3651aa201a03e2bee815a3bf43a4baf1f9ff8a9b62a840ce25fac \
     --hash=sha256:71db0e44a1d4c2dd024ebad44ca67129cc1e2892e4861df466764749d5ef8642
-    # via
-    #   google-api-core
-    #   grpc-google-iam-v1
-    #   grpcio-status
 grpc-google-iam-v1==0.14.6 \
     --hash=sha256:042705a3ce306f289b9c6eafc3453b23f953bab955adcac3c36545758ccd681a \
     --hash=sha256:fc0a683ace0a149184fcd08d667dd64d51ae65e5698e86f7136aa6002a8b5373
-    # via
-    #   google-cloud-datastream
-    #   google-cloud-spanner
 grpc-interceptor==0.15.4 \
     --hash=sha256:0035f33228693ed3767ee49d937bac424318db173fef4d2d0170b3215f254d9d \
     --hash=sha256:1f45c0bcb58b6f332f37c637632247c9b02bc6af0fdceb7ba7ce8d2ebbfb0926
-    # via google-cloud-spanner
 grpcio==1.85.3 \
     --hash=sha256:053622a5e8ad0ab88ac6a381c99bc1931f17e8760ea1938b23140e1c72af2b64 \
     --hash=sha256:0998f5af9091eb333e6c731b84a8838d92489c367b3f1346d57e0490f981d8e1 \
@@ -498,23 +462,12 @@ grpcio==1.85.3 \
     --hash=sha256:f87a4f69f1a8da71abe14c246442f0f39a6cf65638f1fafe099ca387d4e3b84a \
     --hash=sha256:f88c854546f3b95adf259226abecfc653c1e8355543cedd3fbaae1fc634ef072 \
     --hash=sha256:fd039b47f6ac0bd6744250725fd5753d5c27151bcedc2e800983641f7304ba60
-    # via
-    #   google-api-core
-    #   google-cloud-datastream
-    #   google-cloud-monitoring
-    #   google-cloud-spanner
-    #   googleapis-common-protos
-    #   grpc-google-iam-v1
-    #   grpc-interceptor
-    #   grpcio-status
 grpcio-status==1.85.3 \
     --hash=sha256:136632e7ac60a133e5299cd970426690200b3dbda370eca407e259b28de0f4a2 \
     --hash=sha256:8b839a050917958ba7d21c2319a8797fe2b494a8e5d9109452dd68214d3e46b6
-    # via google-api-core
 idna==3.20 \
     --hash=sha256:a7db850025b95ded1eae8a46181a1a6c56c92c96f0e2b005d9ff8dc0210cab44 \
     --hash=sha256:ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c
-    # via requests
 mmh3==5.3.1 \
     --hash=sha256:010dcd7406c2f77b978beaadfeb7a01d4f7868ce862f6273b1c37bd902267394 \
     --hash=sha256:01159489255615d4be76a9ebb07cb0c9b0345f544197aa64ab18a7cfa5579a28 \
@@ -676,40 +629,21 @@ mmh3==5.3.1 \
     --hash=sha256:fc205e9f78224db7239d163b9b7cac35596aa615665135b0105beb8080e9ebc5 \
     --hash=sha256:fc7a4ab919a66b9db72c1425d610f69a8480dce22aa4c6ad2218e4acf41f8c01 \
     --hash=sha256:fd3bbb5dc3c3a045605c1a618bfccb2de6d65ae89b99ff9a7f54556cf81175b7
-    # via google-cloud-spanner
 opentelemetry-api==1.45.2 \
     --hash=sha256:2cbd737377e710ee740d261c94e93fa0f08e6d037c18f17513cc0a2d94479a34 \
     --hash=sha256:d7b0008e21e5fd61cbe7a7f34ca3b6905a78ab677d9bc395e299359c75cda6b4
-    # via
-    #   google-api-core
-    #   google-cloud-spanner
-    #   opentelemetry-resourcedetector-gcp
-    #   opentelemetry-sdk
-    #   opentelemetry-semantic-conventions
 opentelemetry-resourcedetector-gcp==1.14.0 \
     --hash=sha256:10b41802acf815838a85c9fe1dae02f5d27ebc17527b77441111c010bead95bc \
     --hash=sha256:cc4818570933b5c651aef80fbf6e8fbe26d63fe6fbc24ce22ae37e78744d30eb
-    # via google-cloud-spanner
 opentelemetry-sdk==1.45.2 \
     --hash=sha256:7eec4de13dd21ff3a1670dcb0e02079e692736f94d733dfdce5af461d884248d \
     --hash=sha256:ff974ea70ee4f1d51e2ec152db37c2b626c7bf82bb3f7d86114fd8704e7199c6
-    # via
-    #   google-cloud-spanner
-    #   opentelemetry-resourcedetector-gcp
 opentelemetry-semantic-conventions==0.66b2 \
     --hash=sha256:4cbe61e5f9275d57ab31708446e7938ef4291ebbe6a7fca6f7a629c5acae87d8 \
     --hash=sha256:7da5f1a5dc4383eb66711d4d3d3e71824d9403ac1559fea021cc103c1a4c4976
-    # via
-    #   google-cloud-spanner
-    #   opentelemetry-sdk
 proto-plus==1.29.0 \
     --hash=sha256:8acd070469a7aaf43f440b022ef9757c8cac1a9f866e933f59ae98669ddc6c8b \
     --hash=sha256:cfb4e62ad7e13dd18f346cabbda00cab39930d36a05791fd81ddb074d6ee884f
-    # via
-    #   google-api-core
-    #   google-cloud-datastream
-    #   google-cloud-monitoring
-    #   google-cloud-spanner
 protobuf==7.36.2 \
     --hash=sha256:497d0463ff3316681da6c0b9e8d06cb465d61abce00b613ab42226175644d1bb \
     --hash=sha256:89f23aa53c24553a2416fd4fd1ec06f74fa42b14b546d8883128813f775bbfd2 \
@@ -719,47 +653,24 @@ protobuf==7.36.2 \
     --hash=sha256:cbc70b17ee27e28894c7fee8bb04be1abead49e936bc70eb60052531eee2079e \
     --hash=sha256:e11e1f0180583a2af89db6a2ecd9e8dc40aa6d2988ca175bfd0e6d12ea72d74e \
     --hash=sha256:f4fee11ec330d238b34a05c9b675f693c20415d1c5bd7d5320cc2f8a798eb9cf
-    # via
-    #   google-api-core
-    #   google-cloud-datastream
-    #   google-cloud-monitoring
-    #   google-cloud-spanner
-    #   googleapis-common-protos
-    #   grpc-google-iam-v1
-    #   grpcio-status
-    #   proto-plus
 pyasn1==0.6.5 \
     --hash=sha256:4017b0fce125096b8573b39c989fdb1a4b19cf761e683398184550fea0e66587 \
     --hash=sha256:6b11616a6bcf3a40e635f082bb232fa57b5e0dd7f517bd7ddd69ec3794508a47
-    # via pyasn1-modules
 pyasn1-modules==0.4.2 \
     --hash=sha256:29253a9207ce32b64c3ac6600edc75368f98473906e8fd1043bd6b5b1de2c14a \
     --hash=sha256:677091de870a80aae844b1ca6134f54652fa2c8c5a52aa396440ac3106e941e6
-    # via google-auth
 pycparser==3.12 \
     --hash=sha256:a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e \
     --hash=sha256:f03387877eab82ce01bbdfd0ba7252ee55a90b1c708d5129e2ce915475cf1db6
-    # via cffi
 requests==2.34.2 \
     --hash=sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0 \
     --hash=sha256:f288924cae4e29463698d6d60bc6a4da69c89185ad1e0bcc4104f584e960b9ed
-    # via
-    #   google-api-core
-    #   google-cloud-storage
-    #   opentelemetry-resourcedetector-gcp
 sqlparse==0.6.1 \
     --hash=sha256:3be5a72d04c873d690d7c6dedd33d6fae2ef82759881ceec02fc2efd0cba564f \
     --hash=sha256:ca722573f848ff2d30e40ea30f53a104b7dea7635ea9285891263eb2c58fb6e7
-    # via google-cloud-spanner
 typing-extensions==4.16.0 \
     --hash=sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8 \
     --hash=sha256:dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5
-    # via
-    #   grpcio
-    #   opentelemetry-api
-    #   opentelemetry-sdk
-    #   opentelemetry-semantic-conventions
 urllib3==2.8.0 \
     --hash=sha256:0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3 \
     --hash=sha256:63bf2ead4c879426ebf22ef2a781eeb4aa3b4ae798a0435506f8687fd5bb9b63
-    # via requests
