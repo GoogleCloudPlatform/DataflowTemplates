@@ -164,4 +164,40 @@ public class BsonDocumentComparatorTest {
             "{\"_id\": 1, \"name\": \"alice\", \"_migrated_at\": 99, \"meta\": {\"v\": 1, \"syncTs\": 20}}");
     assertThat(withIgnored.compare(s2, t2)).isEmpty();
   }
+
+  @Test
+  public void rawDocumentsWithArrays_compareCleanAndDetectDuplicatesInsideArrayElements() {
+    // Regression: the raw duplicate-key walk used to read arrays with the document API and threw
+    // "readStartDocument can only be called when CurrentBSONType is DOCUMENT" on any array field.
+    BsonDocument withArrays =
+        BsonDocument.parse(
+            "{\"_id\": \"order_00001\", \"tags\": [\"tier-1\", \"v1\"],"
+                + " \"matrix\": [[1, 2], [3]], \"items\": [{\"sku\": \"a\", \"qty\": 1}]}");
+    RawBsonDocument rawSrc = RawBsonDocument.parse(withArrays.toJson());
+    RawBsonDocument rawTgt = RawBsonDocument.parse(withArrays.toJson());
+
+    BsonDocumentComparator cmp =
+        new BsonDocumentComparator(BsonDocumentComparator.Config.strictDefault());
+    assertThat(cmp.compare(rawSrc, rawTgt)).isEmpty();
+
+    // A duplicate key inside a subdocument that is itself an array element is still reported.
+    BasicOutputBuffer buf = new BasicOutputBuffer();
+    try (BsonBinaryWriter writer = new BsonBinaryWriter(buf)) {
+      writer.writeStartDocument();
+      writer.writeStartArray("items");
+      writer.writeString("scalar");
+      writer.writeStartDocument();
+      writer.writeInt32("dup", 1);
+      writer.writeInt32("dup", 2);
+      writer.writeEndDocument();
+      writer.writeEndArray();
+      writer.writeEndDocument();
+    }
+    RawBsonDocument rawDupInArray = new RawBsonDocument(buf.toByteArray());
+    BsonDocument clean = BsonDocument.parse("{\"items\": [\"scalar\", {\"dup\": 2}]}");
+
+    List<String> diffs = cmp.compare(rawDupInArray, clean);
+    assertThat(diffs).isNotEmpty();
+    assertThat(diffs.get(0)).contains("duplicate BSON key 'items[1].dup'");
+  }
 }

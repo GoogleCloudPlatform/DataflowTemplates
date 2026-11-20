@@ -132,14 +132,16 @@ public final class BsonEncodingUtils {
 
   private static void inspectArrayDuplicates(
       BsonBinaryReader reader, String prefix, List<String> duplicates) {
-    reader.readStartDocument();
+    // Arrays must be read with the array API: the reader rejects readStartDocument() and
+    // readName() while positioned on an ARRAY value.
+    reader.readStartArray();
+    int index = 0;
     while (reader.readBsonType() != BsonType.END_OF_DOCUMENT) {
       BsonType type = reader.getCurrentBsonType();
-      String indexName = reader.readName();
-      String path = prefix + "[" + indexName + "]";
+      String path = prefix + "[" + index++ + "]";
       skipOrRecurseValue(reader, type, path, duplicates);
     }
-    reader.readEndDocument();
+    reader.readEndArray();
   }
 
   private static void skipOrRecurseValue(
