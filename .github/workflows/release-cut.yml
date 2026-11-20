@@ -18,11 +18,13 @@ on:
         required: false
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   cut-release:
     name: Cut Release
+    permissions:
+      contents: write
     runs-on: [self-hosted, release]
     steps:
       - name: Get releaser identity
