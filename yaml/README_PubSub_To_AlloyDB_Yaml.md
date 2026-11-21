@@ -1,0 +1,284 @@
+
+Pub/Sub to AlloyDB (YAML) template
+---
+The Pub/Sub to AlloyDB template is a streaming pipeline which ingests data from a
+Pub/Sub topic and writes the resulting records to AlloyDB.
+
+
+
+:bulb: This is a generated documentation based
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
+. Do not change this file directly.
+
+## Parameters
+
+### Required parameters
+
+* **topic**: Pub/Sub topic to read the input from. For example, `projects/your-project-id/topics/your-topic-name`.
+* **jdbcUrl**: The JDBC connection URL. For example, `jdbc:postgresql://your-host:5432/your-db`.
+
+### Optional parameters
+
+* **format**: The message format. One of: AVRO, JSON, PROTO, RAW, or STRING. For example, `JSON`. Defaults to: JSON.
+* **schema**: A schema is required if data format is JSON, AVRO or PROTO. For JSON, this is a JSON schema. For AVRO and PROTO, this is the full schema definition. For example, `{"type": "object", "properties": {"field1": {"type": "string"}}}`.
+* **attributes**: List of attribute keys whose values will be flattened into the output message as additional fields. For example, if the format is `raw` and attributes is `[a, b]` then this read will produce elements of the form `Row(payload=..., a=..., b=...)`. For example, `["attr1", "attr2"]`.
+* **attributesMap**: Name of a field in which to store the full set of attributes associated with this message. For example, if the format is `raw` and `attributes_map` is set to `attrs` then this read will produce elements of the form `Row(payload=..., attrs=...)` where `attrs` is a Map type of string to string. If both `attributes` and `attributes_map` are set, the overlapping attribute values will be present in both the flattened structure and the attribute map. For example, `attrs`.
+* **idAttribute**: The attribute on incoming Pub/Sub messages to use as a unique record identifier. When specified, the value of this attribute (which can be any string that uniquely identifies the record) will be used for deduplication of messages. If not provided, we cannot guarantee that no duplicate data will be delivered on the Pub/Sub stream. In this case, deduplication of the stream will be strictly best effort. For example, `id`.
+* **timestampAttribute**: Message value to use as element timestamp. If None, uses message  publishing time as the timestamp. Timestamp values should be in one of two formats: 1). A numerical value representing the number of milliseconds since the Unix epoch. 2). A string in RFC 3339 format, UTC timezone. Example: ``2015-10-29T23:41:41.123Z``. The sub-second component of the timestamp is optional, and digits beyond the first three (i.e., time units smaller than milliseconds) may be ignored. For example, `timestamp`.
+* **publishTimeField**: Field to add to output messages with the Pub/Sub message publish time. If None, no such field is added. For example, `publish_time`.
+* **username**: The database username. For example, `my_user`.
+* **password**: The database password. For example, `my_secret_password`.
+* **connectionProperties**: A semicolon-separated list of key-value pairs for the JDBC connection. For example, `key1=value1;key2=value2`.
+* **alloydbTable**: The name of the database table. For example, `public.my_table`.
+* **query**: The SQL query/statement to execute on the source/sink. For example, `SELECT * FROM my_table WHERE status = 'active'`.
+* **batchSize**: The number of records to group together for each write. For example, `1000`. Defaults to: 1000.
+* **autoSharding**: If true, a dynamic number of shards will be used for writing. For example, `False`.
+* **type**: The type of windowing to apply (e.g., fixed, sliding, sessions, global). Defaults to fixed. For example, `fixed`.
+* **size**: The window size in seconds. Defaults to 60. For example, `60`.
+
+
+
+## Getting Started
+
+### Requirements
+
+* Java 17
+* Maven
+* [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
+  following commands:
+  * `gcloud auth login`
+  * `gcloud auth application-default login`
+
+:star2: Those dependencies are pre-installed if you use Google Cloud Shell!
+
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=yaml/src/main/java/com/google/cloud/teleport/templates/yaml/PubSubToAlloyDBYaml.java)
+
+### Templates Plugin
+
+This README provides instructions using
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+-pl yaml
+```
+
+### Building Template
+
+This template is a Flex Template, meaning that the pipeline code will be
+containerized and the container will be executed on Dataflow. Please
+check [Use Flex Templates](https://cloud.google.com/dataflow/docs/guides/templates/using-flex-templates)
+and [Configure Flex Templates](https://cloud.google.com/dataflow/docs/guides/templates/configuring-flex-templates)
+for more information.
+
+#### Staging the Template
+
+If the plan is to just stage the template (i.e., make it available to use) by
+the `gcloud` command or Dataflow "Create job from template" UI,
+the `-PtemplatesStage` profile should be used:
+
+```shell
+export PROJECT=<my-project>
+export BUCKET_NAME=<bucket-name>
+export ARTIFACT_REGISTRY_REPO=<region>-docker.pkg.dev/$PROJECT/<repo>
+
+mvn clean package -PtemplatesStage  \
+-DskipTests \
+-DprojectId="$PROJECT" \
+-DbucketName="$BUCKET_NAME" \
+-DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
+-DstagePrefix="templates" \
+-DtemplateName="PubSub_To_AlloyDB_Yaml" \
+-f yaml
+```
+
+The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
+If not provided, it defaults to `gcr.io/<project>`.
+
+The command should build and save the template to Google Cloud, and then print
+the complete location on Cloud Storage:
+
+```
+Flex Template was staged! gs://<bucket-name>/templates/flex/PubSub_To_AlloyDB_Yaml
+```
+
+The specific path should be copied as it will be used in the following steps.
+
+#### Running the Template
+
+**Using the staged template**:
+
+You can use the path above run the template (or share with others for execution).
+
+To start a job with the template at any time using `gcloud`, you are going to
+need valid resources for the required parameters.
+
+Provided that, the following command line can be used:
+
+```shell
+export PROJECT=<my-project>
+export BUCKET_NAME=<bucket-name>
+export REGION=us-central1
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/PubSub_To_AlloyDB_Yaml"
+
+### Required
+export TOPIC=<topic>
+export JDBC_URL=<jdbcUrl>
+
+### Optional
+export FORMAT=JSON
+export SCHEMA=<schema>
+export ATTRIBUTES=<attributes>
+export ATTRIBUTES_MAP=<attributesMap>
+export ID_ATTRIBUTE=<idAttribute>
+export TIMESTAMP_ATTRIBUTE=<timestampAttribute>
+export PUBLISH_TIME_FIELD=<publishTimeField>
+export USERNAME=<username>
+export PASSWORD=<password>
+export CONNECTION_PROPERTIES=<connectionProperties>
+export ALLOYDB_TABLE=<alloydbTable>
+export QUERY=<query>
+export BATCH_SIZE=1000
+export AUTO_SHARDING=<autoSharding>
+export TYPE=fixed
+export SIZE=60
+
+gcloud dataflow flex-template run "pubsub-to-alloydb-yaml-job" \
+  --project "$PROJECT" \
+  --region "$REGION" \
+  --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
+  --parameters "topic=$TOPIC" \
+  --parameters "format=$FORMAT" \
+  --parameters "schema=$SCHEMA" \
+  --parameters "attributes=$ATTRIBUTES" \
+  --parameters "attributesMap=$ATTRIBUTES_MAP" \
+  --parameters "idAttribute=$ID_ATTRIBUTE" \
+  --parameters "timestampAttribute=$TIMESTAMP_ATTRIBUTE" \
+  --parameters "publishTimeField=$PUBLISH_TIME_FIELD" \
+  --parameters "jdbcUrl=$JDBC_URL" \
+  --parameters "username=$USERNAME" \
+  --parameters "password=$PASSWORD" \
+  --parameters "connectionProperties=$CONNECTION_PROPERTIES" \
+  --parameters "alloydbTable=$ALLOYDB_TABLE" \
+  --parameters "query=$QUERY" \
+  --parameters "batchSize=$BATCH_SIZE" \
+  --parameters "autoSharding=$AUTO_SHARDING" \
+  --parameters "type=$TYPE" \
+  --parameters "size=$SIZE"
+```
+
+For more information about the command, please check:
+https://cloud.google.com/sdk/gcloud/reference/dataflow/flex-template/run
+
+
+**Using the plugin**:
+
+Instead of just generating the template in the folder, it is possible to stage
+and run the template in a single command. This may be useful for testing when
+changing the templates.
+
+```shell
+export PROJECT=<my-project>
+export BUCKET_NAME=<bucket-name>
+export REGION=us-central1
+
+### Required
+export TOPIC=<topic>
+export JDBC_URL=<jdbcUrl>
+
+### Optional
+export FORMAT=JSON
+export SCHEMA=<schema>
+export ATTRIBUTES=<attributes>
+export ATTRIBUTES_MAP=<attributesMap>
+export ID_ATTRIBUTE=<idAttribute>
+export TIMESTAMP_ATTRIBUTE=<timestampAttribute>
+export PUBLISH_TIME_FIELD=<publishTimeField>
+export USERNAME=<username>
+export PASSWORD=<password>
+export CONNECTION_PROPERTIES=<connectionProperties>
+export ALLOYDB_TABLE=<alloydbTable>
+export QUERY=<query>
+export BATCH_SIZE=1000
+export AUTO_SHARDING=<autoSharding>
+export TYPE=fixed
+export SIZE=60
+
+mvn clean package -PtemplatesRun \
+-DskipTests \
+-DprojectId="$PROJECT" \
+-DbucketName="$BUCKET_NAME" \
+-Dregion="$REGION" \
+-DjobName="pubsub-to-alloydb-yaml-job" \
+-DtemplateName="PubSub_To_AlloyDB_Yaml" \
+-Dparameters="topic=$TOPIC,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributesMap=$ATTRIBUTES_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,publishTimeField=$PUBLISH_TIME_FIELD,jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,alloydbTable=$ALLOYDB_TABLE,query=$QUERY,batchSize=$BATCH_SIZE,autoSharding=$AUTO_SHARDING,type=$TYPE,size=$SIZE" \
+-f yaml
+```
+
+## Terraform
+
+Dataflow supports the utilization of Terraform to manage template jobs,
+see [dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job).
+
+Terraform modules have been generated for most templates in this repository. This includes the relevant parameters
+specific to the template. If available, they may be used instead of
+[dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job)
+directly.
+
+To use the autogenerated module, execute the standard
+[terraform workflow](https://developer.hashicorp.com/terraform/intro/core-workflow):
+
+```shell
+cd yaml/terraform/PubSub_To_AlloyDB_Yaml
+terraform init
+terraform apply
+```
+
+To use
+[dataflow_flex_template_job](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/dataflow_flex_template_job)
+directly:
+
+```terraform
+provider "google-beta" {
+  project = var.project
+}
+variable "project" {
+  default = "<my-project>"
+}
+variable "region" {
+  default = "us-central1"
+}
+
+resource "google_dataflow_flex_template_job" "pubsub_to_alloydb_yaml" {
+
+  provider          = google-beta
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/PubSub_To_AlloyDB_Yaml"
+  name              = "pubsub-to-alloydb-yaml"
+  region            = var.region
+  parameters        = {
+    topic = "<topic>"
+    jdbcUrl = "<jdbcUrl>"
+    # format = "JSON"
+    # schema = "<schema>"
+    # attributes = "<attributes>"
+    # attributesMap = "<attributesMap>"
+    # idAttribute = "<idAttribute>"
+    # timestampAttribute = "<timestampAttribute>"
+    # publishTimeField = "<publishTimeField>"
+    # username = "<username>"
+    # password = "<password>"
+    # connectionProperties = "<connectionProperties>"
+    # alloydbTable = "<alloydbTable>"
+    # query = "<query>"
+    # batchSize = "1000"
+    # autoSharding = "<autoSharding>"
+    # type = "fixed"
+    # size = "60"
+  }
+}
+```
