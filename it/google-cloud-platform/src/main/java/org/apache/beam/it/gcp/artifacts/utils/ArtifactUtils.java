@@ -23,6 +23,7 @@ import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Pr
 import com.google.auth.Credentials;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
+import com.google.cloud.storage.StorageRetryStrategy;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -71,7 +72,24 @@ public final class ArtifactUtils {
    * @return a {@link Storage} client for running GCS operations
    */
   public static Storage createStorageClient(Credentials credentials) {
+    return createStorageClient(credentials, null);
+  }
+
+  /**
+   * Creates a client for GCS with the given credentials and a custom storage retry strategy.
+   *
+   * @param credentials credentials to use for connecting. If not chosen, then this will use the
+   *     system credentials. Using system credentials is intended only for local testing. Otherwise,
+   *     it is best to pass in a short-lived access token.
+   * @param storageRetryStrategy the {@link StorageRetryStrategy} to use for GCS operations.
+   * @return a {@link Storage} client for running GCS operations
+   */
+  public static Storage createStorageClient(
+      Credentials credentials, StorageRetryStrategy storageRetryStrategy) {
     StorageOptions.Builder builder = StorageOptions.newBuilder();
+    if (storageRetryStrategy != null) {
+      builder.setStorageRetryStrategy(storageRetryStrategy);
+    }
     if (credentials != null) {
       builder.setCredentials(credentials);
     }
