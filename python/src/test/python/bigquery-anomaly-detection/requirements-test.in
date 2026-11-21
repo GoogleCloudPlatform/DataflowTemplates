@@ -1,2 +1,0 @@
-# Direct test-only dependencies compiled into requirements-test.txt via python/generate_all_dependencies.sh
-parameterized

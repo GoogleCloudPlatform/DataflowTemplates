@@ -45,10 +45,16 @@ update_if_present() {
   fi
 }
 
-update_if_present \
-  "$SCRIPTPATH/../python/src/test/python/bigquery-anomaly-detection/requirements-test.in" \
-  "$SCRIPTPATH/__build__/bqmonitor_test_requirements.txt" \
-  "$SCRIPTPATH/../python/src/test/python/bigquery-anomaly-detection/requirements-test.txt"
+BQMONITOR_TEST_DEST="$SCRIPTPATH/../python/src/test/python/bigquery-anomaly-detection/requirements-test.txt"
+if [ -f "$SCRIPTPATH/default_base_bqmonitor_requirements.txt" ] && [ -f "$BQMONITOR_TEST_DEST" ] && grep -q -- "--hash=" "$BQMONITOR_TEST_DEST"; then
+  sed 's/apache-beam\[gcp\]/apache-beam[gcp,test]/' \
+    "$SCRIPTPATH/default_base_bqmonitor_requirements.txt" \
+    > "$SCRIPTPATH/__build__/base_bqmonitor_test_requirements.txt"
+  update_if_present \
+    "$SCRIPTPATH/__build__/base_bqmonitor_test_requirements.txt" \
+    "$SCRIPTPATH/__build__/bqmonitor_test_requirements.txt" \
+    "$BQMONITOR_TEST_DEST"
+fi
 
 update_if_present \
   "$SCRIPTPATH/../.github/workflows/requirements/yaml-pr.in" \
