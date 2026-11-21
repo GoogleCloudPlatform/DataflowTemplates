@@ -18,11 +18,16 @@ package com.google.cloud.teleport.v2.neo4j.model.helpers;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
+import com.google.cloud.teleport.v2.neo4j.actions.BigQueryAction;
+import com.google.cloud.teleport.v2.neo4j.actions.HttpAction;
 import com.google.cloud.teleport.v2.neo4j.model.job.OverlayTokens;
+import com.google.cloud.teleport.v2.neo4j.model.sources.BigQuerySource;
+import com.google.cloud.teleport.v2.neo4j.model.sources.ExternalTextSource;
 import java.util.List;
 import java.util.Map;
 import org.junit.Test;
 import org.neo4j.importer.v1.targets.NodeReference;
+import org.neo4j.importer.v1.validation.InvalidDeserializerOptionsException;
 
 public class JobSpecMapperTest {
 
@@ -244,6 +249,78 @@ public class JobSpecMapperTest {
     assertThat(relationship.getSchema().getKeyConstraints().get(0).getProperties()).hasSize(1);
     assertThat(relationship.getSchema().getKeyConstraints().get(0).getProperties().get(0))
         .isEqualTo("id");
+  }
+
+  @Test
+  public void interpolates_whitelisted_paths_in_json_import_spec() {
+    var importSpecification =
+        JobSpecMapper.parse(
+            SPEC_PATH + "/" + "interpolated-json-import-spec.json",
+            new OverlayTokens(
+                Map.of("dataset", "test_dataset", "bucket", "test-bucket", "limit", 42)));
+
+    var actions = importSpecification.getActions();
+    assertThat(actions).hasSize(2);
+    var bigQueryAction = (BigQueryAction) actions.get(0);
+    assertThat(bigQueryAction.sql())
+        .isEqualTo("CREATE TABLE test_dataset.people AS SELECT 1 AS id");
+    var httpAction = (HttpAction) actions.get(1);
+    assertThat(httpAction.url()).isEqualTo("https://example.com/test_dataset");
+    assertThat(httpAction.getName()).isEqualTo("notify-$dataset");
+    assertThat(httpAction.headers()).containsExactly("X-Dataset", "$dataset");
+
+    var sources = importSpecification.getSources();
+    assertThat(sources).hasSize(2);
+    var bigQuerySource = (BigQuerySource) sources.get(0);
+    assertThat(bigQuerySource.getQuery()).isEqualTo("SELECT id FROM test_dataset.people LIMIT 42");
+    var textSource = (ExternalTextSource) sources.get(1);
+    assertThat(textSource.getUrls())
+        .containsExactly("gs://test-bucket/people-1.csv", "gs://test-bucket/people-2.csv")
+        .inOrder();
+  }
+
+  @Test
+  public void interpolates_whitelisted_paths_with_case_insensitive_types_in_yaml_import_spec() {
+    var importSpecification =
+        JobSpecMapper.parse(
+            SPEC_PATH + "/" + "interpolated-yaml-import-spec.yaml",
+            new OverlayTokens(
+                Map.of("dataset", "test_dataset", "bucket", "test-bucket", "limit", 42)));
+
+    var actions = importSpecification.getActions();
+    assertThat(actions).hasSize(2);
+    var bigQueryAction = (BigQueryAction) actions.get(0);
+    assertThat(bigQueryAction.sql())
+        .isEqualTo("CREATE TABLE test_dataset.people AS SELECT 1 AS id");
+    var httpAction = (HttpAction) actions.get(1);
+    assertThat(httpAction.url()).isEqualTo("https://example.com/test_dataset");
+    assertThat(httpAction.getName()).isEqualTo("notify-$dataset");
+    assertThat(httpAction.headers()).containsExactly("X-Dataset", "$dataset");
+
+    var sources = importSpecification.getSources();
+    assertThat(sources).hasSize(2);
+    var bigQuerySource = (BigQuerySource) sources.get(0);
+    assertThat(bigQuerySource.getQuery()).isEqualTo("SELECT id FROM test_dataset.people LIMIT 42");
+    var textSource = (ExternalTextSource) sources.get(1);
+    assertThat(textSource.getUrls())
+        .containsExactly("gs://test-bucket/people-1.csv", "gs://test-bucket/people-2.csv")
+        .inOrder();
+  }
+
+  @Test
+  public void throws_exception_when_interpolation_variable_is_named_rows() {
+    var exception =
+        assertThrows(
+            InvalidDeserializerOptionsException.class,
+            () ->
+                JobSpecMapper.parse(
+                    SPEC_PATH + "/valid-json-import-spec.json",
+                    new OverlayTokens(Map.of("rows", "reserved-value"))));
+
+    assertThat(exception)
+        .hasMessageThat()
+        .contains(
+            "Interpolation variables cannot be named 'rows', as it is reserved for query targets");
   }
 
   @Test

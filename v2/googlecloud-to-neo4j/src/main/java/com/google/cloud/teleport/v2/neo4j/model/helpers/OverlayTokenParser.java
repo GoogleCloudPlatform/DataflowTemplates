@@ -35,18 +35,18 @@ public class OverlayTokenParser {
     }
   }
 
-  private static Map<String, String> doParse(String json) {
+  private static Map<String, Object> doParse(String json) {
     if (StringUtils.isBlank(json)) {
       return Map.of();
     }
     LOG.debug("Parsing overlay tokens: {}", json);
     var jsonToken = new JSONObject(json);
     var tokens = jsonToken.keys();
-    var result = new HashMap<String, String>();
+    var result = new HashMap<String, Object>();
     while (tokens.hasNext()) {
       var tokenName = tokens.next();
       var rawTokenValue = jsonToken.opt(tokenName);
-      var tokenValue = JSONObject.NULL.equals(rawTokenValue) ? null : String.valueOf(rawTokenValue);
+      var tokenValue = JSONObject.NULL.equals(rawTokenValue) ? null : rawTokenValue;
       result.put(tokenName, tokenValue);
       LOG.debug("{}: {}", tokenName, tokenValue);
     }
