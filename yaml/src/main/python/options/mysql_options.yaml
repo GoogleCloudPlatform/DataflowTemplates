@@ -36,6 +36,13 @@ options:
         example: '["SET TIME ZONE UTC"]'
         required: false
         type: text
+      - order: 6
+        name: "secretManager"
+        description: "Secret manager to use for fetching secret values."
+        help: "Secret manager to use for fetching secret values. Available options: GoogleCloudSecretManager, GoogleCloudHsmGeneratedSecretManager."
+        example: "GoogleCloudSecretManager"
+        required: false
+        type: text
 
   - name: "mysql_read_options"
     parameters:

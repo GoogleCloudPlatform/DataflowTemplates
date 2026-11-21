@@ -85,6 +85,16 @@ public interface OracleToBigQueryYaml {
 
   @TemplateParameter.Text(
       order = 5,
+      name = "secretManager",
+      optional = true,
+      description = "Secret manager to use for fetching secret values.",
+      helpText =
+          "Secret manager to use for fetching secret values. Available options: GoogleCloudSecretManager, GoogleCloudHsmGeneratedSecretManager.",
+      example = "GoogleCloudSecretManager")
+  String getSecretManager();
+
+  @TemplateParameter.Text(
+      order = 6,
       name = "location",
       optional = true,
       description = "The name of the table to read from.",
@@ -93,7 +103,7 @@ public interface OracleToBigQueryYaml {
   String getLocation();
 
   @TemplateParameter.Text(
-      order = 6,
+      order = 7,
       name = "readQuery",
       optional = true,
       description = "The SQL query to execute for reading data.",
@@ -102,7 +112,7 @@ public interface OracleToBigQueryYaml {
   String getReadQuery();
 
   @TemplateParameter.Text(
-      order = 7,
+      order = 8,
       name = "partitionColumn",
       optional = true,
       description = "The name of a numeric column to be used for partitioning.",
@@ -111,7 +121,7 @@ public interface OracleToBigQueryYaml {
   String getPartitionColumn();
 
   @TemplateParameter.Integer(
-      order = 8,
+      order = 9,
       name = "numPartitions",
       optional = true,
       description = "The number of partitions to divide the data into.",
@@ -120,7 +130,7 @@ public interface OracleToBigQueryYaml {
   Integer getNumPartitions();
 
   @TemplateParameter.Integer(
-      order = 9,
+      order = 10,
       name = "fetchSize",
       optional = true,
       description = "The number of rows to fetch from the database at a time.",
@@ -130,7 +140,7 @@ public interface OracleToBigQueryYaml {
   Integer getFetchSize();
 
   @TemplateParameter.Boolean(
-      order = 10,
+      order = 11,
       name = "disableAutoCommit",
       optional = true,
       description = "Whether to disable auto-commit on read.",
@@ -139,7 +149,7 @@ public interface OracleToBigQueryYaml {
   Boolean getDisableAutoCommit();
 
   @TemplateParameter.Boolean(
-      order = 11,
+      order = 12,
       name = "outputParallelization",
       optional = true,
       description = "Whether to reshuffle the PCollection to distribute results to all workers.",
@@ -148,7 +158,7 @@ public interface OracleToBigQueryYaml {
   Boolean getOutputParallelization();
 
   @TemplateParameter.Text(
-      order = 12,
+      order = 13,
       name = "table",
       optional = false,
       description = "BigQuery table",
@@ -159,7 +169,7 @@ public interface OracleToBigQueryYaml {
   String getTable();
 
   @TemplateParameter.Text(
-      order = 13,
+      order = 14,
       name = "createDisposition",
       optional = true,
       description = "How to create",
@@ -170,7 +180,7 @@ public interface OracleToBigQueryYaml {
   String getCreateDisposition();
 
   @TemplateParameter.Text(
-      order = 14,
+      order = 15,
       name = "writeDisposition",
       optional = true,
       description = "How to write",
@@ -181,7 +191,7 @@ public interface OracleToBigQueryYaml {
   String getWriteDisposition();
 
   @TemplateParameter.Integer(
-      order = 15,
+      order = 16,
       name = "numStreams",
       optional = true,
       description = "Number of streams for BigQuery Storage Write API",

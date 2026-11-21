@@ -49,6 +49,7 @@ pipeline:
         url: "{{ jdbcUrl }}"
         username: "{{ username }}"
         password: "{{ password }}"
+        secret_manager: {{ secretManager }}
         query: {{ query }}
         connection_properties: {{ connectionProperties }}
         table: {{ postgresTable }}

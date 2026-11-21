@@ -94,6 +94,16 @@ public interface MySQLToBigQueryYaml {
 
   @TemplateParameter.Text(
       order = 6,
+      name = "secretManager",
+      optional = true,
+      description = "Secret manager to use for fetching secret values.",
+      helpText =
+          "Secret manager to use for fetching secret values. Available options: GoogleCloudSecretManager, GoogleCloudHsmGeneratedSecretManager.",
+      example = "GoogleCloudSecretManager")
+  String getSecretManager();
+
+  @TemplateParameter.Text(
+      order = 7,
       name = "location",
       optional = true,
       description = "The name of the table to read from.",
@@ -102,7 +112,7 @@ public interface MySQLToBigQueryYaml {
   String getLocation();
 
   @TemplateParameter.Text(
-      order = 7,
+      order = 8,
       name = "readQuery",
       optional = true,
       description = "The SQL query to execute for reading data.",
@@ -111,7 +121,7 @@ public interface MySQLToBigQueryYaml {
   String getReadQuery();
 
   @TemplateParameter.Text(
-      order = 8,
+      order = 9,
       name = "partitionColumn",
       optional = true,
       description = "The name of a numeric column to be used for partitioning.",
@@ -120,7 +130,7 @@ public interface MySQLToBigQueryYaml {
   String getPartitionColumn();
 
   @TemplateParameter.Integer(
-      order = 9,
+      order = 10,
       name = "numPartitions",
       optional = true,
       description = "The number of partitions to divide the data into.",
@@ -129,7 +139,7 @@ public interface MySQLToBigQueryYaml {
   Integer getNumPartitions();
 
   @TemplateParameter.Integer(
-      order = 10,
+      order = 11,
       name = "fetchSize",
       optional = true,
       description = "The number of rows to fetch from the database at a time.",
@@ -139,7 +149,7 @@ public interface MySQLToBigQueryYaml {
   Integer getFetchSize();
 
   @TemplateParameter.Boolean(
-      order = 11,
+      order = 12,
       name = "disableAutoCommit",
       optional = true,
       description = "Whether to disable auto-commit on read.",
@@ -149,7 +159,7 @@ public interface MySQLToBigQueryYaml {
   Boolean getDisableAutoCommit();
 
   @TemplateParameter.Boolean(
-      order = 12,
+      order = 13,
       name = "outputParallelization",
       optional = true,
       description = "Whether to reshuffle the PCollection to distribute results to all workers.",
@@ -158,7 +168,7 @@ public interface MySQLToBigQueryYaml {
   Boolean getOutputParallelization();
 
   @TemplateParameter.Text(
-      order = 13,
+      order = 14,
       name = "table",
       optional = false,
       description = "BigQuery table",
@@ -169,7 +179,7 @@ public interface MySQLToBigQueryYaml {
   String getTable();
 
   @TemplateParameter.Text(
-      order = 14,
+      order = 15,
       name = "createDisposition",
       optional = true,
       description = "How to create",
@@ -180,7 +190,7 @@ public interface MySQLToBigQueryYaml {
   String getCreateDisposition();
 
   @TemplateParameter.Text(
-      order = 15,
+      order = 16,
       name = "writeDisposition",
       optional = true,
       description = "How to write",
@@ -191,7 +201,7 @@ public interface MySQLToBigQueryYaml {
   String getWriteDisposition();
 
   @TemplateParameter.Integer(
-      order = 16,
+      order = 17,
       name = "numStreams",
       optional = true,
       description = "Number of streams for BigQuery Storage Write API",
