@@ -54,9 +54,9 @@ jobs:
       - name: Install dependencies and run tests
         working-directory: python
         run: |
-          pip install -r src/test/python/bigquery-anomaly-detection/requirements-test.txt
-          pip install -e src/main/python/bigquery-anomaly-detection
-          python -m unittest discover \
+          pip install --require-hashes --no-deps \
+            -r src/test/python/bigquery-anomaly-detection/requirements-test.txt
+          PYTHONPATH=src/main/python/bigquery-anomaly-detection/src python -m unittest discover \
             -s src/test/python/bigquery-anomaly-detection \
             -p '*_test.py' \
             -v
