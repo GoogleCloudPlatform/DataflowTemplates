@@ -361,6 +361,21 @@ public class AvroToValueMapper {
         buf.get(bytes);
         return Hex.encodeHexString(bytes);
       }
+      if (recordValue.getClass().isArray()) {
+        List<Object> list = new ArrayList<>();
+        for (int i = 0; i < Array.getLength(recordValue); i++) {
+          Object elem = Array.get(recordValue, i);
+          if (elem instanceof ByteBuffer) {
+            ByteBuffer buf = ((ByteBuffer) elem).duplicate();
+            byte[] bytes = new byte[buf.remaining()];
+            buf.get(bytes);
+            list.add(Hex.encodeHexString(bytes));
+          } else {
+            list.add(elem);
+          }
+        }
+        return new org.json.JSONArray(list).toString();
+      }
       return recordValue.toString();
     } catch (Exception e) {
       throw new AvroTypeConvertorException(

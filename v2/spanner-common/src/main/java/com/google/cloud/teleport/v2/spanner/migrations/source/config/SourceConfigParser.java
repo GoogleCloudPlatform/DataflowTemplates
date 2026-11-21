@@ -92,6 +92,20 @@ public class SourceConfigParser {
         String astraFileContent = FileLoader.readConfigFilePath(sourceConfigFilePath);
         Map<String, Object> astraConfigMap = parseConfigToConfigMap(astraFileContent);
         return mapper.convertValue(astraConfigMap, AstraConnectionConfig.class);
+      case DYNAMODB:
+        String dynamoDbFileContent = FileLoader.readConfigFilePath(sourceConfigFilePath);
+        Map<String, Object> dynamoDbConfigMap = parseConfigToConfigMap(dynamoDbFileContent);
+        DynamoDbConnectionConfig dynamoDbConfig =
+            mapper.convertValue(dynamoDbConfigMap, DynamoDbConnectionConfig.class);
+        if (resolveSecrets
+            && dynamoDbConfig.getSecretManagerUri() != null
+            && !dynamoDbConfig.getSecretManagerUri().isEmpty()) {
+          String secretKey =
+              secretManagerAccessor.resolvePassword(
+                  dynamoDbConfig.getSecretManagerUri(), "dynamodb", dynamoDbConfig.getSecretKey());
+          dynamoDbConfig.setSecretKey(secretKey);
+        }
+        return dynamoDbConfig;
       case ORACLE:
       case MYSQL:
       case PG:
