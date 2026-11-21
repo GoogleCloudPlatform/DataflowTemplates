@@ -40,6 +40,9 @@ public abstract class IndexColumn implements Serializable {
   @Nullable
   public abstract NullsOrder nullsOrder();
 
+  @Nullable
+  public abstract String expression();
+
   public static IndexColumn create(String name, Order order, Dialect dialect) {
     return new AutoValue_IndexColumn.Builder().dialect(dialect).name(name).order(order).autoBuild();
   }
@@ -79,7 +82,12 @@ public abstract class IndexColumn implements Serializable {
   }
 
   public void prettyPrint(Appendable appendable) throws IOException {
-    appendable.append(quoteIdentifier(name(), dialect())).append(" ").append(order().title);
+    if (expression() == null) {
+      appendable.append(quoteIdentifier(name(), dialect()));
+    } else {
+      appendable.append("(").append(expression()).append(")");
+    }
+    appendable.append(" ").append(order().title);
     if (nullsOrder() != null) {
       appendable.append(" NULLS ").append(nullsOrder().title);
     }
@@ -111,6 +119,8 @@ public abstract class IndexColumn implements Serializable {
     abstract Builder dialect(Dialect dialect);
 
     abstract Builder nullsOrder(NullsOrder nullsOrder);
+
+    abstract Builder expression(String expression);
 
     abstract IndexColumn autoBuild();
   }
@@ -219,6 +229,15 @@ public abstract class IndexColumn implements Serializable {
             "Builder is missing. Call create method to initiate a builder first.");
       }
       indexColumnBuilder.nullsOrder(NullsOrder.LAST);
+      return this;
+    }
+
+    public IndexColumnsBuilder<T> expression(String expression) {
+      if (indexColumnBuilder == null) {
+        throw new IllegalArgumentException(
+            "Builder is missing. Call create method to initiate a builder first.");
+      }
+      indexColumnBuilder.expression(expression);
       return this;
     }
 
