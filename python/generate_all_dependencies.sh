@@ -33,3 +33,45 @@ cp $SCRIPTPATH/__build__/default_yaml_requirements.txt $SCRIPTPATH/../v2/googlec
 cp $SCRIPTPATH/__build__/default_yaml_requirements.txt $SCRIPTPATH/../v2/googlecloud-to-googlecloud/src/main/resources/requirements.txt
 cp $SCRIPTPATH/__build__/default_yaml_requirements.txt $SCRIPTPATH/../v2/googlecloud-to-splunk/src/main/resources/requirements.txt
 cp $SCRIPTPATH/__build__/default_yaml_requirements.txt $SCRIPTPATH/../v2/googlecloud-and-mongodb/src/main/resources/requirements.txt
+
+# Regenerate hash-pinned CI workflow and test-infra helper requirements once present on main.
+update_if_present() {
+  BASE_REQ="$1"
+  BUILD_REQ="$2"
+  DEST_REQ="$3"
+  if [ -f "$BASE_REQ" ] && [ -f "$DEST_REQ" ] && grep -q -- "--hash=" "$DEST_REQ"; then
+    sh "$SCRIPTPATH/generate_dependencies.sh" "$BASE_REQ" "$BUILD_REQ"
+    cp "$BUILD_REQ" "$DEST_REQ"
+  fi
+}
+
+BQMONITOR_TEST_DEST="$SCRIPTPATH/../python/src/test/python/bigquery-anomaly-detection/requirements-test.txt"
+if [ -f "$SCRIPTPATH/default_base_bqmonitor_requirements.txt" ] && [ -f "$BQMONITOR_TEST_DEST" ] && grep -q -- "--hash=" "$BQMONITOR_TEST_DEST"; then
+  sed 's/apache-beam\[gcp\]/apache-beam[gcp,test]/' \
+    "$SCRIPTPATH/default_base_bqmonitor_requirements.txt" \
+    > "$SCRIPTPATH/__build__/base_bqmonitor_test_requirements.txt"
+  update_if_present \
+    "$SCRIPTPATH/__build__/base_bqmonitor_test_requirements.txt" \
+    "$SCRIPTPATH/__build__/bqmonitor_test_requirements.txt" \
+    "$BQMONITOR_TEST_DEST"
+fi
+
+update_if_present \
+  "$SCRIPTPATH/../.github/workflows/requirements/yaml-pr.in" \
+  "$SCRIPTPATH/__build__/yaml_pr_hashes.txt" \
+  "$SCRIPTPATH/../.github/workflows/requirements/yaml-pr-hashes.txt"
+
+update_if_present \
+  "$SCRIPTPATH/../.github/workflows/requirements/yaml-config-params-report.in" \
+  "$SCRIPTPATH/__build__/yaml_config_params_report_hashes.txt" \
+  "$SCRIPTPATH/../.github/workflows/requirements/yaml-config-params-report-hashes.txt"
+
+update_if_present \
+  "$SCRIPTPATH/../test-infra/requirements.txt" \
+  "$SCRIPTPATH/__build__/test_infra_requirements_hashes.txt" \
+  "$SCRIPTPATH/../test-infra/requirements-hashes.txt"
+
+update_if_present \
+  "$SCRIPTPATH/../.github/workflows/requirements/poetry-requirements.in" \
+  "$SCRIPTPATH/__build__/poetry_requirements_hashes.txt" \
+  "$SCRIPTPATH/../.github/workflows/requirements/poetry-requirements-hashes.txt"
