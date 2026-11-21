@@ -42,7 +42,6 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants;
-import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.templates.source.mysql.MySqlDsToSpSourceConnector;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.util.Iterator;
@@ -143,8 +142,8 @@ public class SpannerTransactionWriterDoFnTest {
         PipelineOptionsFactory.fromArgs(args).as(DataflowWorkerHarnessOptions.class);
 
     ObjectNode outputObject = mapper.createObjectNode();
-    outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    outputObject.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    outputObject.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
@@ -238,8 +237,8 @@ public class SpannerTransactionWriterDoFnTest {
         PipelineOptionsFactory.fromArgs(args).as(DataflowWorkerHarnessOptions.class);
 
     ObjectNode outputObject = mapper.createObjectNode();
-    outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    outputObject.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    outputObject.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
@@ -302,8 +301,8 @@ public class SpannerTransactionWriterDoFnTest {
     TransactionContext transactionContext = mock(TransactionContext.class);
 
     ObjectNode outputObject = mapper.createObjectNode();
-    outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "NonExistentTable");
+    outputObject.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    outputObject.put(Constants.EVENT_TABLE_NAME_KEY, "NonExistentTable");
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
@@ -364,8 +363,8 @@ public class SpannerTransactionWriterDoFnTest {
     DatabaseClient databaseClientMock = mock(DatabaseClient.class);
 
     ObjectNode outputObject = mapper.createObjectNode();
-    outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, "invalid_source");
-    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    outputObject.put(Constants.EVENT_SOURCE_TYPE_KEY, "invalid_source");
+    outputObject.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
@@ -415,8 +414,8 @@ public class SpannerTransactionWriterDoFnTest {
     DatabaseClient databaseClientMock = mock(DatabaseClient.class);
 
     ObjectNode outputObject = mapper.createObjectNode();
-    outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, "mysql");
-    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    outputObject.put(Constants.EVENT_SOURCE_TYPE_KEY, "mysql");
+    outputObject.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     // Missing first_name and last_name which are PKs
     outputObject.put("age", 13);
     outputObject.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, 12345);
@@ -485,8 +484,8 @@ public class SpannerTransactionWriterDoFnTest {
         PipelineOptionsFactory.fromArgs(args).as(DataflowWorkerHarnessOptions.class);
 
     ObjectNode outputObject = mapper.createObjectNode();
-    outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    outputObject.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    outputObject.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
@@ -613,8 +612,8 @@ public class SpannerTransactionWriterDoFnTest {
         PipelineOptionsFactory.fromArgs(args).as(DataflowWorkerHarnessOptions.class);
 
     ObjectNode outputObject = mapper.createObjectNode();
-    outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    outputObject.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    outputObject.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
@@ -701,8 +700,8 @@ public class SpannerTransactionWriterDoFnTest {
         PipelineOptionsFactory.fromArgs(args).as(DataflowWorkerHarnessOptions.class);
 
     ObjectNode outputObject = mapper.createObjectNode();
-    outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    outputObject.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    outputObject.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
@@ -828,8 +827,8 @@ public class SpannerTransactionWriterDoFnTest {
         PipelineOptionsFactory.fromArgs(args).as(DataflowWorkerHarnessOptions.class);
 
     ObjectNode outputObject = mapper.createObjectNode();
-    outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    outputObject.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    outputObject.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
@@ -989,8 +988,8 @@ public class SpannerTransactionWriterDoFnTest {
         .thenReturn(ValueProvider.StaticValueProvider.of(databaseId));
 
     ObjectNode outputObject = mapper.createObjectNode();
-    outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, "random");
-    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users1");
+    outputObject.put(Constants.EVENT_SOURCE_TYPE_KEY, "random");
+    outputObject.put(Constants.EVENT_TABLE_NAME_KEY, "Users1");
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
@@ -1039,8 +1038,8 @@ public class SpannerTransactionWriterDoFnTest {
         PipelineOptionsFactory.fromArgs(args).as(DataflowWorkerHarnessOptions.class);
 
     ObjectNode outputObject = mapper.createObjectNode();
-    outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    outputObject.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    outputObject.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
@@ -1105,8 +1104,8 @@ public class SpannerTransactionWriterDoFnTest {
         PipelineOptionsFactory.fromArgs(args).as(DataflowWorkerHarnessOptions.class);
 
     ObjectNode outputObject = mapper.createObjectNode();
-    outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    outputObject.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    outputObject.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
@@ -1168,8 +1167,8 @@ public class SpannerTransactionWriterDoFnTest {
         PipelineOptionsFactory.fromArgs(args).as(DataflowWorkerHarnessOptions.class);
 
     ObjectNode outputObject = mapper.createObjectNode();
-    outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    outputObject.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    outputObject.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
@@ -1233,8 +1232,8 @@ public class SpannerTransactionWriterDoFnTest {
         PipelineOptionsFactory.fromArgs(args).as(DataflowWorkerHarnessOptions.class);
 
     ObjectNode outputObject = mapper.createObjectNode();
-    outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    outputObject.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    outputObject.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
@@ -1331,8 +1330,8 @@ public class SpannerTransactionWriterDoFnTest {
         PipelineOptionsFactory.fromArgs(args).as(DataflowWorkerHarnessOptions.class);
 
     ObjectNode outputObject = mapper.createObjectNode();
-    outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    outputObject.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    outputObject.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Depp");
     outputObject.put("age", 13);
@@ -1528,9 +1527,9 @@ public class SpannerTransactionWriterDoFnTest {
             .build();
 
     com.fasterxml.jackson.databind.node.ObjectNode outputObject = mapper.createObjectNode();
-    outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "userswithgenpk");
-    outputObject.put(DatastreamConstants.EVENT_CHANGE_TYPE_KEY, "INSERT");
+    outputObject.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    outputObject.put(Constants.EVENT_TABLE_NAME_KEY, "userswithgenpk");
+    outputObject.put(Constants.EVENT_CHANGE_TYPE_KEY, "INSERT");
     outputObject.put("id", "123");
     outputObject.put("name", "Test");
     outputObject.put(MySqlDsToSpSourceConnector.MYSQL_TIMESTAMP_KEY, 12345);
@@ -1608,9 +1607,9 @@ public class SpannerTransactionWriterDoFnTest {
         com.google.cloud.teleport.v2.spanner.ddl.Ddl.builder().build(); // Empty DDL
 
     com.fasterxml.jackson.databind.node.ObjectNode outputObject = mapper.createObjectNode();
-    outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, "mysql");
-    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "NonExistentTable");
-    outputObject.put(DatastreamConstants.EVENT_CHANGE_TYPE_KEY, "INSERT");
+    outputObject.put(Constants.EVENT_SOURCE_TYPE_KEY, "mysql");
+    outputObject.put(Constants.EVENT_TABLE_NAME_KEY, "NonExistentTable");
+    outputObject.put(Constants.EVENT_CHANGE_TYPE_KEY, "INSERT");
 
     FailsafeElement<String, String> failsafeElement =
         FailsafeElement.of(outputObject.toString(), outputObject.toString());
@@ -1668,9 +1667,9 @@ public class SpannerTransactionWriterDoFnTest {
             .build();
 
     com.fasterxml.jackson.databind.node.ObjectNode outputObject = mapper.createObjectNode();
-    outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, "mysql");
-    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
-    outputObject.put(DatastreamConstants.EVENT_CHANGE_TYPE_KEY, "INSERT");
+    outputObject.put(Constants.EVENT_SOURCE_TYPE_KEY, "mysql");
+    outputObject.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
+    outputObject.put(Constants.EVENT_CHANGE_TYPE_KEY, "INSERT");
     // Missing "id" column which is required by DDL as primary key
 
     FailsafeElement<String, String> failsafeElement =

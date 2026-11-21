@@ -30,7 +30,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
+import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
@@ -128,7 +128,7 @@ public class CreateKeyValuePairsWithPrimaryKeyHashDoFnTest {
     when(processContext.sideInput(ddlView)).thenReturn(ddl);
 
     ObjectNode outputObject = mapper.createObjectNode();
-    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    outputObject.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Doe");
     outputObject.put("age", 13);
@@ -178,7 +178,7 @@ public class CreateKeyValuePairsWithPrimaryKeyHashDoFnTest {
 
     // Table exists at source but not in Spanner.
     ObjectNode outputObject = mapper.createObjectNode();
-    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "AuditLog");
+    outputObject.put(Constants.EVENT_TABLE_NAME_KEY, "AuditLog");
     outputObject.put("log_id", 1);
 
     FailsafeElement<String, String> failsafeElement =
@@ -204,7 +204,7 @@ public class CreateKeyValuePairsWithPrimaryKeyHashDoFnTest {
     when(processContext.sideInput(ddlView)).thenReturn(ddl);
 
     ObjectNode outputObject = mapper.createObjectNode();
-    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "AllTypes");
+    outputObject.put(Constants.EVENT_TABLE_NAME_KEY, "AllTypes");
     outputObject.put("bool_col", true);
     outputObject.put("int64_col", 12345L);
     outputObject.put("float64_col", 3.14);
@@ -235,13 +235,13 @@ public class CreateKeyValuePairsWithPrimaryKeyHashDoFnTest {
     when(processContext.sideInput(ddlView)).thenReturn(ddl);
 
     ObjectNode event1 = mapper.createObjectNode();
-    event1.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    event1.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     event1.put("first_name", "Johnny");
     event1.put("last_name", "Doe");
     event1.put("age", 50); // Different non-key field
 
     ObjectNode event2 = mapper.createObjectNode();
-    event2.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    event2.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     event2.put("first_name", "Johnny");
     event2.put("last_name", "Doe");
     event2.put("age", 51); // Different non-key field
@@ -271,12 +271,12 @@ public class CreateKeyValuePairsWithPrimaryKeyHashDoFnTest {
     when(processContext.sideInput(ddlView)).thenReturn(ddl);
 
     ObjectNode event1 = mapper.createObjectNode();
-    event1.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    event1.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     event1.put("first_name", "Johnny");
     event1.put("last_name", "Doe");
 
     ObjectNode event2 = mapper.createObjectNode();
-    event2.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    event2.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     event2.put("first_name", "NotJohnny");
     event2.put("last_name", "Doe");
 
@@ -305,7 +305,7 @@ public class CreateKeyValuePairsWithPrimaryKeyHashDoFnTest {
     when(processContext.sideInput(ddlView)).thenReturn(ddl);
 
     ObjectNode outputObject = mapper.createObjectNode();
-    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    outputObject.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Doe");
     outputObject.put("age", 13);
@@ -333,7 +333,7 @@ public class CreateKeyValuePairsWithPrimaryKeyHashDoFnTest {
     when(processContext.sideInput(ddlView)).thenReturn(ddl);
 
     ObjectNode outputObject = mapper.createObjectNode();
-    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    outputObject.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     outputObject.put("FIRST_NAME", "Johnny");
     outputObject.put("LAST_NAME", "Doe");
     outputObject.put("AGE", 13);
@@ -359,7 +359,7 @@ public class CreateKeyValuePairsWithPrimaryKeyHashDoFnTest {
     when(processContext.sideInput(ddlView)).thenReturn(ddl);
 
     ObjectNode outputObject = mapper.createObjectNode();
-    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    outputObject.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     outputObject.put("first_name", "Johnny");
     outputObject.put("last_name", "Doe");
     outputObject.put("age", 13);
