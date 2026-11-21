@@ -55,7 +55,6 @@ jobs:
         working-directory: python
         run: |
           pip install --require-hashes --no-deps \
-            -r src/main/python/bigquery-anomaly-detection/requirements_all.txt \
             -r src/test/python/bigquery-anomaly-detection/requirements-test.txt
           PYTHONPATH=src/main/python/bigquery-anomaly-detection/src python -m unittest discover \
             -s src/test/python/bigquery-anomaly-detection \
