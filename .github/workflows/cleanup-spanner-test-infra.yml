@@ -41,7 +41,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install dependencies
-        run: python -m pip install --require-hashes -r test-infra/requirements-hashes.txt
+        run: python -m pip install --require-hashes -r .github/workflows/requirements/cleanup-spanner-test-infra-requirements-hashes.txt
       - name: Run cleanup_pubsub_notifications.py
         # There could be pubsub notifications created by tests other than Spanner tests and hence not removing and
         # keeping the pubsub notification cleanup on the main project.
@@ -69,7 +69,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install dependencies
-        run: python -m pip install --require-hashes -r test-infra/requirements-hashes.txt
+        run: python -m pip install --require-hashes -r .github/workflows/requirements/cleanup-spanner-test-infra-requirements-hashes.txt
       - name: Run cleanup_pubsub_notifications.py
         run: python test-infra/cleanup_pubsub_notifications.py --project span-cloud-teleport-testing
       - name: Run cleanup_spanner_databases.py

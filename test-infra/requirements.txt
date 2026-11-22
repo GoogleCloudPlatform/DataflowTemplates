@@ -1,3 +1,0 @@
-google-cloud-storage
-google-cloud-spanner
-google-cloud-datastream
