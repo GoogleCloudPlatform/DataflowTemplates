@@ -30,9 +30,11 @@ jobs:
       IT_REGION: us-west2
     steps:
       - name: Get releaser identity
+        env:
+          ACTOR: ${{ github.actor }}
         run: |
-          git config --global user.name '${{github.actor}}'
-          git config --global user.email '${{github.actor}}@users.noreply.github.com'
+          git config --global user.name "$ACTOR"
+          git config --global user.email "$ACTOR@users.noreply.github.com"
       - name: Declare release branch name and tag name
         id: variables
         run: |
@@ -168,9 +170,11 @@ jobs:
     runs-on: [self-hosted, release]
     steps:
       - name: Get releaser identity
+        env:
+          ACTOR: ${{ github.actor }}
         run: |
-          git config --global user.name '${{github.actor}}'
-          git config --global user.email '${{github.actor}}@users.noreply.github.com'
+          git config --global user.name "$ACTOR"
+          git config --global user.email "$ACTOR@users.noreply.github.com"
       - name: Declare release branch name and tag name
         id: variables
         run: |
@@ -210,9 +214,11 @@ jobs:
     runs-on: [self-hosted, release]
     steps:
       - name: Get releaser identity
+        env:
+          ACTOR: ${{ github.actor }}
         run: |
-          git config --global user.name '${{github.actor}}'
-          git config --global user.email '${{github.actor}}@users.noreply.github.com'
+          git config --global user.name "$ACTOR"
+          git config --global user.email "$ACTOR@users.noreply.github.com"
       - name: Declare release branch name and tag name
         id: variables
         run: |
@@ -254,9 +260,11 @@ jobs:
     runs-on: [self-hosted, release]
     steps:
       - name: Get releaser identity
+        env:
+          ACTOR: ${{ github.actor }}
         run: |
-          git config --global user.name '${{github.actor}}'
-          git config --global user.email '${{github.actor}}@users.noreply.github.com'
+          git config --global user.name "$ACTOR"
+          git config --global user.email "$ACTOR@users.noreply.github.com"
       - name: Declare release branch name and tag name
         id: variables
         run: |
@@ -298,9 +306,11 @@ jobs:
     runs-on: [self-hosted, release]
     steps:
       - name: Get releaser identity
+        env:
+          ACTOR: ${{ github.actor }}
         run: |
-          git config --global user.name '${{github.actor}}'
-          git config --global user.email '${{github.actor}}@users.noreply.github.com'
+          git config --global user.name "$ACTOR"
+          git config --global user.email "$ACTOR@users.noreply.github.com"
       - name: Declare release branch name and tag name
         id: variables
         run: |
