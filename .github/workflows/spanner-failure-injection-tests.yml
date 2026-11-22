@@ -22,12 +22,16 @@ on:
         type: string
         required: true
 
-permissions: write-all
+permissions:
+  contents: read
 
 jobs:
   spanner_failure_injection_tests:
     name: Spanner Failure Injection Tests
     timeout-minutes: 360
+    permissions:
+      contents: read
+      checks: write
     runs-on: [ self-hosted, spanner-it ]
     steps:
     - name: Checkout Code
