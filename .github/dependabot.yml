@@ -4,21 +4,29 @@ updates:
     directory: /
     schedule:
       interval: daily
+    cooldown:
+      default-days: 7
 
   - package-ecosystem: gomod
     directory: /cicd
     schedule:
       interval: daily
+    cooldown:
+      default-days: 7
 
   - package-ecosystem: pip
     directory: /v1/src/main/python
     schedule:
       interval: daily
+    cooldown:
+      default-days: 7
 
   - package-ecosystem: pip
     directory: /.github/workflows/requirements
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     groups:
       ci-workflow-python-deps:
         patterns:
@@ -28,3 +36,5 @@ updates:
     directory: /
     schedule:
       interval: daily
+    cooldown:
+      default-days: 7
