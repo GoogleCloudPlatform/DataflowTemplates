@@ -15,6 +15,15 @@ updates:
     schedule:
       interval: daily
 
+  - package-ecosystem: pip
+    directory: /.github/workflows/requirements
+    schedule:
+      interval: weekly
+    groups:
+      ci-workflow-python-deps:
+        patterns:
+          - "*"
+
   - package-ecosystem: maven
     directory: /
     schedule:
