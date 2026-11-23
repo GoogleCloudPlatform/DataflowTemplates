@@ -2,6 +2,10 @@ name: Enforce labels for release notes
 on:
   pull_request:
     types: [opened, labeled, unlabeled, synchronize]
+
+permissions:
+  contents: read
+
 jobs:
   label:
     runs-on: ubuntu-latest
