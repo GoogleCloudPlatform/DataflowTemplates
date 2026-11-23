@@ -54,6 +54,23 @@ options:
         required: false
         type: text
 
+  - name: "iceberg_cdc_read_options"
+    parameters:
+      - order: 1
+        name: "startingStrategy"
+        description: "The starting strategy of the changelog read."
+        help: "Where to start reading changes from. Valid values are 'earliest' and 'latest'. Defaults to 'latest' for streaming pipelines."
+        example: "earliest"
+        required: false
+        type: text
+      - order: 2
+        name: "pollIntervalSeconds"
+        description: "The interval in seconds at which to poll for new snapshots."
+        help: "The interval in seconds at which the source polls the table for new snapshots. Defaults to 60 seconds."
+        example: 60
+        required: false
+        type: integer
+
   - name: "iceberg_write_options"
     parameters:
       - order: 1
