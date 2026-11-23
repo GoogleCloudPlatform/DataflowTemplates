@@ -75,8 +75,16 @@ public class PostgreSQLInheritanceTablesIT extends SourceDbToSpannerITBase {
 
   @AfterClass
   public static void cleanUp() {
-    ResourceManagerUtils.cleanResources(
-        postgresSQLResourceManager, gsqlSpannerResourceManager, pgDialectSpannerResourceManager);
+    try {
+      ResourceManagerUtils.cleanResources(
+          postgresSQLResourceManager, gsqlSpannerResourceManager, pgDialectSpannerResourceManager);
+    } finally {
+      initialized = false;
+      jobInfo = null;
+      postgresSQLResourceManager = null;
+      gsqlSpannerResourceManager = null;
+      pgDialectSpannerResourceManager = null;
+    }
   }
 
   @Test

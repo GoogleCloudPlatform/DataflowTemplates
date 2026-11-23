@@ -128,15 +128,25 @@ public class SpannerToSourceDbFileOverridesSchemaMapperIT extends SpannerToSourc
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (SpannerToSourceDbFileOverridesSchemaMapperIT instance : testInstances) {
-      instance.tearDownBase();
+    try {
+      for (SpannerToSourceDbFileOverridesSchemaMapperIT instance : testInstances) {
+        instance.tearDownBase();
+      }
+      ResourceManagerUtils.cleanResources(
+          spannerResourceManager,
+          mySQLResourceManager,
+          spannerMetadataResourceManager,
+          gcsResourceManager,
+          pubsubResourceManager);
+    } finally {
+      testInstances.clear();
+      jobInfo = null;
+      spannerResourceManager = null;
+      spannerMetadataResourceManager = null;
+      mySQLResourceManager = null;
+      gcsResourceManager = null;
+      pubsubResourceManager = null;
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        mySQLResourceManager,
-        spannerMetadataResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager);
   }
 
   @Test

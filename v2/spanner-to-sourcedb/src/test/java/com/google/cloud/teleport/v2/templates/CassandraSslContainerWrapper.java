@@ -51,42 +51,51 @@ public class CassandraSslContainerWrapper
     this.keyspaceName = builder.keyspaceName;
     this.trustStoreFile = trustStoreFile;
 
-    // Load the generated truststore to establish an SSL connection with the container
-    KeyStore trustStore = KeyStore.getInstance("JKS");
-    try (FileInputStream trustStoreFileStream = new FileInputStream(trustStoreFile)) {
-      trustStore.load(trustStoreFileStream, password.toCharArray());
-    }
-    TrustManagerFactory tmf =
-        TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-    tmf.init(trustStore);
-    SSLContext sslContext = SSLContext.getInstance("TLS");
-    sslContext.init(null, tmf.getTrustManagers(), null);
-
-    // Wait for the Cassandra node to become available and establish the CQL session
-    CqlSession tempSession = null;
-    long timeout = System.currentTimeMillis() + 60000;
-    while (true) {
-      try {
-        tempSession =
-            CqlSession.builder()
-                .addContactPoint(new InetSocketAddress(this.getHost(), this.getPort(9042)))
-                .withLocalDatacenter("datacenter1")
-                .withSslContext(sslContext)
-                .build();
-        break;
-      } catch (Exception e) {
-        if (System.currentTimeMillis() > timeout) {
-          throw new RuntimeException("Failed to connect to Cassandra with SSL", e);
-        }
-        Thread.sleep(2000);
+    try {
+      // Load the generated truststore to establish an SSL connection with the container
+      KeyStore trustStore = KeyStore.getInstance("JKS");
+      try (FileInputStream trustStoreFileStream = new FileInputStream(trustStoreFile)) {
+        trustStore.load(trustStoreFileStream, password.toCharArray());
       }
-    }
-    session = tempSession;
+      TrustManagerFactory tmf =
+          TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+      tmf.init(trustStore);
+      SSLContext sslContext = SSLContext.getInstance("TLS");
+      sslContext.init(null, tmf.getTrustManagers(), null);
 
-    session.execute(
-        "CREATE KEYSPACE IF NOT EXISTS \""
-            + keyspaceName
-            + "\" WITH replication = {'class':'SimpleStrategy', 'replication_factor':1};");
+      // Wait for the Cassandra node to become available and establish the CQL session
+      CqlSession tempSession = null;
+      long timeout = System.currentTimeMillis() + 60000;
+      while (true) {
+        try {
+          tempSession =
+              CqlSession.builder()
+                  .addContactPoint(new InetSocketAddress(this.getHost(), this.getPort(9042)))
+                  .withLocalDatacenter("datacenter1")
+                  .withSslContext(sslContext)
+                  .build();
+          break;
+        } catch (Exception e) {
+          if (System.currentTimeMillis() > timeout) {
+            throw new RuntimeException("Failed to connect to Cassandra with SSL", e);
+          }
+          Thread.sleep(2000);
+        }
+      }
+      session = tempSession;
+
+      session.execute(
+          "CREATE KEYSPACE IF NOT EXISTS \""
+              + keyspaceName
+              + "\" WITH replication = {'class':'SimpleStrategy', 'replication_factor':1};");
+    } catch (Throwable t) {
+      try {
+        cleanupAll();
+      } catch (Exception cleanupException) {
+        t.addSuppressed(cleanupException);
+      }
+      throw t;
+    }
   }
 
   /**
@@ -141,10 +150,29 @@ public class CassandraSslContainerWrapper
   /** Closes the CQL session and stops the underlying TestContainers container. */
   @Override
   public void cleanupAll() {
-    if (session != null) {
-      session.close();
+    try {
+      try {
+        if (session != null) {
+          session.close();
+        }
+      } finally {
+        super.cleanupAll();
+      }
+    } finally {
+      deleteTempDir(trustStoreFile != null ? trustStoreFile.getParentFile() : null);
     }
-    super.cleanupAll();
+  }
+
+  private static void deleteTempDir(File tempDir) {
+    if (tempDir != null && tempDir.exists()) {
+      File[] files = tempDir.listFiles();
+      if (files != null) {
+        for (File file : files) {
+          file.delete();
+        }
+      }
+      tempDir.delete();
+    }
   }
 
   /** Builder for {@link CassandraSslContainerWrapper}. */
@@ -179,9 +207,10 @@ public class CassandraSslContainerWrapper
      */
     @Override
     public CassandraSslContainerWrapper build() {
+      File tempDir = null;
       try {
         // Create temporary directory for storing generated certificates and keystores
-        File tempDir = Files.createTempDirectory("cassandra-ssl").toFile();
+        tempDir = Files.createTempDirectory("cassandra-ssl").toFile();
         File keyStoreFile = new File(tempDir, "keystore.jks");
         File trustStoreFile = new File(tempDir, "truststore.jks");
         File certFile = new File(tempDir, "cassandra.cer");
@@ -276,6 +305,7 @@ public class CassandraSslContainerWrapper
 
         return new CassandraSslContainerWrapper(this, container, trustStoreFile, password);
       } catch (Exception e) {
+        deleteTempDir(tempDir);
         throw new RuntimeException("Failed to start SSL Cassandra", e);
       }
     }

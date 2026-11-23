@@ -26,6 +26,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.plugin.model.ImageSpecMetadata;
 import com.google.cloud.teleport.plugin.model.TemplateDefinitions;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
@@ -331,5 +332,84 @@ public class TemplatesStageMojoTest {
             "template-a.yaml",
             "template-b.yaml",
             containerName + "/" + PYTHON_LAUNCHER_YAML_INDEX));
+  }
+
+  private static Template mockTemplate(
+      String containerName, String name, String displayName, boolean hidden) {
+    Template template = mock(Template.class);
+    when(template.name()).thenReturn(name);
+    when(template.displayName()).thenReturn(displayName);
+    when(template.flexContainerName()).thenReturn(containerName);
+    when(template.hidden()).thenReturn(hidden);
+    when(template.entryPoint()).thenReturn(new String[] {});
+    when(template.filesToCopy()).thenReturn(new String[] {});
+    return template;
+  }
+
+  @Test
+  public void testContainerStageTracker_deprecatedAndHiddenStatus() {
+    TemplatesStageMojo.ContainerStageTracker tracker =
+        new TemplatesStageMojo.ContainerStageTracker();
+    ImageSpecMetadata unused = new ImageSpecMetadata();
+
+    // All deprecated
+    tracker.addContainer(
+        mockTemplate("all-deprecated", "T1", "Template 1 [Deprecated]", false), new File("t1"));
+    tracker.addContainer(
+        mockTemplate("all-deprecated", "T2", "Template 2 [Deprecated]", true), new File("t2"));
+    assertTrue(tracker.isAllDeprecated("all-deprecated", unused));
+    assertTrue(tracker.isAllHiddenOrDeprecated("all-deprecated", unused));
+
+    // All hidden
+    tracker.addContainer(mockTemplate("all-hidden", "T1", "Template 1", true), new File("t1"));
+    tracker.addContainer(mockTemplate("all-hidden", "T2", "Template 2", true), new File("t2"));
+    assertFalse(tracker.isAllDeprecated("all-hidden", unused));
+    assertTrue(tracker.isAllHiddenOrDeprecated("all-hidden", unused));
+
+    // Mixed hidden and deprecated
+    tracker.addContainer(
+        mockTemplate("hidden-and-deprecated", "T1", "Template 1", true), new File("t1"));
+    tracker.addContainer(
+        mockTemplate("hidden-and-deprecated", "T2", "Template 2 [Deprecated]", false),
+        new File("t2"));
+    assertFalse(tracker.isAllDeprecated("hidden-and-deprecated", unused));
+    assertTrue(tracker.isAllHiddenOrDeprecated("hidden-and-deprecated", unused));
+
+    // Mixed public and hidden (both orders)
+    tracker.addContainer(
+        mockTemplate("public-then-hidden", "T1", "JMS to Pubsub", false), new File("t1"));
+    tracker.addContainer(
+        mockTemplate("public-then-hidden", "T2", "Pubsub to JMS", true), new File("t2"));
+    assertFalse(tracker.isAllDeprecated("public-then-hidden", unused));
+    assertFalse(tracker.isAllHiddenOrDeprecated("public-then-hidden", unused));
+
+    tracker.addContainer(
+        mockTemplate("hidden-then-public", "T2", "Pubsub to JMS", true), new File("t2"));
+    tracker.addContainer(
+        mockTemplate("hidden-then-public", "T1", "JMS to Pubsub", false), new File("t1"));
+    assertFalse(tracker.isAllDeprecated("hidden-then-public", unused));
+    assertFalse(tracker.isAllHiddenOrDeprecated("hidden-then-public", unused));
+
+    // Mixed public and deprecated
+    tracker.addContainer(
+        mockTemplate("public-and-deprecated", "T1", "Template 1 [Deprecated]", false),
+        new File("t1"));
+    tracker.addContainer(
+        mockTemplate("public-and-deprecated", "T2", "Template 2", false), new File("t2"));
+    assertFalse(tracker.isAllDeprecated("public-and-deprecated", unused));
+    assertFalse(tracker.isAllHiddenOrDeprecated("public-and-deprecated", unused));
+
+    // Untracked container falls back to ImageSpecMetadata
+    ImageSpecMetadata hiddenMeta = new ImageSpecMetadata();
+    hiddenMeta.setName("Python Template");
+    hiddenMeta.setHidden(true);
+    assertFalse(tracker.isAllDeprecated("untracked", hiddenMeta));
+    assertTrue(tracker.isAllHiddenOrDeprecated("untracked", hiddenMeta));
+
+    ImageSpecMetadata deprecatedMeta = new ImageSpecMetadata();
+    deprecatedMeta.setName("Python Template [Deprecated]");
+    deprecatedMeta.setHidden(false);
+    assertTrue(tracker.isAllDeprecated("untracked", deprecatedMeta));
+    assertTrue(tracker.isAllHiddenOrDeprecated("untracked", deprecatedMeta));
   }
 }

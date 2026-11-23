@@ -120,15 +120,25 @@ public class SpannerToSQLServerWideRowMaxColumnsIT extends SpannerToSourceDbITBa
 
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (SpannerToSQLServerWideRowMaxColumnsIT instance : testInstances) {
-      instance.tearDownBase();
+    try {
+      for (SpannerToSQLServerWideRowMaxColumnsIT instance : testInstances) {
+        instance.tearDownBase();
+      }
+      ResourceManagerUtils.cleanResources(
+          spannerResourceManager,
+          jdbcResourceManager,
+          spannerMetadataResourceManager,
+          gcsResourceManager,
+          pubsubResourceManager);
+    } finally {
+      testInstances.clear();
+      jobInfo = null;
+      spannerResourceManager = null;
+      spannerMetadataResourceManager = null;
+      jdbcResourceManager = null;
+      gcsResourceManager = null;
+      pubsubResourceManager = null;
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        jdbcResourceManager,
-        spannerMetadataResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager);
   }
 
   @Test

@@ -159,16 +159,30 @@ public class PostgreSQLDatastreamToPGDialectSpannerTableAndIndexLimitsIT
 
   @AfterClass
   public static void cleanUp() throws IOException {
-    LOG.info("Cleaning up resources...");
-    for (PostgreSQLDatastreamToPGDialectSpannerTableAndIndexLimitsIT instance : testInstances) {
-      instance.tearDownBase();
+    try {
+      LOG.info("Cleaning up resources...");
+      for (PostgreSQLDatastreamToPGDialectSpannerTableAndIndexLimitsIT instance : testInstances) {
+        instance.tearDownBase();
+      }
+
+      // It is important to clean up Datastream before trying to drop the replication slot.
+      ResourceManagerUtils.cleanResources(datastreamResourceManager);
+
+      ResourceManagerUtils.cleanResources(
+          postgresResourceManager,
+          spannerResourceManager,
+          gcsResourceManager,
+          pubsubResourceManager);
+    } finally {
+      postgresResourceManager = null;
+      spannerResourceManager = null;
+      gcsResourceManager = null;
+      pubsubResourceManager = null;
+      datastreamResourceManager = null;
+      testInstances.clear();
+      jobInfo = null;
+      replicationInfo = null;
     }
-
-    // It is important to clean up Datastream before trying to drop the replication slot.
-    ResourceManagerUtils.cleanResources(datastreamResourceManager);
-
-    ResourceManagerUtils.cleanResources(
-        postgresResourceManager, spannerResourceManager, gcsResourceManager, pubsubResourceManager);
   }
 
   @Test

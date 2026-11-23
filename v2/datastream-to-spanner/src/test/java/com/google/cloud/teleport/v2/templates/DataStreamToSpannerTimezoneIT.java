@@ -109,11 +109,19 @@ public class DataStreamToSpannerTimezoneIT extends DataStreamToSpannerITBase {
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (DataStreamToSpannerTimezoneIT instance : testInstances) {
-      instance.tearDownBase();
+    try {
+      for (DataStreamToSpannerTimezoneIT instance : testInstances) {
+        instance.tearDownBase();
+      }
+      ResourceManagerUtils.cleanResources(
+          spannerResourceManager, pubsubResourceManager, gcsResourceManager);
+    } finally {
+      testInstances.clear();
+      jobInfo = null;
+      pubsubResourceManager = null;
+      spannerResourceManager = null;
+      gcsResourceManager = null;
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager, pubsubResourceManager, gcsResourceManager);
   }
 
   @Test

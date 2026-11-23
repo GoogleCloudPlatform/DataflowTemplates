@@ -28,6 +28,7 @@ import com.google.cloud.teleport.v2.templates.model.DataGeneratorColumn;
 import com.google.cloud.teleport.v2.templates.model.LogicalType;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.sql.Types;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -73,6 +74,20 @@ public class DataGeneratorUtilsTest {
             .isGenerated(false)
             .build();
     assertEquals(FieldType.STRING, DataGeneratorUtils.mapToBeamFieldType(col));
+  }
+
+  @Test
+  public void testJdbcTypeFor() {
+    assertEquals(Types.VARCHAR, DataGeneratorUtils.jdbcTypeFor(LogicalType.STRING));
+    assertEquals(Types.VARCHAR, DataGeneratorUtils.jdbcTypeFor(LogicalType.JSON));
+    assertEquals(Types.VARCHAR, DataGeneratorUtils.jdbcTypeFor(LogicalType.UUID));
+    assertEquals(Types.BIGINT, DataGeneratorUtils.jdbcTypeFor(LogicalType.INT64));
+    assertEquals(Types.DOUBLE, DataGeneratorUtils.jdbcTypeFor(LogicalType.FLOAT64));
+    assertEquals(Types.BOOLEAN, DataGeneratorUtils.jdbcTypeFor(LogicalType.BOOLEAN));
+    assertEquals(Types.VARBINARY, DataGeneratorUtils.jdbcTypeFor(LogicalType.BYTES));
+    assertEquals(Types.NUMERIC, DataGeneratorUtils.jdbcTypeFor(LogicalType.NUMERIC));
+    assertEquals(Types.DATE, DataGeneratorUtils.jdbcTypeFor(LogicalType.DATE));
+    assertEquals(Types.TIMESTAMP, DataGeneratorUtils.jdbcTypeFor(LogicalType.TIMESTAMP));
   }
 
   @Test

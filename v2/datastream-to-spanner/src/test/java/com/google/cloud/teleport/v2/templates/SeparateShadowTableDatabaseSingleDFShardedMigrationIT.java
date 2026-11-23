@@ -141,14 +141,23 @@ public class SeparateShadowTableDatabaseSingleDFShardedMigrationIT
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (SeparateShadowTableDatabaseSingleDFShardedMigrationIT instance : testInstances) {
-      instance.tearDownBase();
+    try {
+      for (SeparateShadowTableDatabaseSingleDFShardedMigrationIT instance : testInstances) {
+        instance.tearDownBase();
+      }
+      ResourceManagerUtils.cleanResources(
+          spannerResourceManager,
+          pubsubResourceManager,
+          shadowSpannerResourceManager,
+          gcsResourceManager);
+    } finally {
+      testInstances.clear();
+      jobInfo = null;
+      pubsubResourceManager = null;
+      spannerResourceManager = null;
+      shadowSpannerResourceManager = null;
+      gcsResourceManager = null;
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        pubsubResourceManager,
-        shadowSpannerResourceManager,
-        gcsResourceManager);
   }
 
   @Test

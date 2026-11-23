@@ -31,6 +31,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_DYNAMIC_LABEL;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_DYNAMIC_PROPERTIES;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_EDGE_TABLE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_LOCALITY_GROUP;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_MODEL;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_PLACEMENT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_PROPERTY_GRAPH;
@@ -56,6 +57,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_LANGUAGE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_NAME;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_PARAMETER;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_SECURITY;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_SPANNER_DETERMINISM;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_TYPE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_QUERY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_SECURITY;
@@ -67,6 +69,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 
 import com.google.cloud.spanner.Dialect;
@@ -209,6 +212,8 @@ public class DdlToAvroSchemaConverterTest {
                         + " REFERENCES `AllowedNames` (`first_name`)",
                     "ALTER TABLE `Users` ADD CONSTRAINT `fk_odc` FOREIGN KEY (`last_name`)"
                         + " REFERENCES `AllowedNames` (`last_name`) ON DELETE CASCADE",
+                    "ALTER TABLE `Users` ADD CONSTRAINT `fk_odsn` FOREIGN KEY (`last_name`)"
+                        + " REFERENCES `AllowedNames` (`last_name`) ON DELETE SET NULL",
                     "ALTER TABLE `Users` ADD CONSTRAINT `fk_not_enforced_no_action`"
                         + " FOREIGN KEY (`last_name`) REFERENCES "
                         + "`AllowedNames` (`last_name`) ON DELETE NO ACTION NOT ENFORCED",
@@ -396,10 +401,15 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(
         avroSchema.getProp(SPANNER_FOREIGN_KEY + "2"),
         equalTo(
+            "ALTER TABLE `Users` ADD CONSTRAINT `fk_odsn` FOREIGN KEY (`last_name`)"
+                + " REFERENCES `AllowedNames` (`last_name`) ON DELETE SET NULL"));
+    assertThat(
+        avroSchema.getProp(SPANNER_FOREIGN_KEY + "3"),
+        equalTo(
             "ALTER TABLE `Users` ADD CONSTRAINT `fk_not_enforced_no_action` FOREIGN KEY (`last_name`)"
                 + " REFERENCES `AllowedNames` (`last_name`) ON DELETE NO ACTION NOT ENFORCED"));
     assertThat(
-        avroSchema.getProp(SPANNER_FOREIGN_KEY + "3"),
+        avroSchema.getProp(SPANNER_FOREIGN_KEY + "4"),
         equalTo(
             "ALTER TABLE `Users` ADD CONSTRAINT `fk_enforced` FOREIGN KEY (`last_name`)"
                 + " REFERENCES `AllowedNames` (`last_name`) ENFORCED"));
@@ -732,6 +742,38 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(avroUdf.getProp(GOOGLE_STORAGE), equalTo("CloudSpanner"));
     assertThat(avroUdf.getProp(SPANNER_UDF_NAME), equalTo("Foo"));
     assertThat(avroUdf.getProp(SPANNER_UDF_DEFINITION), equalTo("SELECT 1"));
+
+    assertThat(avroUdf.getName(), equalTo("spanner_Foo"));
+  }
+
+  @Test
+  public void pgUdfSimple() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", false);
+    Ddl ddl =
+        Ddl.builder()
+            .createUdf("spanner.Foo")
+            .dialect(Dialect.POSTGRESQL)
+            .name("Foo")
+            .type("bigint")
+            .spannerDeterminism("DETERMINISTIC")
+            .definition("SELECT 1")
+            .endUdf()
+            .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(1));
+    Schema avroUdf = result.iterator().next();
+
+    assertThat(avroUdf, notNullValue());
+
+    assertThat(avroUdf.getNamespace(), equalTo("spannertest"));
+    assertThat(avroUdf.getProp(GOOGLE_FORMAT_VERSION), equalTo("booleans"));
+    assertThat(avroUdf.getProp(GOOGLE_STORAGE), equalTo("CloudSpanner"));
+    assertThat(avroUdf.getProp(SPANNER_UDF_NAME), equalTo("Foo"));
+    assertThat(avroUdf.getProp(SPANNER_UDF_DEFINITION), equalTo("SELECT 1"));
+    assertThat(avroUdf.getProp(SPANNER_UDF_TYPE), equalTo("bigint"));
+    assertThat(avroUdf.getProp(SPANNER_UDF_SPANNER_DETERMINISM), equalTo("DETERMINISTIC"));
 
     assertThat(avroUdf.getName(), equalTo("spanner_Foo"));
   }
@@ -2383,6 +2425,117 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(
         avroSchema2.getProp(SPANNER_OPTION + "1"),
         equalTo("default_leader=\"" + defaultLeader + "\""));
+  }
+
+  @Test
+  public void localityGroups() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", false);
+    String lgName1 = "lg1";
+    String lgName2 = "lg2";
+    String lgEmpty = "lg_empty";
+    Ddl ddl =
+        Ddl.builder()
+            .createLocalityGroup(lgName1)
+            .options(ImmutableList.of("storage=\"ssd\""))
+            .endLocalityGroup()
+            .createLocalityGroup(lgName2)
+            .options(ImmutableList.of("storage=\"ssd\"", "ssd_to_hdd_spill_timespan=\"30d\""))
+            .endLocalityGroup()
+            .createLocalityGroup(lgEmpty)
+            .endLocalityGroup()
+            .createTable("Users")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("description")
+            .string()
+            .max()
+            .endColumn()
+            .column("name")
+            .string()
+            .max()
+            .columnOptions(ImmutableList.of("locality_group=\"lg2\""))
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .options(ImmutableList.of("locality_group=\"lg1\""))
+            .indexes(
+                ImmutableList.of(
+                    "CREATE INDEX `UsersByName` ON `Users`(`name` ASC) OPTIONS (locality_group=\"lg2\")"))
+            .endTable()
+            .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(4));
+
+    Iterator<Schema> it = result.iterator();
+    Schema tableSchema = it.next();
+    assertThat(tableSchema.getName(), equalTo("Users"));
+    assertThat(tableSchema.getProp(SPANNER_OPTION + "0"), equalTo("locality_group=\"lg1\""));
+    assertThat(
+        tableSchema.getProp(SPANNER_INDEX + "0"),
+        equalTo(
+            "CREATE INDEX `UsersByName` ON `Users`(`name` ASC) OPTIONS (locality_group=\"lg2\")"));
+    assertThat(tableSchema.getField("description").getProp(SPANNER_OPTION + "0"), nullValue());
+    assertThat(
+        tableSchema.getField("name").getProp(SPANNER_OPTION + "0"),
+        equalTo("locality_group=\"lg2\""));
+
+    Schema avroSchema1 = it.next();
+    assertThat(avroSchema1.getNamespace(), equalTo("spannertest"));
+    assertThat(avroSchema1.getProp(GOOGLE_FORMAT_VERSION), equalTo("booleans"));
+    assertThat(avroSchema1.getProp(GOOGLE_STORAGE), equalTo("CloudSpanner"));
+    assertThat(avroSchema1.getProp(SPANNER_ENTITY), equalTo(SPANNER_ENTITY_LOCALITY_GROUP));
+    assertThat(avroSchema1.getFields(), empty());
+    assertThat(avroSchema1.getName(), equalTo(lgName1));
+    assertThat(avroSchema1.getProp(SPANNER_OPTION + "0"), equalTo("storage=\"ssd\""));
+
+    Schema avroSchema2 = it.next();
+    assertThat(avroSchema2.getNamespace(), equalTo("spannertest"));
+    assertThat(avroSchema2.getProp(GOOGLE_FORMAT_VERSION), equalTo("booleans"));
+    assertThat(avroSchema2.getProp(GOOGLE_STORAGE), equalTo("CloudSpanner"));
+    assertThat(avroSchema2.getProp(SPANNER_ENTITY), equalTo(SPANNER_ENTITY_LOCALITY_GROUP));
+    assertThat(avroSchema2.getFields(), empty());
+    assertThat(avroSchema2.getName(), equalTo(lgName2));
+    assertThat(avroSchema2.getProp(SPANNER_OPTION + "0"), equalTo("storage=\"ssd\""));
+    assertThat(
+        avroSchema2.getProp(SPANNER_OPTION + "1"), equalTo("ssd_to_hdd_spill_timespan=\"30d\""));
+
+    Schema avroSchemaEmpty = it.next();
+    assertThat(avroSchemaEmpty.getNamespace(), equalTo("spannertest"));
+    assertThat(avroSchemaEmpty.getProp(GOOGLE_FORMAT_VERSION), equalTo("booleans"));
+    assertThat(avroSchemaEmpty.getProp(GOOGLE_STORAGE), equalTo("CloudSpanner"));
+    assertThat(avroSchemaEmpty.getProp(SPANNER_ENTITY), equalTo(SPANNER_ENTITY_LOCALITY_GROUP));
+    assertThat(avroSchemaEmpty.getFields(), empty());
+    assertThat(avroSchemaEmpty.getName(), equalTo(lgEmpty));
+    assertThat(avroSchemaEmpty.getProp(SPANNER_OPTION + "0"), nullValue());
+  }
+
+  @Test
+  public void tableWithoutOptions() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", false);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("Users")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .options(null)
+            .endTable()
+            .build();
+
+    Schema tableSchema = converter.convert(ddl).iterator().next();
+
+    assertEquals("Users", tableSchema.getName());
+    assertNull(tableSchema.getProp(SPANNER_OPTION + "0"));
   }
 
   @Test

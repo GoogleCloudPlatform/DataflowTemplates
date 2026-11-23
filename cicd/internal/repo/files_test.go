@@ -37,9 +37,7 @@ func TestGetAllPomFiles(t *testing.T) {
 			dir: FlexRoot,
 			expected: map[string]interface{}{
 				"v2":                         nil,
-				"cdc-parent":                 nil,
-				"cdc-common":                 nil,
-				"pubsub-binary-to-bigquery":  nil,
+				"dataplex":                   nil,
 				"googlecloud-to-googlecloud": nil,
 			},
 		},
@@ -48,9 +46,7 @@ func TestGetAllPomFiles(t *testing.T) {
 			expected: map[string]interface{}{
 				RootDirName:                  nil,
 				"v2":                         nil,
-				"cdc-parent":                 nil,
-				"cdc-common":                 nil,
-				"pubsub-binary-to-bigquery":  nil,
+				"dataplex":                   nil,
 				"googlecloud-to-googlecloud": nil,
 			},
 		},
@@ -59,9 +55,7 @@ func TestGetAllPomFiles(t *testing.T) {
 			expected: map[string]interface{}{
 				RootDirName:                  nil,
 				"v2":                         nil,
-				"cdc-parent":                 nil,
-				"cdc-common":                 nil,
-				"pubsub-binary-to-bigquery":  nil,
+				"dataplex":                   nil,
 				"googlecloud-to-googlecloud": nil,
 			},
 		},

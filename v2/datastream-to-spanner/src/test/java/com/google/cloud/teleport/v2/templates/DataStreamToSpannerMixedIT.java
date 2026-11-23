@@ -103,11 +103,19 @@ public class DataStreamToSpannerMixedIT extends DataStreamToSpannerITBase {
   /** Cleanup dataflow job and all the resources and resource managers. */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (DataStreamToSpannerMixedIT instance : testInstances) {
-      instance.tearDownBase();
+    try {
+      for (DataStreamToSpannerMixedIT instance : testInstances) {
+        instance.tearDownBase();
+      }
+      ResourceManagerUtils.cleanResources(
+          spannerResourceManager, pubsubResourceManager, gcsResourceManager);
+    } finally {
+      jobInfo = null;
+      testInstances.clear();
+      pubsubResourceManager = null;
+      spannerResourceManager = null;
+      gcsResourceManager = null;
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager, pubsubResourceManager, gcsResourceManager);
   }
 
   @Test

@@ -33,6 +33,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **createDisposition**: Specifies whether a table should be created if it does not exist.  Valid inputs are 'CREATE_NEVER' and 'CREATE_IF_NEEDED'. For example, `CREATE_NEVER`. Defaults to: CREATE_NEVER.
 * **writeDisposition**: How to specify if a write should append to an existing table, replace the table, or verify that the table is empty. Note that the dataset being written to must already exist. Unbounded collections can only be written using 'WRITE_EMPTY' or 'WRITE_APPEND'. For example, `WRITE_APPEND`. Defaults to: WRITE_APPEND.
 * **numStreams**: Number of streams defines the parallelism of the BigQueryIO’s Write  transform and roughly corresponds to the number of Storage Write API’s  streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. The default value is 1. For example, `1`.
+* **type**: The type of windowing to apply (e.g., fixed, sliding, sessions, global). Defaults to fixed. For example, `fixed`.
+* **size**: The window size in seconds. Defaults to 60. For example, `60`.
 
 
 
@@ -139,6 +141,8 @@ export PUBLISH_TIME_FIELD=<publishTimeField>
 export CREATE_DISPOSITION=CREATE_NEVER
 export WRITE_DISPOSITION=WRITE_APPEND
 export NUM_STREAMS=1
+export TYPE=fixed
+export SIZE=60
 
 gcloud dataflow flex-template run "pubsub-subscription-to-bigquery-yaml-job" \
   --project "$PROJECT" \
@@ -155,7 +159,9 @@ gcloud dataflow flex-template run "pubsub-subscription-to-bigquery-yaml-job" \
   --parameters "table=$TABLE" \
   --parameters "createDisposition=$CREATE_DISPOSITION" \
   --parameters "writeDisposition=$WRITE_DISPOSITION" \
-  --parameters "numStreams=$NUM_STREAMS"
+  --parameters "numStreams=$NUM_STREAMS" \
+  --parameters "type=$TYPE" \
+  --parameters "size=$SIZE"
 ```
 
 For more information about the command, please check:
@@ -188,6 +194,8 @@ export PUBLISH_TIME_FIELD=<publishTimeField>
 export CREATE_DISPOSITION=CREATE_NEVER
 export WRITE_DISPOSITION=WRITE_APPEND
 export NUM_STREAMS=1
+export TYPE=fixed
+export SIZE=60
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -196,7 +204,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="pubsub-subscription-to-bigquery-yaml-job" \
 -DtemplateName="PubSub_Subscription_To_BigQuery_Yaml" \
--Dparameters="subscription=$SUBSCRIPTION,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributesMap=$ATTRIBUTES_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,publishTimeField=$PUBLISH_TIME_FIELD,table=$TABLE,createDisposition=$CREATE_DISPOSITION,writeDisposition=$WRITE_DISPOSITION,numStreams=$NUM_STREAMS" \
+-Dparameters="subscription=$SUBSCRIPTION,format=$FORMAT,schema=$SCHEMA,attributes=$ATTRIBUTES,attributesMap=$ATTRIBUTES_MAP,idAttribute=$ID_ATTRIBUTE,timestampAttribute=$TIMESTAMP_ATTRIBUTE,publishTimeField=$PUBLISH_TIME_FIELD,table=$TABLE,createDisposition=$CREATE_DISPOSITION,writeDisposition=$WRITE_DISPOSITION,numStreams=$NUM_STREAMS,type=$TYPE,size=$SIZE" \
 -f yaml
 ```
 
@@ -253,6 +261,8 @@ resource "google_dataflow_flex_template_job" "pubsub_subscription_to_bigquery_ya
     # createDisposition = "CREATE_NEVER"
     # writeDisposition = "WRITE_APPEND"
     # numStreams = "1"
+    # type = "fixed"
+    # size = "60"
   }
 }
 ```

@@ -172,15 +172,26 @@ public class ForwardAndReverseMigrationNonShardedEndToEndIT extends EndToEndTest
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (ForwardAndReverseMigrationNonShardedEndToEndIT instance : testInstances) {
-      instance.tearDownBase();
+    try {
+      for (ForwardAndReverseMigrationNonShardedEndToEndIT instance : testInstances) {
+        instance.tearDownBase();
+      }
+      ResourceManagerUtils.cleanResources(
+          spannerResourceManager,
+          spannerMetadataResourceManager,
+          gcsResourceManager,
+          pubsubResourceManager,
+          cloudSqlResourceManager);
+    } finally {
+      testInstances.clear();
+      rrJobInfo = null;
+      fwdJobInfo = null;
+      spannerResourceManager = null;
+      spannerMetadataResourceManager = null;
+      gcsResourceManager = null;
+      pubsubResourceManager = null;
+      cloudSqlResourceManager = null;
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        spannerMetadataResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager,
-        cloudSqlResourceManager);
   }
 
   @Test

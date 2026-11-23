@@ -94,7 +94,7 @@ import org.slf4j.LoggerFactory;
         "A pipeline that exports all tables from a BigQuery dataset to Cloud Storage, registering"
             + " metadata for the newly created files in Dataplex.",
     optionsClass = DataplexBigQueryToGcsOptions.class,
-    flexContainerName = "dataplex-bigquery-to-gcs",
+    flexContainerName = "dataplex",
     contactInformation = "https://cloud.google.com/support")
 public class DataplexBigQueryToGcs {
 

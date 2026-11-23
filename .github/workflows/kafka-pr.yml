@@ -32,10 +32,7 @@ on:
       - 'v2/kafka-common/**'
       # kafka template paths
       - '.github/workflows/kafka-pr.yml'
-      - 'v2/kafka-to-bigquery/**'
-      - 'v2/kafka-to-gcs/**'
-      - 'v2/kafka-to-kafka/**'
-      - 'v2/pubsub-to-kafka/**'
+      - 'v2/googlecloud-and-kafka/**'
   schedule:
     - cron: "6 6/12 * * *"
   workflow_dispatch:

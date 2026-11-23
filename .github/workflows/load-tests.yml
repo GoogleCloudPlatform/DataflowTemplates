@@ -6,12 +6,16 @@ on:
   - cron: '0 0 * * 6'
   workflow_dispatch:
 
-permissions: write-all
+permissions:
+  contents: read
 
 jobs:
   load_tests:
     name: Dataflow Templates Load tests
     timeout-minutes: 4320 # 3 days
+    permissions:
+      contents: read
+      checks: write
     # Run on any runner that matches all the specified runs-on values.
     runs-on: [ self-hosted, perf ]
     steps:

@@ -1,2 +1,0 @@
-apache-beam[gcp]==2.77.0
-setuptools

@@ -1,0 +1,77 @@
+template:
+  name: "BigQuery_To_Lakehouse_Yaml"
+  category: "BATCH"
+  type: "YAML"
+  display_name: "BigQuery to Lakehouse"
+  description: >
+    The BigQuery to Lakehouse template is a batch pipeline that reads data from a BigQuery table
+    and outputs the records to a Lakehouse table.
+  flex_container_name: "pipeline-yaml"
+  yamlTemplateFile: "BigQueryToLakehouse.yaml"
+  filesToCopy: >
+    {"main.py", "requirements.txt", "options/bigquery_options.yaml", "options/lakehouse_options.yaml"}
+  contactInformation: "https://cloud.google.com/support"
+  requirements: {
+     "The Input BigQuery table must exist and be accessible.",
+     "The Output Lakehouse table must exist or be created, and the warehouse must be accessible."
+   }
+  streaming: false
+  hidden: false
+
+  options_file:
+    - "bigquery_options"
+    - "lakehouse_options"
+
+  parameters:
+    - bigquery_common_options
+    - bigquery_read_options
+    - lakehouse_common_options
+    - lakehouse_write_options
+
+pipeline:
+  type: chain
+  transforms:
+    - type: ReadFromBigQuery
+      name: ReadFromBigQuery
+      config:
+        table: "{{ table }}"
+        {% if fields %}
+        fields: {{ fields }}
+        {% endif %}
+
+    - type: WriteToLakehouse
+      name: WriteToLakehouse
+      config:
+        table: "{{ lakehouseTable }}"
+        catalog_name: "{{ lakehouseCatalogName }}"
+        catalog_properties: {{ lakehouseCatalogProperties }}
+        {% if lakehouseConfigProperties %}
+        config_properties: {{ lakehouseConfigProperties }}
+        {% endif %}
+        {% if lakehouseDrop %}
+        drop: {{ lakehouseDrop }}
+        {% endif %}
+        {% if lakehouseKeep %}
+        keep: {{ lakehouseKeep }}
+        {% endif %}
+        {% if lakehouseOnly %}
+        only: {{ lakehouseOnly }}
+        {% endif %}
+        {% if lakehousePartitionFields %}
+        partition_fields: {{ lakehousePartitionFields }}
+        {% endif %}
+        {% if lakehouseTableProperties %}
+        table_properties: {{ lakehouseTableProperties }}
+        {% endif %}
+        {% if lakehouseDistributionMode %}
+        distribution_mode: "{{ lakehouseDistributionMode }}"
+        {% endif %}
+        {% if lakehouseAutosharding %}
+        autosharding: {{ lakehouseAutosharding }}
+        {% endif %}
+
+providers:
+  - include: gs://dataflow-templates/extra-python-packages/2026-08-30/yaml_provider_listing_0.3.1.yaml
+
+options:
+  streaming: false

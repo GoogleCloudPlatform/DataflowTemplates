@@ -43,12 +43,34 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check if release branch exists
+        id: check-branch
+        run: |
+          REMOTE_REF=$(git ls-remote --heads origin "refs/heads/$RELEASE_BRANCH_NAME")
+          if [ -n "$REMOTE_REF" ]; then
+            echo "branchExists=true" >> "$GITHUB_OUTPUT"
+            echo "Remote branch $RELEASE_BRANCH_NAME already exists."
+          else
+            echo "branchExists=false" >> "$GITHUB_OUTPUT"
+            echo "Remote branch $RELEASE_BRANCH_NAME does not exist."
+          fi
+        env:
+          RELEASE_BRANCH_NAME: ${{ steps.variables.outputs.releaseBranchName }}
+      - name: Checkout existing release branch
+        if: steps.check-branch.outputs.branchExists == 'true'
+        run: |
+          git fetch origin "$RELEASE_BRANCH_NAME"
+          git checkout -B "$RELEASE_BRANCH_NAME" "origin/$RELEASE_BRANCH_NAME"
+        env:
+          RELEASE_BRANCH_NAME: ${{ steps.variables.outputs.releaseBranchName }}
       - name: Create release branch
+        if: steps.check-branch.outputs.branchExists != 'true'
         run: git checkout -b $RELEASE_BRANCH_NAME $BRANCH_COMMIT
         env:
           RELEASE_BRANCH_NAME: ${{ steps.variables.outputs.releaseBranchName }}
           BRANCH_COMMIT: ${{ inputs.branchCommit }}
       - name: Cherry pick commits
+        if: steps.check-branch.outputs.branchExists != 'true'
         run: |
           commits=$(echo $CHERRYPICK_COMMITS | tr "," "\n")
           for commit in $commits
@@ -59,6 +81,7 @@ jobs:
         env:
           CHERRYPICK_COMMITS: ${{ inputs.cherrypickCommits }}
       - name: Add tag to most recent commit
+        if: steps.check-branch.outputs.branchExists != 'true'
         run: |
           DATE=$(date -d"next-monday - 1week" +'%Y-%m-%d')
           T_COMMIT=$(git log -n 1 $RELEASE_BRANCH_NAME --pretty=format:'%H')
@@ -67,6 +90,7 @@ jobs:
           RELEASE_BRANCH_NAME: ${{ steps.variables.outputs.releaseBranchName }}
           TAG_NAME: ${{ steps.variables.outputs.tagName }}
       - name: Push release branch
+        if: steps.check-branch.outputs.branchExists != 'true'
         run: |
           git push origin --delete $RELEASE_BRANCH_NAME || true
           git push -u origin $RELEASE_BRANCH_NAME

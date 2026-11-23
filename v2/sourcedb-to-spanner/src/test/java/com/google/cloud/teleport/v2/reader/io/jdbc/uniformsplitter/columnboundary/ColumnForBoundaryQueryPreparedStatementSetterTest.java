@@ -16,11 +16,15 @@
 package com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.columnboundary;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.BoundaryExtractorFactory;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.BoundarySplitterFactory;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.Range;
@@ -665,6 +669,96 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
     verify(mockStatement, times(1)).setObject(2, new java.util.UUID(0L, 0L));
     verify(mockStatement, times(1)).setObject(3, new java.util.UUID(-1L, -1L));
+  }
+
+  /**
+   * Composite key whose leading column is a SQL Server {@code uniqueidentifier}: the parent range's
+   * byte[] boundaries (held in SQL Server comparison order) must be bound as canonical UUID
+   * strings, not as raw VARBINARY.
+   */
+  @Test
+  public void testSetParameters_withSqlServerUniqueIdentifierParentColumn() throws Exception {
+    // Non-symmetric GUIDs so that any byte-order mistake changes the rendered string.
+    String startGuid = "01020304-0506-0708-090a-0b0c0d0e0f10";
+    String endGuid = "f1e2d3c4-b5a6-9788-7968-5a4b3c2d1e0f";
+    byte[] startBytes = sqlServerSortableBytes(startGuid);
+    byte[] endBytes = sqlServerSortableBytes(endGuid);
+
+    TableIdentifier tableId =
+        TableIdentifier.builder()
+            .setDataSourceId("test_ds")
+            .setTableName("test_guid_composite_table")
+            .build();
+    PartitionColumn guidCol =
+        PartitionColumn.builder()
+            .setColumnName("guid_col")
+            .setColumnClass(byte[].class)
+            .setColumnTypeName("uniqueidentifier")
+            .build();
+    PartitionColumn intCol =
+        PartitionColumn.builder()
+            .setColumnName("int_col")
+            .setColumnClass(Integer.class)
+            .setColumnTypeName("int")
+            .build();
+
+    TableSplitSpecification splitSpec =
+        TableSplitSpecification.builder()
+            .setTableIdentifier(tableId)
+            .setPartitionColumns(ImmutableList.of(guidCol, intCol))
+            .setApproxRowCount(1000L)
+            .build();
+
+    Range parentRange =
+        Range.builder()
+            .setColumnTypeName("uniqueidentifier")
+            .setTableIdentifier(tableId)
+            .setBoundarySplitter(BoundarySplitterFactory.create(byte[].class))
+            .setColName("guid_col")
+            .setColClass(byte[].class)
+            .setStart(startBytes)
+            .setEnd(endBytes)
+            .setCount(1000L)
+            .setIsFirst(true)
+            .setIsLast(false)
+            .build();
+
+    ColumnForBoundaryQuery query =
+        ColumnForBoundaryQuery.builder()
+            .setColumnTypeName("int")
+            .setTableIdentifier(tableId)
+            .setColumnName("int_col")
+            .setColumnClass(Integer.class)
+            .setParentRange(parentRange)
+            .build();
+
+    PreparedStatement mockStatement = mock(PreparedStatement.class);
+    ColumnForBoundaryQueryPreparedStatementSetter setter =
+        new ColumnForBoundaryQueryPreparedStatementSetter(ImmutableList.of(splitSpec));
+    setter.setParameters(query, mockStatement);
+
+    // Parameters for guid_col: enabled, start, end, isLast, end.
+    verify(mockStatement, times(1)).setObject(1, true);
+    verify(mockStatement, times(1)).setObject(2, startGuid);
+    verify(mockStatement, times(1)).setObject(3, endGuid);
+    verify(mockStatement, times(1)).setObject(4, false);
+    verify(mockStatement, times(1)).setObject(5, endGuid);
+    // Raw bytes must never be bound.
+    verify(mockStatement, never()).setObject(anyInt(), eq(startBytes));
+    verify(mockStatement, never()).setObject(anyInt(), eq(endBytes));
+  }
+
+  /** Mirrors the extraction performed by {@code BoundaryExtractorFactory} for uniqueidentifier. */
+  private static byte[] sqlServerSortableBytes(String guid) {
+    java.util.UUID uuid = java.util.UUID.fromString(guid);
+    java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(new byte[16]);
+    bb.putLong(uuid.getMostSignificantBits()).putLong(uuid.getLeastSignificantBits());
+    byte[] raw = bb.array();
+    byte[] sorted = new byte[16];
+    for (int i = 0; i < 16; i++) {
+      sorted[i] = raw[BoundaryExtractorFactory.SQL_SERVER_UUID_BYTE_ORDER[i]];
+    }
+    return sorted;
   }
 
   @After

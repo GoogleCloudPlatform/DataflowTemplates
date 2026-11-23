@@ -60,7 +60,6 @@ import org.apache.commons.lang3.StringUtils;
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/sourcedb-to-spanner",
     contactInformation = "https://cloud.google.com/support",
-    preview = true,
     requirements = {
       "The JDBC drivers for the relational database must be available.",
       "The Spanner tables must exist before pipeline execution.",

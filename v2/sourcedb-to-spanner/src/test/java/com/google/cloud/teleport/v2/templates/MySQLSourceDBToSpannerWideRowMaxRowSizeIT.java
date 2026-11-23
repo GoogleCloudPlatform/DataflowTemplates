@@ -77,8 +77,17 @@ public class MySQLSourceDBToSpannerWideRowMaxRowSizeIT extends SourceDbToSpanner
 
   @AfterClass
   public static void cleanUp() throws Exception {
-    ResourceManagerUtils.cleanResources(
-        mySQLResourceManager, spannerResourceManager, pgDialectSpannerResourceManager);
+    try {
+      ResourceManagerUtils.cleanResources(
+          mySQLResourceManager, spannerResourceManager, pgDialectSpannerResourceManager);
+    } finally {
+      initialized = false;
+      dataLoaded = false;
+      jobInfo = null;
+      mySQLResourceManager = null;
+      spannerResourceManager = null;
+      pgDialectSpannerResourceManager = null;
+    }
   }
 
   @Test

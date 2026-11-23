@@ -1,0 +1,31 @@
+CREATE SCHEMA S1L1;
+
+CREATE TABLE S1L1.Users (
+    id INT PRIMARY KEY,
+    name VARCHAR(200),
+    age BIGINT
+);
+
+CREATE SCHEMA S1L2;
+
+CREATE TABLE S1L2.Users (
+    id INT PRIMARY KEY,
+    name VARCHAR(200),
+    age BIGINT
+);
+
+CREATE SCHEMA S2L1;
+
+CREATE TABLE S2L1.Users (
+    id INT PRIMARY KEY,
+    name VARCHAR(200),
+    age BIGINT
+);
+
+CREATE SCHEMA S2L2;
+
+CREATE TABLE S2L2.Users (
+    id INT PRIMARY KEY,
+    name VARCHAR(200),
+    age BIGINT
+);

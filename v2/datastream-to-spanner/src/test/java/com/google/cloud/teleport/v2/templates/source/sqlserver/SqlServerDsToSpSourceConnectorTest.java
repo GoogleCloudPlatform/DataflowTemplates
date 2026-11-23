@@ -98,6 +98,15 @@ public final class SqlServerDsToSpSourceConnectorTest {
   }
 
   @Test
+  public void testSortOrderKeysMatchDatastreamMetadata() {
+    // The event keys must match the fields emitted by FormatDatastreamRecordToJson for sqlserver
+    // sources; a mismatch silently degrades ordering to the second-granular timestamp, so changes
+    // to the same row within one second would be dropped as stale.
+    assertEquals("_metadata_timestamp", SqlServerDsToSpSourceConnector.SQLSERVER_TIMESTAMP_KEY);
+    assertEquals("_metadata_lsn", SqlServerDsToSpSourceConnector.SQLSERVER_CHANGE_LSN_KEY);
+  }
+
+  @Test
   public void testCreateChangeEventSequenceFromChangeEventContext() throws Exception {
     Ddl ddl = ChangeEventConvertorTest.getTestDdl();
     JSONObject changeEvent = ChangeEventConvertorTest.getTestChangeEvent("Users2");

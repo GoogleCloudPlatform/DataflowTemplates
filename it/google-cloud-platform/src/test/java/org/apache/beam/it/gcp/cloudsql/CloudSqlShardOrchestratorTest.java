@@ -325,27 +325,30 @@ public class CloudSqlShardOrchestratorTest {
   }
 
   @Test
-  public void testExecuteWithRetries_retriesOn409() throws Exception {
+  public void testExecuteWithRetries_retriesOnRetryableErrors() throws Exception {
     TestCloudSqlShardOrchestrator orchestrator =
         new TestCloudSqlShardOrchestrator(
             DatabaseType.MYSQL, MYSQL_8_0, PROJECT_ID, REGION, gcsResourceManager, sqlAdmin);
 
-    com.google.api.client.googleapis.services.AbstractGoogleClientRequest<DatabaseInstance>
-        mockRequest =
-            mock(com.google.api.client.googleapis.services.AbstractGoogleClientRequest.class);
+    for (int statusCode : new int[] {409, 429, 502, 503, 504}) {
+      com.google.api.client.googleapis.services.AbstractGoogleClientRequest<DatabaseInstance>
+          mockRequest =
+              mock(com.google.api.client.googleapis.services.AbstractGoogleClientRequest.class);
 
-    GoogleJsonResponseException exception409 =
-        new GoogleJsonResponseException(
-            new HttpResponseException.Builder(409, "Conflict", new HttpHeaders()), null);
+      GoogleJsonResponseException retryableError =
+          new GoogleJsonResponseException(
+              new HttpResponseException.Builder(statusCode, "Retryable error", new HttpHeaders()),
+              null);
 
-    DatabaseInstance instance = new DatabaseInstance().setName("inst1");
+      DatabaseInstance instance = new DatabaseInstance().setName("inst1");
 
-    when(mockRequest.execute()).thenThrow(exception409).thenReturn(instance);
+      when(mockRequest.execute()).thenThrow(retryableError).thenReturn(instance);
 
-    DatabaseInstance result = orchestrator.executeWithRetries(mockRequest);
+      DatabaseInstance result = orchestrator.executeWithRetries(mockRequest);
 
-    assertThat(result).isEqualTo(instance);
-    verify(mockRequest, times(2)).execute();
+      assertThat(result).isEqualTo(instance);
+      verify(mockRequest, times(2)).execute();
+    }
   }
 
   @Test

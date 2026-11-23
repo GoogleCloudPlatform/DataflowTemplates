@@ -40,9 +40,15 @@ pipeline:
         {% if deltaLakeTimestamp is defined and deltaLakeTimestamp != '' %}
         timestamp: "{{ deltaLakeTimestamp }}"
         {% endif %}
-        {% if deltaLakeHadoopConfig %}
-        hadoop_config: {{ deltaLakeHadoopConfig }}
-        {% endif %}
+        hadoop_config:
+          {% if deltaLakeHadoopConfig %}
+          {{ deltaLakeHadoopConfig }}
+          {% else %}
+          fs.gs.impl: com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem
+          fs.AbstractFileSystem.gs.impl: com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS
+          fs.gs.auth.type: APPLICATION_DEFAULT
+          fs.gs.project.id: ""
+          {% endif %}
 
     - type: WriteToLakehouse
       name: WriteToLakehouse

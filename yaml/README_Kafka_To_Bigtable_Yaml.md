@@ -20,7 +20,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **bootstrapServers**: A list of host/port pairs to use for establishing the initial connection to the Kafka cluster. For example: host1:port1,host2:port2 For example, `host1:port1,host2:port2,localhost:9092,127.0.0.1:9093`.
 * **topic**: Kafka topic to read from. For example: my_topic For example, `my_topic`.
-* **fields**: The output fields to compute, each mapping to the expression or callable that creates them. For example, `{"key": {"expression": "key.encode('utf-8')", "output_type": "bytes"}}`.
+* **fields**: The output fields to compute, each mapping to the expression or callable that creates them. When writing to Bigtable, the expected mutation schema fields are: 'key' (bytes), 'type' (string: 'SetCell', 'DeleteFromColumn', 'DeleteFromFamily', or 'DeleteFromRow'), 'family_name' (string), 'column_qualifier' (bytes), 'value' (bytes), and 'timestamp_micros' (integer, optional; defaults to -1 for current Bigtable server time). For example, `{"key": {"expression": "key.encode('utf-8')", "output_type": "bytes"}, "type": {"expression": "'SetCell'", "output_type": "string"}, "family_name": {"expression": "'cf1'", "output_type": "string"}, "column_qualifier": {"expression": "b'cq1'", "output_type": "bytes"}, "value": {"expression": "value.encode('utf-8')", "output_type": "bytes"}, "timestamp_micros": {"expression": "timestamp_micros", "output_type": "integer"}}`.
 * **projectId**: The Google Cloud project ID of the Bigtable instance. For example, `my-gcp-project`.
 * **instanceId**: The Bigtable instance ID. For example, `my-bigtable-instance`.
 * **tableId**: Bigtable table ID to write the output to. For example, `my-bigtable-table`.
@@ -37,7 +37,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **maxReadTimeSeconds**: Upper bound of how long to read from Kafka in seconds. For example: 60 For example, `60`.
 * **messageName**: The name of the Protocol Buffer message to be used for schema extraction and data conversion. For example: MyMessage For example, `MyMessage`.
 * **schema**: The schema in which the data is encoded in the Kafka topic.  For example: {'type': 'record', 'name': 'User', 'fields': [{'name': 'name', 'type': 'string'}]}. A schema is required if data format is JSON, AVRO or PROTO. For example, `{"type": "record", "name": "User", "fields": [{"name": "name", "type": "string"}]}`.
-* **language**: The language used to define (and execute) the expressions and/or  callables in fields. Defaults to generic. For example, `python`.
+* **language**: The language used to define (and execute) the expressions and/or  callables in fields. Defaults to python. For example, `python`.
 
 
 
@@ -148,7 +148,7 @@ export FORMAT=JSON
 export MAX_READ_TIME_SECONDS=<maxReadTimeSeconds>
 export MESSAGE_NAME=<messageName>
 export SCHEMA=<schema>
-export LANGUAGE=generic
+export LANGUAGE=python
 
 gcloud dataflow flex-template run "kafka-to-bigtable-yaml-job" \
   --project "$PROJECT" \
@@ -207,7 +207,7 @@ export FORMAT=JSON
 export MAX_READ_TIME_SECONDS=<maxReadTimeSeconds>
 export MESSAGE_NAME=<messageName>
 export SCHEMA=<schema>
-export LANGUAGE=generic
+export LANGUAGE=python
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -277,7 +277,7 @@ resource "google_dataflow_flex_template_job" "kafka_to_bigtable_yaml" {
     # maxReadTimeSeconds = "<maxReadTimeSeconds>"
     # messageName = "<messageName>"
     # schema = "<schema>"
-    # language = "generic"
+    # language = "python"
   }
 }
 ```

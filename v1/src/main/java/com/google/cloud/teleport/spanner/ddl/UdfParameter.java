@@ -15,12 +15,15 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.cloud.teleport.spanner.common.NameUtils.identifierQuote;
 import static com.google.cloud.teleport.spanner.common.NameUtils.quoteIdentifier;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Dialect;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.annotation.Nullable;
 
 /** Cloud Spanner user-defined function parameter. */
@@ -49,36 +52,54 @@ public abstract class UdfParameter implements Serializable {
   }
 
   public static UdfParameter parse(String parameter, String functionSpecificName, Dialect dialect) {
-    String[] paramParts = parameter.split(" ");
-    if (paramParts.length < 2) {
+    parameter = parameter.trim();
+    String quote = identifierQuote(dialect);
+
+    // Splits the parameter into its name (quoted or unquoted) and the rest of the string.
+    // Group 1: Name (quoted or unquoted)
+    // Group 2: Quoted Name
+    // Group 3: Unquoted Name
+    // Group 4: The rest (type and optional DEFAULT)
+    // DOTALL so that the DEFAULT expression may span multiple lines.
+    Pattern nameAndRestPattern =
+        Pattern.compile(
+            String.format("^((%1$s[^%1$s]+%1$s)|(\\S+))\\s+(.*)$", quote), Pattern.DOTALL);
+    Matcher matcher = nameAndRestPattern.matcher(parameter);
+
+    if (!matcher.find()) {
       throw new IllegalArgumentException(
           "UDF input parameters are expected to be in the format 'name type [DEFAULT expr]'."
               + " Parameter: "
               + parameter);
     }
+
+    // Store the unquoted name, consistent with InformationSchemaScanner.
+    String quotedName = matcher.group(2);
+    String name =
+        quotedName != null
+            ? quotedName.substring(quote.length(), quotedName.length() - quote.length())
+            : matcher.group(3);
+    String rest = matcher.group(4).trim();
+
+    // Split 'rest' into type and defaultExpression using a case-insensitive 'DEFAULT' keyword.
+    // Types may contain spaces in both dialects, e.g. STRUCT<x INT64, y STRING> in GoogleSQL or
+    // double precision in PostgreSQL.
+    String[] parts = rest.split("(?i)\\s+DEFAULT\\b", 2);
+    String type = parts[0].trim();
+    String defaultExpression = parts.length > 1 ? parts[1].trim() : null;
+
     UdfParameter.Builder udfParameter =
         UdfParameter.builder(dialect)
             .functionSpecificName(functionSpecificName)
-            .name(paramParts[0])
-            .type(paramParts[1]);
-    if (paramParts.length > 2) {
-      if (paramParts[2].equalsIgnoreCase("default")) {
-        if (paramParts.length == 3) {
-          throw new IllegalArgumentException(
-              "Missing default parameter expression in " + functionSpecificName);
-        }
-        String defaultExpression = "";
-        for (int i = 3; i < paramParts.length; i++) {
-          if (!defaultExpression.isEmpty()) {
-            defaultExpression += " ";
-          }
-          defaultExpression += paramParts[i];
-        }
-        udfParameter.defaultExpression(defaultExpression);
-      } else {
+            .name(name)
+            .type(type);
+
+    if (defaultExpression != null) {
+      if (defaultExpression.isEmpty()) {
         throw new IllegalArgumentException(
-            "Unexpected parameter keyword \"" + paramParts[2] + "\" in " + functionSpecificName);
+            "Missing default parameter expression in " + functionSpecificName);
       }
+      udfParameter.defaultExpression(defaultExpression);
     }
     return udfParameter.autoBuild();
   }

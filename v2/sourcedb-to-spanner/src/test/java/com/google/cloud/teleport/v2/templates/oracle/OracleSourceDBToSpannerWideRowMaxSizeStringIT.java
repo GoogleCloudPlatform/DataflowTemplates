@@ -73,7 +73,13 @@ public class OracleSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpa
 
   @AfterClass
   public static void cleanUp() throws Exception {
-    ResourceManagerUtils.cleanResources(spannerResourceManager);
+    try {
+      ResourceManagerUtils.cleanResources(spannerResourceManager);
+    } finally {
+      initialized = false;
+      oracleResourceManager = null;
+      spannerResourceManager = null;
+    }
   }
 
   @Test

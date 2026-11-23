@@ -117,7 +117,9 @@ public class ShardingLogicImplFetcher {
   private static URL[] saveFilesLocally(String driverJars) {
     List<String> listOfJarPaths = Splitter.on(',').trimResults().splitToList(driverJars);
 
-    final String destRoot = Files.createTempDir().getAbsolutePath();
+    File destRootDir = Files.createTempDir();
+    destRootDir.deleteOnExit();
+    final String destRoot = destRootDir.getAbsolutePath();
     List<URL> driverJarUrls = new ArrayList<>();
     listOfJarPaths.stream()
         .forEach(
@@ -126,6 +128,7 @@ public class ShardingLogicImplFetcher {
                 ResourceId sourceResourceId = FileSystems.matchNewResource(jarPath, false);
                 @SuppressWarnings("nullness")
                 File destFile = Paths.get(destRoot, sourceResourceId.getFilename()).toFile();
+                destFile.deleteOnExit();
                 ResourceId destResourceId =
                     FileSystems.matchNewResource(destFile.getAbsolutePath(), false);
                 copy(sourceResourceId, destResourceId);

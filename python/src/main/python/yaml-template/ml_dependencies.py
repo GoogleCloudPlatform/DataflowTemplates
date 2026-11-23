@@ -48,6 +48,9 @@ ML_EXPERIMENTAL_FEATURE = 'ML'
 #
 # The versions of these (and of `HUGGING_FACE_TENSORFLOW_DEPENDENCIES`) follow
 # the versions that apache-beam declares for the same packages in its extras.
+# The `YAML Template ML Dependencies` GitHub workflow checks this every 12
+# hours, and when these or the version of apache-beam change (see `BEAM_EXTRAS`
+# of python/src/test/python/yaml-template/check_ml_dependencies.py).
 RUN_INFERENCE_DEPENDENCIES = {
     # Only needs google-cloud-aiplatform, which is already available in both the
     # template container and the default Beam worker container.
@@ -57,8 +60,8 @@ RUN_INFERENCE_DEPENDENCIES = {
     # TensorFlow also get `HUGGING_FACE_TENSORFLOW_DEPENDENCIES`. Uses the torch
     # and transformers versions of the `transformers` extra of apache-beam.
     'HuggingFacePipelineModelHandler': [
-        'torch>=1.9.0,<2.12.0',
-        'transformers>=4.28.0,<4.56.0',
+        'torch<2.12.0,>=2.3.0',
+        'transformers!=4.56.*,<5.21.0,>=4.41.0',
     ],
 }
 

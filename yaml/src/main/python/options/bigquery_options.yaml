@@ -14,6 +14,15 @@ options:
 
   - name: "bigquery_read_options"
     parameters:
+      - order: 1
+        name: "fields"
+        description: "A list of field names to read from the BigQuery table."
+        help: >
+          A list of field (column) names to read from the BigQuery table. If not
+          specified, all fields are read.
+        example: '["field1", "field2"]'
+        required: false
+        type: text
 
   - name: "bigquery_write_options"
     parameters:
@@ -52,3 +61,29 @@ options:
         required: false
         default: 1
         type: integer
+
+  - name: "bigquery_batch_write_options"
+    parameters:
+      - order: 1
+        name: "createDisposition"
+        description: "How to create"
+        help: >
+          Specifies whether a table should be created if it does not exist. 
+          Valid inputs are 'CREATE_NEVER' and 'CREATE_IF_NEEDED'.
+        example: "CREATE_NEVER"
+        default: CREATE_NEVER
+        required: false
+        type: text
+      - order: 2
+        name: "writeDisposition"
+        description: "How to write"
+        help: >
+          How to specify if a write should append to an existing table, replace
+          the table, or verify that the table is empty. Note that the dataset
+          being written to must already exist. Unbounded collections can only
+          be written using 'WRITE_EMPTY' or 'WRITE_APPEND'.
+        example: "WRITE_APPEND"
+        default: WRITE_APPEND
+        required: false
+        type: text
+

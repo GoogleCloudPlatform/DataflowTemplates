@@ -1,0 +1,129 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Opens an issue, or updates the open one, once a workflow fails a number of
+# times in a row. This makes sure that failures of workflows that don't block
+# merging PRs (for example scheduled ones) are noticed, without opening issues
+# for one-off (for example flaky) failures.
+#
+# Use it in a step that runs only if the job fails, for example:
+#
+#   - name: Open or update an issue
+#     if: failure() && github.event_name == 'schedule'
+#     uses: ./.github/actions/report-workflow-failure
+#     with:
+#       title: My workflow failed
+#
+# In a workflow with several jobs, it can be used in a job that `needs` the
+# other jobs and runs if they fail.
+#
+# The current run counts as a failure. The previous runs that are taken into
+# account are the ones triggered by the same event (for example `schedule`) on
+# the same branch, ignoring the cancelled and skipped ones.
+#
+# The job needs the `actions: read` (to list the runs of the workflow) and
+# `issues: write` permissions.
+
+name: 'Report Workflow Failure'
+description: 'Opens or updates an issue once a workflow fails a number of times in a row'
+
+inputs:
+  title:
+    description: 'Title of the issue. The open issue with this title, if any, is updated instead of opening another one.'
+    required: true
+  details-file:
+    description: 'Markdown file with details to add to the issue (for example, on how to fix the failure), if the file exists.'
+    required: false
+    default: ''
+  consecutive-failures:
+    description: 'Number of runs in a row, including the current one, that have to fail before the issue is opened or updated.'
+    required: false
+    default: '3'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Open or update an issue
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+        TITLE: ${{ inputs.title }}
+        DETAILS_FILE: ${{ inputs.details-file }}
+        CONSECUTIVE_FAILURES: ${{ inputs.consecutive-failures }}
+      run: |
+        if [[ ! "$CONSECUTIVE_FAILURES" =~ ^[1-9][0-9]*$ ]]; then
+          echo "::error::consecutive-failures must be a positive integer, not '$CONSECUTIVE_FAILURES'."
+          exit 1
+        fi
+
+        # For example, owner/repo/.github/workflows/workflow.yml@refs/heads/main.
+        workflow_file=${GITHUB_WORKFLOW_REF%%@*}
+        workflow_file=${workflow_file##*/}
+
+        # Counts the runs that failed in a row, starting with the current one,
+        # which isn't listed since it isn't completed yet. The previous runs are
+        # listed from the most recent one.
+        conclusions=$(gh api --method GET \
+          "repos/$GITHUB_REPOSITORY/actions/workflows/$workflow_file/runs" \
+          -f event="$GITHUB_EVENT_NAME" -f branch="$GITHUB_REF_NAME" \
+          -f status=completed -f per_page=100 \
+          --jq '.workflow_runs[].conclusion')
+        failures=1
+        while read -r conclusion; do
+          case "$conclusion" in
+            failure | timed_out | startup_failure) failures=$((failures + 1)) ;;
+            # These don't tell whether the workflow passes.
+            cancelled | skipped) ;;
+            *) break ;;
+          esac
+        done <<< "$conclusions"
+        echo "The workflow failed $failures time(s) in a row."
+        if (( failures < CONSECUTIVE_FAILURES )); then
+          echo "An issue is opened (or updated) once it fails $CONSECUTIVE_FAILURES times in a row."
+          exit 0
+        fi
+
+        repo_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+        workflow_link="[$GITHUB_WORKFLOW]($repo_url/actions/workflows/$workflow_file)"
+        run_url="$repo_url/actions/runs/$GITHUB_RUN_ID"
+        body_file="$RUNNER_TEMP/report-workflow-failure.md"
+        {
+          if (( failures == 1 )); then
+            echo "The $workflow_link workflow failed in" \
+              "[this \`$GITHUB_EVENT_NAME\` run]($run_url) on \`$GITHUB_REF_NAME\`."
+          else
+            echo "The $workflow_link workflow failed in $failures" \
+              "\`$GITHUB_EVENT_NAME\` runs in a row on \`$GITHUB_REF_NAME\`, most" \
+              "recently in [this run]($run_url)."
+          fi
+          if [[ -f "$DETAILS_FILE" ]]; then
+            echo
+            cat "$DETAILS_FILE"
+          fi
+          echo
+          echo 'Close this issue once the workflow passes again.'
+        } > "$body_file"
+
+        # Updates the open issue, if any, instead of opening another one. Note
+        # that `--app github-actions` instead of --author would not find it, so
+        # every failed run would open a new issue.
+        number=$(gh issue list --author 'github-actions[bot]' --state open \
+          --limit 1000 --json number,title \
+          --jq 'map(select(.title == env.TITLE))[0].number // empty')
+        if [[ -n "$number" ]]; then
+          gh issue edit "$number" --body-file "$body_file"
+        else
+          gh issue create --title "$TITLE" --body-file "$body_file"
+        fi

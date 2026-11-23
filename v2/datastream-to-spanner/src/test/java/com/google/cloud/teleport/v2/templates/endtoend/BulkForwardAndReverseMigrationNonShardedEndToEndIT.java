@@ -187,16 +187,29 @@ public class BulkForwardAndReverseMigrationNonShardedEndToEndIT extends EndToEnd
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (BulkForwardAndReverseMigrationNonShardedEndToEndIT instance : testInstances) {
-      instance.tearDownBase();
+    try {
+      for (BulkForwardAndReverseMigrationNonShardedEndToEndIT instance : testInstances) {
+        instance.tearDownBase();
+      }
+      ResourceManagerUtils.cleanResources(
+          spannerResourceManager,
+          spannerMetadataResourceManager,
+          gcsResourceManager,
+          pubsubResourceManager,
+          cloudSqlResourceManager,
+          datastreamResourceManager);
+    } finally {
+      testInstances.clear();
+      bulkJobInfo = null;
+      rrJobInfo = null;
+      fwdJobInfo = null;
+      spannerResourceManager = null;
+      spannerMetadataResourceManager = null;
+      gcsResourceManager = null;
+      pubsubResourceManager = null;
+      cloudSqlResourceManager = null;
+      datastreamResourceManager = null;
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        spannerMetadataResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager,
-        cloudSqlResourceManager,
-        datastreamResourceManager);
   }
 
   @Test

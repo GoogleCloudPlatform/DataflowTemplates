@@ -136,17 +136,28 @@ public class MySQLDatastreamToSpannerDataTypesAndExpressionIT extends DataStream
 
   @AfterClass
   public static void cleanUp() throws IOException {
-    LOG.info("Cleaning up resources...");
-    for (MySQLDatastreamToSpannerDataTypesAndExpressionIT instance : testInstances) {
-      instance.tearDownBase();
+    try {
+      LOG.info("Cleaning up resources...");
+      for (MySQLDatastreamToSpannerDataTypesAndExpressionIT instance : testInstances) {
+        instance.tearDownBase();
+      }
+      ResourceManagerUtils.cleanResources(
+          mySQLResourceManager,
+          spannerResourceManager,
+          pgDialectSpannerResourceManager,
+          gcsResourceManager,
+          pubsubResourceManager,
+          datastreamResourceManager);
+    } finally {
+      initialized = false;
+      mySQLResourceManager = null;
+      spannerResourceManager = null;
+      pgDialectSpannerResourceManager = null;
+      gcsResourceManager = null;
+      pubsubResourceManager = null;
+      datastreamResourceManager = null;
+      testInstances.clear();
     }
-    ResourceManagerUtils.cleanResources(
-        mySQLResourceManager,
-        spannerResourceManager,
-        pgDialectSpannerResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager,
-        datastreamResourceManager);
   }
 
   @Test

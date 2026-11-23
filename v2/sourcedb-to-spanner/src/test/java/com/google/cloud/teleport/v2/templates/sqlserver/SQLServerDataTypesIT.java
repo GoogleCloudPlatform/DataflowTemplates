@@ -22,9 +22,15 @@ import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
 import com.google.cloud.teleport.v2.templates.SourceDbToSpannerITBase;
+import java.math.BigInteger;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +40,7 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.MSSQLResourceManager;
+import org.apache.commons.codec.binary.Hex;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -132,6 +139,61 @@ public class SQLServerDataTypesIT extends SourceDbToSpannerITBase {
       rows.add(row);
     }
     return rows;
+  }
+
+  private List<byte[]> getRowversionBytes(Connection conn, String type) {
+    String tableName = String.format("%s_table", type);
+    String colName = String.format("%s_col", type);
+    String query = String.format("SELECT [%s] FROM [%s] ORDER BY [id]", colName, tableName);
+    List<byte[]> values = new ArrayList<>();
+    try (Statement stmt = conn.createStatement();
+        ResultSet rs = stmt.executeQuery(query)) {
+      while (rs.next()) {
+        values.add(rs.getBytes(1));
+      }
+    } catch (Exception e) {
+      throw new RuntimeException(
+          "Failed to fetch rowversion/timestamp values from " + tableName, e);
+    }
+    return values;
+  }
+
+  private void addRowversionExpectedData(Map<String, List<Map<String, Object>>> expectedData) {
+    try (Connection conn =
+        DriverManager.getConnection(
+            msSqlResourceManager.getUri(),
+            msSqlResourceManager.getUsername(),
+            msSqlResourceManager.getPassword())) {
+      for (String baseType : List.of("rowversion", "timestamp")) {
+        List<byte[]> defaultBytes = getRowversionBytes(conn, baseType);
+        expectedData.put(
+            baseType,
+            createRows(
+                baseType,
+                Hex.encodeHexString(defaultBytes.get(0)),
+                Hex.encodeHexString(defaultBytes.get(1))));
+
+        String toBytesType = baseType + "_to_bytes";
+        List<byte[]> toBytes = getRowversionBytes(conn, toBytesType);
+        expectedData.put(
+            toBytesType,
+            createRows(
+                toBytesType,
+                Base64.getEncoder().encodeToString(toBytes.get(0)),
+                Base64.getEncoder().encodeToString(toBytes.get(1))));
+
+        String toInt64Type = baseType + "_to_int64";
+        List<byte[]> toInt64 = getRowversionBytes(conn, toInt64Type);
+        expectedData.put(
+            toInt64Type,
+            createRows(
+                toInt64Type,
+                String.valueOf(new BigInteger(toInt64.get(0)).longValue()),
+                String.valueOf(new BigInteger(toInt64.get(1)).longValue())));
+      }
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to establish connection to SQL Server", e);
+    }
   }
 
   private Map<String, List<Map<String, Object>>> getExpectedData() {
@@ -496,19 +558,7 @@ public class SQLServerDataTypesIT extends SourceDbToSpannerITBase {
     //         "PGl0ZW0gaWQ9IjEiLz4=",
     //         "NULL"));
 
-    // TODO: Enable once ROWVERSION/TIMESTAMP dynamic value validation is supported.
-    // expectedData.put("rowversion", createRows("rowversion", "placeholder1", "placeholder2"));
-    // expectedData.put(
-    //     "rowversion_to_bytes", createRows("rowversion_to_bytes", "placeholder1",
-    // "placeholder2"));
-    // expectedData.put(
-    //     "rowversion_to_int64", createRows("rowversion_to_int64", "placeholder1",
-    // "placeholder2"));
-    // expectedData.put("timestamp", createRows("timestamp", "placeholder1", "placeholder2"));
-    // expectedData.put(
-    //     "timestamp_to_bytes", createRows("timestamp_to_bytes", "placeholder1", "placeholder2"));
-    // expectedData.put(
-    //     "timestamp_to_int64", createRows("timestamp_to_int64", "placeholder1", "placeholder2"));
+    addRowversionExpectedData(expectedData);
 
     expectedData.put("json", createRows("json", "{\"key\":\"val1\"}", "NULL"));
     expectedData.put("json_to_string", createRows("json_to_string", "{\"key\":\"val1\"}", "NULL"));

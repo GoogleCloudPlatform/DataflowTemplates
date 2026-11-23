@@ -109,11 +109,19 @@ public class DataStreamToSpannerSessionIT extends DataStreamToSpannerITBase {
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (DataStreamToSpannerSessionIT instance : testInstances) {
-      instance.tearDownBase();
+    try {
+      for (DataStreamToSpannerSessionIT instance : testInstances) {
+        instance.tearDownBase();
+      }
+      ResourceManagerUtils.cleanResources(
+          spannerResourceManager, pubsubResourceManager, gcsResourceManager);
+    } finally {
+      jobInfo = null;
+      testInstances.clear();
+      pubsubResourceManager = null;
+      spannerResourceManager = null;
+      gcsResourceManager = null;
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager, pubsubResourceManager, gcsResourceManager);
   }
 
   /** Test checks for the following use-cases: 1. Drop Column. 2. Rename Column. 3. Drop Table */

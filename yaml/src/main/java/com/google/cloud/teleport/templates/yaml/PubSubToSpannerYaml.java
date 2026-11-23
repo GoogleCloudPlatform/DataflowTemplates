@@ -18,6 +18,7 @@ package com.google.cloud.teleport.templates.yaml;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Validation;
 
 @Template(
@@ -33,7 +34,8 @@ import org.apache.beam.sdk.options.Validation;
       "main.py",
       "requirements.txt",
       "options/pubsub_options.yaml",
-      "options/spanner_options.yaml"
+      "options/spanner_options.yaml",
+      "options/windowing_options.yaml"
     },
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/pubsub-to-spanner",
@@ -174,4 +176,25 @@ public interface PubSubToSpannerYaml {
       example = "your-table-id")
   @Validation.Required
   String getTableId();
+
+  @TemplateParameter.Text(
+      order = 14,
+      name = "type",
+      optional = true,
+      description = "The type of windowing to apply.",
+      helpText =
+          "The type of windowing to apply (e.g., fixed, sliding, sessions, global). Defaults to fixed.",
+      example = "fixed")
+  @Default.String("fixed")
+  String getType();
+
+  @TemplateParameter.Integer(
+      order = 15,
+      name = "size",
+      optional = true,
+      description = "The window size in seconds.",
+      helpText = "The window size in seconds. Defaults to 60.",
+      example = "60")
+  @Default.Integer(60)
+  Integer getSize();
 }

@@ -141,6 +141,42 @@ CREATE VIEW "AuthorStatsView" SQL SECURITY INVOKER AS SELECT "Articles"."author_
 -- Change Streams
 CREATE CHANGE STREAM "AllStream" FOR ALL WITH (retention_period='7d', value_capture_type='OLD_AND_NEW_VALUES');
 
+-- Functions (UDFs)
+CREATE FUNCTION my_schema."MyCustomFunction"("arg0" text, "arg1" text DEFAULT 'bar') RETURNS text SECURITY INVOKER IMMUTABLE RETURN ('bar');
+CREATE FUNCTION my_schema."PgMultiply"("a" bigint, "b" bigint) RETURNS bigint SECURITY INVOKER IMMUTABLE RETURN (SELECT "a" * "b");
+-- Scalar parameter and return types, including multi-word types. STABLE.
+CREATE FUNCTION my_schema."PgScalarTypes"("b" boolean, "i" bigint, "f8" double precision, "f4" real, "n" numeric, "t" text, "v" character varying, "bt" bytea, "d" date, "ts" timestamp with time zone, "j" jsonb) RETURNS double precision SECURITY INVOKER STABLE RETURN ("f8" + "i");
+-- Array parameter and return types. VOLATILE.
+CREATE FUNCTION my_schema."PgArrayTypes"("ia" bigint[], "ta" text[], "fa" double precision[], "tsa" timestamp with time zone[]) RETURNS text[] SECURITY INVOKER VOLATILE RETURN ("ta");
+-- Mixed-case parameter names and literal defaults (Spanner requires literals). No volatility declared.
+CREATE FUNCTION my_schema."PgDefaults"("MixedCase" bigint, "lower_case" text DEFAULT NULL, "Num" bigint DEFAULT 42, "Neg" bigint DEFAULT -7, "Str" text DEFAULT 'it''s the DEFAULT value', "Flag" boolean DEFAULT true) RETURNS bigint SECURITY INVOKER RETURN ("MixedCase" + "Num");
+-- No parameters.
+CREATE FUNCTION my_schema."PgNoParams"() RETURNS jsonb SECURITY INVOKER IMMUTABLE RETURN ('{"a": 1}'::jsonb);
+
+-- Locality Groups
+CREATE LOCALITY GROUP "lg_ssd" STORAGE 'ssd' SSD_TO_HDD_SPILL_TIMESPAN '1d';
+CREATE LOCALITY GROUP "lg_hdd" STORAGE 'hdd';
+CREATE LOCALITY GROUP "lg_no_options";
+ALTER LOCALITY GROUP "default" STORAGE 'ssd' SSD_TO_HDD_SPILL_TIMESPAN '10d';
+
+CREATE TABLE "LocalityGroupParent" (
+	"id"                                    bigint NOT NULL,
+	"inherited_col"                         text,
+	"hdd_col"                               text LOCALITY GROUP "lg_hdd",
+	"default_col"                           text LOCALITY GROUP "default",
+	PRIMARY KEY ("id")
+) LOCALITY GROUP "lg_ssd";
+
+CREATE TABLE "LocalityGroupChild" (
+	"id"                                    bigint NOT NULL,
+	"child_id"                              bigint NOT NULL,
+	"val"                                   text,
+	PRIMARY KEY ("id", "child_id")
+) LOCALITY GROUP "lg_hdd" INTERLEAVE IN PARENT "LocalityGroupParent" ON DELETE CASCADE;
+
+CREATE INDEX "LocalityGroupIdx" ON "LocalityGroupParent"("inherited_col") INCLUDE ("hdd_col") LOCALITY GROUP "lg_no_options";
+CREATE INDEX "LocalityGroupInterleavedIdx" ON "LocalityGroupChild"("id", "val") LOCALITY GROUP "lg_ssd" INTERLEAVE IN "LocalityGroupParent" WHERE "val" IS NOT NULL;
+
 -- Tables w/o PKs
 CREATE TABLE "MyTable_NoPks" (
 	"val" bigint

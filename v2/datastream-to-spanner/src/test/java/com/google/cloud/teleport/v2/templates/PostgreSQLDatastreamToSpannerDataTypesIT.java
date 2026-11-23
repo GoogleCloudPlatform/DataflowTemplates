@@ -174,20 +174,33 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
 
   @AfterClass
   public static void cleanUp() throws IOException {
-    LOG.info("Cleaning up resources...");
-    for (PostgreSQLDatastreamToSpannerDataTypesIT instance : testInstances) {
-      instance.tearDownBase();
+    try {
+      LOG.info("Cleaning up resources...");
+      for (PostgreSQLDatastreamToSpannerDataTypesIT instance : testInstances) {
+        instance.tearDownBase();
+      }
+
+      // It is important to clean up Datastream before trying to drop the replication slot.
+      ResourceManagerUtils.cleanResources(datastreamResourceManager);
+
+      ResourceManagerUtils.cleanResources(
+          postgresResourceManager,
+          spannerResourceManager,
+          pgDialectSpannerResourceManager,
+          gcsResourceManager,
+          pubsubResourceManager);
+    } finally {
+      replicationInfo = null;
+      pgDialectReplicationInfo = null;
+      initialized = false;
+      postgresResourceManager = null;
+      spannerResourceManager = null;
+      pgDialectSpannerResourceManager = null;
+      gcsResourceManager = null;
+      pubsubResourceManager = null;
+      datastreamResourceManager = null;
+      testInstances.clear();
     }
-
-    // It is important to clean up Datastream before trying to drop the replication slot.
-    ResourceManagerUtils.cleanResources(datastreamResourceManager);
-
-    ResourceManagerUtils.cleanResources(
-        postgresResourceManager,
-        spannerResourceManager,
-        pgDialectSpannerResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager);
   }
 
   @Test

@@ -126,6 +126,13 @@ public class SQLServerDMLGenerator implements IDMLGenerator {
   /**
    * Generates a SQL Server MERGE statement.
    *
+   * <p>The target is locked with {@code HOLDLOCK, UPDLOCK}. {@code HOLDLOCK} holds a key-range lock
+   * for the statement so two concurrent MERGEs for the same key cannot both take the {@code WHEN
+   * NOT MATCHED} branch and race into a primary key violation; {@code UPDLOCK} makes that initial
+   * range lock an update lock (instead of a shared one that both sessions could hold), so the
+   * second session blocks at the read rather than deadlocking when both try to convert to an insert
+   * lock.
+   *
    * <p>TODO: for generated PK column, populate onConditionColumnNameValues with old values.
    *
    * @param tableName The target SQL Server table name.
@@ -192,9 +199,9 @@ public class SQLServerDMLGenerator implements IDMLGenerator {
       }
     }
 
-    // MERGE INTO TargetTable AS target
+    // MERGE INTO TargetTable WITH (HOLDLOCK, UPDLOCK) AS target
     // USING (SELECT 1 AS dummy) AS source
-    //    ON target.Id = source.Id
+    //    ON target.Id = 1
     // WHEN MATCHED THEN
     //    UPDATE SET
     //        target.Name = source.Name,
@@ -205,7 +212,7 @@ public class SQLServerDMLGenerator implements IDMLGenerator {
     String returnVal =
         "MERGE INTO "
             + quoteIdentifier(tableName)
-            + " AS target "
+            + " WITH (HOLDLOCK, UPDLOCK) AS target "
             + "USING (SELECT 1 AS dummy) AS source "
             + "ON ("
             + onCondition

@@ -16,12 +16,15 @@
 package com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range;
 
 import static com.google.cloud.teleport.v2.reader.io.jdbc.JdbcCommonConstants.BIT_TYPE;
+import static com.google.cloud.teleport.v2.reader.io.jdbc.JdbcCommonConstants.UNIQUEIDENTIFIER_TYPE;
+import static com.google.cloud.teleport.v2.reader.io.jdbc.JdbcCommonConstants.UUID_TYPE;
 
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -31,6 +34,7 @@ import java.time.LocalTime;
 import java.time.OffsetTime;
 import java.util.Calendar;
 import java.util.TimeZone;
+import java.util.UUID;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
@@ -236,10 +240,21 @@ public class BoundaryExtractorFactory {
       throws SQLException {
     Preconditions.checkArgument(partitionColumn.columnClass().equals(BYTE_ARRAY_CLASS));
     resultSet.next();
-    boolean isUuid =
-        partitionColumn != null && "uuid".equalsIgnoreCase(partitionColumn.columnTypeName());
-    byte[] start = isUuid ? extractUuidBytes(resultSet, 1) : resultSet.getBytes(1);
-    byte[] end = isUuid ? extractUuidBytes(resultSet, 2) : resultSet.getBytes(2);
+    boolean isUuid = UUID_TYPE.equalsIgnoreCase(partitionColumn.columnTypeName());
+    boolean isSqlServerUniqueIdentifier =
+        UNIQUEIDENTIFIER_TYPE.equalsIgnoreCase(partitionColumn.columnTypeName());
+    byte[] start =
+        isUuid
+            ? extractUuidBytes(resultSet, 1)
+            : (isSqlServerUniqueIdentifier
+                ? extractSqlServerUniqueIdentifierBytes(resultSet, 1)
+                : resultSet.getBytes(1));
+    byte[] end =
+        isUuid
+            ? extractUuidBytes(resultSet, 2)
+            : (isSqlServerUniqueIdentifier
+                ? extractSqlServerUniqueIdentifierBytes(resultSet, 2)
+                : resultSet.getBytes(2));
     return Boundary.<byte[]>builder()
         .setTableIdentifier(tableIdentifier)
         .setPartitionColumn(partitionColumn)
@@ -251,17 +266,76 @@ public class BoundaryExtractorFactory {
   }
 
   /**
+   * Permutation mapping Java big-endian UUID bytes {@code raw[0..15]} to SQL Server's {@code
+   * UNIQUEIDENTIFIER} comparison order.
+   *
+   * <p>SQL Server stores a {@code UNIQUEIDENTIFIER} {@code g0-g1-g2-g3-g4} in mixed-endian form
+   * ({@code g0}, {@code g1} and {@code g2} little-endian, {@code g3} and {@code g4} big-endian) and
+   * compares the stored bytes in group order {@code g4, g3, g2, g1, g0}. Relative to the canonical
+   * big-endian byte layout this yields: {@code g4} (10..15), {@code g3} (8, 9), and the bytes of
+   * {@code g2} (7, 6), {@code g1} (5, 4) and {@code g0} (3, 2, 1, 0) from least to most
+   * significant. For example, in SQL Server {@code '01000000-0000-0000-0000-000000000000'} sorts
+   * before {@code '00000001-0000-0000-0000-000000000000'}.
+   *
+   * <p>TODO(#4489): The SQL Server UNIQUEIDENTIFIER handling below is dialect-specific and should
+   * move into SQLServer connector.
+   */
+  public static final int[] SQL_SERVER_UUID_BYTE_ORDER = {
+    10, 11, 12, 13, 14, 15, 8, 9, 7, 6, 5, 4, 3, 2, 1, 0
+  };
+
+  /**
+   * Extracts a SQL Server {@code UNIQUEIDENTIFIER} column into a 16-byte array ordered by SQL
+   * Server's {@code UNIQUEIDENTIFIER} comparison precedence, so that unsigned big-endian comparison
+   * of the returned bytes matches SQL Server's {@code <}, {@code >} and {@code ORDER BY} semantics.
+   *
+   * @see #SQL_SERVER_UUID_BYTE_ORDER
+   */
+  private static byte[] extractSqlServerUniqueIdentifierBytes(ResultSet rs, int colIndex)
+      throws SQLException {
+    String uuidStr = rs.getString(colIndex);
+    if (uuidStr == null) {
+      return null;
+    }
+    UUID uuid = UUID.fromString(uuidStr);
+    ByteBuffer bb = ByteBuffer.wrap(new byte[16]);
+    bb.putLong(uuid.getMostSignificantBits()).putLong(uuid.getLeastSignificantBits());
+    byte[] raw = bb.array();
+    byte[] sorted = new byte[16];
+    for (int i = 0; i < 16; i++) {
+      sorted[i] = raw[SQL_SERVER_UUID_BYTE_ORDER[i]];
+    }
+    return sorted;
+  }
+
+  /**
+   * Converts a 16-byte array in SQL Server's {@code UNIQUEIDENTIFIER} comparison order back to a
+   * canonical UUID string. Inverse of {@link #extractSqlServerUniqueIdentifierBytes}.
+   *
+   * @see #SQL_SERVER_UUID_BYTE_ORDER
+   */
+  public static String sqlServerSortableBytesToUuidString(byte[] sorted) {
+    Preconditions.checkArgument(sorted != null && sorted.length == 16);
+    byte[] raw = new byte[16];
+    for (int i = 0; i < 16; i++) {
+      raw[SQL_SERVER_UUID_BYTE_ORDER[i]] = sorted[i];
+    }
+    ByteBuffer bb = ByteBuffer.wrap(raw);
+    return new UUID(bb.getLong(), bb.getLong()).toString();
+  }
+
+  /**
    * Extracts exactly 16 raw binary bytes from a PostgreSQL UUID column.
    *
    * <p>{@code rs.getBytes()} returns 36 ASCII string bytes instead of 16 raw binary bytes, which
    * corrupts range calculations.
    */
   private static byte[] extractUuidBytes(ResultSet rs, int colIndex) throws SQLException {
-    java.util.UUID uuid = rs.getObject(colIndex, java.util.UUID.class);
+    UUID uuid = rs.getObject(colIndex, UUID.class);
     if (uuid == null) {
       return null;
     }
-    java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(new byte[16]);
+    ByteBuffer bb = ByteBuffer.wrap(new byte[16]);
     bb.putLong(uuid.getMostSignificantBits()).putLong(uuid.getLeastSignificantBits());
     return bb.array();
   }

@@ -160,14 +160,23 @@ public class SpannerToSourceDBMySQLRetryAllDLQIT extends SpannerToSourceDbITBase
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (SpannerToSourceDBMySQLRetryAllDLQIT instance : testInstances) {
-      instance.tearDownBase();
+    try {
+      for (SpannerToSourceDBMySQLRetryAllDLQIT instance : testInstances) {
+        instance.tearDownBase();
+      }
+      ResourceManagerUtils.cleanResources(
+          spannerResourceManager,
+          jdbcResourceManager,
+          spannerMetadataResourceManager,
+          gcsResourceManager);
+    } finally {
+      testInstances.clear();
+      jobInfo = null;
+      spannerResourceManager = null;
+      spannerMetadataResourceManager = null;
+      jdbcResourceManager = null;
+      gcsResourceManager = null;
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        jdbcResourceManager,
-        spannerMetadataResourceManager,
-        gcsResourceManager);
   }
 
   @Test

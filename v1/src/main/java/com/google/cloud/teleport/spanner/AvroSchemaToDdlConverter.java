@@ -29,6 +29,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_DYNAMIC_LABEL;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_DYNAMIC_PROPERTIES;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_EDGE_TABLE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_LOCALITY_GROUP;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_MODEL;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_PLACEMENT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_PROPERTY_GRAPH;
@@ -56,6 +57,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_LANGUAGE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_NAME;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_PARAMETER;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_SECURITY;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_SPANNER_DETERMINISM;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_TYPE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_QUERY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_SECURITY;
@@ -73,6 +75,7 @@ import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.GraphElementTable;
 import com.google.cloud.teleport.spanner.ddl.GraphElementTable.Kind;
+import com.google.cloud.teleport.spanner.ddl.LocalityGroup;
 import com.google.cloud.teleport.spanner.ddl.Model;
 import com.google.cloud.teleport.spanner.ddl.NamedSchema;
 import com.google.cloud.teleport.spanner.ddl.Placement;
@@ -126,6 +129,8 @@ public class AvroSchemaToDdlConverter {
         builder.addSchema(toSchema(null, schema));
       } else if (SPANNER_ENTITY_PLACEMENT.equals(schema.getProp(SPANNER_ENTITY))) {
         builder.addPlacement(toPlacement(null, schema));
+      } else if (SPANNER_ENTITY_LOCALITY_GROUP.equals(schema.getProp(SPANNER_ENTITY))) {
+        builder.addLocalityGroup(toLocalityGroup(null, schema));
       } else if (SPANNER_ENTITY_PROPERTY_GRAPH.equals(schema.getProp(SPANNER_ENTITY))) {
         builder.addPropertyGraph(toPropertyGraph(null, schema));
       } else {
@@ -173,6 +178,9 @@ public class AvroSchemaToDdlConverter {
             .options(toOptionsList(schema));
     if (schema.getProp(SPANNER_UDF_SECURITY) != null) {
       builder.security(Udf.SqlSecurity.valueOf(schema.getProp(SPANNER_UDF_SECURITY)));
+    }
+    if (schema.getProp(SPANNER_UDF_SPANNER_DETERMINISM) != null) {
+      builder.spannerDeterminism(schema.getProp(SPANNER_UDF_SPANNER_DETERMINISM));
     }
     for (int i = 0; ; i++) {
       String parameter = schema.getProp(SPANNER_UDF_PARAMETER + i);
@@ -579,6 +587,18 @@ public class AvroSchemaToDdlConverter {
     return builder.build();
   }
 
+  public LocalityGroup toLocalityGroup(String localityGroupName, Schema schema) {
+    if (localityGroupName == null) {
+      localityGroupName = getSpannerObjectName(schema);
+    }
+    LOG.debug("Converting to Ddl localityGroupName {}", localityGroupName);
+
+    LocalityGroup.Builder builder = LocalityGroup.builder(dialect).name(localityGroupName);
+    builder.options(getNumberedPropsWithPrefix(schema, SPANNER_OPTION));
+
+    return builder.build();
+  }
+
   public Table toTable(String tableName, Schema schema) {
     if (tableName == null) {
       tableName = getSpannerObjectName(schema);
@@ -690,6 +710,8 @@ public class AvroSchemaToDdlConverter {
     table.foreignKeys(getNumberedPropsWithPrefix(schema, SPANNER_FOREIGN_KEY));
 
     table.checkConstraints(getNumberedPropsWithPrefix(schema, SPANNER_CHECK_CONSTRAINT));
+
+    table.options(getNumberedPropsWithPrefix(schema, SPANNER_OPTION));
 
     // Table parent options.
     String spannerParent = schema.getProp(SPANNER_PARENT);
