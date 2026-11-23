@@ -26,22 +26,61 @@ import com.google.cloud.teleport.v2.spanner.migrations.utils.ISecretManagerAcces
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
 import com.google.cloud.teleport.v2.spanner.sourceddl.OracleInformationSchemaScanner;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
+import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
-import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.ISpToSrcSourceConnector;
+import com.google.common.annotations.VisibleForTesting;
 import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLDataException;
+import java.sql.SQLSyntaxErrorException;
 import java.util.List;
+import java.util.Properties;
 import org.apache.beam.sdk.options.PipelineOptions;
+import org.apache.beam.sdk.values.TupleTag;
 
+/** Oracle source connector for reverse replication ({@code Spanner_to_SourceDb}). */
 public class OracleSpToSrcSourceConnector implements ISpToSrcSourceConnector {
 
   private static final String JDBC_URL_PREFIX = "jdbc:oracle:thin:@//";
+  private static final String ORACLE_DRIVER = "oracle.jdbc.OracleDriver";
 
-  private final IConnectionHelper connectionHelper;
+  /**
+   * Oracle JDBC connection property that enables per-connection implicit {@link
+   * java.sql.PreparedStatement} caching.
+   *
+   * <p>When unset in a shard's {@code connectionProperties}, {@link #initConnectionHelper} sets
+   * {@code oracle.jdbc.implicitStatementCacheSize=100} by default so repeated {@code
+   * prepareStatement(...)} calls reuse open server-side cursors without incurring per-row soft
+   * parses in Oracle's Shared Pool.
+   *
+   * <p>To override the cache size (for example, when replicating more than 50 active tables at 2
+   * statements per table, or to stay below a custom Oracle {@code OPEN_CURSORS} per-session limit)
+   * or disable caching ({@code 0}), specify {@code oracle.jdbc.implicitStatementCacheSize=<N>} in
+   * the shard's {@code connectionProperties} field inside the {@code sourceShardsFilePath} JSON
+   * configuration.
+   */
+  public static final String IMPLICIT_STATEMENT_CACHE_PROP =
+      "oracle.jdbc.implicitStatementCacheSize";
+
+  static final String SHORT_IMPLICIT_STATEMENT_CACHE_PROP = "implicitStatementCacheSize";
+
+  /**
+   * Default per-connection Oracle implicit statement cache size ({@code 100} cursors, well below
+   * Oracle's standard {@code OPEN_CURSORS=300} session limit).
+   */
+  public static final String DEFAULT_IMPLICIT_STATEMENT_CACHE_SIZE = "100";
+
+  private final IConnectionHelper<Connection> connectionHelper;
 
   public OracleSpToSrcSourceConnector() {
     this.connectionHelper = new JdbcConnectionHelper();
+  }
+
+  @VisibleForTesting
+  OracleSpToSrcSourceConnector(IConnectionHelper<Connection> connectionHelper) {
+    this.connectionHelper = connectionHelper;
   }
 
   @Override
@@ -50,7 +89,7 @@ public class OracleSpToSrcSourceConnector implements ISpToSrcSourceConnector {
   }
 
   @Override
-  public IConnectionHelper getConnectionHelper() {
+  public IConnectionHelper<Connection> getConnectionHelper() {
     return this.connectionHelper;
   }
 
@@ -60,31 +99,59 @@ public class OracleSpToSrcSourceConnector implements ISpToSrcSourceConnector {
 
   @Override
   public IDao getDao(Shard shard) {
-    return new JdbcDao(getConnectionUrl(shard), shard.getUserName(), getConnectionHelper());
+    return new OracleJdbcDao(getConnectionUrl(shard), shard.getUserName(), getConnectionHelper());
   }
 
+  /**
+   * Initializes the per-worker HikariCP connection pool for all configured Oracle shards.
+   *
+   * <p>Applies {@code oracle.jdbc.implicitStatementCacheSize=100} by default on each shard unless
+   * {@link #IMPLICIT_STATEMENT_CACHE_PROP} is already present in {@link
+   * Shard#getConnectionProperties()}. Users can tune or disable ({@code =0}) this setting via
+   * {@code connectionProperties} in the shard JSON file.
+   */
   @Override
   public void initConnectionHelper(List<Shard> shards, int maxConnections) {
     if (!connectionHelper.isConnectionPoolInitialized()) {
       for (Shard shard : shards) {
         shard.setConnectionUrl(getConnectionUrl(shard));
+        shard.setConnectionProperties(withDefaultStatementCache(shard.getConnectionProperties()));
       }
       ConnectionHelperRequest request =
-          new ConnectionHelperRequest(
-              shards, null, maxConnections, "oracle.jdbc.OracleDriver", null);
+          new ConnectionHelperRequest(shards, null, maxConnections, ORACLE_DRIVER, null);
       connectionHelper.init(request);
     }
+  }
+
+  static String withDefaultStatementCache(String existingProps) {
+    String defaultEntry =
+        IMPLICIT_STATEMENT_CACHE_PROP + "=" + DEFAULT_IMPLICIT_STATEMENT_CACHE_SIZE;
+    if (existingProps == null || existingProps.trim().isEmpty()) {
+      return defaultEntry;
+    }
+    String trimmed = existingProps.trim();
+    Properties parsed = JdbcConnectionHelper.parseProperties(trimmed);
+    if (parsed.containsKey(IMPLICIT_STATEMENT_CACHE_PROP)
+        || parsed.containsKey(SHORT_IMPLICIT_STATEMENT_CACHE_PROP)) {
+      return existingProps;
+    }
+    if (trimmed.contains("&")) {
+      return trimmed.endsWith("&") ? trimmed + defaultEntry : trimmed + "&" + defaultEntry;
+    }
+    if (trimmed.contains(";")) {
+      return trimmed.endsWith(";") ? trimmed + defaultEntry : trimmed + ";" + defaultEntry;
+    }
+    return trimmed + "\n" + defaultEntry;
   }
 
   @Override
   public List<Shard> parseShardConfig(String shardFilePath) throws Exception {
     ISecretManagerAccessor secretManagerAccessor = new SecretManagerAccessorImpl();
     SourceConfigParser sourceConfigParser = new SourceConfigParser(secretManagerAccessor);
-    // Passing "oracle" to parseConfiguration assumes it supports it; fallback to just string
     SourceConnectionConfig sourceConnectionConfig =
         sourceConfigParser.parseConfiguration("oracle", shardFilePath);
-    if (sourceConnectionConfig instanceof JdbcShardConfig) {
-      return ((JdbcShardConfig) sourceConnectionConfig).getShardConfigs();
+    if (sourceConnectionConfig instanceof JdbcShardConfig jdbcShardConfig) {
+      return jdbcShardConfig.getShardConfigs();
     }
     throw new IllegalArgumentException(
         "Expected JdbcShardConfig but got: " + sourceConnectionConfig.getClass());
@@ -100,9 +167,10 @@ public class OracleSpToSrcSourceConnector implements ISpToSrcSourceConnector {
     }
   }
 
+  @VisibleForTesting
   Connection createConnection(Shard shard) throws Exception {
-    Class.forName("oracle.jdbc.OracleDriver");
-    return java.sql.DriverManager.getConnection(
+    Class.forName(ORACLE_DRIVER);
+    return DriverManager.getConnection(
         getConnectionUrl(shard), shard.getUserName(), shard.getPassword());
   }
 
@@ -117,12 +185,11 @@ public class OracleSpToSrcSourceConnector implements ISpToSrcSourceConnector {
   }
 
   @Override
-  public org.apache.beam.sdk.values.TupleTag<String> classifyException(Throwable cause) {
+  public TupleTag<String> classifyException(Throwable cause) {
     Throwable current = cause;
     while (current != null) {
-      if (current instanceof java.sql.SQLSyntaxErrorException
-          || current instanceof java.sql.SQLDataException) {
-        return com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG;
+      if (current instanceof SQLSyntaxErrorException || current instanceof SQLDataException) {
+        return Constants.PERMANENT_ERROR_TAG;
       }
       current = current.getCause();
     }
