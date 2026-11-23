@@ -23,6 +23,7 @@ import com.google.cloud.teleport.v2.neo4j.model.helpers.StepSequence;
 import com.google.cloud.teleport.v2.neo4j.telemetry.ReportedSourceType;
 import com.google.cloud.teleport.v2.neo4j.utils.DataCastingUtils;
 import com.google.cloud.teleport.v2.neo4j.utils.SerializableSupplier;
+import com.google.cloud.teleport.v2.neo4j.utils.WriteStats;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
@@ -106,7 +107,7 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
   @NonNull
   @Override
   public PCollection<Row> expand(@NonNull PCollection<Row> input) {
-    Neo4jBlockingUnwindFn neo4jUnwindFn =
+    var neo4jUnwindFn =
         new Neo4jBlockingUnwindFn(
             reportedSourceType,
             step,
@@ -142,7 +143,7 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
         .apply(
             targetSequence.getSequenceNumber(step) + ": Neo4j write " + step.name(),
             ParDo.of(neo4jUnwindFn))
-        .setRowSchema(readyInput.getSchema());
+        .setRowSchema(WriteStats.schema());
   }
 
   private static int batchSize(TargetType targetType, Configuration config) {
