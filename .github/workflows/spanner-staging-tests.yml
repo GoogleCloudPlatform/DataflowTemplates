@@ -34,12 +34,16 @@ on:
         required: false
         default: ''
 
-permissions: write-all
+permissions:
+  contents: read
 
 jobs:
   spanner_java_integration_tests_templates:
     name: Spanner Dataflow Templates Integration Tests
     timeout-minutes: 180
+    permissions:
+      contents: read
+      checks: write
     # Run on any runner that matches all the specified runs-on values.
     runs-on: [ self-hosted, spanner ]
     steps:
