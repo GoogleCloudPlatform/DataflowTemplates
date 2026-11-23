@@ -31,7 +31,7 @@
   <!-- Override Firestore and proto version to enable setting the Firestore
        data access mode in tests. -->
   <properties>
-    <firestore.version>3.48.0</firestore.version>
+    <firestore.version>3.53.0</firestore.version>
   </properties>
 
   <build>
