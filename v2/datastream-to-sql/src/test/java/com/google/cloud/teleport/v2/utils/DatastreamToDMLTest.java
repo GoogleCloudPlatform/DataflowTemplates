@@ -1493,4 +1493,26 @@ public class DatastreamToDMLTest {
             + "decode('aGVsbG9fd29ybGQ=','base64'),'Top.Science.Astronomy'::ltree",
         dml.getColumnsValuesSql(rowObj, tableSchema));
   }
+
+  /**
+   * Test that {@link DatastreamToDML#getFieldValues} maps {@code _metadata_deleted} to "1" for
+   * deleted rows and "0" otherwise when the deleted flag is part of the sort key.
+   */
+  @Test
+  public void testGetFieldValues_orderByIncludesIsDeleted() {
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    List<String> sortFields = Arrays.asList("_metadata_timestamp", "_metadata_deleted");
+
+    JsonNode deletedRow = getRowObj("{\"_metadata_timestamp\":123,\"_metadata_deleted\":true}");
+    JsonNode liveRow = getRowObj("{\"_metadata_timestamp\":123,\"_metadata_deleted\":false}");
+
+    assertEquals(
+        Arrays.asList("123", "1"),
+        dml.getFieldValues(deletedRow, sortFields, new HashMap<>(), true));
+    assertEquals(
+        Arrays.asList("123", "0"), dml.getFieldValues(liveRow, sortFields, new HashMap<>(), true));
+    assertEquals(
+        Arrays.asList("123", "true"),
+        dml.getFieldValues(deletedRow, sortFields, new HashMap<>(), false));
+  }
 }

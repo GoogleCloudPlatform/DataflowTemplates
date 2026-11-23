@@ -429,9 +429,9 @@ public abstract class DatastreamToDML
     List<String> fieldValues = new ArrayList<String>();
 
     for (String fieldName : fieldNames) {
-      if (overrideIsDeleted && fieldName == "_metadata_deleted") {
+      if (overrideIsDeleted && "_metadata_deleted".equals(fieldName)) {
         String val = getValueSql(rowObj, fieldName, tableSchema);
-        fieldValues.add(val == "true" ? "1" : "0");
+        fieldValues.add("true".equals(val) ? "1" : "0");
       } else {
         fieldValues.add(getValueSql(rowObj, fieldName, tableSchema));
       }
