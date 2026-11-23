@@ -246,8 +246,18 @@ public interface KafkaToIcebergYaml {
       example = "{\"commit.retry.num-retries\": \"2\"}")
   String getTableProperties();
 
-  @TemplateParameter.Integer(
+  @TemplateParameter.Text(
       order = 21,
+      name = "equalityColumns",
+      optional = true,
+      description = "Primary-key fields used for merge-on-read writes.",
+      helpText =
+          "A list of field names used as equality columns for merge-on-read writes. Leave unset to use the sink table's identifier fields. Required when the pipeline creates the sink table and that table has no identifier fields.",
+      example = "[\"id\"]")
+  String getEqualityColumns();
+
+  @TemplateParameter.Integer(
+      order = 22,
       name = "triggeringFrequencySeconds",
       optional = false,
       description = "For a streaming pipeline, the frequency at which snapshots are produced.",
@@ -257,7 +267,7 @@ public interface KafkaToIcebergYaml {
   Integer getTriggeringFrequencySeconds();
 
   @TemplateParameter.Text(
-      order = 22,
+      order = 23,
       name = "sdfCheckpointAfterDuration",
       optional = true,
       description = "Dataflow Pipeline Option: Duration after which to checkpoint stateful DoFns.",
@@ -268,7 +278,7 @@ public interface KafkaToIcebergYaml {
   String getSdfCheckpointAfterDuration();
 
   @TemplateParameter.Integer(
-      order = 23,
+      order = 24,
       name = "sdfCheckpointAfterOutputBytes",
       optional = true,
       description =
