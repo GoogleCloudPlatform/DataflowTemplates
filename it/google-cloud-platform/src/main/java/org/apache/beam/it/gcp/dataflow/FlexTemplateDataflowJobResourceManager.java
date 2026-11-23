@@ -76,7 +76,8 @@ public class FlexTemplateDataflowJobResourceManager implements ResourceManager {
     this.launchConfig = launchConfigBuilder.build();
   }
 
-  String resolveSpecPath(String templateName, String modulePath, String additionalMavenProfile) {
+  private String resolveSpecPath(
+      String templateName, String modulePath, String additionalMavenProfile) {
     if (additionalMavenProfile == null || additionalMavenProfile.isBlank()) {
       String preStagedSpecPath = TemplateTestBase.getPreStagedSpecPath(templateName, true);
       if (preStagedSpecPath != null) {
@@ -202,7 +203,7 @@ public class FlexTemplateDataflowJobResourceManager implements ResourceManager {
   //  templates get compiled and staged twice. We should use TemplateTestBase.stagedTemplates to
   // managed all staged
   //  templates during workflow run.
-  void buildAndStageTemplate(
+  private void buildAndStageTemplate(
       String templateName, String modulePath, String additionalMavenProfile) {
     LOG.info("Building and Staging {} template", templateName);
 
