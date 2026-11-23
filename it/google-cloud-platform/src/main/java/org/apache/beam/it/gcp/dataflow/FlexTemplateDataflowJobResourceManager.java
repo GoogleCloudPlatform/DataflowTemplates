@@ -31,6 +31,7 @@ import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.ResourceManager;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.IORedirectUtil;
+import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.TemplateTestBase.CancelJobShutdownHook;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.slf4j.Logger;
@@ -63,20 +64,35 @@ public class FlexTemplateDataflowJobResourceManager implements ResourceManager {
     this.parameters = builder.parameters;
     this.templateName = builder.templateName;
     pipelineLauncher = FlexTemplateClient.builder(CREDENTIALS).build();
-    synchronized (specPaths) {
-      if (!specPaths.containsKey(builder.templateName)) {
-        buildAndStageTemplate(
+    String specPath =
+        resolveSpecPath(
             builder.templateName, builder.templateModulePath, builder.additionalMavenProfile);
-      }
-    }
 
     LaunchConfig.Builder launchConfigBuilder =
-        LaunchConfig.builder(builder.jobName, specPaths.get(builder.templateName))
-            .setParameters(parameters);
+        LaunchConfig.builder(builder.jobName, specPath).setParameters(parameters);
     for (Map.Entry<String, Object> entry : builder.environmentVariables.entrySet()) {
       launchConfigBuilder.addEnvironment(entry.getKey(), entry.getValue());
     }
     this.launchConfig = launchConfigBuilder.build();
+  }
+
+  String resolveSpecPath(String templateName, String modulePath, String additionalMavenProfile) {
+    if (additionalMavenProfile == null || additionalMavenProfile.isBlank()) {
+      String preStagedSpecPath = TemplateTestBase.getPreStagedSpecPath(templateName, true);
+      if (preStagedSpecPath != null) {
+        LOG.info(
+            "Using pre-staged Flex template spec path {} for {} (not staging from source)",
+            preStagedSpecPath,
+            templateName);
+        return preStagedSpecPath;
+      }
+    }
+    synchronized (specPaths) {
+      if (!specPaths.containsKey(templateName)) {
+        buildAndStageTemplate(templateName, modulePath, additionalMavenProfile);
+      }
+      return specPaths.get(templateName);
+    }
   }
 
   public static FlexTemplateDataflowJobResourceManager.Builder builder(String jobName) {
@@ -186,7 +202,7 @@ public class FlexTemplateDataflowJobResourceManager implements ResourceManager {
   //  templates get compiled and staged twice. We should use TemplateTestBase.stagedTemplates to
   // managed all staged
   //  templates during workflow run.
-  private void buildAndStageTemplate(
+  void buildAndStageTemplate(
       String templateName, String modulePath, String additionalMavenProfile) {
     LOG.info("Building and Staging {} template", templateName);
 

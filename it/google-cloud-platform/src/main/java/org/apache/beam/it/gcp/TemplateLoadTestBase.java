@@ -51,9 +51,10 @@ public class TemplateLoadTestBase extends LoadTestBase {
    * TemplateLoadTest}).
    *
    * <p>If {@code -DspecPath} is provided, it is used as is (e.g. to run against a released
-   * template). Otherwise, the template is built and staged from the checked out source code (i.e.
-   * mainline), the same way integration tests do. Staging is cached per JVM, so this can be called
-   * multiple times cheaply.
+   * template). Otherwise, if {@code -DspecPathPrefix} is provided, the pre-staged template spec
+   * path under that prefix is used without rebuilding. Otherwise, the template is built and staged
+   * from the checked out source code (i.e. mainline), the same way integration tests do. Staging is
+   * cached per JVM, so this can be called multiple times cheaply.
    */
   protected String getTemplateSpecPath() {
     String specPath = TestProperties.specPath();
@@ -61,8 +62,14 @@ public class TemplateLoadTestBase extends LoadTestBase {
       LOG.info("A spec path was given, not staging template: {}", specPath);
       return specPath;
     }
+    Template template = getTemplateAnnotation();
+    String preStagedSpecPath = TemplateTestBase.getPreStagedSpecPath(template);
+    if (preStagedSpecPath != null) {
+      LOG.info("Using pre-staged template spec path: {}", preStagedSpecPath);
+      return preStagedSpecPath;
+    }
     try {
-      return TemplateTestBase.stageTemplate(getTemplateAnnotation(), "pom.xml", CREDENTIALS);
+      return TemplateTestBase.stageTemplate(template, "pom.xml", CREDENTIALS);
     } catch (ExecutionException e) {
       throw new RuntimeException("Error staging template for " + getClass().getSimpleName(), e);
     }

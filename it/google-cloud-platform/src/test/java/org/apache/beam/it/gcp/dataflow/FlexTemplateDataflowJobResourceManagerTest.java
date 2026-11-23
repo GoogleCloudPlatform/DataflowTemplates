@@ -18,10 +18,16 @@ package org.apache.beam.it.gcp.dataflow;
 import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
+import org.apache.beam.it.gcp.TemplateTestBase;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -29,6 +35,19 @@ import org.junit.runners.JUnit4;
 /** Unit test for {@link FlexTemplateDataflowJobResourceManager}. */
 @RunWith(JUnit4.class)
 public class FlexTemplateDataflowJobResourceManagerTest {
+
+  @Before
+  public void setUp() {
+    System.setProperty("project", "testProject");
+    System.setProperty("region", "us-central1");
+    System.setProperty("unifiedWorker", "true");
+    System.setProperty("stageBucket", "testStageBucket");
+  }
+
+  @After
+  public void tearDown() {
+    System.clearProperty(TemplateTestBase.SPEC_PATH_PREFIX_PROPERTY);
+  }
 
   @Test
   public void testBuildMavenStageCommand() {
@@ -127,5 +146,43 @@ public class FlexTemplateDataflowJobResourceManagerTest {
     assertThat(actual[5]).endsWith("pom.xml");
     assertThat(actual[25]).isNotEmpty();
     assertThat(actual[26]).isEqualTo("-DactivateFailureInjection=true");
+  }
+
+  @Test
+  public void testResolveSpecPathUsesPreStagedWhenNoAdditionalProfile() {
+    System.setProperty(
+        TemplateTestBase.SPEC_PATH_PREFIX_PROPERTY,
+        "gs://dataflow-templates-staging/2026-11-24-00_RC00");
+
+    FlexTemplateDataflowJobResourceManager manager =
+        mock(FlexTemplateDataflowJobResourceManager.class);
+    when(manager.resolveSpecPath(any(), any(), any())).thenCallRealMethod();
+
+    String actual =
+        manager.resolveSpecPath("Sourcedb_to_Spanner_Flex", "v2/sourcedb-to-spanner", null);
+
+    assertThat(actual)
+        .isEqualTo(
+            "gs://dataflow-templates-staging/2026-11-24-00_RC00/flex/Sourcedb_to_Spanner_Flex");
+    verify(manager, never()).buildAndStageTemplate(any(), any(), any());
+  }
+
+  @Test
+  public void testResolveSpecPathStagesLocallyWhenAdditionalProfileSet() {
+    System.setProperty(
+        TemplateTestBase.SPEC_PATH_PREFIX_PROPERTY,
+        "gs://dataflow-templates-staging/2026-11-24-00_RC00");
+
+    FlexTemplateDataflowJobResourceManager manager =
+        mock(FlexTemplateDataflowJobResourceManager.class);
+    when(manager.resolveSpecPath(any(), any(), any())).thenCallRealMethod();
+    doNothing().when(manager).buildAndStageTemplate(any(), any(), any());
+
+    manager.resolveSpecPath(
+        "Failure_Injection_Template", "v2/sourcedb-to-spanner", "failureInjectionTest");
+
+    verify(manager)
+        .buildAndStageTemplate(
+            "Failure_Injection_Template", "v2/sourcedb-to-spanner", "failureInjectionTest");
   }
 }

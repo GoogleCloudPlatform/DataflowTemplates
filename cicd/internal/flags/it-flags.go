@@ -28,6 +28,7 @@ var (
 	dProject                            string
 	dArtifactBucket                     string
 	dStageBucket                        string
+	dSpecPathPrefix                     string
 	dHostIp                             string
 	dPrivateConnectivity                string
 	dSpannerHost                        string
@@ -53,6 +54,7 @@ func RegisterItFlags() {
 	flag.StringVar(&dProject, "it-project", "", "The GCP project to run the integration tests in")
 	flag.StringVar(&dArtifactBucket, "it-artifact-bucket", "", "A GCP bucket to store test artifacts")
 	flag.StringVar(&dStageBucket, "it-stage-bucket", "", "(optional) A GCP bucket to stage templates")
+	flag.StringVar(&dSpecPathPrefix, "it-spec-path-prefix", "", "(optional) GCS prefix containing pre-staged templates to test instead of staging from source")
 	flag.StringVar(&dHostIp, "it-host-ip", "", "(optional) The ip that the gitactions runner is listening on")
 	flag.StringVar(&dPrivateConnectivity, "it-private-connectivity", "", "(optional) A GCP private connectivity endpoint")
 	flag.StringVar(&dSpannerHost, "it-spanner-host", "", "(optional) A custom endpoint to override Spanner API requests")
@@ -89,6 +91,13 @@ func StageBucket() string {
 		return "-DstageBucket=" + dArtifactBucket
 	}
 	return "-DstageBucket=" + dStageBucket
+}
+
+func SpecPathPrefix() string {
+	if dSpecPathPrefix != "" {
+		return "-DspecPathPrefix=" + dSpecPathPrefix
+	}
+	return ""
 }
 
 func HostIp() string {

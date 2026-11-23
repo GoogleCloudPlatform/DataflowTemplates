@@ -95,7 +95,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Base class for Templates. It wraps around tests that extend it to stage the Templates when
- * <strong>-DspecPath</strong> isn't provided.
+ * <strong>-DspecPath</strong> and <strong>-DspecPathPrefix</strong> aren't provided.
  *
  * <p>It is required to use @TemplateIntegrationTest to specify which template is under test.
  */
@@ -104,6 +104,7 @@ public abstract class TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(TemplateTestBase.class);
   public static final String ADDITIONAL_EXPERIMENTS_ENVIRONMENT = "additionalExperiments";
+  public static final String SPEC_PATH_PREFIX_PROPERTY = "specPathPrefix";
 
   public String testName;
   protected Description testDescription;
@@ -320,16 +321,58 @@ public abstract class TemplateTestBase {
     }
   }
 
+  /**
+   * Returns the pre-staged GCS spec path for the given template if {@code -DspecPathPrefix} is set,
+   * or {@code null} otherwise.
+   *
+   * <p>Pre-staged paths follow the layout produced by {@code TemplatesStageMojo}: {@code
+   * gs://bucket/prefix/flex/TemplateName} for Flex/Python/YAML templates and {@code
+   * gs://bucket/prefix/TemplateName} for Classic templates.
+   */
+  public static @Nullable String getPreStagedSpecPath(Template templateMetadata) {
+    boolean flex =
+        templateMetadata.type() == TemplateType.PYTHON
+            || templateMetadata.type() == TemplateType.YAML
+            || !Strings.isNullOrEmpty(templateMetadata.flexContainerName());
+    return getPreStagedSpecPath(templateMetadata.name(), flex);
+  }
+
+  /**
+   * Returns the pre-staged GCS spec path for the given template name and type if {@code
+   * -DspecPathPrefix} is set, or {@code null} otherwise.
+   */
+  public static @Nullable String getPreStagedSpecPath(String templateName, boolean flex) {
+    String specPathPrefix = System.getProperty(SPEC_PATH_PREFIX_PROPERTY);
+    if (specPathPrefix == null) {
+      return null;
+    }
+    String normalizedPrefix = specPathPrefix.trim().replaceAll("/+$", "");
+    if (normalizedPrefix.isEmpty()) {
+      return null;
+    }
+    if (!normalizedPrefix.startsWith("gs://")) {
+      normalizedPrefix = "gs://" + normalizedPrefix;
+    }
+    return String.format("%s/%s%s", normalizedPrefix, flex ? "flex/" : "", templateName);
+  }
+
   protected String getSpecPath(
       Class<?> dataflowTemplateClass, Template templateMetadata, String pomPath)
       throws ExecutionException {
     if (TestProperties.specPath() != null && !TestProperties.specPath().isEmpty()) {
       LOG.info("A spec path was given, not staging template {}", templateMetadata.name());
       return TestProperties.specPath();
-    } else {
-      LOG.info("Preparing test for {} ({})", templateMetadata.name(), dataflowTemplateClass);
-      return stageTemplate(templateMetadata, pomPath, credentials);
     }
+    String preStagedSpecPath = getPreStagedSpecPath(templateMetadata);
+    if (preStagedSpecPath != null) {
+      LOG.info(
+          "Using pre-staged template spec path {} for {} (not staging from source)",
+          preStagedSpecPath,
+          templateMetadata.name());
+      return preStagedSpecPath;
+    }
+    LOG.info("Preparing test for {} ({})", templateMetadata.name(), dataflowTemplateClass);
+    return stageTemplate(templateMetadata, pomPath, credentials);
   }
 
   /**

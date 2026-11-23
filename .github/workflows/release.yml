@@ -16,6 +16,11 @@ on:
         description: 'Comma separated commits to cherry pick'
         type: string
         required: false
+      stageBucket:
+        description: 'GCS bucket containing pre-staged release templates (at gs://<stageBucket>/<candidateName>/). Leave blank to build and stage templates locally during tests.'
+        type: string
+        required: false
+        default: 'dataflow-templates-staging'
 
 permissions:
   contents: write
@@ -36,8 +41,16 @@ jobs:
         run: |
           echo "releaseBranchName=release_${CANDIDATE_NAME}" >> $GITHUB_OUTPUT
           echo "tagName=${CANDIDATE_NAME^^}" >> $GITHUB_OUTPUT
+          if [ -n "${STAGE_BUCKET}" ]; then
+            CLEAN_BUCKET="${STAGE_BUCKET#gs://}"
+            CLEAN_BUCKET="${CLEAN_BUCKET%/}"
+            echo "specPathPrefix=gs://${CLEAN_BUCKET}/${CANDIDATE_NAME}" >> $GITHUB_OUTPUT
+          else
+            echo "specPathPrefix=" >> $GITHUB_OUTPUT
+          fi
         env:
           CANDIDATE_NAME: ${{ inputs.candidateName }}
+          STAGE_BUCKET: ${{ inputs.stageBucket }}
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -108,21 +121,27 @@ jobs:
       # TODO(https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/1807) - Remove once Staging Spanner tests
       #   are fixed
       - name: Run Integration Smoke Tests
+        env:
+          SPEC_PATH_PREFIX: ${{ steps.variables.outputs.specPathPrefix }}
         run: |
           ./cicd/run-it-smoke-tests \
           --it-region="${{ env.IT_REGION }}" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-spec-path-prefix="${SPEC_PATH_PREFIX}" \
           --it-private-connectivity="datastream-connect-2" \
           --it-spanner-host="https://batch-spanner.googleapis.com" \
           --it-release=true \
           --it-retry-failures=2
       - name: Run Integration Tests With DEFAULT
+        env:
+          SPEC_PATH_PREFIX: ${{ steps.variables.outputs.specPathPrefix }}
         run: |
           ./cicd/run-it-tests \
           --it-region="${{ env.IT_REGION }}" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-spec-path-prefix="${SPEC_PATH_PREFIX}" \
           --it-private-connectivity="datastream-connect-2" \
           --it-spanner-host="https://batch-spanner.googleapis.com" \
           --it-release=true \
@@ -131,11 +150,14 @@ jobs:
           --it-thread-count=6 \
           --modules-to-build="DEFAULT"
       - name: Run Integration Tests With KAFKA
+        env:
+          SPEC_PATH_PREFIX: ${{ steps.variables.outputs.specPathPrefix }}
         run: |
           ./cicd/run-it-tests \
           --it-region="${{ env.IT_REGION }}" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-spec-path-prefix="${SPEC_PATH_PREFIX}" \
           --it-private-connectivity="datastream-connect-2" \
           --it-spanner-host="https://batch-spanner.googleapis.com" \
           --it-release=true \
@@ -143,11 +165,14 @@ jobs:
           --it-integration-test-parallelism=6 \
           --modules-to-build="KAFKA"
       - name: Run Integration Tests With BIGTABLE
+        env:
+          SPEC_PATH_PREFIX: ${{ steps.variables.outputs.specPathPrefix }}
         run: |
           ./cicd/run-it-tests \
           --it-region="${{ env.IT_REGION }}" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-spec-path-prefix="${SPEC_PATH_PREFIX}" \
           --it-private-connectivity="datastream-connect-2" \
           --it-spanner-host="https://batch-spanner.googleapis.com" \
           --it-release=true \
@@ -174,8 +199,16 @@ jobs:
         run: |
           echo "releaseBranchName=release_${CANDIDATE_NAME}" >> $GITHUB_OUTPUT
           echo "tagName=${CANDIDATE_NAME^^}" >> $GITHUB_OUTPUT
+          if [ -n "${STAGE_BUCKET}" ]; then
+            CLEAN_BUCKET="${STAGE_BUCKET#gs://}"
+            CLEAN_BUCKET="${CLEAN_BUCKET%/}"
+            echo "specPathPrefix=gs://${CLEAN_BUCKET}/${CANDIDATE_NAME}" >> $GITHUB_OUTPUT
+          else
+            echo "specPathPrefix=" >> $GITHUB_OUTPUT
+          fi
         env:
           CANDIDATE_NAME: ${{ inputs.candidateName }}
+          STAGE_BUCKET: ${{ inputs.stageBucket }}
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -186,11 +219,14 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Integration Tests
+        env:
+          SPEC_PATH_PREFIX: ${{ steps.variables.outputs.specPathPrefix }}
         run: |
           ./cicd/run-it-tests \
           --it-region="us-central1" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-spec-path-prefix="${SPEC_PATH_PREFIX}" \
           --it-private-connectivity="datastream-connect-2" \
           --it-spanner-host="https://batch-spanner.googleapis.com" \
           --it-release=true \
@@ -216,8 +252,16 @@ jobs:
         run: |
           echo "releaseBranchName=release_${CANDIDATE_NAME}" >> $GITHUB_OUTPUT
           echo "tagName=${CANDIDATE_NAME^^}" >> $GITHUB_OUTPUT
+          if [ -n "${STAGE_BUCKET}" ]; then
+            CLEAN_BUCKET="${STAGE_BUCKET#gs://}"
+            CLEAN_BUCKET="${CLEAN_BUCKET%/}"
+            echo "specPathPrefix=gs://${CLEAN_BUCKET}/${CANDIDATE_NAME}" >> $GITHUB_OUTPUT
+          else
+            echo "specPathPrefix=" >> $GITHUB_OUTPUT
+          fi
         env:
           CANDIDATE_NAME: ${{ inputs.candidateName }}
+          STAGE_BUCKET: ${{ inputs.stageBucket }}
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -228,11 +272,14 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Integration Tests
+        env:
+          SPEC_PATH_PREFIX: ${{ steps.variables.outputs.specPathPrefix }}
         run: |
           ./cicd/run-it-tests \
           --it-region="us-central1" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-spec-path-prefix="${SPEC_PATH_PREFIX}" \
           --it-private-connectivity="datastream-connect-2" \
           --it-spanner-host="https://batch-spanner.googleapis.com" \
           --it-release=true \
@@ -260,8 +307,16 @@ jobs:
         run: |
           echo "releaseBranchName=release_${CANDIDATE_NAME}" >> $GITHUB_OUTPUT
           echo "tagName=${CANDIDATE_NAME^^}" >> $GITHUB_OUTPUT
+          if [ -n "${STAGE_BUCKET}" ]; then
+            CLEAN_BUCKET="${STAGE_BUCKET#gs://}"
+            CLEAN_BUCKET="${CLEAN_BUCKET%/}"
+            echo "specPathPrefix=gs://${CLEAN_BUCKET}/${CANDIDATE_NAME}" >> $GITHUB_OUTPUT
+          else
+            echo "specPathPrefix=" >> $GITHUB_OUTPUT
+          fi
         env:
           CANDIDATE_NAME: ${{ inputs.candidateName }}
+          STAGE_BUCKET: ${{ inputs.stageBucket }}
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -272,11 +327,14 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Integration Tests
+        env:
+          SPEC_PATH_PREFIX: ${{ steps.variables.outputs.specPathPrefix }}
         run: |
           ./cicd/run-it-tests \
           --it-region="us-central1" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-spec-path-prefix="${SPEC_PATH_PREFIX}" \
           --it-private-connectivity="datastream-connect-2" \
           --it-spanner-host="https://batch-spanner.googleapis.com" \
           --it-release=true \
