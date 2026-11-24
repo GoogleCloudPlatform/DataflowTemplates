@@ -75,7 +75,6 @@ public class BigQueryToParquetTest {
     verify(client).createReadSession(captor.capture());
     CreateReadSessionRequest request = captor.getValue();
     assertEquals("projects/parent-project", request.getParent());
-    assertEquals(1, request.getMaxStreamCount());
     assertEquals(
         "projects/fantasmic-999999/datasets/great_data/tables/table",
         request.getReadSession().getTable());

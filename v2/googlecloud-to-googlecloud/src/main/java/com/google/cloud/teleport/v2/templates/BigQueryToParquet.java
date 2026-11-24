@@ -144,8 +144,7 @@ public class BigQueryToParquet {
       CreateReadSessionRequest.Builder builder =
           CreateReadSessionRequest.newBuilder()
               .setParent(parentProjectIdResource)
-              .setReadSession(sessionBuilder)
-              .setMaxStreamCount(1);
+              .setReadSession(sessionBuilder);
       try {
         return client.createReadSession(builder.build());
       } catch (InvalidArgumentException iae) {
