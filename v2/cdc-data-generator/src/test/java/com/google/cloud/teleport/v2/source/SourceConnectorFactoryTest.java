@@ -21,6 +21,7 @@ import static org.junit.Assert.assertThrows;
 import com.google.cloud.teleport.v2.source.mysql.MySqlSourceConnector;
 import com.google.cloud.teleport.v2.source.oracle.OracleSourceConnector;
 import com.google.cloud.teleport.v2.source.spanner.SpannerSourceConnector;
+import com.google.cloud.teleport.v2.source.sqlserver.SqlServerSourceConnector;
 import com.google.cloud.teleport.v2.templates.CdcDataGeneratorOptions;
 import com.google.cloud.teleport.v2.templates.CdcDataGeneratorOptions.SinkType;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -40,6 +41,8 @@ public class SourceConnectorFactoryTest {
         .isInstanceOf(MySqlSourceConnector.class);
     assertThat(SourceConnectorFactory.getSourceConnector(SinkType.ORACLE))
         .isInstanceOf(OracleSourceConnector.class);
+    assertThat(SourceConnectorFactory.getSourceConnector(SinkType.SQLSERVER))
+        .isInstanceOf(SqlServerSourceConnector.class);
   }
 
   @Test
@@ -59,6 +62,8 @@ public class SourceConnectorFactoryTest {
         .isInstanceOf(OracleSourceConnector.class);
     assertThat(SourceConnectorFactory.getSourceConnector("oracle"))
         .isInstanceOf(OracleSourceConnector.class);
+    assertThat(SourceConnectorFactory.getSourceConnector("sqlserver"))
+        .isInstanceOf(SqlServerSourceConnector.class);
     assertThrows(
         IllegalArgumentException.class,
         () -> SourceConnectorFactory.getSourceConnector((String) null));
@@ -78,6 +83,10 @@ public class SourceConnectorFactoryTest {
     options.setSinkType(SinkType.ORACLE);
     assertThat(SourceConnectorFactory.getSourceConnector(options))
         .isInstanceOf(OracleSourceConnector.class);
+
+    options.setSinkType(SinkType.SQLSERVER);
+    assertThat(SourceConnectorFactory.getSourceConnector(options))
+        .isInstanceOf(SqlServerSourceConnector.class);
   }
 
   @Test
@@ -105,6 +114,10 @@ public class SourceConnectorFactoryTest {
         .isInstanceOf(MySqlSourceConnector.class);
     assertThat(SourceConnectorFactory.getSourceConnectorBySourceType("oracle"))
         .isInstanceOf(OracleSourceConnector.class);
+    assertThat(SourceConnectorFactory.getSourceConnectorBySourceType("SQLSERVER"))
+        .isInstanceOf(SqlServerSourceConnector.class);
+    assertThat(SourceConnectorFactory.getSourceConnectorBySourceType(" sqlserver "))
+        .isInstanceOf(SqlServerSourceConnector.class);
   }
 
   @Test
