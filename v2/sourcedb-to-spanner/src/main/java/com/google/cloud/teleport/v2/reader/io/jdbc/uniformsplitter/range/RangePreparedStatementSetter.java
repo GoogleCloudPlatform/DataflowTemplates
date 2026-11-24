@@ -15,21 +15,15 @@
  */
 package com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range;
 
-import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcCommonConstants;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import java.nio.ByteBuffer;
 import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.time.LocalTime;
-import java.time.OffsetTime;
-import java.util.UUID;
 import org.apache.beam.sdk.io.jdbc.JdbcIO.PreparedStatementSetter;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
-import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,10 +35,19 @@ public class RangePreparedStatementSetter implements PreparedStatementSetter<Ran
 
   private final ImmutableMap<TableIdentifier, Long> numColumnsMap;
   private final ImmutableMap<TableIdentifier, ImmutableList<PartitionColumn>> partitionColumnsMap;
+  private final UniformSplitterDBAdapter dbAdapter;
   private static final Logger logger = LoggerFactory.getLogger(PreparedStatementSetter.class);
 
+  /**
+   * Construct {@link RangePreparedStatementSetter}.
+   *
+   * @param tableSplitSpecifications list of table split specifications.
+   * @param dbAdapter dialect adapter that converts boundary values before they are bound.
+   */
   public RangePreparedStatementSetter(
-      ImmutableList<TableSplitSpecification> tableSplitSpecifications) {
+      ImmutableList<TableSplitSpecification> tableSplitSpecifications,
+      UniformSplitterDBAdapter dbAdapter) {
+    this.dbAdapter = dbAdapter;
     this.numColumnsMap =
         tableSplitSpecifications.stream()
             .collect(
@@ -58,65 +61,6 @@ public class RangePreparedStatementSetter implements PreparedStatementSetter<Ran
                 ImmutableMap.toImmutableMap(
                     specification -> specification.tableIdentifier(),
                     specification -> specification.partitionColumns()));
-  }
-
-  /**
-   * Convert raw byte[] to java.util.UUID to prevent PostgreSQL JDBC type mismatch (BYTEA vs UUID),
-   * convert String to PGobject for PostgreSQL BIT types, and convert LocalTime.MAX (and OffsetTime
-   * at LocalTime.MAX) to "24:00:00" to match PostgreSQL's end-of-day time format.
-   *
-   * <p>TODO(#4489): The uniqueidentifier branches are dialect-specific; route them through a
-   * SQLServer connector.
-   */
-  private static Object convertSpecialTypes(Object val, PartitionColumn pc) {
-    if (val instanceof byte[] bytes
-        && JdbcCommonConstants.UUID_TYPE.equalsIgnoreCase(pc.columnTypeName())) {
-      ByteBuffer bb = ByteBuffer.wrap(bytes);
-      return new UUID(bb.getLong(), bb.getLong());
-    }
-
-    if (val instanceof byte[] bytes
-        && JdbcCommonConstants.UNIQUEIDENTIFIER_TYPE.equalsIgnoreCase(pc.columnTypeName())) {
-      return BoundaryExtractorFactory.sqlServerSortableBytesToUuidString(bytes);
-    }
-
-    if (val instanceof String bitStr
-        && JdbcCommonConstants.BIT_TYPE.equalsIgnoreCase(pc.columnTypeName())) {
-      PGobject pgObj = new PGobject();
-      pgObj.setType(JdbcCommonConstants.BIT_TYPE);
-      try {
-        pgObj.setValue(bitStr);
-      } catch (SQLException e) {
-        throw new RuntimeException(e);
-      }
-      return pgObj;
-    }
-    if (val instanceof LocalTime localTime) {
-      if (LocalTime.MAX.equals(localTime)) {
-        PGobject pgObj = new PGobject();
-        pgObj.setType("time");
-        try {
-          pgObj.setValue("24:00:00");
-        } catch (SQLException e) {
-          throw new RuntimeException(e);
-        }
-        return pgObj;
-      }
-    }
-    if (val instanceof OffsetTime offsetTime) {
-      if (LocalTime.MAX.equals(offsetTime.toLocalTime())) {
-        PGobject pgObj = new PGobject();
-        pgObj.setType("timetz");
-        try {
-          String offsetStr = offsetTime.getOffset().toString();
-          pgObj.setValue("24:00:00" + offsetStr);
-        } catch (SQLException e) {
-          throw new RuntimeException(e);
-        }
-        return pgObj;
-      }
-    }
-    return val;
   }
 
   /**
@@ -150,8 +94,8 @@ public class RangePreparedStatementSetter implements PreparedStatementSetter<Ran
     Range range = element;
     for (long i = 0; i < rangeColumns; i++) {
       PartitionColumn pc = partitionColumns.get((int) i);
-      Object start = convertSpecialTypes(range.start(), pc);
-      Object end = convertSpecialTypes(range.end(), pc);
+      Object start = dbAdapter.toQueryParameter(range.start(), pc);
+      Object end = dbAdapter.toQueryParameter(range.end(), pc);
       preparedStatement.setObject(startParameterIdx++, true /* include column */);
       preparedStatement.setObject(startParameterIdx++, start);
       preparedStatement.setObject(startParameterIdx++, end);

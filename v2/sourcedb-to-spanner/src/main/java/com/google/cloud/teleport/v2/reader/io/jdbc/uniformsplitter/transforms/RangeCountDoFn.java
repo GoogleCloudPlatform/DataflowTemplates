@@ -80,7 +80,8 @@ final class RangeCountDoFn extends DoFn<Range, Range> implements Serializable {
               timeoutMillis));
     }
     this.countQueries = countQueriesBuilder.build();
-    this.rangePreparedStatementSetter = new RangePreparedStatementSetter(tableSplitSpecifications);
+    this.rangePreparedStatementSetter =
+        new RangePreparedStatementSetter(tableSplitSpecifications, dbAdapter);
     this.dataSourceManager =
         DataSourceManagerImpl.builder().setDataSourceProvider(dataSourceProvider).build();
   }

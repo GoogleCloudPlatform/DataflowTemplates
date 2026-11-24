@@ -211,7 +211,9 @@ public class RangeBoundaryTransformTest {
             .setInitialSplitHeight(2L)
             .build();
     RangePreparedStatementSetter rangePreparedStatementSetter =
-        new RangePreparedStatementSetter(ImmutableList.of(tableSplitSpecification));
+        new RangePreparedStatementSetter(
+            ImmutableList.of(tableSplitSpecification),
+            new MysqlDialectAdapter(MySqlVersion.DEFAULT));
 
     ColumnForBoundaryQuery firstColumnForBoundaryQuery =
         ColumnForBoundaryQuery.builder()

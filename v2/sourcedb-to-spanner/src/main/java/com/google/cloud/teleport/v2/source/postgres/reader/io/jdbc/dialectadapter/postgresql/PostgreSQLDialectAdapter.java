@@ -29,6 +29,7 @@ import com.google.cloud.teleport.v2.reader.io.exception.SchemaDiscoveryException
 import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.transforms.ReadWithUniformPartitions;
@@ -40,6 +41,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -55,6 +57,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
@@ -62,6 +65,7 @@ import javax.sql.DataSource;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.commons.dbcp2.BasicDataSource;
+import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -729,6 +733,66 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   @Override
   public OffsetTime extractBoundaryOffsetTime(ResultSet rs, int index) throws SQLException {
     return PostgreSQLTimeConverter.toOffsetTime(rs.getBytes(index));
+  }
+
+  /**
+   * Reads {@code uuid} boundaries as their 16 bytes. For a {@code uuid} column, {@code
+   * rs.getBytes()} returns the 36 characters of its text form, which would corrupt split points.
+   */
+  @Override
+  public byte[] extractBinaryBoundary(ResultSet rs, int index, PartitionColumn partitionColumn)
+      throws SQLException {
+    if (!UUID_TYPE.equalsIgnoreCase(partitionColumn.columnTypeName())) {
+      return rs.getBytes(index);
+    }
+    UUID uuid = rs.getObject(index, UUID.class);
+    if (uuid == null) {
+      return null;
+    }
+    ByteBuffer bb = ByteBuffer.wrap(new byte[16]);
+    bb.putLong(uuid.getMostSignificantBits()).putLong(uuid.getLeastSignificantBits());
+    return bb.array();
+  }
+
+  /**
+   * Converts boundaries the Postgres driver doesn't accept as is: {@code uuid} bytes are bound as a
+   * {@link UUID} (the driver rejects {@code bytea} for {@code uuid}), {@code bit} strings as a
+   * typed {@link PGobject}, and {@link LocalTime#MAX} (the stand-in for {@code 24:00:00}, which
+   * Java can't represent) as {@code 24:00:00}.
+   */
+  @Override
+  @Nullable
+  public Object toQueryParameter(@Nullable Object value, PartitionColumn partitionColumn) {
+    if (value instanceof byte[] bytes
+        && UUID_TYPE.equalsIgnoreCase(partitionColumn.columnTypeName())) {
+      ByteBuffer bb = ByteBuffer.wrap(bytes);
+      return new UUID(bb.getLong(), bb.getLong());
+    }
+    if (value instanceof String bitString
+        && BIT_TYPE.equalsIgnoreCase(partitionColumn.columnTypeName())) {
+      return pgObject(BIT_TYPE, bitString);
+    }
+    if (value instanceof LocalTime localTime && LocalTime.MAX.equals(localTime)) {
+      return pgObject("time", END_OF_DAY);
+    }
+    if (value instanceof OffsetTime offsetTime && LocalTime.MAX.equals(offsetTime.toLocalTime())) {
+      return pgObject("timetz", END_OF_DAY + offsetTime.getOffset().toString());
+    }
+    return value;
+  }
+
+  /** Postgres's end of day, which Java's time types can't represent. */
+  private static final String END_OF_DAY = "24:00:00";
+
+  private static PGobject pgObject(String type, String value) {
+    PGobject pgObject = new PGobject();
+    pgObject.setType(type);
+    try {
+      pgObject.setValue(value);
+    } catch (SQLException e) {
+      throw new RuntimeException(e);
+    }
+    return pgObject;
   }
 
   private String addWhereClause(String query, ImmutableList<String> partitionColumns) {

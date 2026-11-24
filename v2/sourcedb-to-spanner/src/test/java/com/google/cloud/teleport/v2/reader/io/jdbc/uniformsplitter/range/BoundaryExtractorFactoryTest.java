@@ -29,6 +29,10 @@ import static org.mockito.Mockito.when;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationMapper;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
+import com.google.cloud.teleport.v2.source.postgres.reader.io.jdbc.dialectadapter.postgresql.PostgreSQLDialectAdapter;
+import com.google.cloud.teleport.v2.source.postgres.reader.io.jdbc.dialectadapter.postgresql.PostgreSQLDialectAdapter.PostgreSQLVersion;
+import com.google.cloud.teleport.v2.source.sqlserver.reader.io.jdbc.dialectadapter.sqlserver.SqlServerDialectAdapter;
+import com.google.cloud.teleport.v2.source.sqlserver.reader.io.jdbc.dialectadapter.sqlserver.SqlServerUniqueIdentifier;
 import com.google.common.collect.ImmutableList;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -490,7 +494,9 @@ public class BoundaryExtractorFactoryTest {
             .setColumnClass(BYTE_ARRAY_CLASS)
             .setColumnTypeName("uuid")
             .build();
-    BoundaryExtractor<byte[]> extractor = BoundaryExtractorFactory.create(BYTE_ARRAY_CLASS);
+    BoundaryExtractor<byte[]> extractor =
+        BoundaryExtractorFactory.create(
+            BYTE_ARRAY_CLASS, new PostgreSQLDialectAdapter(PostgreSQLVersion.DEFAULT));
 
     TableIdentifier tableId =
         TableIdentifier.builder()
@@ -557,7 +563,8 @@ public class BoundaryExtractorFactoryTest {
             .setColumnName("Id")
             .setColumnClass(BYTE_ARRAY_CLASS)
             .build();
-    BoundaryExtractor<byte[]> extractor = BoundaryExtractorFactory.create(BYTE_ARRAY_CLASS);
+    BoundaryExtractor<byte[]> extractor =
+        BoundaryExtractorFactory.create(BYTE_ARRAY_CLASS, new SqlServerDialectAdapter());
     TableIdentifier tableId =
         TableIdentifier.builder()
             .setDataSourceId("b1a1ec3b-195d-4755-b04b-02bc64dc4458")
@@ -584,7 +591,7 @@ public class BoundaryExtractorFactoryTest {
     when(mockResultSet.getString(2)).thenReturn("00000000-0000-0000-0000-000000000002");
     Boundary<byte[]> boundaryOrder =
         extractor.getBoundary(partitionColumn, mockResultSet, null, tableId);
-    assertThat(BoundaryExtractorFactory.sqlServerSortableBytesToUuidString(boundaryOrder.start()))
+    assertThat(SqlServerUniqueIdentifier.fromSortableBytes(boundaryOrder.start()))
         .isEqualTo("00000000-0000-0000-0000-000000000001");
 
     // Verify SQL Server comparison precedence: g4 is most significant
@@ -611,10 +618,10 @@ public class BoundaryExtractorFactoryTest {
     // Verify invalid byte array length handling
     assertThrows(
         IllegalArgumentException.class,
-        () -> BoundaryExtractorFactory.sqlServerSortableBytesToUuidString(new byte[15]));
+        () -> SqlServerUniqueIdentifier.fromSortableBytes(new byte[15]));
     assertThrows(
         IllegalArgumentException.class,
-        () -> BoundaryExtractorFactory.sqlServerSortableBytesToUuidString(new byte[17]));
+        () -> SqlServerUniqueIdentifier.fromSortableBytes(new byte[17]));
   }
 
   /**
@@ -633,7 +640,8 @@ public class BoundaryExtractorFactoryTest {
             .setColumnName("Id")
             .setColumnClass(BYTE_ARRAY_CLASS)
             .build();
-    BoundaryExtractor<byte[]> extractor = BoundaryExtractorFactory.create(BYTE_ARRAY_CLASS);
+    BoundaryExtractor<byte[]> extractor =
+        BoundaryExtractorFactory.create(BYTE_ARRAY_CLASS, new SqlServerDialectAdapter());
     TableIdentifier tableId =
         TableIdentifier.builder().setDataSourceId("ds").setTableName("testTable").build();
 
@@ -665,8 +673,7 @@ public class BoundaryExtractorFactoryTest {
           extractor.getBoundary(partitionColumn, mockResultSet, null, tableId);
       extracted.add(boundary.start());
       // Round trip must be lossless.
-      assertThat(BoundaryExtractorFactory.sqlServerSortableBytesToUuidString(boundary.start()))
-          .isEqualTo(guid);
+      assertThat(SqlServerUniqueIdentifier.fromSortableBytes(boundary.start())).isEqualTo(guid);
     }
 
     // Unsigned big-endian comparison of extracted bytes must be strictly increasing, i.e. the

@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter;
 
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.BoundaryExtractorFactory;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow;
 import com.google.common.collect.ImmutableList;
 import java.io.Serializable;
@@ -25,6 +26,7 @@ import java.time.Duration;
 import java.time.LocalTime;
 import java.time.OffsetTime;
 import java.util.List;
+import javax.annotation.Nullable;
 
 /** Helper Interface to help uniform splitter adapt to the source database. */
 public interface UniformSplitterDBAdapter extends Serializable {
@@ -110,5 +112,40 @@ public interface UniformSplitterDBAdapter extends Serializable {
 
   default OffsetTime extractBoundaryOffsetTime(ResultSet rs, int index) throws SQLException {
     return BoundaryExtractorFactory.parseTimeStringToOffsetTime(rs.getString(index));
+  }
+
+  /**
+   * Reads a binary boundary (the MIN or MAX of a {@code byte[]} partition column) from a boundary
+   * query result. The returned bytes must sort, as unsigned big-endian bytes, the same way the
+   * database sorts the column, since split points are computed on them in Java.
+   *
+   * <p>Override for types whose driver representation or sort order differs from raw bytes (for
+   * example Postgres {@code uuid} or SQL Server {@code uniqueidentifier}).
+   *
+   * @param rs result set positioned on the boundary row.
+   * @param index column index of the boundary.
+   * @param partitionColumn the partition column.
+   * @return boundary bytes, or null.
+   */
+  default byte[] extractBinaryBoundary(ResultSet rs, int index, PartitionColumn partitionColumn)
+      throws SQLException {
+    return rs.getBytes(index);
+  }
+
+  /**
+   * Converts a boundary value to the object bound to a prepared statement parameter. The default
+   * binds the value unchanged.
+   *
+   * <p>Override for values the JDBC driver doesn't accept as is (for example bytes of a Postgres
+   * {@code uuid}, which must be bound as a {@link java.util.UUID}). Must be the inverse of {@link
+   * #extractBinaryBoundary} for binary columns.
+   *
+   * @param value boundary value (start or end of a range), or null.
+   * @param partitionColumn the partition column.
+   * @return the object to bind.
+   */
+  @Nullable
+  default Object toQueryParameter(@Nullable Object value, PartitionColumn partitionColumn) {
+    return value;
   }
 }
