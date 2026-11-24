@@ -15,24 +15,28 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import com.google.api.gax.rpc.InvalidArgumentException;
+import static com.google.common.base.Preconditions.checkState;
+
+import com.google.api.services.bigquery.model.Table;
+import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableReference;
-import com.google.cloud.bigquery.storage.v1beta1.BigQueryStorageClient;
-import com.google.cloud.bigquery.storage.v1beta1.ReadOptions.TableReadOptions;
-import com.google.cloud.bigquery.storage.v1beta1.Storage.CreateReadSessionRequest;
-import com.google.cloud.bigquery.storage.v1beta1.Storage.ReadSession;
-import com.google.cloud.bigquery.storage.v1beta1.TableReferenceProto;
+import com.google.api.services.bigquery.model.TableSchema;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.templates.BigQueryToParquet.BigQueryToParquetOptions;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
-import java.io.IOException;
-import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -43,12 +47,17 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.TypedRead;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.TypedRead.Method;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryServices;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryServices.DatasetService;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryServicesImpl;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryUtils;
 import org.apache.beam.sdk.io.gcp.bigquery.SchemaAndRecord;
 import org.apache.beam.sdk.io.parquet.ParquetIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
+import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,65 +93,100 @@ public class BigQueryToParquet {
   /** File suffix for file to be written. */
   private static final String FILE_SUFFIX = ".parquet";
 
-  /** Factory to create BigQueryStorageClients. */
-  static class BigQueryStorageClientFactory {
+  /**
+   * Aligns {@link GenericRecord} instances returned by BigQuery Storage Read API to the target Avro
+   * {@link Schema} constructed from {@link BigQueryUtils#toGenericAvroSchema(TableSchema, Boolean)}
+   * so that record names/namespaces (for nullable and repeated structs) and field ordering match
+   * {@link AvroCoder} and {@link ParquetIO}.
+   */
+  @VisibleForTesting
+  static class RecordSchemaAligner implements SerializableFunction<SchemaAndRecord, GenericRecord> {
+    private final String targetSchemaJson;
+    private transient volatile Schema targetSchema;
 
-    /**
-     * Creates BigQueryStorage client for use in extracting table schema.
-     *
-     * @return BigQueryStorageClient
-     */
-    static BigQueryStorageClient create() {
-      try {
-        return BigQueryStorageClient.create();
-      } catch (IOException e) {
-        LOG.error("Error connecting to BigQueryStorage API: " + e.getMessage());
-        throw new RuntimeException(e);
+    RecordSchemaAligner(Schema targetSchema) {
+      this.targetSchemaJson = targetSchema.toString();
+      this.targetSchema = targetSchema;
+    }
+
+    private Schema getTargetSchema() {
+      Schema schema = targetSchema;
+      if (schema == null) {
+        schema = new Schema.Parser().parse(targetSchemaJson);
+        targetSchema = schema;
+      }
+      return schema;
+    }
+
+    @Override
+    public GenericRecord apply(SchemaAndRecord schemaAndRecord) {
+      GenericRecord source = schemaAndRecord.getRecord();
+      if (source == null) {
+        return null;
+      }
+      return alignRecord(source, getTargetSchema());
+    }
+
+    private static GenericRecord alignRecord(GenericRecord source, Schema targetSchema) {
+      GenericRecord target = new GenericData.Record(targetSchema);
+      for (Schema.Field field : targetSchema.getFields()) {
+        Object value = source.get(field.name());
+        target.put(field.pos(), alignValue(value, field.schema()));
+      }
+      return target;
+    }
+
+    private static Object alignValue(Object value, Schema targetSchema) {
+      if (value == null) {
+        return null;
+      }
+      switch (targetSchema.getType()) {
+        case UNION:
+          for (Schema branch : targetSchema.getTypes()) {
+            if (branch.getType() != Schema.Type.NULL) {
+              return alignValue(value, branch);
+            }
+          }
+          return null;
+        case RECORD:
+          if (value instanceof GenericRecord) {
+            return alignRecord((GenericRecord) value, targetSchema);
+          }
+          return value;
+        case ARRAY:
+          if (value instanceof Collection) {
+            Schema elementSchema = targetSchema.getElementType();
+            if (containsRecord(elementSchema)) {
+              Collection<?> sourceCollection = (Collection<?>) value;
+              GenericData.Array<Object> aligned =
+                  new GenericData.Array<>(sourceCollection.size(), targetSchema);
+              for (Object element : sourceCollection) {
+                aligned.add(alignValue(element, elementSchema));
+              }
+              return aligned;
+            }
+          }
+          return value;
+        default:
+          return value;
       }
     }
-  }
 
-  /** Factory to create ReadSessions. */
-  static class ReadSessionFactory {
-
-    /**
-     * Creates ReadSession for schema extraction.
-     *
-     * @param client BigQueryStorage client used to create ReadSession.
-     * @param options BigQueryToParquetOptions options.
-     * @param tableReadOptions TableReadOptions that specify any fields in the table to filter on.
-     * @return session ReadSession object that contains the schema for the export.
-     */
-    static ReadSession create(
-        BigQueryStorageClient client,
-        BigQueryToParquetOptions options,
-        TableReadOptions tableReadOptions) {
-      String tableString = options.getTableRef();
-      TableReference tableReference = BigQueryHelpers.parseTableSpec(tableString);
-      BigQueryOptions bigQueryOptions = options.as(BigQueryOptions.class);
-      String parentProjectId =
-          bigQueryOptions.getBigQueryProject() == null
-              ? bigQueryOptions.getProject()
-              : bigQueryOptions.getBigQueryProject();
-      String parentProjectIdResource = "projects/" + parentProjectId;
-
-      TableReferenceProto.TableReference storageTableRef =
-          TableReferenceProto.TableReference.newBuilder()
-              .setProjectId(tableReference.getProjectId())
-              .setDatasetId(tableReference.getDatasetId())
-              .setTableId(tableReference.getTableId())
-              .build();
-
-      CreateReadSessionRequest.Builder builder =
-          CreateReadSessionRequest.newBuilder()
-              .setParent(parentProjectIdResource)
-              .setReadOptions(tableReadOptions)
-              .setTableReference(storageTableRef);
-      try {
-        return client.createReadSession(builder.build());
-      } catch (InvalidArgumentException iae) {
-        LOG.error("Error creating ReadSession: " + iae.getMessage());
-        throw new RuntimeException(iae);
+    private static boolean containsRecord(Schema schema) {
+      switch (schema.getType()) {
+        case RECORD:
+          return true;
+        case ARRAY:
+          return containsRecord(schema.getElementType());
+        case UNION:
+          for (Schema branch : schema.getTypes()) {
+            if (containsRecord(branch)) {
+              return true;
+            }
+          }
+          return false;
+        default:
+          return false;
       }
     }
   }
@@ -208,19 +252,179 @@ public class BigQueryToParquet {
   }
 
   /**
-   * The {@link BigQueryToParquet#getTableSchema(ReadSession)} method gets Avro schema for table
-   * using from the {@link ReadSession} object.
+   * Parses the comma-separated {@code fields} option into a list of trimmed field names.
    *
-   * @param session ReadSession that contains schema for table, filtered by fields if any.
-   * @return avroSchema Avro schema for table. If fields are provided then schema will only contain
-   *     those fields.
+   * @param fields Comma-separated list of field names, or null/empty.
+   * @return List of selected field names, or an empty list if none are specified.
    */
-  private static Schema getTableSchema(ReadSession session) {
-    Schema avroSchema;
+  @VisibleForTesting
+  static List<String> parseSelectedFields(String fields) {
+    if (Strings.isNullOrEmpty(fields)) {
+      return Collections.emptyList();
+    }
+    return Splitter.on(",").trimResults().omitEmptyStrings().splitToList(fields);
+  }
 
-    avroSchema = new Schema.Parser().parse(session.getAvroSchema().getSchema());
-    LOG.info("Schema for export is: " + avroSchema.toString());
+  /**
+   * Trims a BigQuery {@link TableSchema} to include only the specified {@code selectedFields},
+   * supporting nested dot-delimited field paths (e.g., {@code struct_col.sub_field}) and
+   * case-insensitive BigQuery column name matching.
+   *
+   * @param schema The full BigQuery {@link TableSchema}.
+   * @param selectedFields List of selected field names to retain.
+   * @return Trimmed {@link TableSchema} containing only the selected fields.
+   */
+  @VisibleForTesting
+  static TableSchema trimSchema(TableSchema schema, List<String> selectedFields) {
+    if (selectedFields == null || selectedFields.isEmpty()) {
+      return schema;
+    }
 
+    for (String selectedField : selectedFields) {
+      if (!hasFieldPath(schema.getFields(), selectedField)) {
+        throw new IllegalArgumentException(
+            String.format("Selected field '%s' not found in table schema.", selectedField));
+      }
+    }
+
+    List<TableFieldSchema> trimmedFields =
+        schema.getFields().stream()
+            .flatMap(f -> trimField(f, selectedFields))
+            .collect(Collectors.toList());
+    return new TableSchema().setFields(trimmedFields);
+  }
+
+  private static boolean hasFieldPath(List<TableFieldSchema> fields, String fieldPath) {
+    if (fields == null || Strings.isNullOrEmpty(fieldPath)) {
+      return false;
+    }
+    int dotIndex = fieldPath.indexOf('.');
+    if (dotIndex < 0) {
+      for (TableFieldSchema field : fields) {
+        if (field.getName().equalsIgnoreCase(fieldPath)) {
+          return true;
+        }
+      }
+      return false;
+    }
+    String parentName = fieldPath.substring(0, dotIndex);
+    String childPath = fieldPath.substring(dotIndex + 1);
+    if (parentName.isEmpty() || childPath.isEmpty()) {
+      return false;
+    }
+    for (TableFieldSchema field : fields) {
+      if (field.getName().equalsIgnoreCase(parentName)) {
+        return hasFieldPath(field.getFields(), childPath);
+      }
+    }
+    return false;
+  }
+
+  private static Stream<TableFieldSchema> trimField(
+      TableFieldSchema field, List<String> selectedFields) {
+    String name = field.getName();
+    if (selectedFields.stream().anyMatch(sf -> sf.equalsIgnoreCase(name))) {
+      return Stream.of(field);
+    }
+
+    if (field.getFields() != null) {
+      List<String> selectedChildren =
+          selectedFields.stream()
+              .filter(
+                  sf ->
+                      sf.length() > name.length() + 1
+                          && sf.regionMatches(true, 0, name, 0, name.length())
+                          && sf.charAt(name.length()) == '.')
+              .map(sf -> sf.substring(name.length() + 1))
+              .collect(Collectors.toList());
+
+      if (!selectedChildren.isEmpty()) {
+        List<TableFieldSchema> trimmedChildren =
+            field.getFields().stream()
+                .flatMap(c -> trimField(c, selectedChildren))
+                .collect(Collectors.toList());
+
+        if (!trimmedChildren.isEmpty()) {
+          TableFieldSchema trimmedField = new TableFieldSchema();
+          for (Map.Entry<String, Object> entry : field.entrySet()) {
+            if (!"fields".equals(entry.getKey())) {
+              trimmedField.set(entry.getKey(), entry.getValue());
+            }
+          }
+          trimmedField.setFields(trimmedChildren);
+          return Stream.of(trimmedField);
+        }
+      }
+    }
+
+    return Stream.empty();
+  }
+
+  /**
+   * Fetches the BigQuery {@link TableSchema} via Beam's {@link BigQueryServices}, optionally trims
+   * it to {@code selectedFields}, and converts it to an Avro {@link Schema}.
+   *
+   * @param bigQueryServices BigQuery services used to fetch table metadata.
+   * @param options Pipeline options containing the table reference and project settings.
+   * @param selectedFields Optional list of fields to filter the schema on.
+   * @return Avro schema for the table export.
+   */
+  @VisibleForTesting
+  static Schema getTableSchema(
+      BigQueryServices bigQueryServices,
+      BigQueryToParquetOptions options,
+      List<String> selectedFields) {
+    TableReference tableReference = BigQueryHelpers.parseTableSpec(options.getTableRef());
+    BigQueryOptions bigQueryOptions = options.as(BigQueryOptions.class);
+    if (Strings.isNullOrEmpty(tableReference.getProjectId())) {
+      String defaultProject =
+          bigQueryOptions.getBigQueryProject() == null
+              ? bigQueryOptions.getProject()
+              : bigQueryOptions.getBigQueryProject();
+      checkState(
+          !Strings.isNullOrEmpty(defaultProject),
+          "No project ID set in %s or %s, cannot construct a complete %s",
+          TableReference.class.getSimpleName(),
+          BigQueryOptions.class.getSimpleName(),
+          TableReference.class.getSimpleName());
+      LOG.info(
+          "Project ID not set in {}. Using default project from {}.",
+          TableReference.class.getSimpleName(),
+          BigQueryOptions.class.getSimpleName());
+      tableReference.setProjectId(defaultProject);
+    }
+
+    Table table;
+    try (DatasetService datasetService = bigQueryServices.getDatasetService(bigQueryOptions)) {
+      table = datasetService.getTable(tableReference);
+    } catch (Exception e) {
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
+      LOG.error(
+          "Error fetching BigQuery table metadata for {}: {}",
+          options.getTableRef(),
+          e.getMessage());
+      throw new RuntimeException(
+          "Error fetching BigQuery table metadata for " + options.getTableRef(), e);
+    }
+
+    if (table == null) {
+      throw new IllegalArgumentException(
+          String.format("Table %s not found.", BigQueryHelpers.toTableSpec(tableReference)));
+    }
+    TableSchema tableSchema = table.getSchema();
+    if (tableSchema == null || tableSchema.getFields() == null) {
+      throw new IllegalArgumentException(
+          String.format("Table %s has no schema.", BigQueryHelpers.toTableSpec(tableReference)));
+    }
+
+    if (selectedFields != null && !selectedFields.isEmpty()) {
+      tableSchema = trimSchema(tableSchema, selectedFields);
+    }
+
+    Schema avroSchema = BigQueryUtils.toGenericAvroSchema(tableSchema, true);
+    LOG.info("Schema for export is: {}", avroSchema);
     return avroSchema;
   }
 
@@ -245,41 +449,36 @@ public class BigQueryToParquet {
    * @return The result of the pipeline execution.
    */
   private static PipelineResult run(BigQueryToParquetOptions options) {
+    return run(options, null);
+  }
 
+  @VisibleForTesting
+  static PipelineResult run(
+      BigQueryToParquetOptions options, BigQueryServices testBigQueryServices) {
     // Create the pipeline.
     Pipeline pipeline = Pipeline.create(options);
 
-    TableReadOptions.Builder builder = TableReadOptions.newBuilder();
+    List<String> selectedFields = parseSelectedFields(options.getFields());
 
-    /* Add fields to filter export on, if any. */
-    if (options.getFields() != null) {
-      builder.addAllSelectedFields(Arrays.asList(options.getFields().split(",\\s*")));
-    }
+    BigQueryServices bigQueryServices =
+        testBigQueryServices != null ? testBigQueryServices : new BigQueryServicesImpl();
 
-    // Add row restrictions/filter if any.
-    if (!Strings.isNullOrEmpty(options.getRowRestriction())) {
-      builder.setRowRestriction(options.getRowRestriction());
-    }
-
-    TableReadOptions tableReadOptions = builder.build();
-    BigQueryStorageClient client = BigQueryStorageClientFactory.create();
-    ReadSession session = ReadSessionFactory.create(client, options, tableReadOptions);
-
-    // Extract schema from ReadSession
-    Schema schema = getTableSchema(session);
-    client.close();
+    // Extract Avro schema from BigQuery table metadata via Beam's BigQueryServices/BigQueryUtils.
+    Schema schema = getTableSchema(bigQueryServices, options, selectedFields);
 
     TypedRead<GenericRecord> readFromBQ =
-        BigQueryIO.read(SchemaAndRecord::getRecord)
+        BigQueryIO.read(new RecordSchemaAligner(schema))
             .from(options.getTableRef())
             .withTemplateCompatibility()
             .withMethod(Method.DIRECT_READ)
             .withCoder(AvroCoder.of(schema));
 
-    if (options.getFields() != null) {
-      List<String> selectedFields = Splitter.on(",").splitToList(options.getFields());
-      readFromBQ =
-          selectedFields.isEmpty() ? readFromBQ : readFromBQ.withSelectedFields(selectedFields);
+    if (testBigQueryServices != null) {
+      readFromBQ = readFromBQ.withTestServices(testBigQueryServices);
+    }
+
+    if (!selectedFields.isEmpty()) {
+      readFromBQ = readFromBQ.withSelectedFields(selectedFields);
     }
 
     // Add row restrictions/filter if any.
