@@ -64,6 +64,7 @@ func main() {
 		flags.Project(),
 		flags.ArtifactBucket(),
 		flags.StageBucket(),
+		flags.SpecPathPrefix(),
 		flags.HostIp(),
 		flags.PrivateConnectivity(),
 		flags.SpannerHost(),
