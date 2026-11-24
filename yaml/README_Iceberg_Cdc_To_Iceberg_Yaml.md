@@ -1,8 +1,8 @@
 
 Iceberg CDC to Iceberg (YAML) template
 ---
-The Iceberg CDC to Iceberg template is a batch pipeline that reads change
-records from an Iceberg table and applies them to another Iceberg table using
+The Iceberg CDC to Iceberg template is a batch pipeline that reads change records
+from an Iceberg table and applies them to another Iceberg table using
 merge-on-read writes.
 
 
@@ -147,7 +147,6 @@ gcloud dataflow flex-template run "iceberg-cdc-to-iceberg-yaml-job" \
   --parameters "table=$TABLE" \
   --parameters "catalogName=$CATALOG_NAME" \
   --parameters "catalogProperties=$CATALOG_PROPERTIES" \
-  --parameters "errorTable=$ERROR_TABLE" \
   --parameters "configProperties=$CONFIG_PROPERTIES" \
   --parameters "drop=$DROP" \
   --parameters "keep=$KEEP" \
@@ -155,7 +154,8 @@ gcloud dataflow flex-template run "iceberg-cdc-to-iceberg-yaml-job" \
   --parameters "only=$ONLY" \
   --parameters "partitionFields=$PARTITION_FIELDS" \
   --parameters "tableProperties=$TABLE_PROPERTIES" \
-  --parameters "equalityColumns=$EQUALITY_COLUMNS"
+  --parameters "equalityColumns=$EQUALITY_COLUMNS" \
+  --parameters "errorTable=$ERROR_TABLE"
 ```
 
 For more information about the command, please check:
@@ -197,7 +197,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="iceberg-cdc-to-iceberg-yaml-job" \
 -DtemplateName="Iceberg_Cdc_To_Iceberg_Yaml" \
--Dparameters="sourceTable=$SOURCE_TABLE,table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,errorTable=$ERROR_TABLE,configProperties=$CONFIG_PROPERTIES,drop=$DROP,keep=$KEEP,filter=$FILTER,only=$ONLY,partitionFields=$PARTITION_FIELDS,tableProperties=$TABLE_PROPERTIES,equalityColumns=$EQUALITY_COLUMNS" \
+-Dparameters="sourceTable=$SOURCE_TABLE,table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,keep=$KEEP,filter=$FILTER,only=$ONLY,partitionFields=$PARTITION_FIELDS,tableProperties=$TABLE_PROPERTIES,equalityColumns=$EQUALITY_COLUMNS,errorTable=$ERROR_TABLE" \
 -f yaml
 ```
 
