@@ -38,6 +38,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **only**: The name of a single field to write. Mutually exclusive with 'keep' and 'drop'. For example, `my_record_field`.
 * **partitionFields**: A list of fields and transforms for partitioning, e.g., ['day(ts)', 'category']. For example, `["day(ts)", "bucket(id, 4)"]`.
 * **tableProperties**: A map of Iceberg table properties to set when the table is created. For example, `{"commit.retry.num-retries": "2"}`.
+* **equalityColumns**: A list of field names used as equality columns for merge-on-read writes. Leave unset to use the sink table's identifier fields. Required when the pipeline creates the sink table and that table has no identifier fields. For example, `["id"]`.
 
 
 
@@ -153,6 +154,7 @@ export KEEP=<keep>
 export ONLY=<only>
 export PARTITION_FIELDS=<partitionFields>
 export TABLE_PROPERTIES=<tableProperties>
+export EQUALITY_COLUMNS=<equalityColumns>
 
 gcloud dataflow flex-template run "mysql-to-iceberg-yaml-job" \
   --project "$PROJECT" \
@@ -178,7 +180,8 @@ gcloud dataflow flex-template run "mysql-to-iceberg-yaml-job" \
   --parameters "keep=$KEEP" \
   --parameters "only=$ONLY" \
   --parameters "partitionFields=$PARTITION_FIELDS" \
-  --parameters "tableProperties=$TABLE_PROPERTIES"
+  --parameters "tableProperties=$TABLE_PROPERTIES" \
+  --parameters "equalityColumns=$EQUALITY_COLUMNS"
 ```
 
 For more information about the command, please check:
@@ -220,6 +223,7 @@ export KEEP=<keep>
 export ONLY=<only>
 export PARTITION_FIELDS=<partitionFields>
 export TABLE_PROPERTIES=<tableProperties>
+export EQUALITY_COLUMNS=<equalityColumns>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -228,7 +232,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="mysql-to-iceberg-yaml-job" \
 -DtemplateName="MySQL_To_Iceberg_Yaml" \
--Dparameters="jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,location=$LOCATION,readQuery=$READ_QUERY,partitionColumn=$PARTITION_COLUMN,numPartitions=$NUM_PARTITIONS,fetchSize=$FETCH_SIZE,disableAutoCommit=$DISABLE_AUTO_COMMIT,outputParallelization=$OUTPUT_PARALLELIZATION,table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,keep=$KEEP,only=$ONLY,partitionFields=$PARTITION_FIELDS,tableProperties=$TABLE_PROPERTIES" \
+-Dparameters="jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,location=$LOCATION,readQuery=$READ_QUERY,partitionColumn=$PARTITION_COLUMN,numPartitions=$NUM_PARTITIONS,fetchSize=$FETCH_SIZE,disableAutoCommit=$DISABLE_AUTO_COMMIT,outputParallelization=$OUTPUT_PARALLELIZATION,table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,keep=$KEEP,only=$ONLY,partitionFields=$PARTITION_FIELDS,tableProperties=$TABLE_PROPERTIES,equalityColumns=$EQUALITY_COLUMNS" \
 -f yaml
 ```
 
@@ -294,6 +298,7 @@ resource "google_dataflow_flex_template_job" "mysql_to_iceberg_yaml" {
     # only = "<only>"
     # partitionFields = "<partitionFields>"
     # tableProperties = "<tableProperties>"
+    # equalityColumns = "<equalityColumns>"
   }
 }
 ```

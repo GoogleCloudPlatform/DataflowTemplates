@@ -38,6 +38,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **only**: The name of a single field to write. Mutually exclusive with 'keep' and 'drop'. For example, `my_record_field`.
 * **partitionFields**: A list of fields and transforms for partitioning, e.g., ['day(ts)', 'category']. For example, `["day(ts)", "bucket(id, 4)"]`.
 * **tableProperties**: A map of Iceberg table properties to set when the table is created. For example, `{"commit.retry.num-retries": "2"}`.
+* **equalityColumns**: A list of field names used as equality columns for merge-on-read writes. Leave unset to use the sink table's identifier fields. Required when the pipeline creates the sink table and that table has no identifier fields. For example, `["id"]`.
 * **sdfCheckpointAfterDuration**: Duration after which to checkpoint stateful DoFns. For example: 30s. Documentation: https://docs.cloud.google.com/dataflow/docs/reference/service-options For example, `30s`. Defaults to: 30s.
 * **sdfCheckpointAfterOutputBytes**: Output bytes after which to checkpoint stateful DoFns. For example: 536870912. Documentation: https://docs.cloud.google.com/dataflow/docs/reference/service-options For example, `536870912`. Defaults to: 536870912.
 
@@ -155,6 +156,7 @@ export KEEP=<keep>
 export ONLY=<only>
 export PARTITION_FIELDS=<partitionFields>
 export TABLE_PROPERTIES=<tableProperties>
+export EQUALITY_COLUMNS=<equalityColumns>
 export SDF_CHECKPOINT_AFTER_DURATION=30s
 export SDF_CHECKPOINT_AFTER_OUTPUT_BYTES=536870912
 
@@ -182,6 +184,7 @@ gcloud dataflow flex-template run "kafka-to-iceberg-yaml-job" \
   --parameters "only=$ONLY" \
   --parameters "partitionFields=$PARTITION_FIELDS" \
   --parameters "tableProperties=$TABLE_PROPERTIES" \
+  --parameters "equalityColumns=$EQUALITY_COLUMNS" \
   --parameters "triggeringFrequencySeconds=$TRIGGERING_FREQUENCY_SECONDS" \
   --parameters "sdfCheckpointAfterDuration=$SDF_CHECKPOINT_AFTER_DURATION" \
   --parameters "sdfCheckpointAfterOutputBytes=$SDF_CHECKPOINT_AFTER_OUTPUT_BYTES"
@@ -226,6 +229,7 @@ export KEEP=<keep>
 export ONLY=<only>
 export PARTITION_FIELDS=<partitionFields>
 export TABLE_PROPERTIES=<tableProperties>
+export EQUALITY_COLUMNS=<equalityColumns>
 export SDF_CHECKPOINT_AFTER_DURATION=30s
 export SDF_CHECKPOINT_AFTER_OUTPUT_BYTES=536870912
 
@@ -236,7 +240,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="kafka-to-iceberg-yaml-job" \
 -DtemplateName="Kafka_To_Iceberg_Yaml" \
--Dparameters="bootstrapServers=$BOOTSTRAP_SERVERS,topic=$TOPIC,autoOffsetResetConfig=$AUTO_OFFSET_RESET_CONFIG,confluentSchemaRegistrySubject=$CONFLUENT_SCHEMA_REGISTRY_SUBJECT,confluentSchemaRegistryUrl=$CONFLUENT_SCHEMA_REGISTRY_URL,consumerConfigUpdates=$CONSUMER_CONFIG_UPDATES,fileDescriptorPath=$FILE_DESCRIPTOR_PATH,format=$FORMAT,maxReadTimeSeconds=$MAX_READ_TIME_SECONDS,messageName=$MESSAGE_NAME,schema=$SCHEMA,table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,keep=$KEEP,only=$ONLY,partitionFields=$PARTITION_FIELDS,tableProperties=$TABLE_PROPERTIES,triggeringFrequencySeconds=$TRIGGERING_FREQUENCY_SECONDS,sdfCheckpointAfterDuration=$SDF_CHECKPOINT_AFTER_DURATION,sdfCheckpointAfterOutputBytes=$SDF_CHECKPOINT_AFTER_OUTPUT_BYTES" \
+-Dparameters="bootstrapServers=$BOOTSTRAP_SERVERS,topic=$TOPIC,autoOffsetResetConfig=$AUTO_OFFSET_RESET_CONFIG,confluentSchemaRegistrySubject=$CONFLUENT_SCHEMA_REGISTRY_SUBJECT,confluentSchemaRegistryUrl=$CONFLUENT_SCHEMA_REGISTRY_URL,consumerConfigUpdates=$CONSUMER_CONFIG_UPDATES,fileDescriptorPath=$FILE_DESCRIPTOR_PATH,format=$FORMAT,maxReadTimeSeconds=$MAX_READ_TIME_SECONDS,messageName=$MESSAGE_NAME,schema=$SCHEMA,table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,keep=$KEEP,only=$ONLY,partitionFields=$PARTITION_FIELDS,tableProperties=$TABLE_PROPERTIES,equalityColumns=$EQUALITY_COLUMNS,triggeringFrequencySeconds=$TRIGGERING_FREQUENCY_SECONDS,sdfCheckpointAfterDuration=$SDF_CHECKPOINT_AFTER_DURATION,sdfCheckpointAfterOutputBytes=$SDF_CHECKPOINT_AFTER_OUTPUT_BYTES" \
 -f yaml
 ```
 
@@ -302,6 +306,7 @@ resource "google_dataflow_flex_template_job" "kafka_to_iceberg_yaml" {
     # only = "<only>"
     # partitionFields = "<partitionFields>"
     # tableProperties = "<tableProperties>"
+    # equalityColumns = "<equalityColumns>"
     # sdfCheckpointAfterDuration = "30s"
     # sdfCheckpointAfterOutputBytes = "536870912"
   }
