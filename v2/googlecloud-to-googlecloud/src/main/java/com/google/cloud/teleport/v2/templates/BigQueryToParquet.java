@@ -121,9 +121,14 @@ public class BigQueryToParquet {
       TableReference tableReference = BigQueryHelpers.parseTableSpec(tableString);
       BigQueryOptions bigQueryOptions = options.as(BigQueryOptions.class);
       String parentProjectId =
-          bigQueryOptions.getBigQueryProject() == null
+          Strings.isNullOrEmpty(bigQueryOptions.getBigQueryProject())
               ? bigQueryOptions.getProject()
               : bigQueryOptions.getBigQueryProject();
+      if (Strings.isNullOrEmpty(parentProjectId)) {
+        throw new IllegalArgumentException(
+            "A project ID must be specified in the pipeline options (either project or"
+                + " bigQueryProject).");
+      }
       String parentProjectIdResource = "projects/" + parentProjectId;
 
       String tableProjectId =

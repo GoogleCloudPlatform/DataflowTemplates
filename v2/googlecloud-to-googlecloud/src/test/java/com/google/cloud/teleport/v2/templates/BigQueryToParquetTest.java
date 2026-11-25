@@ -82,6 +82,45 @@ public class BigQueryToParquetTest {
     assertEquals(tableReadOptions, request.getReadSession().getReadOptions());
   }
 
+  /** Test {@link ReadSessionFactory} falls back to parent project when tableRef omits project. */
+  @Test
+  public void testReadSessionFactoryDefaultTableProject() {
+    ReadSession expectedSession =
+        ReadSession.newBuilder().setAvroSchema(AvroSchema.newBuilder().setSchema(SCHEMA)).build();
+    when(client.createReadSession(any(CreateReadSessionRequest.class))).thenReturn(expectedSession);
+
+    TableReadOptions tableReadOptions = TableReadOptions.newBuilder().build();
+    BigQueryToParquet.BigQueryToParquetOptions options =
+        PipelineOptionsFactory.create().as(BigQueryToParquet.BigQueryToParquetOptions.class);
+    options.as(BigQueryOptions.class).setProject("default-project");
+    options.as(BigQueryOptions.class).setBigQueryProject("bq-project");
+    options.setTableRef("great_data.table");
+
+    ReadSessionFactory.create(client, options, tableReadOptions);
+
+    ArgumentCaptor<CreateReadSessionRequest> captor =
+        ArgumentCaptor.forClass(CreateReadSessionRequest.class);
+    verify(client).createReadSession(captor.capture());
+    CreateReadSessionRequest request = captor.getValue();
+    assertEquals("projects/bq-project", request.getParent());
+    assertEquals(
+        "projects/bq-project/datasets/great_data/tables/table",
+        request.getReadSession().getTable());
+  }
+
+  /** Test {@link ReadSessionFactory} throws exception when no project ID is configured. */
+  @Test(expected = IllegalArgumentException.class)
+  public void testReadSessionFactoryMissingProject() {
+    TableReadOptions tableReadOptions = TableReadOptions.newBuilder().build();
+    BigQueryToParquet.BigQueryToParquetOptions options =
+        PipelineOptionsFactory.create().as(BigQueryToParquet.BigQueryToParquetOptions.class);
+    options.as(BigQueryOptions.class).setProject(null);
+    options.as(BigQueryOptions.class).setBigQueryProject(null);
+    options.setTableRef(TABLE);
+
+    ReadSessionFactory.create(client, options, tableReadOptions);
+  }
+
   /** Test {@link ReadSessionFactory} throws exception when invalid table reference is provided. */
   @Test(expected = IllegalArgumentException.class)
   public void testReadSessionFactoryBadTable() {
