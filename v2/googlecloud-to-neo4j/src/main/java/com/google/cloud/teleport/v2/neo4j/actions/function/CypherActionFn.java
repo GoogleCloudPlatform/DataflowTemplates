@@ -40,7 +40,7 @@ public class CypherActionFn extends DoFn<Integer, Row> {
   private final SerializableSupplier<Neo4jConnection> connectionProvider;
   private final CypherExecutionMode executionMode;
 
-  private Neo4jConnection connection;
+  private transient Neo4jConnection connection;
 
   public CypherActionFn(ActionContext context) {
     this(

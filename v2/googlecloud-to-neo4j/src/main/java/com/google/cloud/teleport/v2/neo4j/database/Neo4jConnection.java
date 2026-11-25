@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.neo4j.database;
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
 import com.google.cloud.teleport.v2.neo4j.telemetry.Neo4jTelemetry;
 import com.google.common.annotations.VisibleForTesting;
-import java.io.Serializable;
 import java.util.Collections;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -35,7 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Neo4j connection helper object wraps Neo4j java APIs. */
-public class Neo4jConnection implements AutoCloseable, Serializable {
+public class Neo4jConnection implements AutoCloseable {
 
   private static final Logger LOG = LoggerFactory.getLogger(Neo4jConnection.class);
   private final Supplier<Driver> driverSupplier;
