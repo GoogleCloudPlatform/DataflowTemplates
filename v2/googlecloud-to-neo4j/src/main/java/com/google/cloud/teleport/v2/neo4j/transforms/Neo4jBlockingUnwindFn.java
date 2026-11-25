@@ -22,11 +22,13 @@ import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
 import com.google.cloud.teleport.v2.neo4j.telemetry.Neo4jTelemetry;
 import com.google.cloud.teleport.v2.neo4j.telemetry.ReportedSourceType;
 import com.google.cloud.teleport.v2.neo4j.utils.SerializableSupplier;
+import com.google.cloud.teleport.v2.neo4j.utils.WriteStats;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.KV;
@@ -86,7 +88,7 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Iterable<Row>>, Row>
 
     Iterable<Row> rows = rowBatch.getValue();
     rows.forEach(row -> parameters.add(parametersFunction.apply(row)));
-    executeCypherUnwindStatement();
+    executeCypherUnwindStatement().ifPresent(context::output);
   }
 
   @Teardown
@@ -96,26 +98,27 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Iterable<Row>>, Row>
     }
   }
 
-  private void executeCypherUnwindStatement() {
+  private Optional<Row> executeCypherUnwindStatement() {
     if (this.parameters.isEmpty()) {
-      return;
+      return Optional.empty();
     }
 
-    final Map<String, Object> parametersMap = new HashMap<>();
+    var batchSize = parameters.size();
+    var parametersMap = new HashMap<String, Object>();
     parametersMap.put(unwindMapName, parameters);
 
     if (logCypher && !loggingDone) {
       String parametersString = getParametersString(parametersMap);
       LOG.debug(
-          "Starting a write transaction for unwind statement cypher: "
-              + cypher
-              + ", parameters: "
-              + parametersString);
+          "Starting a write transaction for unwind statement cypher: {}, parameters: {}",
+          cypher,
+          parametersString);
       loggingDone = true;
     }
 
+    ResultSummary summary;
     try {
-      ResultSummary summary =
+      summary =
           neo4jConnection.writeTransaction(
               transaction -> transaction.run(cypher, parametersMap).consume(),
               TransactionConfig.builder()
@@ -131,12 +134,13 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Iterable<Row>>, Row>
                               "step",
                               "import")))
                   .build());
-      LOG.debug("Batch transaction of {} rows completed: {}", parameters.size(), summary);
+      LOG.debug("Batch transaction of {} rows completed: {}", batchSize, summary);
     } catch (Exception e) {
       throw new RuntimeException(
-          "Error writing " + parameters.size() + " rows to Neo4j with Cypher: " + cypher, e);
+          "Error writing %d rows to Neo4j with Cypher: %s".formatted(batchSize, cypher), e);
     }
     parameters.clear();
+    return Optional.of(WriteStats.convertToRow(step.name(), batchSize, summary));
   }
 
   private String resolveCypher() {
