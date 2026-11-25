@@ -15,7 +15,11 @@
  */
 package com.google.cloud.teleport.v2.neo4j.transforms;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
@@ -25,6 +29,7 @@ import static org.mockito.Mockito.when;
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
 import com.google.cloud.teleport.v2.neo4j.telemetry.ReportedSourceType;
 import com.google.cloud.teleport.v2.neo4j.utils.DataCastingUtils;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -32,7 +37,10 @@ import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.Row;
 import org.junit.Test;
+import org.neo4j.driver.Result;
+import org.neo4j.driver.TransactionCallback;
 import org.neo4j.driver.TransactionConfig;
+import org.neo4j.driver.TransactionContext;
 import org.neo4j.importer.v1.pipeline.CustomQueryTargetStep;
 
 public class Neo4jBlockingUnwindFnTest {
@@ -59,6 +67,40 @@ public class Neo4jBlockingUnwindFnTest {
             .withMetadata(Map.of("app", "dataflow", "metadata", expectedTxMetadata))
             .build();
     verify(connection).writeTransaction(any(), eq(expectedTransactionConfig));
+  }
+
+  @Test
+  public void does_not_reuse_failed_batch_parameters_on_retry() {
+    var connection = mock(Neo4jConnection.class);
+    var transaction = mock(TransactionContext.class);
+    var retriedBatchSizes = new ArrayList<Integer>();
+    when(transaction.run(anyString(), anyMap()))
+        .thenThrow(new RuntimeException("boom"))
+        .thenAnswer(
+            invocation -> {
+              Map<String, Object> parametersMap = invocation.getArgument(1);
+              retriedBatchSizes.add(((List<?>) parametersMap.get("map")).size());
+              return mock(Result.class, RETURNS_DEEP_STUBS);
+            });
+    when(connection.writeTransaction(any(), any()))
+        .thenAnswer(
+            invocation ->
+                ((TransactionCallback<?>) invocation.getArgument(0)).execute(transaction));
+
+    var batchImporter =
+        new Neo4jBlockingUnwindFn(
+            ReportedSourceType.BIGQUERY,
+            newQueryStep("a-query-step", "RETURN 42"),
+            false,
+            "map",
+            DataCastingUtils::rowToNeo4jDataMap,
+            () -> connection);
+
+    batchImporter.setup();
+    assertThrows(RuntimeException.class, () -> batchImporter.processElement(aProcessContext()));
+    batchImporter.processElement(aProcessContext());
+
+    assertEquals(List.of(1), retriedBatchSizes);
   }
 
   private static CustomQueryTargetStep newQueryStep(String name, String query) {
