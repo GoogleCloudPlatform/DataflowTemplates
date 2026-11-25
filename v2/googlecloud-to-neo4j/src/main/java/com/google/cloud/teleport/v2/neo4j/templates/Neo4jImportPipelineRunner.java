@@ -281,13 +281,15 @@ public class Neo4jImportPipelineRunner {
     public PCollection<Row> getOrCreateRows(Pipeline pipeline) {
       if (rows == null) {
         var name = step.name();
+        var sourceRows =
+            pipeline.apply(
+                String.format("Query for source %s", name), provider.querySourceRows(schema));
         rows =
-            pipeline
-                .apply(String.format("Query for source %s", name), provider.querySourceRows(schema))
+            sourceRows
                 .apply(
                     String.format("Wait for source %s startup dependency", name),
                     Wait.on(List.of(startupDependency)))
-                .setRowSchema(schema);
+                .setCoder(sourceRows.getCoder());
       }
       return rows;
     }

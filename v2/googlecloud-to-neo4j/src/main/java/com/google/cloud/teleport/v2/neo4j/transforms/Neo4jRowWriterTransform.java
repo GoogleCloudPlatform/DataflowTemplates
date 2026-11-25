@@ -142,7 +142,7 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
         .apply(
             targetSequence.getSequenceNumber(step) + ": Neo4j write " + step.name(),
             ParDo.of(neo4jUnwindFn))
-        .setRowSchema(readyInput.getSchema());
+        .setCoder(readyInput.getCoder());
   }
 
   private static int batchSize(TargetType targetType, Configuration config) {
