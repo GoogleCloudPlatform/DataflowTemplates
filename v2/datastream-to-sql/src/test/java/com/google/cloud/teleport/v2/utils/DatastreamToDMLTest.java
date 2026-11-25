@@ -141,13 +141,50 @@ public class DatastreamToDMLTest {
     // Arrange
     DatastreamToPostgresDML dmlBuilder = DatastreamToPostgresDML.of(null);
     String inputJsonWithQuotes = "{\"key\\\"\":\"val'ue\"}";
-    String expectedOutput = "'\"key\\\"\"=>\"val'ue\"'";
+    String expectedOutput = "'\"key\\\"\"=>\"val''ue\"'";
 
     // Act
     String actualOutput = dmlBuilder.convertJsonToHstoreLiteral(inputJsonWithQuotes);
 
     // Assert
     assertEquals(expectedOutput, actualOutput);
+  }
+
+  /**
+   * Test whether {@link DatastreamToPostgresDML#convertJsonToHstoreLiteral(String)} prevents SQL
+   * injection by escaping single quotes and stripping null bytes in HSTORE keys and values.
+   */
+  @Test
+  public void testHstoreConversion_preventsSqlInjection() {
+    DatastreamToPostgresDML dmlBuilder = DatastreamToPostgresDML.of(null);
+
+    assertEquals(
+        "'\"a'', 1); --\"=>\"b\"'",
+        dmlBuilder.convertJsonToHstoreLiteral("{\"a', 1); --\":\"b\"}"));
+    assertEquals(
+        "'\"key\"=>\"val'', 1); --\"'",
+        dmlBuilder.convertJsonToHstoreLiteral("{\"key\":\"val', 1); --\"}"));
+    assertEquals(
+        "'\"k\\\\''\"=>\"v\\\\''\"'",
+        dmlBuilder.convertJsonToHstoreLiteral("{\"k\\\\'\\u0000\":\"v\\\\'\\u0000\"}"));
+  }
+
+  /**
+   * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} escapes single
+   * quotes for HSTORE columns provided as both JSON objects and JSON strings.
+   */
+  @Test
+  public void testHstoreTypeCoercion_escapesSingleQuotes() {
+    DatastreamToPostgresDML dmlBuilder = DatastreamToPostgresDML.of(null);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("hstore_col", "HSTORE");
+    String expected = "'\"a'', 1); --\"=>\"b''c\"'::hstore";
+
+    JsonNode objectRowObj = getRowObj("{\"hstore_col\":{\"a', 1); --\":\"b'c\"}}");
+    assertEquals(expected, dmlBuilder.getValueSql(objectRowObj, "hstore_col", tableSchema));
+
+    JsonNode stringRowObj = getRowObj("{\"hstore_col\":\"{\\\"a', 1); --\\\":\\\"b'c\\\"}\"}");
+    assertEquals(expected, dmlBuilder.getValueSql(stringRowObj, "hstore_col", tableSchema));
   }
 
   /**
