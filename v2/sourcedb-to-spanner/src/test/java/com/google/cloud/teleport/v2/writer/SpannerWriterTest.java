@@ -38,7 +38,14 @@ public class SpannerWriterTest {
     SpannerConfig conf =
         SpannerConfig.create().withProjectId("p1").withInstanceId("instance").withDatabaseId("db1");
     SpannerWriter writer = new SpannerWriter(conf, null);
-    assertNotNull(writer.getSpannerWrite());
+    SpannerIO.Write write = writer.getSpannerWrite();
+    assertNotNull(write);
+    assertThat(write)
+        .isEqualTo(
+            SpannerIO.write()
+                .withSpannerConfig(conf.withExcludeTxnFromChangeStreams(true))
+                .withFailureMode(SpannerIO.FailureMode.REPORT_FAILURES)
+                .withGroupingFactor(500));
   }
 
   @Test(expected = NullPointerException.class)
