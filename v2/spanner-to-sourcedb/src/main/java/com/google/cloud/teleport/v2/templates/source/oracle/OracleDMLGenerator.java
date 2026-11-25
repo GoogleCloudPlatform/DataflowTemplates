@@ -31,6 +31,7 @@ import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.cloud.teleport.v2.templates.source.oracle.OracleJdbcDao.OracleBindParameter;
 import com.google.common.annotations.VisibleForTesting;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -78,7 +79,9 @@ public class OracleDMLGenerator implements IDMLGenerator {
           "number",
           "numeric",
           "decimal",
+          "dec",
           "float",
+          "real",
           "double precision",
           "integer",
           "smallint",
@@ -96,6 +99,7 @@ public class OracleDMLGenerator implements IDMLGenerator {
           "char",
           "character",
           "clob",
+          "long",
           "nvarchar2",
           "nchar",
           "nchar varying",
@@ -554,6 +558,11 @@ public class OracleDMLGenerator implements IDMLGenerator {
       return toBytesBindValue(sourceType, valuesJson.getString(colName));
     }
     String colInputValue = getColumnInputValue(colType, sourceType, valuesJson, colName);
+    int bindSqlType = getBindSqlType(sourceType);
+    if (bindSqlType == Types.BLOB || bindSqlType == Types.VARBINARY) {
+      // Non-BYTES Spanner value (e.g. STRING) written to a binary column: stored as UTF-8 bytes.
+      return toTypedBindValue(bindSqlType, colInputValue.getBytes(StandardCharsets.UTF_8));
+    }
     return toBindValueByType(sourceType, StringUtils.replace(colInputValue, "\u0000", ""));
   }
 
@@ -561,8 +570,8 @@ public class OracleDMLGenerator implements IDMLGenerator {
   private static String getColumnInputValue(
       Type colType, String sourceType, JSONObject valuesJson, String colName) {
     if ("binary_float".equals(sourceType) || "binary_double".equals(sourceType)) {
-      // Passed as text to TO_BINARY_FLOAT / TO_BINARY_DOUBLE, which also accept NaN and Infinity.
-      return valuesJson.get(colName).toString();
+      // Passed as text to TO_BINARY_FLOAT / TO_BINARY_DOUBLE, which accept NaN, INF and -INF.
+      return toOracleFloatText(valuesJson.get(colName).toString());
     }
     if (colType.getCode().equals(Type.Code.FLOAT64)
         || colType.getCode().equals(Type.Code.FLOAT32)
@@ -584,6 +593,22 @@ public class OracleDMLGenerator implements IDMLGenerator {
           .collect(Collectors.joining(","));
     }
     return valuesJson.getString(colName);
+  }
+
+  /**
+   * Converts Spanner's infinity text ({@code Infinity} / {@code -Infinity}) to the form accepted by
+   * {@code TO_BINARY_FLOAT} / {@code TO_BINARY_DOUBLE} ({@code INF} / {@code -INF}).
+   */
+  private static String toOracleFloatText(String value) {
+    switch (value) {
+      case "Infinity":
+      case "+Infinity":
+        return "INF";
+      case "-Infinity":
+        return "-INF";
+      default:
+        return value;
+    }
   }
 
   /** Returns the bind value for a Base64 encoded BYTES value. */
@@ -644,21 +669,21 @@ public class OracleDMLGenerator implements IDMLGenerator {
       case "varchar2":
       case "text":
       case "character varying":
+      case "long":
       case "json":
       case "jsonb":
       case "time":
       case "uuid":
+      case "rowid":
+      case "urowid":
+      case "interval year to month":
+      case "interval day to second":
       case "date":
       case "timestamp":
       case "timestamp without time zone":
       case "timestamp with time zone":
       case "timestamp with local time zone":
       case "timestamptz":
-      case "bytea":
-      case "blob":
-      case "raw":
-      case "binary":
-      case "varbinary":
       case "binary_float":
       case "binary_double":
         return colValue;
@@ -758,11 +783,19 @@ public class OracleDMLGenerator implements IDMLGenerator {
       case "text":
       case "character varying":
       case "character":
+      case "long":
       case "json":
       case "jsonb":
       case "time":
       case "uuid":
         return isBytesType(spannerColType) ? "HEXTORAW(?)" : "?";
+      case "rowid":
+      case "urowid":
+        return "?";
+      case "interval year to month":
+        return "TO_YMINTERVAL(?)";
+      case "interval day to second":
+        return "TO_DSINTERVAL(?)";
       case "date":
         if ("DATE".equalsIgnoreCase(spannerColType) || "PG_DATE".equalsIgnoreCase(spannerColType)) {
           return "TO_DATE(?, 'YYYY-MM-DD')";
@@ -797,7 +830,9 @@ public class OracleDMLGenerator implements IDMLGenerator {
       case "number":
       case "numeric":
       case "decimal":
+      case "dec":
       case "float":
+      case "real":
       case "double precision":
       case "integer":
       case "smallint":

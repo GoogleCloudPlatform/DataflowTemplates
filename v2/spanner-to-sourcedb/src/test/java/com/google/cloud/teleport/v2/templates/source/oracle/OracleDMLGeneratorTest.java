@@ -305,7 +305,7 @@ public final class OracleDMLGeneratorTest {
         sql.contains(
             ", FROM_TZ(TO_TIMESTAMP(?, 'YYYY-MM-DD\"T\"HH24:MI:SS.FF\"Z\"'), 'UTC') AS \"TSLTZ_COL\""));
     assertTrue(sql.contains("? AS \"RAW_COL\""));
-    assertTrue(sql.contains("? AS \"IYM_COL\""));
+    assertTrue(sql.contains("TO_YMINTERVAL(?) AS \"IYM_COL\""));
 
     List<Object> params = resp.getPreparedStatementParameters();
     assertEquals(14, params.size());
@@ -313,7 +313,7 @@ public final class OracleDMLGeneratorTest {
     assertEquals(new OracleBindParameter(Types.NVARCHAR, "こんにちは"), params.get(1));
     assertEquals(new OracleBindParameter(Types.NCLOB, "nclob-val"), params.get(2));
     assertEquals("NaN", params.get(3));
-    assertEquals("-Infinity", params.get(4));
+    assertEquals("-INF", params.get(4));
     assertEquals(BigDecimal.ONE, params.get(5));
     assertEquals("false", params.get(6));
     assertEquals("2026-11-23", params.get(7));
@@ -546,6 +546,21 @@ public final class OracleDMLGeneratorTest {
     assertEquals(
         "timestamp with local time zone",
         OracleDMLGenerator.normalizeSourceType("  TIMESTAMP(6)   WITH LOCAL TIME ZONE "));
+    assertEquals(
+        "TO_NUMBER(?)", OracleDMLGenerator.getColumnValueByType("DEC", "+00:00", "NUMERIC"));
+    assertEquals(
+        "TO_NUMBER(?)", OracleDMLGenerator.getColumnValueByType("REAL", "+00:00", "FLOAT64"));
+    assertEquals(
+        "TO_YMINTERVAL(?)",
+        OracleDMLGenerator.getColumnValueByType("INTERVAL YEAR(9) TO MONTH", "+00:00", "STRING"));
+    assertEquals(
+        "TO_DSINTERVAL(?)",
+        OracleDMLGenerator.getColumnValueByType(
+            "INTERVAL DAY(2) TO SECOND(6)", "+00:00", "STRING"));
+    assertEquals("?", OracleDMLGenerator.getColumnValueByType("ROWID", "+00:00", "STRING"));
+    assertEquals("?", OracleDMLGenerator.getColumnValueByType("UROWID", "+00:00", "STRING"));
+    assertEquals("?", OracleDMLGenerator.getColumnValueByType("LONG", "+00:00", "STRING"));
+    assertEquals("HEXTORAW(?)", OracleDMLGenerator.getColumnValueByType("LONG", "+00:00", "BYTES"));
     String utcTimestamp = "FROM_TZ(TO_TIMESTAMP(?, 'YYYY-MM-DD\"T\"HH24:MI:SS.FF\"Z\"'), 'UTC')";
     assertEquals(
         utcTimestamp,
@@ -816,5 +831,105 @@ public final class OracleDMLGeneratorTest {
             new OracleBindParameter(Types.VARCHAR, null),
             new OracleBindParameter(Types.NVARCHAR, null)),
         withNulls.getPreparedStatementParameters());
+  }
+
+  @Test
+  public void testIntervalLongRowidDecRealStringToBinaryAndInfinityAreBound() {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("MISC")
+            .column("ID")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("DS_COL")
+            .string()
+            .max()
+            .endColumn()
+            .column("LONG_COL")
+            .string()
+            .max()
+            .endColumn()
+            .column("RID_COL")
+            .string()
+            .max()
+            .endColumn()
+            .column("DEC_COL")
+            .numeric()
+            .endColumn()
+            .column("REAL_COL")
+            .float64()
+            .endColumn()
+            .column("BLOB_COL")
+            .string()
+            .max()
+            .endColumn()
+            .column("RAW_COL")
+            .string()
+            .max()
+            .endColumn()
+            .column("BF_COL")
+            .float32()
+            .endColumn()
+            .primaryKey()
+            .asc("ID")
+            .end()
+            .endTable()
+            .build();
+    SourceSchema sourceSchema =
+        singleTableSchema(
+            "MISC",
+            List.of(
+                oracleCol("ID", "NUMBER", false),
+                oracleCol("DS_COL", "INTERVAL DAY(2) TO SECOND(6)", false),
+                oracleCol("LONG_COL", "LONG", false),
+                oracleCol("RID_COL", "ROWID", false),
+                oracleCol("DEC_COL", "DEC", false),
+                oracleCol("REAL_COL", "REAL", false),
+                oracleCol("BLOB_COL", "BLOB", false),
+                oracleCol("RAW_COL", "RAW(16)", false),
+                oracleCol("BF_COL", "BINARY_FLOAT", false)),
+            List.of("ID"));
+
+    JSONObject vals =
+        new JSONObject()
+            .put("DS_COL", "2 03:04:05.000000")
+            .put("LONG_COL", "long text")
+            .put("RID_COL", "AAAR3sAAEAAAACXAAA")
+            .put("DEC_COL", "12.50")
+            .put("REAL_COL", 1.5)
+            .put("BLOB_COL", "Hello")
+            .put("RAW_COL", "")
+            .put("BF_COL", "Infinity");
+
+    DMLGeneratorResponse resp =
+        generator.getDMLStatement(
+            new DMLGeneratorRequest.Builder(
+                    "INSERT", "MISC", vals, new JSONObject().put("ID", "1"), "+00:00")
+                .setSchemaMapper(new IdentityMapper(ddl))
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
+                .build());
+
+    assertTrue(
+        resp.getDmlStatement()
+            .contains(
+                "USING (SELECT TO_NUMBER(?) AS \"ID\", TO_DSINTERVAL(?) AS \"DS_COL\", "
+                    + "? AS \"LONG_COL\", ? AS \"RID_COL\", TO_NUMBER(?) AS \"DEC_COL\", "
+                    + "TO_NUMBER(?) AS \"REAL_COL\", ? AS \"BLOB_COL\", ? AS \"RAW_COL\", "
+                    + "TO_BINARY_FLOAT(?) AS \"BF_COL\" FROM DUAL) s"));
+    List<Object> params = resp.getPreparedStatementParameters();
+    assertEquals(9, params.size());
+    assertEquals("2 03:04:05.000000", params.get(1));
+    assertEquals("long text", params.get(2));
+    assertEquals("AAAR3sAAEAAAACXAAA", params.get(3));
+    assertEquals(new BigDecimal("12.50"), params.get(4));
+    assertEquals(new BigDecimal("1.5"), params.get(5));
+    // Spanner STRING written to a BLOB / RAW column is stored as UTF-8 bytes.
+    OracleBindParameter blobBind = (OracleBindParameter) params.get(6);
+    assertEquals(Types.BLOB, blobBind.sqlType());
+    assertArrayEquals("Hello".getBytes(StandardCharsets.UTF_8), (byte[]) blobBind.value());
+    assertEquals(new OracleBindParameter(Types.VARBINARY, null), params.get(7));
+    assertEquals("INF", params.get(8));
   }
 }
