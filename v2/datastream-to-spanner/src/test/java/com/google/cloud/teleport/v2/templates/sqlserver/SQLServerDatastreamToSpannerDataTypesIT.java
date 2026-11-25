@@ -185,6 +185,7 @@ public class SQLServerDatastreamToSpannerDataTypesIT extends DataStreamToSpanner
           gcsResourceManager,
           pubsubResourceManager);
     } finally {
+      testInstances.clear();
       initialized = false;
       msSqlResourceManager = null;
       spannerResourceManager = null;

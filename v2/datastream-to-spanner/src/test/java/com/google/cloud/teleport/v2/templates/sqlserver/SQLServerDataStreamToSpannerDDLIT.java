@@ -218,6 +218,7 @@ public class SQLServerDataStreamToSpannerDDLIT extends DataStreamToSpannerITBase
           gcsResourceManager,
           pubsubResourceManager);
     } finally {
+      testInstances.clear();
       initialized = false;
       jobInfo = null;
       msSqlResourceManager = null;

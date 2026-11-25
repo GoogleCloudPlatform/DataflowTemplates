@@ -165,6 +165,7 @@ public class DataStreamToSpannerSqlServerRetryDLQIT extends DataStreamToSpannerI
           gcsResourceManager,
           pubsubResourceManager);
     } finally {
+      testInstances.clear();
       jobInfo = null;
       spannerResourceManager = null;
       jdbcResourceManager = null;

@@ -252,6 +252,7 @@ public class SQLServerDatastreamToSpannerSingleDFShardedMigrationIT
           gcsResourceManager,
           pubsubResourceManager);
     } finally {
+      testInstances.clear();
       initialized = false;
       jobInfo = null;
       msSqlResourceManager = null;
