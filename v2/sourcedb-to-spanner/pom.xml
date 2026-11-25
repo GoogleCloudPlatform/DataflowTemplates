@@ -32,7 +32,7 @@
         <!-- Reruns of a failed IT in this module (1 = the first run plus at most 1 retry) when the
              rerunTransientItFailures profile is active; override with -DbulkItRerunFailingTestsCount=N. -->
         <bulkItRerunFailingTestsCount>1</bulkItRerunFailingTestsCount>
-        <bouncycastle.version>1.84</bouncycastle.version>
+        <bouncycastle.version>1.85</bouncycastle.version>
     </properties>
 
     <dependencies>
