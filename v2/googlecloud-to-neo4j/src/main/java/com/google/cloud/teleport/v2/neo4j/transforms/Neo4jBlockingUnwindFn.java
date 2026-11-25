@@ -48,7 +48,6 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Iterable<Row>>, Row>
   private final boolean logCypher;
   private final String unwindMapName;
   private final SerializableSupplier<Neo4jConnection> connectionSupplier;
-  private final List<Map<String, Object>> parameters;
   private final ReportedSourceType reportedSourceType;
   private transient String cypher;
   private boolean loggingDone;
@@ -69,7 +68,6 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Iterable<Row>>, Row>
     this.unwindMapName = unwindMapName;
     this.connectionSupplier = connectionSupplier;
 
-    parameters = new ArrayList<>();
     loggingDone = false;
   }
 
@@ -85,8 +83,9 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Iterable<Row>>, Row>
     LOG.debug("Processing row batch from key: {}", rowBatch.getKey());
 
     Iterable<Row> rows = rowBatch.getValue();
+    var parameters = new ArrayList<Map<String, Object>>();
     rows.forEach(row -> parameters.add(parametersFunction.apply(row)));
-    executeCypherUnwindStatement();
+    executeCypherUnwindStatement(parameters);
   }
 
   @Teardown
@@ -96,8 +95,8 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Iterable<Row>>, Row>
     }
   }
 
-  private void executeCypherUnwindStatement() {
-    if (this.parameters.isEmpty()) {
+  private void executeCypherUnwindStatement(List<Map<String, Object>> parameters) {
+    if (parameters.isEmpty()) {
       return;
     }
 
@@ -136,7 +135,6 @@ public class Neo4jBlockingUnwindFn extends DoFn<KV<Integer, Iterable<Row>>, Row>
       throw new RuntimeException(
           "Error writing " + parameters.size() + " rows to Neo4j with Cypher: " + cypher, e);
     }
-    parameters.clear();
   }
 
   private String resolveCypher() {
