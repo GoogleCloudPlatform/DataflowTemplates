@@ -194,8 +194,9 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
         isFirst = false;
       }
 
-      // 5. Wrap the final result in single quotes to make it a PG string literal.
-      return "'" + hstoreBuilder.toString() + "'";
+      // 5. Escape SQL single quotes and null bytes, then wrap in single quotes to make a PG
+      // string literal.
+      return "'" + cleanSql(hstoreBuilder.toString()) + "'";
 
     } catch (JsonProcessingException e) {
       LOG.error(
