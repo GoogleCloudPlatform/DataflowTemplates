@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.templates.source.oracle;
 import com.google.cloud.teleport.v2.spanner.migrations.connection.IConnectionHelper;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
 import java.io.StringReader;
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Types;
@@ -40,8 +39,7 @@ public class OracleJdbcDao extends JdbcDao {
    */
   record OracleBindParameter(int sqlType, Object value) {}
 
-  public OracleJdbcDao(
-      String sqlUrl, String sqlUser, IConnectionHelper<Connection> connectionHelper) {
+  public OracleJdbcDao(String sqlUrl, String sqlUser, IConnectionHelper connectionHelper) {
     super(sqlUrl, sqlUser, connectionHelper);
   }
 

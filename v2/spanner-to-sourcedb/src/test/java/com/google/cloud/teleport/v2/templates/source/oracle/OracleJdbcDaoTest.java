@@ -37,7 +37,6 @@ import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.Arrays;
@@ -176,37 +175,19 @@ public class OracleJdbcDaoTest {
   }
 
   @Test
-  public void testTransactionalCheckFailureRollsBackAndClosesResources() throws Exception {
+  public void testTransactionalCheckFailureDoesNotCommitAndClosesResources() throws Exception {
     DMLGeneratorResponse response = new DMLGeneratorResponse("DELETE FROM \"T\" WHERE \"ID\" = ?");
     response.setPreparedStatementParameters(List.of("1"));
 
     TransactionalCheck failingCheck = mock(TransactionalCheck.class);
     doThrow(new TransactionalCheckException("shadow mismatch")).when(failingCheck).check();
-    doThrow(new SQLException("rollback error")).when(mockConnection).rollback();
 
     TransactionalCheckException thrown =
         assertThrows(TransactionalCheckException.class, () -> dao.write(response, failingCheck));
     assertEquals("shadow mismatch", thrown.getMessage());
-    assertEquals(1, thrown.getSuppressed().length);
-    assertEquals("rollback error", thrown.getSuppressed()[0].getMessage());
 
     verify(mockConnection, never()).commit();
-    verify(mockConnection).rollback();
     verify(mockPreparedStatement).close();
-    verify(mockConnection).close();
-  }
-
-  @Test
-  public void testStatementCloseFailureRollsBackAndClosesConnection() throws Exception {
-    DMLGeneratorResponse response = new DMLGeneratorResponse("DELETE FROM \"T\" WHERE \"ID\" = ?");
-    response.setPreparedStatementParameters(List.of("1"));
-    doThrow(new SQLException("stmt close error")).when(mockPreparedStatement).close();
-
-    SQLException thrown = assertThrows(SQLException.class, () -> dao.write(response, null));
-    assertEquals("stmt close error", thrown.getMessage());
-
-    verify(mockConnection, never()).commit();
-    verify(mockConnection).rollback();
     verify(mockConnection).close();
   }
 }

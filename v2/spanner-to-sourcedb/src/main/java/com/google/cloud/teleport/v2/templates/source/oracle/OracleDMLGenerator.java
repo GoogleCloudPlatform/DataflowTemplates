@@ -31,7 +31,6 @@ import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.cloud.teleport.v2.templates.source.oracle.OracleJdbcDao.OracleBindParameter;
 import com.google.common.annotations.VisibleForTesting;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -42,11 +41,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
-import java.util.StringJoiner;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Creates parameterized DML statements for Oracle.
@@ -59,6 +59,8 @@ import org.json.JSONObject;
  */
 public class OracleDMLGenerator implements IDMLGenerator {
 
+  private static final Logger LOG = LoggerFactory.getLogger(OracleDMLGenerator.class);
+
   private static final Pattern PLAIN_NUMERIC_LITERAL = Pattern.compile("^[+-]?\\d+(\\.\\d+)?$");
 
   /**
@@ -68,17 +70,15 @@ public class OracleDMLGenerator implements IDMLGenerator {
   private static final String CUSTOM_TRANSFORMATION_SPANNER_TYPE = "STRING";
 
   /**
-   * Numeric types, written as {@code TO_NUMBER(?)} by {@link #getColumnValueByType} and bound as
-   * {@link BigDecimal}.
+   * Numeric types, bound as {@link BigDecimal} so that the value does not depend on the session
+   * decimal character ({@code NLS_NUMERIC_CHARACTERS}).
    */
   private static final Set<String> NUMERIC_TYPES =
       Set.of(
           "number",
           "numeric",
           "decimal",
-          "dec",
           "float",
-          "real",
           "double precision",
           "integer",
           "smallint",
@@ -133,7 +133,7 @@ public class OracleDMLGenerator implements IDMLGenerator {
               "The spanner table %s was not found in ddl found on spanner", spannerTableName));
     }
 
-    String sourceTableName;
+    String sourceTableName = "";
     try {
       sourceTableName = schemaMapper.getSourceTableName("", spannerTableName);
     } catch (NoSuchElementException e) {
@@ -148,24 +148,22 @@ public class OracleDMLGenerator implements IDMLGenerator {
               sourceTableName, spannerTableName));
     }
 
-    if (sourceTable.primaryKeyColumns() == null || sourceTable.primaryKeyColumns().isEmpty()) {
+    if (sourceTable.primaryKeyColumns() == null || sourceTable.primaryKeyColumns().size() == 0) {
       throw new InvalidDMLGenerationException(
           String.format(
               "Cannot reverse replicate for source table %s without primary key, skipping the record.",
               sourceTableName));
     }
 
-    Map<String, Object> customTransformationResponse =
-        withNullsAsSqlNull(dmlGeneratorRequest.getCustomTransformationResponse());
     ColumnBinder binder =
         new ColumnBinder(
             schemaMapper,
             spannerTable,
             sourceTable,
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
-            customTransformationResponse);
+            dmlGeneratorRequest.getCustomTransformationResponse());
 
-    Map<String, String> pkColumnNameValues =
+    Map<String, String> pkcolumnNameValues =
         DMLGeneratorUtils.getPkColumnValues(
             schemaMapper,
             spannerTable,
@@ -173,20 +171,10 @@ public class OracleDMLGenerator implements IDMLGenerator {
             dmlGeneratorRequest.getNewValuesJson(),
             dmlGeneratorRequest.getKeyValuesJson(),
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
-            customTransformationResponse,
+            dmlGeneratorRequest.getCustomTransformationResponse(),
             binder::mapColumnValue,
             null);
-    boolean isDelete = "DELETE".equals(dmlGeneratorRequest.getModType());
-    if (pkColumnNameValues != null && isDelete) {
-      // DMLGeneratorUtils skips generated (virtual) primary key columns, but DELETE must still
-      // filter on them to delete only the target row.
-      pkColumnNameValues =
-          binder.addGeneratedPrimaryKeys(
-              pkColumnNameValues,
-              dmlGeneratorRequest.getNewValuesJson(),
-              dmlGeneratorRequest.getKeyValuesJson());
-    }
-    if (pkColumnNameValues == null || pkColumnNameValues.isEmpty()) {
+    if (pkcolumnNameValues == null || pkcolumnNameValues.isEmpty()) {
       throw new InvalidDMLGenerationException(
           String.format(
               "Cannot reverse replicate for table %s without primary key, skipping the record",
@@ -196,9 +184,10 @@ public class OracleDMLGenerator implements IDMLGenerator {
     if ("INSERT".equals(dmlGeneratorRequest.getModType())
         || "UPDATE".equals(dmlGeneratorRequest.getModType())) {
       return generateUpsertStatement(
-          binder, dmlGeneratorRequest, customTransformationResponse, pkColumnNameValues);
-    } else if (isDelete) {
-      return getDeleteStatement(binder, sourceTable.name(), pkColumnNameValues);
+          spannerTable, sourceTable, dmlGeneratorRequest, pkcolumnNameValues, binder);
+
+    } else if ("DELETE".equals(dmlGeneratorRequest.getModType())) {
+      return getDeleteStatement(sourceTable.name(), pkcolumnNameValues, binder);
     } else {
       throw new InvalidDMLGenerationException(
           String.format(
@@ -208,22 +197,30 @@ public class OracleDMLGenerator implements IDMLGenerator {
   }
 
   private static DMLGeneratorResponse getUpsertStatement(
-      ColumnBinder binder,
       String tableName,
       Map<String, String> allColumnNameValues,
       Map<String, String> generatedColumnValues,
-      List<String> primaryKeys) {
+      List<String> primaryKeys,
+      ColumnBinder binder) {
 
     Map<String, String> queryColumns = new LinkedHashMap<>(allColumnNameValues);
-    queryColumns.putAll(generatedColumnValues);
+    if (generatedColumnValues != null) {
+      queryColumns.putAll(generatedColumnValues);
+    }
 
     List<Object> bindParams = new ArrayList<>();
-    StringJoiner usingSelect = new StringJoiner(", ", "SELECT ", " FROM DUAL");
+    StringBuilder usingSelect = new StringBuilder("SELECT ");
+    int index = 0;
     for (Map.Entry<String, String> entry : queryColumns.entrySet()) {
       String colName = entry.getKey();
       String sqlValue = binder.bindColumn(colName, entry.getValue(), bindParams);
-      usingSelect.add(sqlValue + " AS \"" + colName + "\"");
+      usingSelect.append(sqlValue).append(" AS \"").append(colName).append("\"");
+      if (index + 1 < queryColumns.size()) {
+        usingSelect.append(", ");
+      }
+      index++;
     }
+    usingSelect.append(" FROM DUAL");
 
     String onClause =
         primaryKeys.stream()
@@ -269,35 +266,43 @@ public class OracleDMLGenerator implements IDMLGenerator {
   }
 
   private static DMLGeneratorResponse getDeleteStatement(
-      ColumnBinder binder, String tableName, Map<String, String> pkcolumnNameValues) {
+      String tableName, Map<String, String> pkcolumnNameValues, ColumnBinder binder) {
+    String deleteValues = "";
     List<Object> bindParams = new ArrayList<>();
-    StringJoiner deleteValues = new StringJoiner(" AND ");
+
+    int index = 0;
     for (Map.Entry<String, String> entry : pkcolumnNameValues.entrySet()) {
       String colName = entry.getKey();
-      String sqlValue = binder.bindColumn(colName, entry.getValue(), bindParams);
-      deleteValues.add(" \"" + colName + "\" = " + sqlValue);
-    }
+      String colValue = binder.bindColumn(colName, entry.getValue(), bindParams);
 
-    DMLGeneratorResponse response =
-        new DMLGeneratorResponse("DELETE FROM \"" + tableName + "\" WHERE " + deleteValues);
+      deleteValues += " \"" + colName + "\" = " + colValue;
+      if (index + 1 < pkcolumnNameValues.size()) {
+        deleteValues += " AND ";
+      }
+      index++;
+    }
+    String returnVal = "DELETE FROM \"" + tableName + "\" WHERE " + deleteValues;
+
+    DMLGeneratorResponse response = new DMLGeneratorResponse(returnVal);
     response.setPreparedStatementParameters(bindParams);
     return response;
   }
 
   private static DMLGeneratorResponse generateUpsertStatement(
-      ColumnBinder binder,
+      Table spannerTable,
+      SourceTable sourceTable,
       DMLGeneratorRequest dmlGeneratorRequest,
-      Map<String, Object> customTransformationResponse,
-      Map<String, String> pkcolumnNameValues) {
+      Map<String, String> pkcolumnNameValues,
+      ColumnBinder binder) {
     Map<String, String> columnNameValues =
         DMLGeneratorUtils.getColumnValues(
             dmlGeneratorRequest.getSchemaMapper(),
-            binder.spannerTable,
-            binder.sourceTable,
+            spannerTable,
+            sourceTable,
             dmlGeneratorRequest.getNewValuesJson(),
             dmlGeneratorRequest.getKeyValuesJson(),
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
-            customTransformationResponse,
+            dmlGeneratorRequest.getCustomTransformationResponse(),
             binder::mapColumnValue,
             null);
 
@@ -305,32 +310,50 @@ public class OracleDMLGenerator implements IDMLGenerator {
     orderedColumnNameValues.putAll(pkcolumnNameValues);
     orderedColumnNameValues.putAll(columnNameValues);
 
-    // DMLGeneratorUtils skips generated (virtual) columns because Oracle does not allow them in
-    // INSERT / UPDATE SET clauses. A generated primary key column is still referenced in the MERGE
-    // ON clause, so it is added only to the USING (SELECT ... FROM DUAL) block.
-    Map<String, String> generatedColumnValues =
-        binder.getGeneratedPrimaryKeyValues(
-            dmlGeneratorRequest.getNewValuesJson(), dmlGeneratorRequest.getKeyValuesJson());
+    Map<String, String> generatedColumnValues = new LinkedHashMap<>();
+    for (SourceColumn col : sourceTable.columns()) {
+      // The shared DMLGeneratorUtils explicitly skips generated (virtual) columns. Oracle
+      // physically requires
+      // these columns to be mapped separately so they can be injected solely into the USING
+      // (SELECT...) block
+      // of the MERGE statement. (E.g. in case a generated column is part of a Primary Key
+      // referenced in the ON block).
+      if (col.isGenerated()) {
+        String spannerColName =
+            dmlGeneratorRequest
+                .getSchemaMapper()
+                .getSpannerColumnName("", sourceTable.name(), col.name());
+        Column spannerColDef = spannerTable.column(spannerColName);
+        if (dmlGeneratorRequest.getKeyValuesJson().has(spannerColName)
+            && !dmlGeneratorRequest.getKeyValuesJson().isNull(spannerColName)) {
+          generatedColumnValues.put(
+              col.name(),
+              binder.mapColumnValue(
+                  spannerColDef,
+                  col,
+                  dmlGeneratorRequest.getKeyValuesJson(),
+                  dmlGeneratorRequest.getSourceDbTimezoneOffset(),
+                  null));
+        } else if (dmlGeneratorRequest.getNewValuesJson().has(spannerColName)
+            && !dmlGeneratorRequest.getNewValuesJson().isNull(spannerColName)) {
+          generatedColumnValues.put(
+              col.name(),
+              binder.mapColumnValue(
+                  spannerColDef,
+                  col,
+                  dmlGeneratorRequest.getNewValuesJson(),
+                  dmlGeneratorRequest.getSourceDbTimezoneOffset(),
+                  null));
+        }
+      }
+    }
 
     return getUpsertStatement(
-        binder,
-        binder.sourceTable.name(),
+        sourceTable.name(),
         orderedColumnNameValues,
         generatedColumnValues,
-        binder.sourceTable.primaryKeyColumns());
-  }
-
-  /**
-   * Replaces {@code null} custom transformation values with {@code "NULL"} because {@link
-   * DMLGeneratorUtils} calls {@code toString()} on every custom transformation value.
-   */
-  private static Map<String, Object> withNullsAsSqlNull(Map<String, Object> customTransformation) {
-    if (customTransformation == null || !customTransformation.containsValue(null)) {
-      return customTransformation;
-    }
-    Map<String, Object> result = new HashMap<>(customTransformation);
-    result.replaceAll((col, value) -> value == null ? "NULL" : value);
-    return result;
+        sourceTable.primaryKeyColumns(),
+        binder);
   }
 
   /**
@@ -339,9 +362,9 @@ public class OracleDMLGenerator implements IDMLGenerator {
    * <p>{@link DMLGeneratorUtils} returns a {@code Map<column, SQL value>} where the SQL value is:
    *
    * <ul>
-   *   <li>the output of the custom transformation for a custom transformed column,
-   *   <li>{@code null} for a {@code NULL} column value, or
-   *   <li>the placeholder returned by {@link #mapColumnValue} for any other column value.
+   *   <li>{@code null} for a {@code NULL} column value,
+   *   <li>the placeholder returned by {@link #mapColumnValue} for any other column value, or
+   *   <li>the output of the custom transformation for a custom transformed column.
    * </ul>
    *
    * <p>{@link #mapColumnValue} records each bind value by column name, and {@link #bindColumn}
@@ -392,9 +415,6 @@ public class OracleDMLGenerator implements IDMLGenerator {
       SourceColumn sourceColDef = sourceTable.column(colName);
       String sourceType = (sourceColDef == null) ? "" : sourceColDef.type();
 
-      if (customTransformationResponse.containsKey(colName)) {
-        return bindCustomTransformationValue(sourceType, sqlValue, bindParams);
-      }
       if (sqlValue == null) {
         // NULL column value: same placeholder as non-null values, bound as a typed NULL.
         bindParams.add(
@@ -402,11 +422,14 @@ public class OracleDMLGenerator implements IDMLGenerator {
         return getColumnValueByType(
             sourceType, sourceDbTimezoneOffset, getSpannerTypeCode(colName));
       }
-      if (!bindValuesByColumn.containsKey(colName)) {
-        throw new IllegalStateException("No bind value was recorded for column " + colName);
+      if (bindValuesByColumn.containsKey(colName)) {
+        bindParams.add(bindValuesByColumn.get(colName));
+        return sqlValue;
       }
-      bindParams.add(bindValuesByColumn.get(colName));
-      return sqlValue;
+      if (customTransformationResponse.containsKey(colName)) {
+        return bindCustomTransformationValue(sourceType, sqlValue, bindParams);
+      }
+      throw new IllegalStateException("No bind value was recorded for column " + colName);
     }
 
     /**
@@ -422,7 +445,7 @@ public class OracleDMLGenerator implements IDMLGenerator {
     private String bindCustomTransformationValue(
         String rawSourceType, String sqlValue, List<Object> bindParams) {
       String sourceType = normalizeSourceType(rawSourceType);
-      String literal = (sqlValue == null) ? "NULL" : sqlValue.trim();
+      String literal = sqlValue.trim();
       Object bindValue =
           "null".equalsIgnoreCase(literal)
               ? new OracleBindParameter(getBindSqlType(sourceType), null)
@@ -435,80 +458,19 @@ public class OracleDMLGenerator implements IDMLGenerator {
           rawSourceType, sourceDbTimezoneOffset, CUSTOM_TRANSFORMATION_SPANNER_TYPE);
     }
 
-    /**
-     * Returns placeholders for the generated (virtual) primary key columns present in the record.
-     */
-    Map<String, String> getGeneratedPrimaryKeyValues(
-        JSONObject newValuesJson, JSONObject keyValuesJson) {
-      Map<String, String> generatedColumnValues = new LinkedHashMap<>();
-      for (SourceColumn col : sourceTable.columns()) {
-        if (!col.isGenerated() || !sourceTable.primaryKeyColumns().contains(col.name())) {
-          continue;
-        }
-        if (customTransformationResponse.containsKey(col.name())) {
-          generatedColumnValues.put(
-              col.name(), customTransformationResponse.get(col.name()).toString());
-          continue;
-        }
-        Column spannerColDef = getSpannerColumn(col.name());
-        if (spannerColDef == null) {
-          continue;
-        }
-        String actualColName = spannerColDef.name();
-        JSONObject valuesJson =
-            keyValuesJson.has(actualColName)
-                ? keyValuesJson
-                : newValuesJson.has(actualColName) ? newValuesJson : null;
-        if (valuesJson != null) {
-          generatedColumnValues.put(
-              col.name(),
-              valuesJson.isNull(actualColName)
-                  ? null
-                  : mapColumnValue(spannerColDef, col, valuesJson, sourceDbTimezoneOffset, null));
-        }
-      }
-      return generatedColumnValues;
-    }
-
-    /**
-     * Adds the generated primary key columns to {@code pkColumnNameValues}. When every primary key
-     * column is then available, only the primary key columns are returned.
-     */
-    Map<String, String> addGeneratedPrimaryKeys(
-        Map<String, String> pkColumnNameValues,
-        JSONObject newValuesJson,
-        JSONObject keyValuesJson) {
-      Map<String, String> generatedColumnValues =
-          getGeneratedPrimaryKeyValues(newValuesJson, keyValuesJson);
-      if (generatedColumnValues.isEmpty()) {
-        return pkColumnNameValues;
-      }
-      Map<String, String> allValues = new LinkedHashMap<>(pkColumnNameValues);
-      allValues.putAll(generatedColumnValues);
-      List<String> primaryKeys = sourceTable.primaryKeyColumns();
-      if (!allValues.keySet().containsAll(primaryKeys)) {
-        return allValues;
-      }
-      Map<String, String> pkOnlyValues = new LinkedHashMap<>();
-      primaryKeys.forEach(pk -> pkOnlyValues.put(pk, allValues.get(pk)));
-      return pkOnlyValues;
-    }
-
-    private Column getSpannerColumn(String sourceColName) {
+    private String getSpannerTypeCode(String sourceColName) {
       try {
         String spannerColName =
             schemaMapper.getSpannerColumnName("", sourceTable.name(), sourceColName);
-        return (spannerColName == null) ? null : spannerTable.column(spannerColName);
+        Column spannerColDef =
+            (spannerColName == null) ? null : spannerTable.column(spannerColName);
+        if (spannerColDef != null) {
+          return spannerColDef.type().getCode().toString();
+        }
       } catch (NoSuchElementException e) {
-        return null;
+        // Column is not mapped to Spanner.
       }
-    }
-
-    private String getSpannerTypeCode(String sourceColName) {
-      Column spannerColDef = getSpannerColumn(sourceColName);
-      return (spannerColDef == null)
-          ? CUSTOM_TRANSFORMATION_SPANNER_TYPE
-          : spannerColDef.type().getCode().toString();
+      return CUSTOM_TRANSFORMATION_SPANNER_TYPE;
     }
   }
 
@@ -598,47 +560,30 @@ public class OracleDMLGenerator implements IDMLGenerator {
   /** Converts a non-BYTES Spanner value to its string form. */
   private static String getColumnInputValue(
       Type colType, String sourceType, JSONObject valuesJson, String colName) {
-    Type.Code code = colType.getCode();
-    String rawValue = valuesJson.get(colName).toString();
-
     if ("binary_float".equals(sourceType) || "binary_double".equals(sourceType)) {
-      String specialValue = getSpecialFloatValue(rawValue);
-      return (specialValue != null) ? specialValue : rawValue;
+      // Passed as text to TO_BINARY_FLOAT / TO_BINARY_DOUBLE, which also accept NaN and Infinity.
+      return valuesJson.get(colName).toString();
     }
-    if (code.equals(Type.Code.FLOAT64)
-        || code.equals(Type.Code.FLOAT32)
-        || code.equals(Type.Code.PG_FLOAT4)
-        || code.equals(Type.Code.PG_FLOAT8)
-        || code.equals(Type.Code.PG_NUMERIC)) {
-      String specialValue = getSpecialFloatValue(rawValue);
-      return (specialValue != null) ? specialValue : valuesJson.getBigDecimal(colName).toString();
+    if (colType.getCode().equals(Type.Code.FLOAT64)
+        || colType.getCode().equals(Type.Code.FLOAT32)
+        || colType.getCode().equals(Type.Code.PG_FLOAT4)
+        || colType.getCode().equals(Type.Code.PG_FLOAT8)
+        || colType.getCode().equals(Type.Code.PG_NUMERIC)) {
+      return valuesJson.getBigDecimal(colName).toString();
     }
-    if (code.equals(Type.Code.BOOL) || code.equals(Type.Code.PG_BOOL)) {
+    if (colType.getCode().equals(Type.Code.BOOL) || colType.getCode().equals(Type.Code.PG_BOOL)) {
       return String.valueOf(valuesJson.getBoolean(colName));
     }
-    if ((code.equals(Type.Code.ARRAY)
+    if ((colType.getCode().equals(Type.Code.ARRAY)
             && colType.getArrayElementType().getCode().equals(Type.Code.STRING))
-        || (code.equals(Type.Code.PG_ARRAY)
+        || (colType.getCode().equals(Type.Code.PG_ARRAY)
             && (colType.getArrayElementType().getCode().equals(Type.Code.PG_VARCHAR)
                 || colType.getArrayElementType().getCode().equals(Type.Code.PG_TEXT)))) {
       return valuesJson.getJSONArray(colName).toList().stream()
           .map(String::valueOf)
           .collect(Collectors.joining(","));
     }
-    return rawValue;
-  }
-
-  /**
-   * Returns {@code NaN}, {@code Inf} or {@code -Inf} (as accepted by {@code TO_BINARY_FLOAT} /
-   * {@code TO_BINARY_DOUBLE}) for special floating point values, or {@code null} otherwise.
-   */
-  private static String getSpecialFloatValue(String value) {
-    return switch (value.trim().toLowerCase()) {
-      case "nan" -> "NaN";
-      case "infinity", "+infinity", "inf", "+inf" -> "Inf";
-      case "-infinity", "-inf" -> "-Inf";
-      default -> null;
-    };
+    return valuesJson.getString(colName);
   }
 
   /** Returns the bind value for a Base64 encoded BYTES value. */
@@ -668,8 +613,7 @@ public class OracleDMLGenerator implements IDMLGenerator {
    *
    * <ul>
    *   <li>character and LOB types are bound with their JDBC type,
-   *   <li>numeric types are bound as {@link BigDecimal}, so the value does not depend on the
-   *       session decimal character ({@code NLS_NUMERIC_CHARACTERS}),
+   *   <li>numeric types are bound as {@link BigDecimal},
    *   <li>all other types are bound as text.
    * </ul>
    */
@@ -696,14 +640,6 @@ public class OracleDMLGenerator implements IDMLGenerator {
       case "character":
         // Fixed width type: bound with setFixedCHAR for blank-padded comparison.
         return toTypedBindValue(Types.CHAR, colValue);
-      case "bytea":
-      case "blob":
-        return toTypedBindValue(Types.BLOB, colValue.getBytes(StandardCharsets.UTF_8));
-      case "binary_float":
-      case "binary_double":
-        // Bound as text so that NaN, Inf and values beyond the NUMBER range are supported. Note
-        // that TO_BINARY_FLOAT / TO_BINARY_DOUBLE parse the text with the session decimal
-        // character.
       case "varchar":
       case "varchar2":
       case "text":
@@ -712,22 +648,22 @@ public class OracleDMLGenerator implements IDMLGenerator {
       case "jsonb":
       case "time":
       case "uuid":
-      case "long":
-      case "rowid":
-      case "urowid":
       case "date":
       case "timestamp":
       case "timestamp without time zone":
       case "timestamp with time zone":
       case "timestamp with local time zone":
       case "timestamptz":
+      case "bytea":
+      case "blob":
       case "raw":
-      case "long raw":
       case "binary":
       case "varbinary":
+      case "binary_float":
+      case "binary_double":
         return colValue;
       default:
-        // Other types (e.g. INTERVAL or types from a session file): Spanner booleans become 1 / 0.
+        // Other types: Spanner booleans become 1 / 0.
         return toNumericBoolean(colValue);
     }
   }
@@ -803,12 +739,7 @@ public class OracleDMLGenerator implements IDMLGenerator {
   @VisibleForTesting
   static String getColumnValueByType(
       String columnType, String sourceDbTimezoneOffset, String spannerColType) {
-    String rawColumnType = (columnType == null) ? "" : columnType.trim();
-    String normalizedColumnType = normalizeSourceType(rawColumnType);
-    if (normalizedColumnType.startsWith("interval ")) {
-      return "CAST(? AS " + rawColumnType + ")";
-    }
-    switch (normalizedColumnType) {
+    switch (normalizeSourceType(columnType)) {
       case "nvarchar2":
       case "nclob":
       case "nchar":
@@ -831,9 +762,6 @@ public class OracleDMLGenerator implements IDMLGenerator {
       case "jsonb":
       case "time":
       case "uuid":
-      case "long":
-      case "rowid":
-      case "urowid":
         return isBytesType(spannerColType) ? "HEXTORAW(?)" : "?";
       case "date":
         if ("DATE".equalsIgnoreCase(spannerColType) || "PG_DATE".equalsIgnoreCase(spannerColType)) {
@@ -859,7 +787,6 @@ public class OracleDMLGenerator implements IDMLGenerator {
       case "bytea":
       case "blob":
       case "raw":
-      case "long raw":
       case "binary":
       case "varbinary":
         return "?";
@@ -870,9 +797,7 @@ public class OracleDMLGenerator implements IDMLGenerator {
       case "number":
       case "numeric":
       case "decimal":
-      case "dec":
       case "float":
-      case "real":
       case "double precision":
       case "integer":
       case "smallint":

@@ -18,12 +18,8 @@ package com.google.cloud.teleport.v2.templates.dbutils.dao.source;
 import com.google.cloud.teleport.v2.spanner.migrations.connection.IConnectionHelper;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ConnectionException;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
-import java.io.ByteArrayInputStream;
 import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,54 +41,53 @@ public class JdbcDao implements IDao {
   public void write(
       DMLGeneratorResponse dmlGeneratorResponse, TransactionalCheck transactionalCheck)
       throws Exception {
-    try (Connection connObj =
-        (Connection) connectionHelper.getConnection(this.sqlUrl + "/" + this.sqlUser)) {
+    Connection connObj = null;
+    Statement statement = null;
+
+    String dmlStatement = dmlGeneratorResponse.getDmlStatement();
+
+    try {
+      connObj = (Connection) connectionHelper.getConnection(this.sqlUrl + "/" + this.sqlUser);
       if (connObj == null) {
         throw new ConnectionException("Connection is null");
       }
       connObj.setAutoCommit(false);
-      try {
-        executeUpdate(connObj, dmlGeneratorResponse);
-        if (transactionalCheck != null) {
-          transactionalCheck.check();
+      java.util.List<Object> params = dmlGeneratorResponse.getPreparedStatementParameters();
+      if (params != null && !params.isEmpty()) {
+        java.sql.PreparedStatement pstmt = connObj.prepareStatement(dmlStatement);
+        statement = pstmt;
+        int paramIdx = 1;
+        for (Object param : params) {
+          bindParameter(pstmt, paramIdx++, param);
         }
-        connObj.commit();
-      } catch (Throwable t) {
-        try {
-          connObj.rollback();
-        } catch (SQLException rollbackException) {
-          t.addSuppressed(rollbackException);
-        }
-        throw t;
-      }
-    }
-  }
-
-  private void executeUpdate(Connection connObj, DMLGeneratorResponse dmlGeneratorResponse)
-      throws SQLException {
-    String dmlStatement = dmlGeneratorResponse.getDmlStatement();
-    List<Object> params = dmlGeneratorResponse.getPreparedStatementParameters();
-    if (params == null || params.isEmpty()) {
-      try (Statement statement = connObj.createStatement()) {
+        pstmt.executeUpdate();
+      } else {
+        statement = connObj.createStatement();
         statement.executeUpdate(dmlStatement);
       }
-      return;
-    }
-    try (PreparedStatement pstmt = connObj.prepareStatement(dmlStatement)) {
-      int paramIdx = 1;
-      for (Object param : params) {
-        bindParameter(pstmt, paramIdx++, param);
+
+      if (transactionalCheck != null) {
+        transactionalCheck.check();
       }
-      pstmt.executeUpdate();
+      connObj.commit();
+
+    } finally {
+
+      if (statement != null) {
+        statement.close();
+      }
+      if (connObj != null) {
+        connObj.close();
+      }
     }
   }
 
   /** Binds a prepared statement parameter. Sources can override this for type specific binding. */
-  protected void bindParameter(PreparedStatement pstmt, int paramIdx, Object param)
-      throws SQLException {
+  protected void bindParameter(java.sql.PreparedStatement pstmt, int paramIdx, Object param)
+      throws java.sql.SQLException {
     if (param instanceof byte[]) {
       byte[] bytes = (byte[]) param;
-      pstmt.setBlob(paramIdx, new ByteArrayInputStream(bytes), bytes.length);
+      pstmt.setBlob(paramIdx, new java.io.ByteArrayInputStream(bytes), bytes.length);
     } else {
       pstmt.setObject(paramIdx, param);
     }

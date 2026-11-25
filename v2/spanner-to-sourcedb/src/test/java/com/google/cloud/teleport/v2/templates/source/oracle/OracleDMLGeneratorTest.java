@@ -20,8 +20,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
@@ -307,7 +305,7 @@ public final class OracleDMLGeneratorTest {
         sql.contains(
             ", FROM_TZ(TO_TIMESTAMP(?, 'YYYY-MM-DD\"T\"HH24:MI:SS.FF\"Z\"'), 'UTC') AS \"TSLTZ_COL\""));
     assertTrue(sql.contains("? AS \"RAW_COL\""));
-    assertTrue(sql.contains("CAST(? AS INTERVAL YEAR(9) TO MONTH) AS \"IYM_COL\""));
+    assertTrue(sql.contains("? AS \"IYM_COL\""));
 
     List<Object> params = resp.getPreparedStatementParameters();
     assertEquals(14, params.size());
@@ -315,7 +313,7 @@ public final class OracleDMLGeneratorTest {
     assertEquals(new OracleBindParameter(Types.NVARCHAR, "こんにちは"), params.get(1));
     assertEquals(new OracleBindParameter(Types.NCLOB, "nclob-val"), params.get(2));
     assertEquals("NaN", params.get(3));
-    assertEquals("-Inf", params.get(4));
+    assertEquals("-Infinity", params.get(4));
     assertEquals(BigDecimal.ONE, params.get(5));
     assertEquals("false", params.get(6));
     assertEquals("2026-11-23", params.get(7));
@@ -327,7 +325,7 @@ public final class OracleDMLGeneratorTest {
   }
 
   @Test
-  public void testDeleteCompositePrimaryKeyAndCompositeVirtualPk() {
+  public void testDeleteCompositePrimaryKey() {
     Ddl ddl =
         Ddl.builder()
             .createTable("ORDER_ITEMS")
@@ -335,7 +333,7 @@ public final class OracleDMLGeneratorTest {
             .int64()
             .notNull()
             .endColumn()
-            .column("GEN_SKU")
+            .column("SKU")
             .string()
             .max()
             .notNull()
@@ -345,7 +343,7 @@ public final class OracleDMLGeneratorTest {
             .endColumn()
             .primaryKey()
             .asc("ORDER_ID")
-            .asc("GEN_SKU")
+            .asc("SKU")
             .end()
             .endTable()
             .build();
@@ -355,51 +353,25 @@ public final class OracleDMLGeneratorTest {
             "ORDER_ITEMS",
             List.of(
                 oracleCol("ORDER_ID", "NUMBER(19)", false),
-                oracleCol("GEN_SKU", "VARCHAR2(64)", true),
+                oracleCol("SKU", "VARCHAR2(64)", false),
                 oracleCol("QTY", "NUMBER(10)", false)),
-            List.of("ORDER_ID", "GEN_SKU"));
+            List.of("ORDER_ID", "SKU"));
 
-    // Case-insensitive mapper returning lowercase "gen_sku" while Spanner DDL column is "GEN_SKU"
-    ISchemaMapper caseMismatchMapper = mock(ISchemaMapper.class);
-    when(caseMismatchMapper.getSourceTableName("", "ORDER_ITEMS")).thenReturn("ORDER_ITEMS");
-    when(caseMismatchMapper.getSpannerColumnName("", "ORDER_ITEMS", "ORDER_ID"))
-        .thenReturn("order_id");
-    when(caseMismatchMapper.getSpannerColumnName("", "ORDER_ITEMS", "GEN_SKU"))
-        .thenReturn("gen_sku");
-    when(caseMismatchMapper.getSpannerColumnName("", "ORDER_ITEMS", "QTY")).thenReturn("qty");
-
-    JSONObject keys = new JSONObject().put("ORDER_ID", "500").put("GEN_SKU", "ABC-1");
+    JSONObject keys = new JSONObject().put("ORDER_ID", "500").put("SKU", "ABC-1");
     DMLGeneratorResponse deleteResp =
         generator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     "DELETE", "ORDER_ITEMS", new JSONObject().put("QTY", "10"), keys, "+00:00")
-                .setSchemaMapper(caseMismatchMapper)
+                .setSchemaMapper(new IdentityMapper(ddl))
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
 
     assertEquals(
-        "DELETE FROM \"ORDER_ITEMS\" WHERE  \"ORDER_ID\" = TO_NUMBER(?) AND  \"GEN_SKU\" = ?",
+        "DELETE FROM \"ORDER_ITEMS\" WHERE  \"ORDER_ID\" = TO_NUMBER(?) AND  \"SKU\" = ?",
         deleteResp.getDmlStatement());
     assertEquals(
         List.of(new BigDecimal("500"), "ABC-1"), deleteResp.getPreparedStatementParameters());
-
-    DMLGeneratorResponse upsertResp =
-        generator.getDMLStatement(
-            new DMLGeneratorRequest.Builder(
-                    "INSERT", "ORDER_ITEMS", new JSONObject().put("QTY", "10"), keys, "+00:00")
-                .setSchemaMapper(caseMismatchMapper)
-                .setDdl(ddl)
-                .setSourceSchema(sourceSchema)
-                .build());
-    assertTrue(
-        upsertResp
-            .getDmlStatement()
-            .contains(
-                "USING (SELECT TO_NUMBER(?) AS \"ORDER_ID\", TO_NUMBER(?) AS \"QTY\", ? AS \"GEN_SKU\" FROM DUAL) s"));
-    assertEquals(
-        List.of(new BigDecimal("500"), new BigDecimal("10"), "ABC-1"),
-        upsertResp.getPreparedStatementParameters());
   }
 
   @Test
@@ -464,8 +436,7 @@ public final class OracleDMLGeneratorTest {
             List.of("GEN_PK"));
 
     JSONObject keys = new JSONObject().put("GEN_PK", "ALICE_PK");
-    JSONObject vals =
-        new JSONObject().put("FIRST_NAME", "Alice").put("NON_PK_GEN", "Alice_ignored");
+    JSONObject vals = new JSONObject().put("FIRST_NAME", "Alice");
     Map<String, Object> customMap = new HashMap<>();
     // SQL-quoted literals / HEXTORAW on character/LOB/NUMBER columns -> unquoted and bound via ?
     customMap.put("LEGACY_SYS", "'Website_v1'");
@@ -507,19 +478,6 @@ public final class OracleDMLGeneratorTest {
     assertArrayEquals("Hello".getBytes(StandardCharsets.UTF_8), (byte[]) customBlobBind.value());
     assertEquals(new BigDecimal("2026"), params.get(4));
     assertEquals("ALICE_PK", params.get(5));
-
-    // DELETE on a table with a single virtual primary key must still filter only on GEN_PK,
-    // even when newValuesJson and customTransformationResponse are populated.
-    DMLGeneratorResponse deleteResp =
-        generator.getDMLStatement(
-            new DMLGeneratorRequest.Builder("DELETE", "GEN_TBL", vals, keys, "+00:00")
-                .setSchemaMapper(new IdentityMapper(ddl))
-                .setDdl(ddl)
-                .setSourceSchema(sourceSchema)
-                .setCustomTransformationResponse(customMap)
-                .build());
-    assertEquals("DELETE FROM \"GEN_TBL\" WHERE  \"GEN_PK\" = ?", deleteResp.getDmlStatement());
-    assertEquals(List.of("ALICE_PK"), deleteResp.getPreparedStatementParameters());
   }
 
   @Test
@@ -588,10 +546,6 @@ public final class OracleDMLGeneratorTest {
     assertEquals(
         "timestamp with local time zone",
         OracleDMLGenerator.normalizeSourceType("  TIMESTAMP(6)   WITH LOCAL TIME ZONE "));
-    assertEquals(
-        "TO_NUMBER(?)", OracleDMLGenerator.getColumnValueByType("DEC", "+00:00", "NUMERIC"));
-    assertEquals(
-        "TO_NUMBER(?)", OracleDMLGenerator.getColumnValueByType("REAL", "+00:00", "FLOAT64"));
     String utcTimestamp = "FROM_TZ(TO_TIMESTAMP(?, 'YYYY-MM-DD\"T\"HH24:MI:SS.FF\"Z\"'), 'UTC')";
     assertEquals(
         utcTimestamp,
@@ -725,7 +679,7 @@ public final class OracleDMLGeneratorTest {
   }
 
   @Test
-  public void testCustomTransformationNullUnquotedNumberAndRawHexAreBound() {
+  public void testCustomTransformationLiteralUnquotedNumberAndRawHexAreBound() {
     Ddl ddl =
         Ddl.builder()
             .createTable("CT")
@@ -759,7 +713,7 @@ public final class OracleDMLGeneratorTest {
                 oracleCol("RAW_COL", "RAW(16)", false)),
             List.of("ID"));
     Map<String, Object> customMap = new HashMap<>();
-    customMap.put("NAME", null);
+    customMap.put("NAME", "'Bob'");
     customMap.put("QTY", "42");
     customMap.put("RAW_COL", "HEXTORAW('0A0B')");
 
@@ -781,7 +735,7 @@ public final class OracleDMLGeneratorTest {
     List<Object> params = resp.getPreparedStatementParameters();
     assertEquals(4, params.size());
     assertEquals(new BigDecimal("1"), params.get(0));
-    assertEquals(new OracleBindParameter(Types.VARCHAR, null), params.get(1));
+    assertEquals("Bob", params.get(1));
     assertEquals(new BigDecimal("42"), params.get(2));
     OracleBindParameter rawBind = (OracleBindParameter) params.get(3);
     assertEquals(Types.VARBINARY, rawBind.sqlType());

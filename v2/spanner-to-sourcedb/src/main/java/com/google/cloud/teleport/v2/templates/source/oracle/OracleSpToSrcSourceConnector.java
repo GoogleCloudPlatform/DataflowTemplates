@@ -26,25 +26,18 @@ import com.google.cloud.teleport.v2.spanner.migrations.utils.ISecretManagerAcces
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
 import com.google.cloud.teleport.v2.spanner.sourceddl.OracleInformationSchemaScanner;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
-import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.ISpToSrcSourceConnector;
 import com.google.common.annotations.VisibleForTesting;
 import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLDataException;
-import java.sql.SQLSyntaxErrorException;
 import java.util.List;
 import java.util.Properties;
 import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.values.TupleTag;
 
-/** Oracle source connector for reverse replication ({@code Spanner_to_SourceDb}). */
 public class OracleSpToSrcSourceConnector implements ISpToSrcSourceConnector {
 
   private static final String JDBC_URL_PREFIX = "jdbc:oracle:thin:@//";
-  private static final String ORACLE_DRIVER = "oracle.jdbc.OracleDriver";
 
   /**
    * Oracle JDBC connection property that enables per-connection implicit {@link
@@ -72,14 +65,14 @@ public class OracleSpToSrcSourceConnector implements ISpToSrcSourceConnector {
    */
   public static final String DEFAULT_IMPLICIT_STATEMENT_CACHE_SIZE = "100";
 
-  private final IConnectionHelper<Connection> connectionHelper;
+  private final IConnectionHelper connectionHelper;
 
   public OracleSpToSrcSourceConnector() {
     this.connectionHelper = new JdbcConnectionHelper();
   }
 
   @VisibleForTesting
-  OracleSpToSrcSourceConnector(IConnectionHelper<Connection> connectionHelper) {
+  OracleSpToSrcSourceConnector(IConnectionHelper connectionHelper) {
     this.connectionHelper = connectionHelper;
   }
 
@@ -89,7 +82,7 @@ public class OracleSpToSrcSourceConnector implements ISpToSrcSourceConnector {
   }
 
   @Override
-  public IConnectionHelper<Connection> getConnectionHelper() {
+  public IConnectionHelper getConnectionHelper() {
     return this.connectionHelper;
   }
 
@@ -118,7 +111,8 @@ public class OracleSpToSrcSourceConnector implements ISpToSrcSourceConnector {
         shard.setConnectionProperties(withDefaultStatementCache(shard.getConnectionProperties()));
       }
       ConnectionHelperRequest request =
-          new ConnectionHelperRequest(shards, null, maxConnections, ORACLE_DRIVER, null);
+          new ConnectionHelperRequest(
+              shards, null, maxConnections, "oracle.jdbc.OracleDriver", null);
       connectionHelper.init(request);
     }
   }
@@ -148,10 +142,11 @@ public class OracleSpToSrcSourceConnector implements ISpToSrcSourceConnector {
   public List<Shard> parseShardConfig(String shardFilePath) throws Exception {
     ISecretManagerAccessor secretManagerAccessor = new SecretManagerAccessorImpl();
     SourceConfigParser sourceConfigParser = new SourceConfigParser(secretManagerAccessor);
+    // Passing "oracle" to parseConfiguration assumes it supports it; fallback to just string
     SourceConnectionConfig sourceConnectionConfig =
         sourceConfigParser.parseConfiguration("oracle", shardFilePath);
-    if (sourceConnectionConfig instanceof JdbcShardConfig jdbcShardConfig) {
-      return jdbcShardConfig.getShardConfigs();
+    if (sourceConnectionConfig instanceof JdbcShardConfig) {
+      return ((JdbcShardConfig) sourceConnectionConfig).getShardConfigs();
     }
     throw new IllegalArgumentException(
         "Expected JdbcShardConfig but got: " + sourceConnectionConfig.getClass());
@@ -167,10 +162,9 @@ public class OracleSpToSrcSourceConnector implements ISpToSrcSourceConnector {
     }
   }
 
-  @VisibleForTesting
   Connection createConnection(Shard shard) throws Exception {
-    Class.forName(ORACLE_DRIVER);
-    return DriverManager.getConnection(
+    Class.forName("oracle.jdbc.OracleDriver");
+    return java.sql.DriverManager.getConnection(
         getConnectionUrl(shard), shard.getUserName(), shard.getPassword());
   }
 
@@ -185,11 +179,12 @@ public class OracleSpToSrcSourceConnector implements ISpToSrcSourceConnector {
   }
 
   @Override
-  public TupleTag<String> classifyException(Throwable cause) {
+  public org.apache.beam.sdk.values.TupleTag<String> classifyException(Throwable cause) {
     Throwable current = cause;
     while (current != null) {
-      if (current instanceof SQLSyntaxErrorException || current instanceof SQLDataException) {
-        return Constants.PERMANENT_ERROR_TAG;
+      if (current instanceof java.sql.SQLSyntaxErrorException
+          || current instanceof java.sql.SQLDataException) {
+        return com.google.cloud.teleport.v2.templates.constants.Constants.PERMANENT_ERROR_TAG;
       }
       current = current.getCause();
     }
