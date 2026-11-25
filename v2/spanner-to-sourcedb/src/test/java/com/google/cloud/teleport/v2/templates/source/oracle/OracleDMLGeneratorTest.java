@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.templates.source.oracle;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -438,13 +437,12 @@ public final class OracleDMLGeneratorTest {
     JSONObject keys = new JSONObject().put("GEN_PK", "ALICE_PK");
     JSONObject vals = new JSONObject().put("FIRST_NAME", "Alice");
     Map<String, Object> customMap = new HashMap<>();
-    // SQL-quoted literals / HEXTORAW on character/LOB/NUMBER columns -> unquoted and bound via ?
-    customMap.put("LEGACY_SYS", "'Website_v1'");
-    customMap.put("CUSTOM_CLOB", "'O''Brien_clob'");
-    customMap.put("CUSTOM_BLOB", "HEXTORAW('48656c6c6f')");
-    customMap.put("CUSTOM_YEAR", "'2026'");
-    // SQL expressions / non-literal constructs -> inlined verbatim without bind parameter
-    customMap.put("CUSTOM_DATE", "TO_DATE('2026-11-23', 'YYYY-MM-DD')");
+    // Custom transformation values are bound as returned, including SQL-like text.
+    customMap.put("LEGACY_SYS", "Website_v1");
+    customMap.put("CUSTOM_CLOB", "O'Brien_clob");
+    customMap.put("CUSTOM_BLOB", "Hello".getBytes(StandardCharsets.UTF_8));
+    customMap.put("CUSTOM_YEAR", 2026);
+    customMap.put("CUSTOM_DATE", "2026-11-23");
     customMap.put("CUSTOM_EXPR", "'prefix_' || 'suffix'");
 
     DMLGeneratorResponse resp =
@@ -461,15 +459,15 @@ public final class OracleDMLGeneratorTest {
         sql.contains(
             "USING (SELECT ? AS \"FIRST_NAME\", ? AS \"LEGACY_SYS\", ? AS \"CUSTOM_CLOB\", "
                 + "? AS \"CUSTOM_BLOB\", TO_NUMBER(?) AS \"CUSTOM_YEAR\", "
-                + "TO_DATE('2026-11-23', 'YYYY-MM-DD') AS \"CUSTOM_DATE\", "
-                + "'prefix_' || 'suffix' AS \"CUSTOM_EXPR\", ? AS \"GEN_PK\" FROM DUAL) s"));
+                + "TO_DATE(?, 'YYYY-MM-DD') AS \"CUSTOM_DATE\", "
+                + "? AS \"CUSTOM_EXPR\", ? AS \"GEN_PK\" FROM DUAL) s"));
     assertTrue(sql.contains("ON (t.\"GEN_PK\" = s.\"GEN_PK\")"));
     assertTrue(
         sql.contains(
             "WHEN NOT MATCHED THEN INSERT (\"FIRST_NAME\", \"LEGACY_SYS\", \"CUSTOM_CLOB\", \"CUSTOM_BLOB\", \"CUSTOM_YEAR\", \"CUSTOM_DATE\", \"CUSTOM_EXPR\") VALUES"));
 
     List<Object> params = resp.getPreparedStatementParameters();
-    assertEquals(6, params.size());
+    assertEquals(8, params.size());
     assertEquals("Alice", params.get(0));
     assertEquals("Website_v1", params.get(1));
     assertEquals(new OracleBindParameter(Types.CLOB, "O'Brien_clob"), params.get(2));
@@ -477,7 +475,9 @@ public final class OracleDMLGeneratorTest {
     assertEquals(Types.BLOB, customBlobBind.sqlType());
     assertArrayEquals("Hello".getBytes(StandardCharsets.UTF_8), (byte[]) customBlobBind.value());
     assertEquals(new BigDecimal("2026"), params.get(4));
-    assertEquals("ALICE_PK", params.get(5));
+    assertEquals("2026-11-23", params.get(5));
+    assertEquals("'prefix_' || 'suffix'", params.get(6));
+    assertEquals("ALICE_PK", params.get(7));
   }
 
   @Test
@@ -569,14 +569,6 @@ public final class OracleDMLGeneratorTest {
         utcTimestamp, OracleDMLGenerator.getColumnValueByType("TIMESTAMP(6)", "Z", "TIMESTAMP"));
     assertEquals(
         utcTimestamp, OracleDMLGenerator.getColumnValueByType("TIMESTAMP(6)", null, "TIMESTAMP"));
-
-    assertEquals("Website_v1", OracleDMLGenerator.unquoteStrictSqlStringLiteral("'Website_v1'"));
-    assertEquals("O'Brien", OracleDMLGenerator.unquoteStrictSqlStringLiteral("'O''Brien'"));
-    assertEquals("'quoted'", OracleDMLGenerator.unquoteStrictSqlStringLiteral("'''quoted'''"));
-    assertEquals("", OracleDMLGenerator.unquoteStrictSqlStringLiteral("''"));
-    assertNull(OracleDMLGenerator.unquoteStrictSqlStringLiteral("'prefix_' || 'suffix'"));
-    assertNull(OracleDMLGenerator.unquoteStrictSqlStringLiteral("q'[O'Brien]'"));
-    assertNull(OracleDMLGenerator.unquoteStrictSqlStringLiteral("UPPER('abc')"));
   }
 
   @Test
@@ -694,7 +686,7 @@ public final class OracleDMLGeneratorTest {
   }
 
   @Test
-  public void testCustomTransformationLiteralUnquotedNumberAndRawHexAreBound() {
+  public void testCustomTransformationNullNumberAndBytesAreBoundAsReturned() {
     Ddl ddl =
         Ddl.builder()
             .createTable("CT")
@@ -728,9 +720,9 @@ public final class OracleDMLGeneratorTest {
                 oracleCol("RAW_COL", "RAW(16)", false)),
             List.of("ID"));
     Map<String, Object> customMap = new HashMap<>();
-    customMap.put("NAME", "'Bob'");
-    customMap.put("QTY", "42");
-    customMap.put("RAW_COL", "HEXTORAW('0A0B')");
+    customMap.put("NAME", null);
+    customMap.put("QTY", 42L);
+    customMap.put("RAW_COL", new byte[] {0x0A, 0x0B});
 
     DMLGeneratorResponse resp =
         generator.getDMLStatement(
@@ -750,7 +742,7 @@ public final class OracleDMLGeneratorTest {
     List<Object> params = resp.getPreparedStatementParameters();
     assertEquals(4, params.size());
     assertEquals(new BigDecimal("1"), params.get(0));
-    assertEquals("Bob", params.get(1));
+    assertEquals(new OracleBindParameter(Types.VARCHAR, null), params.get(1));
     assertEquals(new BigDecimal("42"), params.get(2));
     OracleBindParameter rawBind = (OracleBindParameter) params.get(3);
     assertEquals(Types.VARBINARY, rawBind.sqlType());
@@ -898,7 +890,7 @@ public final class OracleDMLGeneratorTest {
             .put("RID_COL", "AAAR3sAAEAAAACXAAA")
             .put("DEC_COL", "12.50")
             .put("REAL_COL", 1.5)
-            .put("BLOB_COL", "Hello")
+            .put("BLOB_COL", "IA==")
             .put("RAW_COL", "")
             .put("BF_COL", "Infinity");
 
@@ -925,10 +917,10 @@ public final class OracleDMLGeneratorTest {
     assertEquals("AAAR3sAAEAAAACXAAA", params.get(3));
     assertEquals(new BigDecimal("12.50"), params.get(4));
     assertEquals(new BigDecimal("1.5"), params.get(5));
-    // Spanner STRING written to a BLOB / RAW column is stored as UTF-8 bytes.
+    // Spanner STRING written to a BLOB / RAW column holds Base64 encoded bytes.
     OracleBindParameter blobBind = (OracleBindParameter) params.get(6);
     assertEquals(Types.BLOB, blobBind.sqlType());
-    assertArrayEquals("Hello".getBytes(StandardCharsets.UTF_8), (byte[]) blobBind.value());
+    assertArrayEquals(new byte[] {0x20}, (byte[]) blobBind.value());
     assertEquals(new OracleBindParameter(Types.VARBINARY, null), params.get(7));
     assertEquals("INF", params.get(8));
   }

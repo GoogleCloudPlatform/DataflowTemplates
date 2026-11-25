@@ -31,18 +31,15 @@ import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.cloud.teleport.v2.templates.source.oracle.OracleJdbcDao.OracleBindParameter;
 import com.google.common.annotations.VisibleForTesting;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
-import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
@@ -55,18 +52,20 @@ import org.slf4j.LoggerFactory;
  * <p>Column values (including {@code NULL}) are written as {@code ?} placeholders with bind values.
  * Records of a table with the same set of columns therefore produce the same SQL text, which
  * Oracle's implicit statement cache ({@link
- * OracleSpToSrcSourceConnector#IMPLICIT_STATEMENT_CACHE_PROP}) can reuse. Custom transformation
- * outputs that are SQL expressions (rather than plain literals) are written to the SQL text as is.
+ * OracleSpToSrcSourceConnector#IMPLICIT_STATEMENT_CACHE_PROP}) can reuse.
+ *
+ * <p>Custom transformation outputs are also bound as returned (not written to the SQL text), so a
+ * custom transformation returns plain values (e.g. {@code abc}, {@code 42}, a {@code byte[]}), not
+ * SQL literals or expressions. Values use the same format as the Spanner values of the column (e.g.
+ * {@code YYYY-MM-DD} for a DATE).
  */
 public class OracleDMLGenerator implements IDMLGenerator {
 
   private static final Logger LOG = LoggerFactory.getLogger(OracleDMLGenerator.class);
 
-  private static final Pattern PLAIN_NUMERIC_LITERAL = Pattern.compile("^[+-]?\\d+(\\.\\d+)?$");
-
   /**
-   * Spanner type passed to {@link #getColumnValueByType} for custom transformation values. Custom
-   * transformations return SQL text, so their values are never Spanner BYTES or DATE values.
+   * Spanner type passed to {@link #getColumnValueByType} for custom transformation values of
+   * columns without a (non BYTES) Spanner column.
    */
   private static final String CUSTOM_TRANSFORMATION_SPANNER_TYPE = "STRING";
 
@@ -88,26 +87,6 @@ public class OracleDMLGenerator implements IDMLGenerator {
           "int",
           "boolean",
           "bool");
-
-  /** Character types for which custom transformation string literals ({@code '...'}) are bound. */
-  private static final Set<String> CHARACTER_TYPES =
-      Set.of(
-          "varchar",
-          "varchar2",
-          "character varying",
-          "text",
-          "char",
-          "character",
-          "clob",
-          "long",
-          "nvarchar2",
-          "nchar",
-          "nchar varying",
-          "national char",
-          "national char varying",
-          "national character",
-          "national character varying",
-          "nclob");
 
   @Override
   public DMLGeneratorResponse getDMLStatement(DMLGeneratorRequest dmlGeneratorRequest) {
@@ -175,7 +154,7 @@ public class OracleDMLGenerator implements IDMLGenerator {
             dmlGeneratorRequest.getNewValuesJson(),
             dmlGeneratorRequest.getKeyValuesJson(),
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
-            dmlGeneratorRequest.getCustomTransformationResponse(),
+            binder.customTransformationColumns(),
             binder::mapColumnValue,
             null);
     if (pkcolumnNameValues == null || pkcolumnNameValues.isEmpty()) {
@@ -306,7 +285,7 @@ public class OracleDMLGenerator implements IDMLGenerator {
             dmlGeneratorRequest.getNewValuesJson(),
             dmlGeneratorRequest.getKeyValuesJson(),
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
-            dmlGeneratorRequest.getCustomTransformationResponse(),
+            binder.customTransformationColumns(),
             binder::mapColumnValue,
             null);
 
@@ -431,35 +410,35 @@ public class OracleDMLGenerator implements IDMLGenerator {
         return sqlValue;
       }
       if (customTransformationResponse.containsKey(colName)) {
-        return bindCustomTransformationValue(sourceType, sqlValue, bindParams);
+        bindParams.add(
+            toCustomTransformationBindValue(
+                normalizeSourceType(sourceType), customTransformationResponse.get(colName)));
+        return getColumnValueByType(
+            sourceType, sourceDbTimezoneOffset, getCustomTransformationSpannerType(colName));
       }
       throw new IllegalStateException("No bind value was recorded for column " + colName);
     }
 
     /**
-     * Returns the SQL expression for a custom transformation output and appends its bind value (if
-     * any) to {@code bindParams}.
-     *
-     * <p>As for the other JDBC sources, custom transformations return SQL expressions such as
-     * {@code 'abc'}, {@code 123}, {@code HEXTORAW('...')} or {@code TO_DATE(...)}. Plain literals
-     * are bound so that the statement can be cached and values larger than Oracle's 4000 byte
-     * literal limit (ORA-01704) are supported; any other expression is written to the SQL statement
-     * as is.
+     * Custom transformation map passed to {@link DMLGeneratorUtils}, which calls {@code toString()}
+     * on each value. The values are bound by {@link #bindColumn}, so {@code null} values (bound as
+     * typed {@code NULL}s) are passed as {@code "NULL"}.
      */
-    private String bindCustomTransformationValue(
-        String rawSourceType, String sqlValue, List<Object> bindParams) {
-      String sourceType = normalizeSourceType(rawSourceType);
-      String literal = sqlValue.trim();
-      Object bindValue =
-          "null".equalsIgnoreCase(literal)
-              ? new OracleBindParameter(getBindSqlType(sourceType), null)
-              : toCustomTransformationBindValue(sourceType, literal);
-      if (bindValue == null) {
-        return sqlValue;
-      }
-      bindParams.add(bindValue);
-      return getColumnValueByType(
-          rawSourceType, sourceDbTimezoneOffset, CUSTOM_TRANSFORMATION_SPANNER_TYPE);
+    Map<String, Object> customTransformationColumns() {
+      Map<String, Object> columns = new HashMap<>();
+      customTransformationResponse.forEach(
+          (colName, value) -> columns.put(colName, (value == null) ? "NULL" : value));
+      return columns;
+    }
+
+    /**
+     * Spanner type used to choose the SQL expression of a custom transformation value: the type of
+     * the mapped Spanner column, as for replicated values. Custom transformation values are bound
+     * as returned, so they are never hex encoded BYTES values.
+     */
+    private String getCustomTransformationSpannerType(String sourceColName) {
+      String spannerType = getSpannerTypeCode(sourceColName);
+      return isBytesType(spannerType) ? CUSTOM_TRANSFORMATION_SPANNER_TYPE : spannerType;
     }
 
     private String getSpannerTypeCode(String sourceColName) {
@@ -479,72 +458,20 @@ public class OracleDMLGenerator implements IDMLGenerator {
   }
 
   /**
-   * Returns the bind value of a plain custom transformation literal, or {@code null} for any other
-   * SQL expression.
+   * Returns the bind value of a custom transformation output. Values are bound as returned: a
+   * {@code byte[]} (or the Base64 decoded bytes of any other value) for binary columns, and the
+   * string form of the value with the column's JDBC type for any other column.
    */
-  private static Object toCustomTransformationBindValue(String sourceType, String literal) {
+  private static Object toCustomTransformationBindValue(String sourceType, Object value) {
     int sqlType = getBindSqlType(sourceType);
+    if (value == null) {
+      return new OracleBindParameter(sqlType, null);
+    }
     if (sqlType == Types.BLOB || sqlType == Types.VARBINARY) {
-      byte[] bytes = parseHexToRawLiteral(literal);
-      return (bytes == null) ? null : toTypedBindValue(sqlType, bytes);
+      byte[] bytes = (value instanceof byte[] b) ? b : decodeBase64(value.toString());
+      return toTypedBindValue(sqlType, bytes);
     }
-    if (NUMERIC_TYPES.contains(sourceType)) {
-      String unquoted = unquoteStrictSqlStringLiteral(literal);
-      String number = (unquoted == null) ? literal : unquoted.trim();
-      return PLAIN_NUMERIC_LITERAL.matcher(number).matches() ? new BigDecimal(number) : null;
-    }
-    if (CHARACTER_TYPES.contains(sourceType)) {
-      String unquoted = unquoteStrictSqlStringLiteral(literal);
-      return (unquoted == null)
-          ? null
-          : toBindValueByType(sourceType, StringUtils.replace(unquoted, "\u0000", ""));
-    }
-    return null;
-  }
-
-  /** Returns the bytes of a {@code HEXTORAW('<hex>')} literal, or {@code null} otherwise. */
-  private static byte[] parseHexToRawLiteral(String literal) {
-    if (!StringUtils.startsWithIgnoreCase(literal, "HEXTORAW(") || !literal.endsWith(")")) {
-      return null;
-    }
-    String hex = unquoteStrictSqlStringLiteral(literal.substring(9, literal.length() - 1));
-    if (hex == null || hex.length() % 2 != 0) {
-      return null;
-    }
-    try {
-      return HexFormat.of().parseHex(hex);
-    } catch (IllegalArgumentException e) {
-      return null;
-    }
-  }
-
-  /**
-   * Unquotes a single SQL string literal ({@code '...'}) in which every {@code '} is escaped as
-   * {@code ''}. Returns {@code null} for any other expression (e.g. {@code 'a' || 'b'}).
-   */
-  @VisibleForTesting
-  static String unquoteStrictSqlStringLiteral(String s) {
-    if (s == null) {
-      return null;
-    }
-    String trimmed = s.trim();
-    int len = trimmed.length();
-    if (len < 2 || trimmed.charAt(0) != '\'' || trimmed.charAt(len - 1) != '\'') {
-      return null;
-    }
-    StringBuilder sb = new StringBuilder(len - 2);
-    for (int i = 1; i < len - 1; i++) {
-      char c = trimmed.charAt(i);
-      if (c == '\'') {
-        if (i + 1 < len - 1 && trimmed.charAt(i + 1) == '\'') {
-          i++;
-        } else {
-          return null;
-        }
-      }
-      sb.append(c);
-    }
-    return sb.toString();
+    return toBindValueByType(sourceType, StringUtils.replace(value.toString(), "\u0000", ""));
   }
 
   /** Returns the bind value for a non-null column value. */
@@ -560,8 +487,8 @@ public class OracleDMLGenerator implements IDMLGenerator {
     String colInputValue = getColumnInputValue(colType, sourceType, valuesJson, colName);
     int bindSqlType = getBindSqlType(sourceType);
     if (bindSqlType == Types.BLOB || bindSqlType == Types.VARBINARY) {
-      // Non-BYTES Spanner value (e.g. STRING) written to a binary column: stored as UTF-8 bytes.
-      return toTypedBindValue(bindSqlType, colInputValue.getBytes(StandardCharsets.UTF_8));
+      // Non-BYTES Spanner value (e.g. STRING) written to a binary column: Base64 encoded bytes.
+      return toTypedBindValue(bindSqlType, decodeBase64(colInputValue));
     }
     return toBindValueByType(sourceType, StringUtils.replace(colInputValue, "\u0000", ""));
   }
