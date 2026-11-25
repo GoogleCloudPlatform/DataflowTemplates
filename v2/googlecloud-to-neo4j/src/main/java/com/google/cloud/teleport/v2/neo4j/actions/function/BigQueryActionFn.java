@@ -35,7 +35,7 @@ public class BigQueryActionFn extends DoFn<Integer, Row> {
   private final String sql;
 
   public BigQueryActionFn(ActionContext context) {
-    var sql = ((BigQueryAction) context.getAction()).sql();
+    var sql = ((BigQueryAction) context.action()).sql();
     if (StringUtils.isEmpty(sql)) {
       throw new IllegalArgumentException("Options 'sql' not provided for preload query transform.");
     }

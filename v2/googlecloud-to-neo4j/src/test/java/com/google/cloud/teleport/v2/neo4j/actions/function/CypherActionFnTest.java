@@ -44,16 +44,16 @@ public class CypherActionFnTest {
                 ActionStage.POST_NODES,
                 "RETURN 42",
                 CypherExecutionMode.AUTOCOMMIT),
-            mock(ConnectionParams.class),
+            () -> mock(ConnectionParams.class),
             "a-version");
-    CypherActionFn actionFn = new CypherActionFn(context, () -> connection);
+    var actionFn = new CypherActionFn(context, () -> connection);
     actionFn.setup();
 
     actionFn.processElement(mock(ProcessContext.class));
 
-    Map<String, String> expectedTxMetadata =
+    var expectedTxMetadata =
         Map.of("sink", "neo4j", "step", "cypher-action", "execution", "autocommit");
-    TransactionConfig expectedTransactionConfig =
+    var expectedTransactionConfig =
         TransactionConfig.builder()
             .withMetadata(Map.of("app", "dataflow", "metadata", expectedTxMetadata))
             .build();
@@ -70,16 +70,16 @@ public class CypherActionFnTest {
                 ActionStage.POST_NODES,
                 "RETURN 42",
                 CypherExecutionMode.TRANSACTION),
-            mock(ConnectionParams.class),
+            () -> mock(ConnectionParams.class),
             "a-version");
-    CypherActionFn actionFn = new CypherActionFn(context, () -> connection);
+    var actionFn = new CypherActionFn(context, () -> connection);
     actionFn.setup();
 
     actionFn.processElement(mock(ProcessContext.class));
 
-    Map<String, String> expectedTxMetadata =
+    var expectedTxMetadata =
         Map.of("sink", "neo4j", "step", "cypher-action", "execution", "transaction");
-    TransactionConfig expectedTransactionConfig =
+    var expectedTransactionConfig =
         TransactionConfig.builder()
             .withMetadata(Map.of("app", "dataflow", "metadata", expectedTxMetadata))
             .build();

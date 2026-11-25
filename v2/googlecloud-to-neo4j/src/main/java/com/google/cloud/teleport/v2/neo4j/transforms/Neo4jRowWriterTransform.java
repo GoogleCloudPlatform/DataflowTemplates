@@ -73,7 +73,7 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
   public Neo4jRowWriterTransform(
       Configuration configuration,
       ReportedSourceType reportedSourceType,
-      ConnectionParams neoConnection,
+      SerializableSupplier<ConnectionParams> connectionParamsProvider,
       String templateVersion,
       StepSequence targetSequence,
       List<PCollection<?>> dependencies,
@@ -84,7 +84,7 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
         targetSequence,
         dependencies,
         step,
-        () -> new Neo4jConnection(neoConnection, templateVersion));
+        () -> new Neo4jConnection(connectionParamsProvider.get(), templateVersion));
   }
 
   @VisibleForTesting

@@ -28,6 +28,7 @@ import com.google.cloud.teleport.v2.neo4j.telemetry.ReportedSourceType;
 import com.google.cloud.teleport.v2.neo4j.transforms.Neo4jRowWriterTransform;
 import com.google.cloud.teleport.v2.neo4j.transforms.VerifyOrResetDatabaseFn;
 import com.google.cloud.teleport.v2.neo4j.utils.ProcessingCoder;
+import com.google.cloud.teleport.v2.neo4j.utils.SerializableSupplier;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -57,7 +58,7 @@ public class Neo4jImportPipelineRunner {
 
   private final String templateVersion;
 
-  private final ConnectionParams neo4jConnectionConfig;
+  private final SerializableSupplier<ConnectionParams> connectionParamsProvider;
 
   private final OverlayTokens overlayTokens;
 
@@ -72,13 +73,13 @@ public class Neo4jImportPipelineRunner {
   public Neo4jImportPipelineRunner(
       PipelineOptions options,
       String templateVersion,
-      ConnectionParams neo4jConnectionConfig,
+      SerializableSupplier<ConnectionParams> connectionParamsProvider,
       OverlayTokens overlayTokens,
       ImportPipeline pipeline) {
 
     this.options = options;
     this.templateVersion = templateVersion;
-    this.neo4jConnectionConfig = neo4jConnectionConfig;
+    this.connectionParamsProvider = connectionParamsProvider;
     this.overlayTokens = overlayTokens;
     this.pipelineDescription = pipeline;
     this.pipelineRegistry = new PipelineRegistry();
@@ -139,7 +140,7 @@ public class Neo4jImportPipelineRunner {
                 new Neo4jRowWriterTransform(
                     pipelineDescription.configuration(),
                     ReportedSourceType.reportedSourceTypeOf(sourceContext.step),
-                    neo4jConnectionConfig,
+                    connectionParamsProvider,
                     templateVersion,
                     stepSequence,
                     dependencies,
@@ -228,11 +229,12 @@ public class Neo4jImportPipelineRunner {
         .apply("Start " + description, Create.of(1L))
         .apply(
             description,
-            ParDo.of(new VerifyOrResetDatabaseFn(neo4jConnectionConfig, templateVersion, resetDb)));
+            ParDo.of(
+                new VerifyOrResetDatabaseFn(connectionParamsProvider, templateVersion, resetDb)));
   }
 
   private ActionContext newActionContext(Action action) {
-    return new ActionContext(action, neo4jConnectionConfig, templateVersion);
+    return new ActionContext(action, connectionParamsProvider, templateVersion);
   }
 
   private static class PipelineRegistry {

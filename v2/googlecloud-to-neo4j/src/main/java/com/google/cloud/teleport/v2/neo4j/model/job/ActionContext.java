@@ -16,32 +16,13 @@
 package com.google.cloud.teleport.v2.neo4j.model.job;
 
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
+import com.google.cloud.teleport.v2.neo4j.utils.SerializableSupplier;
 import java.io.Serializable;
 import org.neo4j.importer.v1.actions.Action;
 
 /** Context for actions. */
-public class ActionContext implements Serializable {
-
-  private final Action action;
-  private final ConnectionParams neo4jConnectionParams;
-  private final String templateVersion;
-
-  public ActionContext(
-      Action action, ConnectionParams neo4jConnectionParams, String templateVersion) {
-    this.action = action;
-    this.neo4jConnectionParams = neo4jConnectionParams;
-    this.templateVersion = templateVersion;
-  }
-
-  public Action getAction() {
-    return action;
-  }
-
-  public ConnectionParams getNeo4jConnectionParams() {
-    return neo4jConnectionParams;
-  }
-
-  public String getTemplateVersion() {
-    return templateVersion;
-  }
-}
+public record ActionContext(
+    Action action,
+    SerializableSupplier<ConnectionParams> connectionParamsProvider,
+    String templateVersion)
+    implements Serializable {}
