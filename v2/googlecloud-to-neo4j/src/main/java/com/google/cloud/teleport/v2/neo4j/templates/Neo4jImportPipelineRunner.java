@@ -308,13 +308,12 @@ public class Neo4jImportPipelineRunner {
       return Objects.equals(step, that.step)
           && Objects.equals(provider, that.provider)
           && Objects.equals(schema, that.schema)
-          && Objects.equals(startupDependency, that.startupDependency)
-          && Objects.equals(rows, that.rows);
+          && Objects.equals(startupDependency, that.startupDependency);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(step, provider, schema, startupDependency, rows);
+      return Objects.hash(step, provider, schema, startupDependency);
     }
 
     @Override
