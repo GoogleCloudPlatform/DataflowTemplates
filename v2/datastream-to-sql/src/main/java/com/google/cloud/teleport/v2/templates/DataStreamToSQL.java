@@ -35,6 +35,7 @@ import com.google.cloud.teleport.v2.transforms.ProcessDml;
 import com.google.cloud.teleport.v2.utils.DatastreamToDML;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Splitter;
+import java.io.IOException;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
@@ -51,11 +52,16 @@ import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.util.BackOff;
+import org.apache.beam.sdk.util.BackOffUtils;
+import org.apache.beam.sdk.util.FluentBackoff;
+import org.apache.beam.sdk.util.Sleeper;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTagList;
+import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -581,10 +587,16 @@ public class DataStreamToSQL {
    * <p>This DoFn connects to a database and executes DML statements. On failure, it outputs a
    * FailsafeElement containing the original record and error information.
    */
-  private static class ExecuteDmlFn extends DoFn<KV<String, DmlInfo>, KV<String, DmlInfo>> {
+  public static class ExecuteDmlFn extends DoFn<KV<String, DmlInfo>, KV<String, DmlInfo>> {
     private static final Logger LOG = LoggerFactory.getLogger(ExecuteDmlFn.class);
+    private static final int MAX_RETRIES = 3;
+    private static final long INITIAL_BACKOFF_MILLIS = 500L;
 
-    private final CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration;
+    private final org.apache.beam.sdk.transforms.SerializableFunction<Void, javax.sql.DataSource>
+        dataSourceProviderFn;
+    private final int maxRetries;
+    private final long initialBackoffMillis;
+    private transient FluentBackoff executeBackoff;
     private transient javax.sql.DataSource dataSource;
     private transient java.sql.Connection connection;
 
@@ -597,36 +609,164 @@ public class DataStreamToSQL {
                 FailsafeElement<KV<String, DmlInfo>, KV<String, DmlInfo>>>() {};
 
     public ExecuteDmlFn(CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration) {
-      this.dataSourceConfiguration = dataSourceConfiguration;
+      this(
+          CdcJdbcIO.DataSourceProviderFromDataSourceConfiguration.of(dataSourceConfiguration),
+          MAX_RETRIES,
+          INITIAL_BACKOFF_MILLIS);
+    }
+
+    public ExecuteDmlFn(
+        org.apache.beam.sdk.transforms.SerializableFunction<Void, javax.sql.DataSource>
+            dataSourceProviderFn,
+        int maxRetries,
+        long initialBackoffMillis) {
+      this.dataSourceProviderFn = dataSourceProviderFn;
+      this.maxRetries = maxRetries;
+      this.initialBackoffMillis = initialBackoffMillis;
     }
 
     @Setup
-    public void setup() throws SQLException {
-      dataSource = dataSourceConfiguration.buildDatasource();
-      connection = dataSource.getConnection();
+    public void setup() {
+      executeBackoff =
+          FluentBackoff.DEFAULT
+              .withMaxRetries(maxRetries)
+              .withInitialBackoff(Duration.millis(initialBackoffMillis));
+      dataSource = dataSourceProviderFn.apply(null);
+    }
+
+    @FinishBundle
+    public void finishBundle() {
+      closeConnectionQuietly();
     }
 
     @Teardown
-    public void teardown() throws SQLException {
+    public void teardown() {
+      closeConnectionQuietly();
+    }
+
+    private java.sql.Connection getConnection() throws SQLException {
+      if (dataSource == null) {
+        dataSource = dataSourceProviderFn.apply(null);
+      }
+      if (connection == null || connection.isClosed()) {
+        connection = dataSource.getConnection();
+      }
+      return connection;
+    }
+
+    private void closeConnectionQuietly() {
       if (connection != null) {
-        connection.close();
+        try {
+          connection.close();
+        } catch (SQLException e) {
+          LOG.warn("Failed to close SQL connection", e);
+        } finally {
+          connection = null;
+        }
+      }
+    }
+
+    private void invalidateAndCloseConnectionQuietly() {
+      if (connection != null) {
+        try {
+          if (dataSource instanceof org.apache.commons.dbcp2.BasicDataSource) {
+            ((org.apache.commons.dbcp2.BasicDataSource) dataSource)
+                .invalidateConnection(connection);
+          } else {
+            connection.close();
+          }
+        } catch (Exception e) {
+          LOG.warn("Failed to invalidate or close SQL connection", e);
+          try {
+            connection.close();
+          } catch (SQLException ex) {
+            LOG.warn("Failed to close SQL connection after invalidate failure", ex);
+          }
+        } finally {
+          connection = null;
+        }
+      }
+    }
+
+    private static SQLException nextSqlException(SQLException current) {
+      SQLException next = current.getNextException();
+      if (next != null) {
+        return next;
+      }
+      Throwable cause = current.getCause();
+      return cause instanceof SQLException ? (SQLException) cause : null;
+    }
+
+    public static boolean isRetryableSqlException(
+        SQLException e, java.sql.Connection currentConnection) {
+      SQLException current = e;
+      while (current != null) {
+        if (current instanceof java.sql.SQLTransientException
+            || current instanceof java.sql.SQLRecoverableException) {
+          return true;
+        }
+        String sqlState = current.getSQLState();
+        if (sqlState != null) {
+          if (sqlState.startsWith("08")
+              || sqlState.startsWith("40")
+              || sqlState.startsWith("53")
+              || sqlState.startsWith("57")) {
+            return true;
+          }
+          if (sqlState.startsWith("22") || sqlState.startsWith("23") || sqlState.startsWith("42")) {
+            return false;
+          }
+        }
+        current = nextSqlException(current);
+      }
+      if (currentConnection == null) {
+        return true;
+      }
+      try {
+        return currentConnection.isClosed();
+      } catch (SQLException ex) {
+        return true;
       }
     }
 
     @ProcessElement
-    public void processElement(ProcessContext c) {
+    public void processElement(ProcessContext c) throws IOException, InterruptedException {
       KV<String, DmlInfo> dmlInfo = c.element();
-      try (java.sql.Statement statement = connection.createStatement()) {
-        LOG.debug("Executing SQL: {}", dmlInfo.getValue().getDmlSql());
-        statement.execute(dmlInfo.getValue().getDmlSql());
-        c.output(SUCCESS_TAG, dmlInfo);
-      } catch (SQLException e) {
-        LOG.error("Failed to execute DML: " + dmlInfo.getValue().getDmlSql(), e);
-        c.output(
-            FAILURE_TAG,
-            FailsafeElement.of(dmlInfo, dmlInfo)
-                .setErrorMessage(e.getMessage())
-                .setStacktrace(getStackTraceAsString(e)));
+      Sleeper sleeper = Sleeper.DEFAULT;
+      if (executeBackoff == null) {
+        executeBackoff =
+            FluentBackoff.DEFAULT
+                .withMaxRetries(maxRetries)
+                .withInitialBackoff(Duration.millis(initialBackoffMillis));
+      }
+      BackOff backoff = executeBackoff.backoff();
+      while (true) {
+        try {
+          java.sql.Connection conn = getConnection();
+          try (java.sql.Statement statement = conn.createStatement()) {
+            LOG.debug("Executing SQL: {}", dmlInfo.getValue().getDmlSql());
+            statement.execute(dmlInfo.getValue().getDmlSql());
+            c.output(SUCCESS_TAG, dmlInfo);
+            return;
+          }
+        } catch (SQLException e) {
+          boolean retryable = isRetryableSqlException(e, connection);
+          if (retryable) {
+            invalidateAndCloseConnectionQuietly();
+          }
+          if (!retryable || !BackOffUtils.next(sleeper, backoff)) {
+            LOG.error("Failed to execute DML: " + dmlInfo.getValue().getDmlSql(), e);
+            c.output(
+                FAILURE_TAG,
+                FailsafeElement.of(dmlInfo, dmlInfo)
+                    .setErrorMessage(e.getMessage())
+                    .setStacktrace(getStackTraceAsString(e)));
+            return;
+          }
+          LOG.warn(
+              "SQLException occurred while executing DML, reconnecting and retrying: {}",
+              e.toString());
+        }
       }
     }
 
