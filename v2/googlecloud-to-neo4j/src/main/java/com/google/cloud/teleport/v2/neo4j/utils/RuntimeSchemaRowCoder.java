@@ -16,17 +16,18 @@
 package com.google.cloud.teleport.v2.neo4j.utils;
 
 import com.google.common.annotations.VisibleForTesting;
-import java.io.EOFException;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.io.ByteStreams;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serial;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
 import org.apache.beam.model.pipeline.v1.SchemaApi;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.RowCoder;
@@ -57,13 +58,18 @@ public class RuntimeSchemaRowCoder extends Coder<Row> {
   private static final VarIntCoder LENGTH_CODER = VarIntCoder.of();
 
   // A pipeline only ever sees a handful of distinct schemas; caching avoids re-serializing the
-  // same schema for every encoded element and reparsing it for every decoded element. The bound
-  // only guards against pathological schema churn: evicting an entry costs recomputation, never
-  // correctness, because the schema travels with each element.
+  // same schema for every encoded element and reparsing it for every decoded element. The caches
+  // are bounded with an approximate-LRU eviction policy to guard against pathological schema
+  // churn: evicting an entry costs recomputation, never correctness, because the schema travels
+  // with each element. Cache hits must not serialize the hot path, since every harness thread
+  // encodes and decodes elements.
   @VisibleForTesting static final int MAX_CACHED_SCHEMAS = 64;
 
-  private static final Map<Schema, EncodedSchema> ENCODERS = boundedCache();
-  private static final Map<SchemaKey, EncodedSchema> DECODERS = boundedCache();
+  private static final Cache<Schema, EncodedSchema> ENCODERS =
+      CacheBuilder.newBuilder().maximumSize(MAX_CACHED_SCHEMAS).build();
+
+  private static final Cache<SchemaKey, EncodedSchema> DECODERS =
+      CacheBuilder.newBuilder().maximumSize(MAX_CACHED_SCHEMAS).build();
 
   @Override
   public void encode(Row value, @NonNull OutputStream out) throws IOException {
@@ -76,13 +82,28 @@ public class RuntimeSchemaRowCoder extends Coder<Row> {
   @Override
   public Row decode(@NonNull InputStream in) throws IOException {
     int schemaSize = LENGTH_CODER.decode(in);
-    byte[] serializedSchema = readFully(in, schemaSize);
+    var serializedSchema = new byte[schemaSize];
+    ByteStreams.readFully(in, serializedSchema);
     var key = new SchemaKey(serializedSchema);
-    var encodedSchema = DECODERS.get(key);
+    var encodedSchema = DECODERS.getIfPresent(key);
     if (encodedSchema == null) {
-      encodedSchema = EncodedSchema.fromProtoBytes(serializedSchema);
-      DECODERS.put(key, encodedSchema);
-      ENCODERS.put(encodedSchema.schema, encodedSchema);
+      try {
+        encodedSchema =
+            DECODERS.get(
+                key,
+                () -> {
+                  var loaded = EncodedSchema.fromProtoBytes(serializedSchema);
+                  // Decoded rows are re-encoded downstream: warm the encoder cache too. The loader
+                  // runs once per distinct schema, even when threads race on the same miss.
+                  ENCODERS.put(loaded.schema, loaded);
+                  return loaded;
+                });
+      } catch (ExecutionException e) {
+        if (e.getCause() instanceof IOException cause) {
+          throw cause;
+        }
+        throw new IOException("Unable to decode the row schema", e.getCause());
+      }
     }
     return encodedSchema.coder.decode(in);
   }
@@ -116,37 +137,29 @@ public class RuntimeSchemaRowCoder extends Coder<Row> {
     return Objects.hash(RuntimeSchemaRowCoder.class);
   }
 
+  @VisibleForTesting
+  static int cachedEncoderCount() {
+    return (int) ENCODERS.size();
+  }
+
+  @VisibleForTesting
+  static int cachedDecoderCount() {
+    return (int) DECODERS.size();
+  }
+
+  @VisibleForTesting
+  static void resetCaches() {
+    ENCODERS.invalidateAll();
+    DECODERS.invalidateAll();
+  }
+
   private static EncodedSchema encodedFor(Schema schema) {
-    var encodedSchema = ENCODERS.get(schema);
+    var encodedSchema = ENCODERS.getIfPresent(schema);
     if (encodedSchema == null) {
-      encodedSchema = new EncodedSchema(schema);
-      ENCODERS.put(schema, encodedSchema);
+      // Put through the map view so that size-based eviction still applies.
+      encodedSchema = ENCODERS.asMap().computeIfAbsent(schema, EncodedSchema::new);
     }
     return encodedSchema;
-  }
-
-  private static byte[] readFully(InputStream inStream, int size) throws IOException {
-    byte[] bytes = new byte[size];
-    int offset = 0;
-    while (offset < size) {
-      int read = inStream.read(bytes, offset, size - offset);
-      if (read < 0) {
-        throw new EOFException(
-            String.format("Expected %d schema bytes but only read %d", size, offset));
-      }
-      offset += read;
-    }
-    return bytes;
-  }
-
-  private static <K> Map<K, EncodedSchema> boundedCache() {
-    return Collections.synchronizedMap(
-        new LinkedHashMap<>(16, 0.75f, true) {
-          @Override
-          protected boolean removeEldestEntry(Map.Entry<K, EncodedSchema> eldest) {
-            return size() > MAX_CACHED_SCHEMAS;
-          }
-        });
   }
 
   /** Content-based key for a serialized schema, so decoding can hit the cache before parsing. */

@@ -23,14 +23,24 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.SchemaTranslation;
 import org.apache.beam.sdk.schemas.logicaltypes.SqlTypes;
 import org.apache.beam.sdk.util.SerializableUtils;
 import org.apache.beam.sdk.values.Row;
+import org.junit.Before;
 import org.junit.Test;
 
 public class RuntimeSchemaRowCoderTest {
+
+  @Before
+  public void resetCoderCaches() {
+    RuntimeSchemaRowCoder.resetCaches();
+  }
 
   @Test
   public void roundTripsRowsWithTheirSchema() throws Exception {
@@ -103,19 +113,91 @@ public class RuntimeSchemaRowCoderTest {
     for (int i = 0; i < RuntimeSchemaRowCoder.MAX_CACHED_SCHEMAS + 2; i++) {
       var schema = Schema.builder().addStringField("field_" + i).build();
       var row = Row.withSchema(schema).addValue("value-" + i).build();
-        try (var out = new ByteArrayOutputStream()) {
-            RuntimeSchemaRowCoder.INSTANCE.encode(row, out);
-            rows.add(row);
-            encodedRows.add(out.toByteArray());
-        }
+      try (var out = new ByteArrayOutputStream()) {
+        RuntimeSchemaRowCoder.INSTANCE.encode(row, out);
+        rows.add(row);
+        encodedRows.add(out.toByteArray());
+      }
     }
 
     for (int i = 0; i < rows.size(); i++) {
       var encoded = encodedRows.get(i);
-        try (var input = new ByteArrayInputStream(encoded)) {
-            var decoded = RuntimeSchemaRowCoder.INSTANCE.decode(input);
-            assertThat(decoded).isEqualTo(rows.get(i));
-        }
+      try (var input = new ByteArrayInputStream(encoded)) {
+        var decoded = RuntimeSchemaRowCoder.INSTANCE.decode(input);
+        assertThat(decoded).isEqualTo(rows.get(i));
+      }
+    }
+  }
+
+  @Test
+  public void cachesStayBounded() throws Exception {
+    var encodedRows = new ArrayList<byte[]>();
+    for (int i = 0; i < RuntimeSchemaRowCoder.MAX_CACHED_SCHEMAS * 3; i++) {
+      var schema = Schema.builder().addStringField("field_" + i).build();
+      var row = Row.withSchema(schema).addValue("value-" + i).build();
+      try (var out = new ByteArrayOutputStream()) {
+        RuntimeSchemaRowCoder.INSTANCE.encode(row, out);
+        encodedRows.add(out.toByteArray());
+      }
+    }
+    assertThat(RuntimeSchemaRowCoder.cachedEncoderCount())
+        .isAtMost(RuntimeSchemaRowCoder.MAX_CACHED_SCHEMAS);
+
+    for (var encoded : encodedRows) {
+      RuntimeSchemaRowCoder.INSTANCE.decode(new ByteArrayInputStream(encoded));
+    }
+
+    assertThat(RuntimeSchemaRowCoder.cachedDecoderCount())
+        .isAtMost(RuntimeSchemaRowCoder.MAX_CACHED_SCHEMAS);
+    assertThat(RuntimeSchemaRowCoder.cachedEncoderCount())
+        .isAtMost(RuntimeSchemaRowCoder.MAX_CACHED_SCHEMAS);
+  }
+
+  @Test
+  public void roundTripsConcurrently() throws Exception {
+    var rows = new ArrayList<Row>();
+    var encodedRows = new ArrayList<byte[]>();
+    for (int i = 0; i < 8; i++) {
+      var schema = Schema.builder().addStringField("field_" + i).addInt64Field("count").build();
+      var row = Row.withSchema(schema).addValues("value-" + i, (long) i).build();
+      try (var out = new ByteArrayOutputStream()) {
+        RuntimeSchemaRowCoder.INSTANCE.encode(row, out);
+        encodedRows.add(out.toByteArray());
+      }
+      rows.add(row);
+    }
+
+    int threads = 8;
+    var executor = Executors.newFixedThreadPool(threads);
+    try {
+      var start = new CountDownLatch(1);
+      var futures = new ArrayList<Future<?>>();
+      for (int t = 0; t < threads; t++) {
+        int offset = t;
+        futures.add(
+            executor.submit(
+                () -> {
+                  start.await();
+                  for (int i = 0; i < 1_000; i++) {
+                    int index = (offset + i) % rows.size();
+                    var decoded =
+                        RuntimeSchemaRowCoder.INSTANCE.decode(
+                            new ByteArrayInputStream(encodedRows.get(index)));
+                    assertThat(decoded).isEqualTo(rows.get(index));
+                    try (var out = new ByteArrayOutputStream()) {
+                      RuntimeSchemaRowCoder.INSTANCE.encode(rows.get(index), out);
+                      assertThat(out.toByteArray()).isEqualTo(encodedRows.get(index));
+                    }
+                  }
+                  return null;
+                }));
+      }
+      start.countDown();
+      for (var future : futures) {
+        future.get(60, TimeUnit.SECONDS);
+      }
+    } finally {
+      executor.shutdownNow();
     }
   }
 
@@ -125,8 +207,8 @@ public class RuntimeSchemaRowCoderTest {
     var row = Row.withSchema(schema).addValue("value").build();
     byte[] payload;
     try (var out = new ByteArrayOutputStream()) {
-        RuntimeSchemaRowCoder.INSTANCE.encode(row, out);
-        payload = out.toByteArray();
+      RuntimeSchemaRowCoder.INSTANCE.encode(row, out);
+      payload = out.toByteArray();
     }
 
     var first = RuntimeSchemaRowCoder.INSTANCE.decode(new ByteArrayInputStream(payload));
