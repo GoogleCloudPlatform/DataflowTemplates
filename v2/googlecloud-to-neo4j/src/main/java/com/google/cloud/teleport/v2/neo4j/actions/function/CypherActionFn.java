@@ -43,11 +43,7 @@ public class CypherActionFn extends DoFn<Integer, Row> {
   private Neo4jConnection connection;
 
   public CypherActionFn(ActionContext context) {
-    this(
-        context,
-        () ->
-            new Neo4jConnection(
-                context.connectionParamsProvider().get(), context.templateVersion()));
+    this(context, connectionSupplier(context));
   }
 
   @VisibleForTesting
@@ -103,5 +99,11 @@ public class CypherActionFn extends DoFn<Integer, Row> {
     if (connection != null) {
       connection.close();
     }
+  }
+
+  private static SerializableSupplier<Neo4jConnection> connectionSupplier(ActionContext context) {
+    var provider = context.connectionParamsProvider();
+    var templateVersion = context.templateVersion();
+    return () -> new Neo4jConnection(provider.get(), templateVersion);
   }
 }
