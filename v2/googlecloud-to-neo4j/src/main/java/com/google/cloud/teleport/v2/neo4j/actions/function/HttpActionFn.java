@@ -32,7 +32,7 @@ public class HttpActionFn extends DoFn<Integer, Row> {
   private final HttpAction action;
 
   public HttpActionFn(ActionContext context) {
-    this.action = ((HttpAction) context.getAction());
+    this.action = ((HttpAction) context.action());
     if (StringUtils.isEmpty(action.url())) {
       throw new RuntimeException("URL not provided for HTTP action.");
     }

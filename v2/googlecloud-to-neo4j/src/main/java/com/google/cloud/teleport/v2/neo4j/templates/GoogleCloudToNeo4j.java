@@ -20,14 +20,10 @@ import com.google.cloud.teleport.metadata.Template.AdditionalDocumentationBlock;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.neo4j.model.InputValidator;
-import com.google.cloud.teleport.v2.neo4j.model.Json;
-import com.google.cloud.teleport.v2.neo4j.model.Json.ParsingResult;
-import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
+import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParamsProvider;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.JobSpecMapper;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.OverlayTokenParser;
 import com.google.cloud.teleport.v2.neo4j.options.Neo4jFlexTemplateOptions;
-import com.google.cloud.teleport.v2.neo4j.utils.FileSystemUtils;
-import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -104,13 +100,16 @@ public class GoogleCloudToNeo4j {
     FileSystems.setDefaultPipelineOptions(options);
     var overlayTokens = OverlayTokenParser.parse(options.getOptionsJson());
     var templateVersion = readTemplateVersion(options);
-    var neo4jConnectionConfig = readConnectionConfiguration(options);
+    // Only the connection reference is read here; the settings are resolved on a worker.
+    var connectionParamsProvider =
+        new ConnectionParamsProvider(
+            options.getNeo4jConnectionSecretId(), options.getNeo4jConnectionUri());
     var importSpecification = JobSpecMapper.parse(options.getJobSpecUri(), overlayTokens);
     var importPipeline =
         new Neo4jImportPipelineRunner(
             options,
             templateVersion,
-            neo4jConnectionConfig,
+            connectionParamsProvider,
             overlayTokens,
             ImportPipeline.of(importSpecification));
     importPipeline.run();
@@ -123,31 +122,5 @@ public class GoogleCloudToNeo4j {
       return defaultVersion;
     }
     return labels.getOrDefault("goog-dataflow-provided-template-version", defaultVersion);
-  }
-
-  private static ConnectionParams readConnectionConfiguration(
-      Neo4jFlexTemplateOptions pipelineOptions) {
-    String neo4jConnectionJson = readConnectionSettings(pipelineOptions);
-    ParsingResult parsingResult = InputValidator.validateNeo4jConnection(neo4jConnectionJson);
-    if (!parsingResult.isSuccessful()) {
-      ValidationErrors.processValidations(
-          "Errors found validating Neo4j connection: ",
-          parsingResult.formatErrors("Could not validate connection JSON"));
-    }
-    return Json.map(parsingResult, ConnectionParams.class);
-  }
-
-  private static String readConnectionSettings(Neo4jFlexTemplateOptions options) {
-    String secretId = options.getNeo4jConnectionSecretId();
-    if (StringUtils.isNotEmpty(secretId)) {
-      return SecretManagerUtils.getSecret(secretId);
-    }
-    String uri = options.getNeo4jConnectionUri();
-    try {
-      return FileSystemUtils.getPathContents(uri);
-    } catch (Exception e) {
-      throw new RuntimeException(
-          String.format("Unable to read Neo4j configuration at URI %s: ", uri), e);
-    }
   }
 }

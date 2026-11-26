@@ -17,10 +17,11 @@ package com.google.cloud.teleport.v2.neo4j.transforms;
 
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
 import com.google.cloud.teleport.v2.neo4j.model.connection.ConnectionParams;
+import com.google.cloud.teleport.v2.neo4j.utils.SerializableSupplier;
 import org.apache.beam.sdk.transforms.DoFn;
 
 public class VerifyOrResetDatabaseFn extends DoFn<Long, Long> {
-  private final ConnectionParams neo4jConnectionConfig;
+  private final SerializableSupplier<ConnectionParams> connectionParamsProvider;
 
   private final String templateVersion;
 
@@ -29,15 +30,17 @@ public class VerifyOrResetDatabaseFn extends DoFn<Long, Long> {
   private transient Neo4jConnection connection;
 
   public VerifyOrResetDatabaseFn(
-      ConnectionParams neo4jConnectionConfig, String templateVersion, boolean resetDb) {
-    this.neo4jConnectionConfig = neo4jConnectionConfig;
+      SerializableSupplier<ConnectionParams> connectionParamsProvider,
+      String templateVersion,
+      boolean resetDb) {
+    this.connectionParamsProvider = connectionParamsProvider;
     this.templateVersion = templateVersion;
     this.resetDb = resetDb;
   }
 
   @Setup
   public void prepare() {
-    this.connection = new Neo4jConnection(neo4jConnectionConfig, templateVersion);
+    this.connection = new Neo4jConnection(connectionParamsProvider.get(), templateVersion);
   }
 
   @Teardown

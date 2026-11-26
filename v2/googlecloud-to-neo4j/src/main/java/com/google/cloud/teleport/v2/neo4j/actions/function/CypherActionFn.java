@@ -43,15 +43,12 @@ public class CypherActionFn extends DoFn<Integer, Row> {
   private Neo4jConnection connection;
 
   public CypherActionFn(ActionContext context) {
-    this(
-        context,
-        () ->
-            new Neo4jConnection(context.getNeo4jConnectionParams(), context.getTemplateVersion()));
+    this(context, connectionSupplier(context));
   }
 
   @VisibleForTesting
   CypherActionFn(ActionContext context, SerializableSupplier<Neo4jConnection> connectionProvider) {
-    CypherAction cypherAction = (CypherAction) context.getAction();
+    CypherAction cypherAction = (CypherAction) context.action();
     String cypher = cypherAction.getQuery();
     if (StringUtils.isEmpty(cypher)) {
       throw new RuntimeException("Options 'cypher' not provided for cypher action transform.");
@@ -102,5 +99,11 @@ public class CypherActionFn extends DoFn<Integer, Row> {
     if (connection != null) {
       connection.close();
     }
+  }
+
+  private static SerializableSupplier<Neo4jConnection> connectionSupplier(ActionContext context) {
+    var provider = context.connectionParamsProvider();
+    var templateVersion = context.templateVersion();
+    return () -> new Neo4jConnection(provider.get(), templateVersion);
   }
 }

@@ -26,7 +26,7 @@ import org.apache.beam.sdk.values.Row;
 public class ActionDoFnFactory {
 
   public static DoFn<Integer, Row> of(ActionContext context) {
-    var action = context.getAction();
+    var action = context.action();
     var actionType = action.getType();
     return switch (actionType) {
       case "bigquery" -> new BigQueryActionFn(context);

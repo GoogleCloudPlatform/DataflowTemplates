@@ -364,7 +364,7 @@ public class Neo4jImportPipelineRunnerTest {
     return new Neo4jImportPipelineRunner(
         this.pipeline.getOptions(),
         "test-version",
-        connectionParams(),
+        () -> connectionParams(),
         new OverlayTokens(Map.of()),
         pipeline);
   }
