@@ -15,18 +15,13 @@
  */
 package com.google.cloud.teleport.v2.neo4j.providers.bigquery;
 
-import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.BigQuerySpec;
-import org.apache.beam.sdk.coders.Coder;
+import com.google.cloud.teleport.v2.neo4j.utils.RuntimeSchemaRowCoder;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
-import org.apache.beam.sdk.schemas.Schema;
-import org.apache.beam.sdk.schemas.SchemaCoder;
-import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
-import org.apache.beam.sdk.values.TypeDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,11 +40,16 @@ public class BqQueryToRow extends PTransform<PBegin, PCollection<Row>> {
     String rewrittenSql = this.bqQuerySpec.getSql();
     LOG.info("Reading BQ with query: {}", rewrittenSql);
 
+    // The schema is resolved by the reader on a worker and carried by each Row (see
+    // BigQueryRowParser and RuntimeSchemaRowCoder). Validation is disabled because it would
+    // perform a BigQuery dry-run in the launcher, before any worker starts.
     var read =
-        BigQueryIO.readTableRowsWithSchema()
+        BigQueryIO.read(new BigQueryRowParser())
             .fromQuery(rewrittenSql)
             .usingStandardSql()
-            .withTemplateCompatibility();
+            .withoutValidation()
+            .withTemplateCompatibility()
+            .withCoder(RuntimeSchemaRowCoder.INSTANCE);
 
     var queryTempProject = this.bqQuerySpec.getQueryTempProject();
     var queryTempDataset = this.bqQuerySpec.getQueryTempDataset();
@@ -60,15 +60,6 @@ public class BqQueryToRow extends PTransform<PBegin, PCollection<Row>> {
       read = read.withQueryTempDataset(queryTempDataset);
     }
 
-    PCollection<TableRow> sourceRows = input.apply(bqQuerySpec.getReadDescription(), read);
-
-    Schema beamSchema = sourceRows.getSchema();
-    Coder<Row> rowCoder = SchemaCoder.of(beamSchema);
-    LOG.info("Beam schema: {}", beamSchema);
-    return sourceRows
-        .apply(
-            bqQuerySpec.getCastDescription(),
-            MapElements.into(TypeDescriptor.of(Row.class)).via(sourceRows.getToRowFunction()))
-        .setCoder(rowCoder);
+    return input.apply(bqQuerySpec.getReadDescription(), read);
   }
 }
