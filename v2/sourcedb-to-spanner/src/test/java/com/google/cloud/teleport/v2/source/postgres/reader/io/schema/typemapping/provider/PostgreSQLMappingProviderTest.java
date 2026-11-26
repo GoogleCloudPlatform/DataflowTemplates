@@ -60,6 +60,7 @@ public class PostgreSQLMappingProviderTest {
         .put("DATE", "{\"type\":\"int\",\"logicalType\":\"date\"}")
         .put("DECIMAL", "{\"type\":\"string\",\"logicalType\":\"number\"}")
         .put("DOUBLE PRECISION", "\"double\"")
+        .put("ENUM", "\"string\"")
         .put("FLOAT4", "\"float\"")
         .put("FLOAT8", "\"double\"")
         .put("INET", "\"string\"")
