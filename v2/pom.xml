@@ -46,7 +46,7 @@
         <dnsjava.version>3.6.5</dnsjava.version>
         <hikaricp.version>5.0.1</hikaricp.version>
         <mongo-java-driver.version>5.13.0</mongo-java-driver.version>
-        <!-- Beam 2.78+ JmsIO uses jakarta.jms (JMS 3.1) with ActiveMQ 6.2.5. -->
+        <!-- Beam 2.78+ JmsIO uses jakarta.jms (JMS 3.1) with ActiveMQ 6.x. -->
         <activemq.version>6.4.0</activemq.version>
         <licenseHeaderFile>../JAVA_LICENSE_HEADER</licenseHeaderFile>
     </properties>
