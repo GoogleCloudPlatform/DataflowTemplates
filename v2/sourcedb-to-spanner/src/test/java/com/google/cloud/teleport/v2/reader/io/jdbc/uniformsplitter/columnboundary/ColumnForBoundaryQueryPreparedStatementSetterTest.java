@@ -24,7 +24,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.BoundaryExtractorFactory;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.BoundarySplitterFactory;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.Range;
@@ -32,6 +31,10 @@ import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.TableId
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.TableSplitSpecification;
 import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
+import com.google.cloud.teleport.v2.source.postgres.reader.io.jdbc.dialectadapter.postgresql.PostgreSQLDialectAdapter;
+import com.google.cloud.teleport.v2.source.postgres.reader.io.jdbc.dialectadapter.postgresql.PostgreSQLDialectAdapter.PostgreSQLVersion;
+import com.google.cloud.teleport.v2.source.sqlserver.reader.io.jdbc.dialectadapter.sqlserver.SqlServerDialectAdapter;
+import com.google.cloud.teleport.v2.source.sqlserver.reader.io.jdbc.dialectadapter.sqlserver.SqlServerUniqueIdentifier;
 import com.google.common.collect.ImmutableList;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -125,7 +128,8 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             .build();
 
     ColumnForBoundaryQueryPreparedStatementSetter setter =
-        new ColumnForBoundaryQueryPreparedStatementSetter(ImmutableList.of(tableSplitSpec));
+        new ColumnForBoundaryQueryPreparedStatementSetter(
+            ImmutableList.of(tableSplitSpec), new MysqlDialectAdapter(MySqlVersion.DEFAULT));
     PreparedStatement mockStatement = mock(PreparedStatement.class);
 
     ColumnForBoundaryQuery initialColumn =
@@ -172,7 +176,8 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             .setInitialSplitHeight(1L)
             .build();
     ColumnForBoundaryQueryPreparedStatementSetter setter =
-        new ColumnForBoundaryQueryPreparedStatementSetter(ImmutableList.of(tableSplitSpec));
+        new ColumnForBoundaryQueryPreparedStatementSetter(
+            ImmutableList.of(tableSplitSpec), new MysqlDialectAdapter(MySqlVersion.DEFAULT));
     PreparedStatement mockStatement = mock(PreparedStatement.class);
 
     Range parentRange =
@@ -241,7 +246,8 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             .setInitialSplitHeight(1L)
             .build();
     ColumnForBoundaryQueryPreparedStatementSetter setter =
-        new ColumnForBoundaryQueryPreparedStatementSetter(ImmutableList.of(tableSplitSpec));
+        new ColumnForBoundaryQueryPreparedStatementSetter(
+            ImmutableList.of(tableSplitSpec), new MysqlDialectAdapter(MySqlVersion.DEFAULT));
     PreparedStatement mockStatement = mock(PreparedStatement.class);
 
     Range childRange =
@@ -322,7 +328,8 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             .setInitialSplitHeight(1L)
             .build();
     ColumnForBoundaryQueryPreparedStatementSetter setter =
-        new ColumnForBoundaryQueryPreparedStatementSetter(ImmutableList.of(tableSplitSpec));
+        new ColumnForBoundaryQueryPreparedStatementSetter(
+            ImmutableList.of(tableSplitSpec), new MysqlDialectAdapter(MySqlVersion.DEFAULT));
     PreparedStatement mockStatement = mock(PreparedStatement.class);
 
     // Directly mock Range and stub only relevant public methods
@@ -390,7 +397,8 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             .setInitialSplitHeight(1L)
             .build();
     ColumnForBoundaryQueryPreparedStatementSetter setter =
-        new ColumnForBoundaryQueryPreparedStatementSetter(ImmutableList.of(tableSplitSpec));
+        new ColumnForBoundaryQueryPreparedStatementSetter(
+            ImmutableList.of(tableSplitSpec), new MysqlDialectAdapter(MySqlVersion.DEFAULT));
     PreparedStatement mockStatement = mock(PreparedStatement.class);
 
     // Directly mock child Range
@@ -467,7 +475,8 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
                     .setApproxRowCount(1L)
                     .setSplitStagesCount(1L)
                     .setInitialSplitHeight(1L)
-                    .build()));
+                    .build()),
+            new MysqlDialectAdapter(MySqlVersion.DEFAULT));
     ColumnForBoundaryQuery initialColumn =
         ColumnForBoundaryQuery.builder()
             .setColumnTypeName("dummy")
@@ -550,7 +559,8 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
             .setInitialSplitHeight(1L)
             .build();
     ColumnForBoundaryQueryPreparedStatementSetter columnForBoundaryQueryPreparedStatementSetter =
-        new ColumnForBoundaryQueryPreparedStatementSetter(ImmutableList.of(tableSplitSpec));
+        new ColumnForBoundaryQueryPreparedStatementSetter(
+            ImmutableList.of(tableSplitSpec), new MysqlDialectAdapter(MySqlVersion.DEFAULT));
 
     // Test for initial column boundary discovery (no parent range)
     ColumnForBoundaryQuery initialColumn =
@@ -664,7 +674,8 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
     PreparedStatement mockStatement = mock(PreparedStatement.class);
     ColumnForBoundaryQueryPreparedStatementSetter setter =
-        new ColumnForBoundaryQueryPreparedStatementSetter(ImmutableList.of(splitSpec));
+        new ColumnForBoundaryQueryPreparedStatementSetter(
+            ImmutableList.of(splitSpec), new PostgreSQLDialectAdapter(PostgreSQLVersion.DEFAULT));
     setter.setParameters(query, mockStatement);
 
     verify(mockStatement, times(1)).setObject(2, new java.util.UUID(0L, 0L));
@@ -734,7 +745,8 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
 
     PreparedStatement mockStatement = mock(PreparedStatement.class);
     ColumnForBoundaryQueryPreparedStatementSetter setter =
-        new ColumnForBoundaryQueryPreparedStatementSetter(ImmutableList.of(splitSpec));
+        new ColumnForBoundaryQueryPreparedStatementSetter(
+            ImmutableList.of(splitSpec), new SqlServerDialectAdapter());
     setter.setParameters(query, mockStatement);
 
     // Parameters for guid_col: enabled, start, end, isLast, end.
@@ -748,7 +760,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
     verify(mockStatement, never()).setObject(anyInt(), eq(endBytes));
   }
 
-  /** Mirrors the extraction performed by {@code BoundaryExtractorFactory} for uniqueidentifier. */
+  /** Mirrors the extraction performed by {@code SqlServerDialectAdapter} for uniqueidentifier. */
   private static byte[] sqlServerSortableBytes(String guid) {
     java.util.UUID uuid = java.util.UUID.fromString(guid);
     java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(new byte[16]);
@@ -756,7 +768,7 @@ public class ColumnForBoundaryQueryPreparedStatementSetterTest {
     byte[] raw = bb.array();
     byte[] sorted = new byte[16];
     for (int i = 0; i < 16; i++) {
-      sorted[i] = raw[BoundaryExtractorFactory.SQL_SERVER_UUID_BYTE_ORDER[i]];
+      sorted[i] = raw[SqlServerUniqueIdentifier.BYTE_ORDER[i]];
     }
     return sorted;
   }

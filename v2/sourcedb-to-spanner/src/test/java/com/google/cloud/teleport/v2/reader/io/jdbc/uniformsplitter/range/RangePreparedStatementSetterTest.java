@@ -20,8 +20,12 @@ import static org.junit.Assert.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.UniformSplitterDBAdapter;
 import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
 import com.google.cloud.teleport.v2.source.mysql.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter.MySqlVersion;
+import com.google.cloud.teleport.v2.source.postgres.reader.io.jdbc.dialectadapter.postgresql.PostgreSQLDialectAdapter;
+import com.google.cloud.teleport.v2.source.postgres.reader.io.jdbc.dialectadapter.postgresql.PostgreSQLDialectAdapter.PostgreSQLVersion;
+import com.google.cloud.teleport.v2.source.sqlserver.reader.io.jdbc.dialectadapter.sqlserver.SqlServerDialectAdapter;
 import com.google.common.collect.ImmutableList;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -114,6 +118,45 @@ public class RangePreparedStatementSetterTest {
   }
 
   @Test
+  public void testSetParameters_delegatesConversionToAdapter() throws Exception {
+    TableIdentifier tableId =
+        TableIdentifier.builder().setDataSourceId("ds").setTableName("t").build();
+    PartitionColumn column =
+        PartitionColumn.builder()
+            .setColumnTypeName("dummy")
+            .setColumnName("col1")
+            .setColumnClass(Integer.class)
+            .build();
+    TableSplitSpecification spec =
+        TableSplitSpecification.builder()
+            .setTableIdentifier(tableId)
+            .setPartitionColumns(ImmutableList.of(column))
+            .setApproxRowCount(1L)
+            .build();
+    UniformSplitterDBAdapter adapter = mock(UniformSplitterDBAdapter.class);
+    org.mockito.Mockito.when(adapter.toQueryParameter(10, column)).thenReturn("ten");
+    org.mockito.Mockito.when(adapter.toQueryParameter(20, column)).thenReturn("twenty");
+    Range range =
+        Range.<Integer>builder()
+            .setColumnTypeName("dummy")
+            .setTableIdentifier(tableId)
+            .setColName("col1")
+            .setColClass(Integer.class)
+            .setStart(10)
+            .setEnd(20)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
+            .build();
+    PreparedStatement statement = mock(PreparedStatement.class);
+
+    new RangePreparedStatementSetter(ImmutableList.of(spec), adapter)
+        .setParameters(range, statement);
+
+    verify(statement).setObject(2, "ten");
+    verify(statement).setObject(3, "twenty");
+    verify(statement).setObject(5, "twenty");
+  }
+
+  @Test
   public void testSetParameters_throwsExceptionOnNullElement() throws Exception {
     TableSplitSpecification tableSplitSpecification =
         TableSplitSpecification.builder()
@@ -134,7 +177,9 @@ public class RangePreparedStatementSetterTest {
             .setInitialSplitHeight(1L)
             .build();
     RangePreparedStatementSetter setter =
-        new RangePreparedStatementSetter(ImmutableList.of(tableSplitSpecification));
+        new RangePreparedStatementSetter(
+            ImmutableList.of(tableSplitSpecification),
+            new MysqlDialectAdapter(MySqlVersion.DEFAULT));
     PreparedStatement mockStatement = mock(PreparedStatement.class);
     assertThrows(NullPointerException.class, () -> setter.setParameters(null, mockStatement));
   }
@@ -160,7 +205,9 @@ public class RangePreparedStatementSetterTest {
             .setInitialSplitHeight(1L)
             .build();
     RangePreparedStatementSetter setter =
-        new RangePreparedStatementSetter(ImmutableList.of(tableSplitSpecification));
+        new RangePreparedStatementSetter(
+            ImmutableList.of(tableSplitSpecification),
+            new MysqlDialectAdapter(MySqlVersion.DEFAULT));
 
     Range unknownTableRange =
         Range.<Integer>builder()
@@ -210,7 +257,9 @@ public class RangePreparedStatementSetterTest {
             .setInitialSplitHeight(2L)
             .build();
     RangePreparedStatementSetter rangePreparedStatementSetter =
-        new RangePreparedStatementSetter(ImmutableList.of(tableSplitSpecification));
+        new RangePreparedStatementSetter(
+            ImmutableList.of(tableSplitSpecification),
+            new MysqlDialectAdapter(MySqlVersion.DEFAULT));
 
     Range singleColNonLastRange =
         Range.<Integer>builder()
@@ -357,7 +406,8 @@ public class RangePreparedStatementSetterTest {
 
     PreparedStatement mockStatement = mock(PreparedStatement.class);
     RangePreparedStatementSetter setter =
-        new RangePreparedStatementSetter(ImmutableList.of(splitSpec));
+        new RangePreparedStatementSetter(
+            ImmutableList.of(splitSpec), new PostgreSQLDialectAdapter(PostgreSQLVersion.DEFAULT));
     setter.setParameters(range, mockStatement);
 
     // Verify that raw 16-byte arrays (startBytes and endBytes) were successfully converted into
@@ -409,7 +459,8 @@ public class RangePreparedStatementSetterTest {
 
     PreparedStatement mockStatement = mock(PreparedStatement.class);
     RangePreparedStatementSetter setter =
-        new RangePreparedStatementSetter(ImmutableList.of(splitSpec));
+        new RangePreparedStatementSetter(
+            ImmutableList.of(splitSpec), new SqlServerDialectAdapter());
     setter.setParameters(range, mockStatement);
 
     verify(mockStatement).setObject(2, "00000000-0000-0000-0000-000000000000");
@@ -450,7 +501,8 @@ public class RangePreparedStatementSetterTest {
 
     PreparedStatement mockStatement = mock(PreparedStatement.class);
     RangePreparedStatementSetter setter =
-        new RangePreparedStatementSetter(ImmutableList.of(splitSpec));
+        new RangePreparedStatementSetter(
+            ImmutableList.of(splitSpec), new PostgreSQLDialectAdapter(PostgreSQLVersion.DEFAULT));
     setter.setParameters(range, mockStatement);
 
     ArgumentCaptor<Object> captor2 = ArgumentCaptor.forClass(Object.class);
@@ -511,7 +563,8 @@ public class RangePreparedStatementSetterTest {
 
     PreparedStatement mockStatement = mock(PreparedStatement.class);
     RangePreparedStatementSetter setter =
-        new RangePreparedStatementSetter(ImmutableList.of(splitSpec));
+        new RangePreparedStatementSetter(
+            ImmutableList.of(splitSpec), new PostgreSQLDialectAdapter(PostgreSQLVersion.DEFAULT));
     setter.setParameters(range, mockStatement);
 
     ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
@@ -563,7 +616,8 @@ public class RangePreparedStatementSetterTest {
 
     PreparedStatement mockStatement = mock(PreparedStatement.class);
     RangePreparedStatementSetter setter =
-        new RangePreparedStatementSetter(ImmutableList.of(splitSpec));
+        new RangePreparedStatementSetter(
+            ImmutableList.of(splitSpec), new PostgreSQLDialectAdapter(PostgreSQLVersion.DEFAULT));
     setter.setParameters(range, mockStatement);
 
     ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);

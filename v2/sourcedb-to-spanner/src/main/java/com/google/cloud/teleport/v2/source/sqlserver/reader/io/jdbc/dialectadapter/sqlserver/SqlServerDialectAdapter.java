@@ -15,12 +15,15 @@
  */
 package com.google.cloud.teleport.v2.source.sqlserver.reader.io.jdbc.dialectadapter.sqlserver;
 
+import static com.google.cloud.teleport.v2.reader.io.jdbc.JdbcCommonConstants.UNIQUEIDENTIFIER_TYPE;
+
 import com.google.cloud.teleport.v2.constants.MetricCounters;
 import com.google.cloud.teleport.v2.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.reader.io.exception.SchemaDiscoveryException;
 import com.google.cloud.teleport.v2.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
+import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
 import com.google.cloud.teleport.v2.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.reader.io.schema.SourceColumnIndexInfo.IndexType;
@@ -40,6 +43,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import javax.annotation.Nullable;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
@@ -597,5 +601,29 @@ public class SqlServerDialectAdapter implements DialectAdapter {
     public int hashCode() {
       return Objects.hash(tableName, columnName);
     }
+  }
+
+  /**
+   * Reads {@code uniqueidentifier} boundaries as bytes in SQL Server's comparison order, so that
+   * split points computed in Java sort like SQL Server sorts the column.
+   */
+  @Override
+  public byte[] extractBinaryBoundary(ResultSet rs, int index, PartitionColumn partitionColumn)
+      throws SQLException {
+    if (!UNIQUEIDENTIFIER_TYPE.equalsIgnoreCase(partitionColumn.columnTypeName())) {
+      return rs.getBytes(index);
+    }
+    return SqlServerUniqueIdentifier.toSortableBytes(rs.getString(index));
+  }
+
+  /** Binds {@code uniqueidentifier} boundaries as their canonical string. */
+  @Override
+  @Nullable
+  public Object toQueryParameter(@Nullable Object value, PartitionColumn partitionColumn) {
+    if (value instanceof byte[] bytes
+        && UNIQUEIDENTIFIER_TYPE.equalsIgnoreCase(partitionColumn.columnTypeName())) {
+      return SqlServerUniqueIdentifier.fromSortableBytes(bytes);
+    }
+    return value;
   }
 }

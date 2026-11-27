@@ -72,7 +72,7 @@ final class RangeBoundaryDoFn extends DoFn<ColumnForBoundaryQuery, Range> implem
     this.tableSplitSpecifications = tableSplitSpecifications;
     this.boundaryTypeMapper = boundaryTypeMapper;
     this.columnForBoundaryQueryPreparedStatementSetter =
-        new ColumnForBoundaryQueryPreparedStatementSetter(tableSplitSpecifications);
+        new ColumnForBoundaryQueryPreparedStatementSetter(tableSplitSpecifications, dbAdapter);
   }
 
   @Setup

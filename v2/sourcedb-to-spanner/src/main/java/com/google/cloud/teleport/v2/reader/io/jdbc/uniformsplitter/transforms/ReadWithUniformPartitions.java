@@ -316,7 +316,7 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
                     .withSideInputs(typeMapper.getCollationMapperView()));
 
     PreparedStatementSetter<Range> rangePrepareator =
-        new RangePreparedStatementSetter(tableSplitSpecifications());
+        new RangePreparedStatementSetter(tableSplitSpecifications(), dbAdapter());
 
     // 4. Final Read operation
     // We reshuffle before the read to ensure that ranges from thousands of tables
