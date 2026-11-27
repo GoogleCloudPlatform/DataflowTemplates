@@ -31,10 +31,6 @@ public final class Neo4jCapabilities implements Serializable {
     this.versionString = String.format("Neo4j %s %s", version, edition);
   }
 
-  public Neo4jEdition edition() {
-    return edition;
-  }
-
   public boolean hasCypherVersionStatement() {
     return version.compareTo(Neo4jVersion.V5_21_0) >= 0;
   }
