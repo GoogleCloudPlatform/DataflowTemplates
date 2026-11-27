@@ -98,7 +98,7 @@ public final class Neo4jCapabilities implements Serializable {
     }
   }
 
-  static class Neo4jVersion implements Comparable<Neo4jVersion> {
+  static class Neo4jVersion implements Comparable<Neo4jVersion>, Serializable {
 
     public static final Neo4jVersion V5_7_0 = new Neo4jVersion(5, 7, 0);
     public static final Neo4jVersion V5_11_0 = new Neo4jVersion(5, 11, 0);

@@ -85,7 +85,7 @@ final class Neo4jInitSchemaFn extends DoFn<Integer, Integer> {
                   .build();
           connection.runAutocommit(statement, txConfig);
         } catch (Exception e) {
-          LOG.error("Error executing cypher: {}, {}", statement, e.getMessage());
+          throw new RuntimeException("Error initializing schema with Cypher: " + statement, e);
         }
       }
     }
