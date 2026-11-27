@@ -215,6 +215,54 @@ public class SourceConfigParserTest {
   }
 
   @Test
+  public void testParseConfiguration_DynamoDb_Success() throws Exception {
+    File tempFile = tempFolder.newFile("dynamodb-config.json");
+    String dynamoJson =
+        "{\n"
+            + "  \"endpoint\": \"http://localhost:8000\",\n"
+            + "  \"region\": \"us-west-2\",\n"
+            + "  \"accessKey\": \"ak-123\",\n"
+            + "  \"secretKey\": \"sk-456\",\n"
+            + "  \"totalSegments\": 4\n"
+            + "}";
+    Files.writeString(tempFile.toPath(), dynamoJson);
+
+    SourceConnectionConfig config =
+        parser.parseConfiguration("dynamodb", tempFile.getAbsolutePath());
+    assertNotNull(config);
+    assertEquals(DynamoDbConnectionConfig.class, config.getClass());
+    DynamoDbConnectionConfig dynamoConfig = (DynamoDbConnectionConfig) config;
+    assertEquals("http://localhost:8000", dynamoConfig.getEndpoint());
+    assertEquals("us-west-2", dynamoConfig.getRegion());
+    assertEquals("ak-123", dynamoConfig.getAccessKey());
+    assertEquals("sk-456", dynamoConfig.getSecretKey());
+    assertEquals(Integer.valueOf(4), dynamoConfig.getTotalSegments());
+  }
+
+  @Test
+  public void testParseConfiguration_DynamoDb_WithSecretManagerUri() throws Exception {
+    File tempFile = tempFolder.newFile("dynamodb-secret-config.json");
+    String dynamoJson =
+        "{\n"
+            + "  \"endpoint\": \"http://localhost:8000\",\n"
+            + "  \"region\": \"us-west-2\",\n"
+            + "  \"accessKey\": \"ak-123\",\n"
+            + "  \"secretManagerUri\": \"projects/123/secrets/my-secret/versions/1\"\n"
+            + "}";
+    Files.writeString(tempFile.toPath(), dynamoJson);
+
+    when(mockSecretManagerAccessor.resolvePassword(
+            "projects/123/secrets/my-secret/versions/1", "dynamodb", ""))
+        .thenReturn("resolved-secret-key");
+
+    SourceConnectionConfig config =
+        parser.parseConfiguration("dynamodb", tempFile.getAbsolutePath());
+    assertNotNull(config);
+    DynamoDbConnectionConfig dynamoConfig = (DynamoDbConnectionConfig) config;
+    assertEquals("resolved-secret-key", dynamoConfig.getSecretKey());
+  }
+
+  @Test
   public void testParseConfiguration_Jdbc_Success() throws Exception {
     File tempFile = tempFolder.newFile("jdbc-config.json");
     String jdbcJson =

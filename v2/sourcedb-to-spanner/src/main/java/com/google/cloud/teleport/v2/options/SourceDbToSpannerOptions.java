@@ -27,6 +27,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   String PG_SOURCE_DIALECT = "POSTGRESQL";
   String ORACLE_SOURCE_DIALECT = "ORACLE";
   String SQLSERVER_SOURCE_DIALECT = "SQLSERVER";
+  String DYNAMODB_SOURCE_DIALECT = "DYNAMODB";
 
   @TemplateParameter.Enum(
       order = 1,
@@ -37,11 +38,12 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
         @TemplateParameter.TemplateEnumOption(MYSQL_SOURCE_DIALECT),
         @TemplateParameter.TemplateEnumOption(PG_SOURCE_DIALECT),
         @TemplateParameter.TemplateEnumOption(ORACLE_SOURCE_DIALECT),
-        @TemplateParameter.TemplateEnumOption(SQLSERVER_SOURCE_DIALECT)
+        @TemplateParameter.TemplateEnumOption(SQLSERVER_SOURCE_DIALECT),
+        @TemplateParameter.TemplateEnumOption(DYNAMODB_SOURCE_DIALECT)
       },
       description = "Dialect of the source database",
       helpText =
-          "Possible values are `CASSANDRA`, `MYSQL`, `POSTGRESQL`, `ORACLE` and `SQLSERVER`.")
+          "Possible values are `CASSANDRA`, `MYSQL`, `POSTGRESQL`, `ORACLE`, `SQLSERVER` and `DYNAMODB`.")
   @Default.String("MYSQL")
   String getSourceDbDialect();
 
