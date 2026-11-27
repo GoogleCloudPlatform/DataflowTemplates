@@ -28,7 +28,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.avro.GenericRecordTypeCon
 import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.templates.RowContext;
-import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.annotations.VisibleForTesting;
@@ -327,12 +326,12 @@ public class DeadLetterQueue implements Serializable {
   }
 
   private void initializeJsonNode(JSONObject json, String tableName, long timeStamp) {
-    json.put(DatastreamConstants.EVENT_CHANGE_TYPE_KEY, DatastreamConstants.UPDATE_INSERT_EVENT);
-    json.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, tableName);
+    json.put(Constants.EVENT_CHANGE_TYPE_KEY, Constants.UPDATE_INSERT_EVENT);
+    json.put(Constants.EVENT_TABLE_NAME_KEY, tableName);
     json.put("_metadata_timestamp", timeStamp);
     json.put("_metadata_read_timestamp", timeStamp);
     json.put("_metadata_dataflow_timestamp", timeStamp);
-    json.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, this.dlqSourceType);
+    json.put(Constants.EVENT_SOURCE_TYPE_KEY, this.dlqSourceType);
   }
 
   /*

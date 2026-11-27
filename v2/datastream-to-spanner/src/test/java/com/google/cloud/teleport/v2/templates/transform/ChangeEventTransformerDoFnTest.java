@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.transform;
 
-import static com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants.EVENT_CHANGE_TYPE_KEY;
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.EVENT_CHANGE_TYPE_KEY;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.eq;
@@ -46,7 +46,6 @@ import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
 import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants;
-import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.templates.source.mysql.MySqlDsToSpSourceConnector;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.util.HashMap;
@@ -75,8 +74,8 @@ public class ChangeEventTransformerDoFnTest {
 
     // Create failsafe element input for the DoFn
     ObjectNode changeEvent = mapper.createObjectNode();
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     changeEvent.put("first_name", "Johnny");
     changeEvent.put("last_name", "Depp");
     changeEvent.put("age", 13);
@@ -131,8 +130,8 @@ public class ChangeEventTransformerDoFnTest {
 
     // Create failsafe element input for the DoFn
     ObjectNode changeEvent = mapper.createObjectNode();
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     changeEvent.put("first_name", "Johnny");
     changeEvent.put("last_name", "Depp");
     changeEvent.put("age", 13);
@@ -200,9 +199,9 @@ public class ChangeEventTransformerDoFnTest {
 
     // Create failsafe element input for the DoFn
     ObjectNode changeEvent = mapper.createObjectNode();
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
-    changeEvent.put(DatastreamConstants.EVENT_SCHEMA_KEY, "db1");
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_SCHEMA_KEY, "db1");
     changeEvent.put("first_name", "Johnny");
     changeEvent.put("last_name", "Depp");
     changeEvent.put("age", 13);
@@ -279,10 +278,10 @@ public class ChangeEventTransformerDoFnTest {
 
     // Create failsafe element input for the DoFn
     ObjectNode changeEvent = mapper.createObjectNode();
-    changeEvent.put(DatastreamConstants.EVENT_STREAM_NAME, "stream1");
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
-    changeEvent.put(DatastreamConstants.EVENT_SCHEMA_KEY, "db1");
+    changeEvent.put(Constants.EVENT_STREAM_NAME, "stream1");
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_SCHEMA_KEY, "db1");
     changeEvent.put("first_name", "Johnny");
     changeEvent.put("last_name", "Depp");
     changeEvent.put("age", 13);
@@ -353,8 +352,8 @@ public class ChangeEventTransformerDoFnTest {
 
     // Create failsafe element input for the DoFn
     ObjectNode changeEvent = mapper.createObjectNode();
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     changeEvent.put("first_name", "Johnny");
     changeEvent.put("last_name", "Depp");
     changeEvent.put("age", 13);
@@ -417,8 +416,8 @@ public class ChangeEventTransformerDoFnTest {
 
     // Create failsafe element input for the DoFn
     ObjectNode changeEvent = mapper.createObjectNode();
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     changeEvent.put("first_name", "Johnny");
     changeEvent.put(EVENT_CHANGE_TYPE_KEY, "INSERT");
     FailsafeElement<String, String> failsafeElement =
@@ -471,8 +470,8 @@ public class ChangeEventTransformerDoFnTest {
 
     // Create failsafe element input for the DoFn
     ObjectNode changeEvent = mapper.createObjectNode();
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     changeEvent.put("first_name", "Johnny");
     changeEvent.put(EVENT_CHANGE_TYPE_KEY, "INSERT");
     FailsafeElement<String, String> failsafeElement =
@@ -519,8 +518,8 @@ public class ChangeEventTransformerDoFnTest {
 
     // Create failsafe element input for the DoFn
     ObjectNode changeEvent = mapper.createObjectNode();
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     changeEvent.put("first_name", "Johnny");
     changeEvent.put(EVENT_CHANGE_TYPE_KEY, "INSERT");
     FailsafeElement<String, String> failsafeElement =
@@ -573,8 +572,8 @@ public class ChangeEventTransformerDoFnTest {
 
     // Create failsafe element input for the DoFn
     ObjectNode changeEvent = mapper.createObjectNode();
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     changeEvent.put("first_name", "Johnny");
     changeEvent.put(EVENT_CHANGE_TYPE_KEY, "INSERT");
     FailsafeElement<String, String> failsafeElement =
@@ -703,8 +702,8 @@ public class ChangeEventTransformerDoFnTest {
     // Simulating a failed Spanner mutation where column "first_name" (Source) was renamed to
     // "full_name" (Spanner)
     ObjectNode changeEvent = mapper.createObjectNode();
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     changeEvent.put("full_name", "Johnny Rose"); // Spanner column name
     changeEvent.put(EVENT_CHANGE_TYPE_KEY, "INSERT");
     changeEvent.put("_metadata_spanner_mutation", true);
@@ -773,8 +772,8 @@ public class ChangeEventTransformerDoFnTest {
 
     // Create failsafe element input for the DoFn
     ObjectNode changeEvent = mapper.createObjectNode();
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     changeEvent.put("first_name", "Johnny");
     changeEvent.put(EVENT_CHANGE_TYPE_KEY, "INSERT");
     changeEvent.put("_metadata_spanner_mutation", true);
@@ -841,8 +840,8 @@ public class ChangeEventTransformerDoFnTest {
 
     // Create failsafe element input for the DoFn
     ObjectNode changeEvent = mapper.createObjectNode();
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     changeEvent.put("first_name", "Johnny");
     changeEvent.put("gen_col", "123");
     FailsafeElement<String, String> failsafeElement =
@@ -911,8 +910,8 @@ public class ChangeEventTransformerDoFnTest {
 
     // Create failsafe element input for the DoFn
     ObjectNode changeEvent = mapper.createObjectNode();
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     changeEvent.put("first_name", "Johnny");
     FailsafeElement<String, String> failsafeElement =
         FailsafeElement.of(changeEvent.toString(), changeEvent.toString());
@@ -971,8 +970,8 @@ public class ChangeEventTransformerDoFnTest {
 
     // Create failsafe element input for the DoFn
     ObjectNode changeEvent = mapper.createObjectNode();
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
     changeEvent.put("first_name", "Johnny");
     changeEvent.put(EVENT_CHANGE_TYPE_KEY, "INSERT");
     // Add shard id column name and value
@@ -1036,9 +1035,9 @@ public class ChangeEventTransformerDoFnTest {
 
     // Create failsafe element input for the DoFn
     ObjectNode changeEvent = mapper.createObjectNode();
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
-    changeEvent.put(DatastreamConstants.EVENT_CHANGE_TYPE_KEY, "INSERT");
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_CHANGE_TYPE_KEY, "INSERT");
     changeEvent.put("first_name", "Johnny");
 
     FailsafeElement<String, String> failsafeElement =
@@ -1090,9 +1089,9 @@ public class ChangeEventTransformerDoFnTest {
 
     // Create failsafe element input for the DoFn
     ObjectNode changeEvent = mapper.createObjectNode();
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
-    changeEvent.put(DatastreamConstants.EVENT_CHANGE_TYPE_KEY, "INSERT");
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_CHANGE_TYPE_KEY, "INSERT");
     changeEvent.put("first_name", "Johnny");
 
     FailsafeElement<String, String> failsafeElement =
@@ -1142,9 +1141,9 @@ public class ChangeEventTransformerDoFnTest {
 
     // Create failsafe element input for the DoFn
     ObjectNode changeEvent = mapper.createObjectNode();
-    changeEvent.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
-    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
-    changeEvent.put(DatastreamConstants.EVENT_CHANGE_TYPE_KEY, "INSERT");
+    changeEvent.put(Constants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
+    changeEvent.put(Constants.EVENT_CHANGE_TYPE_KEY, "INSERT");
     changeEvent.put("first_name", "Johnny");
 
     FailsafeElement<String, String> failsafeElement =
