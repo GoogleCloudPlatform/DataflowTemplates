@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.transforms;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -60,6 +61,7 @@ import com.google.cloud.teleport.v2.templates.dbutils.processor.InputRecordProce
 import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessor;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
+import com.google.cloud.teleport.v2.templates.models.PreparedStatementValue;
 import com.google.cloud.teleport.v2.templates.models.SpannerMutationResponse;
 import com.google.cloud.teleport.v2.templates.source.mysql.MySQLDMLGenerator;
 import com.google.cloud.teleport.v2.templates.utils.SchemaUtils;
@@ -71,6 +73,7 @@ import java.sql.SQLIntegrityConstraintViolationException;
 import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLSyntaxErrorException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
@@ -169,46 +172,45 @@ public class SourceWriterFnTest {
     doThrow(new SQLIntegrityConstraintViolationException("a foreign key constraint fails"))
         .when(mockSqlDao)
         .write(
-            argThat(arg -> arg != null && arg.getDmlStatement().contains("2300")),
+            argThat(arg -> arg != null && dmlContains(arg, "2300")),
             any()); // This is the child_id for which we want to test the foreign key
     // constraint failure.
     doThrow(new SQLNonTransientConnectionException("transient connection error", "HY000", 1161))
         .when(mockSqlDao)
         .write(
-            argThat(arg -> arg != null && arg.getDmlStatement().contains("1161")),
+            argThat(arg -> arg != null && dmlContains(arg, "1161")),
             any()); // This is the child_id for which we want to retryable
     // connection error
     doThrow(new SQLNonTransientConnectionException("permanent connection error", "HY000", 4242))
         .when(mockSqlDao)
         .write(
-            argThat(arg -> arg != null && arg.getDmlStatement().contains("4242")),
-            any()); // no retryable error
+            argThat(arg -> arg != null && dmlContains(arg, "4242")), any()); // no retryable error
     doThrow(new RuntimeException("generic exception"))
         .when(mockSqlDao)
         .write(
-            argThat(arg -> arg != null && arg.getDmlStatement().contains("12345")),
+            argThat(arg -> arg != null && dmlContains(arg, "12345")),
             any()); // to test code path of generic exception
     doThrow(new SQLSyntaxErrorException("sql syntax error"))
         .when(mockSqlDao)
-        .write(argThat(arg -> arg != null && arg.getDmlStatement().contains("6666")), any());
+        .write(argThat(arg -> arg != null && dmlContains(arg, "6666")), any());
     doThrow(new SQLDataException("sql data error"))
         .when(mockSqlDao)
-        .write(argThat(arg -> arg != null && arg.getDmlStatement().contains("7777")), any());
+        .write(argThat(arg -> arg != null && dmlContains(arg, "7777")), any());
     doThrow(new InvalidTransformationException("invalid transformation"))
         .when(mockSqlDao)
-        .write(argThat(arg -> arg != null && arg.getDmlStatement().contains("8888")), any());
+        .write(argThat(arg -> arg != null && dmlContains(arg, "8888")), any());
     doThrow(new ChangeEventConvertorException("change event convertor error"))
         .when(mockSqlDao)
-        .write(argThat(arg -> arg != null && arg.getDmlStatement().contains("9999")), any());
+        .write(argThat(arg -> arg != null && dmlContains(arg, "9999")), any());
     doThrow(SpannerExceptionFactory.newSpannerException(ErrorCode.ALREADY_EXISTS, "test spanner"))
         .when(mockSqlDao)
-        .write(argThat(arg -> arg != null && arg.getDmlStatement().contains("1111")), any());
+        .write(argThat(arg -> arg != null && dmlContains(arg, "1111")), any());
     doThrow(new IllegalArgumentException("illegal argument"))
         .when(mockSqlDao)
-        .write(argThat(arg -> arg != null && arg.getDmlStatement().contains("2222")), any());
+        .write(argThat(arg -> arg != null && dmlContains(arg, "2222")), any());
     doNothing()
         .when(mockSqlDao)
-        .write(argThat(arg -> arg != null && arg.getDmlStatement().contains("parent1")), any());
+        .write(argThat(arg -> arg != null && dmlContains(arg, "parent1")), any());
     testShard = new Shard();
     testShard.setLogicalShardId("shardA");
     testShard.setUser("test");
@@ -554,11 +556,14 @@ public class SourceWriterFnTest {
     verify(mockSpannerDao, atLeast(1))
         .readShadowTableRecordWithExclusiveLock(any(), any(), any(), any());
     verify(mockSqlDao, atLeast(1)).write(argumentCaptor.capture(), any());
-    assertTrue(
-        argumentCaptor
-            .getValue()
-            .getDmlStatement()
-            .contains("INSERT INTO `parent1`(`id`) VALUES (45)"));
+    DMLGeneratorResponse dmlResponse = argumentCaptor.getValue();
+    assertTrue(dmlResponse.getDmlStatement().startsWith("INSERT INTO `parent1`(`id`) VALUES (?)"));
+    // The custom transformation value is bound as data, for both VALUES and ON DUPLICATE KEY
+    // UPDATE.
+    assertEquals(
+        ImmutableList.of(
+            PreparedStatementValue.ofString("45"), PreparedStatementValue.ofString("45")),
+        dmlResponse.getPreparedStatementParameters());
     verify(mockSpannerDao, atLeast(1)).updateShadowTable(any(), any());
   }
 
@@ -1316,9 +1321,9 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.processElement(processContext);
     verify(mockSqlDao, never())
-        .write(argThat(arg -> arg != null && arg.getDmlStatement().contains("567890")), any());
+        .write(argThat(arg -> arg != null && dmlContains(arg, "567890")), any());
     verify(mockSqlDao, never())
-        .write(argThat(arg -> arg != null && arg.getDmlStatement().contains("567890")), any());
+        .write(argThat(arg -> arg != null && dmlContains(arg, "567890")), any());
   }
 
   @Test
@@ -1537,5 +1542,29 @@ public class SourceWriterFnTest {
             .endTable()
             .build();
     return ddl;
+  }
+
+  /**
+   * Returns true if the DML statement text or any of its bound parameter values contains {@code
+   * text}. Record values are bound as parameters, so matchers must look at the parameters too.
+   */
+  private static boolean dmlContains(DMLGeneratorResponse response, String text) {
+    if (response.getDmlStatement() != null && response.getDmlStatement().contains(text)) {
+      return true;
+    }
+    List<Object> params = response.getPreparedStatementParameters();
+    if (params == null) {
+      return false;
+    }
+    for (Object param : params) {
+      Object value =
+          param instanceof PreparedStatementValue
+              ? ((PreparedStatementValue) param).getValue()
+              : param;
+      if (value != null && String.valueOf(value).contains(text)) {
+        return true;
+      }
+    }
+    return false;
   }
 }

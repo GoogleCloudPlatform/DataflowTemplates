@@ -20,11 +20,17 @@ import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
+import com.google.cloud.teleport.v2.templates.models.ColumnBinding;
+import com.google.cloud.teleport.v2.templates.models.PreparedStatementValue;
+import java.sql.Types;
 import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -42,6 +48,26 @@ public class DMLGeneratorUtils {
         JSONObject valuesJson,
         String sourceDbTimezoneOffset,
         List<Object> preparedStatementParameters);
+  }
+
+  /** Maps a non-null Spanner column value to a {@link ColumnBinding} for a parameterized DML. */
+  @FunctionalInterface
+  public interface ColumnBindingMapper {
+    ColumnBinding getMappedColumnBinding(
+        Column spannerColDef,
+        SourceColumn sourceColDef,
+        JSONObject valuesJson,
+        String sourceDbTimezoneOffset);
+  }
+
+  /** Generic per-column value mapper used by the shared column iteration logic. */
+  @FunctionalInterface
+  private interface GenericColumnMapper<T> {
+    T map(
+        Column spannerColDef,
+        SourceColumn sourceColDef,
+        JSONObject valuesJson,
+        String sourceDbTimezoneOffset);
   }
 
   public static String convertBase64ToRawHex(String base64EncodedString) {
@@ -74,7 +100,133 @@ public class DMLGeneratorUtils {
       Map<String, Object> customTransformationResponse,
       ColumnValueMapper columnValueMapper,
       List<Object> preparedStatementParameters) {
-    Map<String, String> response = new java.util.LinkedHashMap<>();
+    return getColumnValuesInternal(
+        schemaMapper,
+        spannerTable,
+        sourceTable,
+        newValuesJson,
+        keyValuesJson,
+        sourceDbTimezoneOffset,
+        customTransformationResponse,
+        toGenericMapper(columnValueMapper, preparedStatementParameters),
+        Object::toString,
+        () -> null);
+  }
+
+  public static Map<String, String> getPkColumnValues(
+      ISchemaMapper schemaMapper,
+      Table spannerTable,
+      SourceTable sourceTable,
+      JSONObject newValuesJson,
+      JSONObject keyValuesJson,
+      String sourceDbTimezoneOffset,
+      Map<String, Object> customTransformationResponse,
+      ColumnValueMapper columnValueMapper,
+      List<Object> preparedStatementParameters) {
+    return getPkColumnValuesInternal(
+        schemaMapper,
+        spannerTable,
+        sourceTable,
+        newValuesJson,
+        keyValuesJson,
+        sourceDbTimezoneOffset,
+        customTransformationResponse,
+        toGenericMapper(columnValueMapper, preparedStatementParameters),
+        Object::toString,
+        () -> null);
+  }
+
+  /**
+   * Returns the {@link ColumnBinding} for each non-primary-key source column, in source column
+   * order. Custom transformation values and {@code null} values are bound as data via {@link
+   * PreparedStatementValue#fromObject(Object)}; they are never interpreted as SQL.
+   */
+  public static Map<String, ColumnBinding> getColumnBindings(
+      ISchemaMapper schemaMapper,
+      Table spannerTable,
+      SourceTable sourceTable,
+      JSONObject newValuesJson,
+      JSONObject keyValuesJson,
+      String sourceDbTimezoneOffset,
+      Map<String, Object> customTransformationResponse,
+      ColumnBindingMapper columnBindingMapper) {
+    return getColumnValuesInternal(
+        schemaMapper,
+        spannerTable,
+        sourceTable,
+        newValuesJson,
+        keyValuesJson,
+        sourceDbTimezoneOffset,
+        customTransformationResponse,
+        columnBindingMapper::getMappedColumnBinding,
+        DMLGeneratorUtils::customValueBinding,
+        DMLGeneratorUtils::nullBinding);
+  }
+
+  /**
+   * Returns the {@link ColumnBinding} for each primary key source column (plus all non-primary-key
+   * columns if the primary key contains a generated column), or {@code null} if a primary key
+   * column could not be resolved.
+   */
+  public static Map<String, ColumnBinding> getPkColumnBindings(
+      ISchemaMapper schemaMapper,
+      Table spannerTable,
+      SourceTable sourceTable,
+      JSONObject newValuesJson,
+      JSONObject keyValuesJson,
+      String sourceDbTimezoneOffset,
+      Map<String, Object> customTransformationResponse,
+      ColumnBindingMapper columnBindingMapper) {
+    return getPkColumnValuesInternal(
+        schemaMapper,
+        spannerTable,
+        sourceTable,
+        newValuesJson,
+        keyValuesJson,
+        sourceDbTimezoneOffset,
+        customTransformationResponse,
+        columnBindingMapper::getMappedColumnBinding,
+        DMLGeneratorUtils::customValueBinding,
+        DMLGeneratorUtils::nullBinding);
+  }
+
+  private static ColumnBinding customValueBinding(Object customValue) {
+    return ColumnBinding.of(PreparedStatementValue.fromObject(customValue));
+  }
+
+  private static ColumnBinding nullBinding() {
+    return ColumnBinding.of(PreparedStatementValue.nullValue(Types.NULL));
+  }
+
+  private static GenericColumnMapper<String> toGenericMapper(
+      ColumnValueMapper columnValueMapper, List<Object> preparedStatementParameters) {
+    return (spannerColDef, sourceColDef, valuesJson, sourceDbTimezoneOffset) ->
+        columnValueMapper.getMappedColumnValue(
+            spannerColDef,
+            sourceColDef,
+            valuesJson,
+            sourceDbTimezoneOffset,
+            preparedStatementParameters);
+  }
+
+  /**
+   * Shared iteration over non-primary-key source columns.
+   *
+   * @param customValueMapper maps a custom transformation value for a column to {@code T}.
+   * @param nullValueSupplier supplies the {@code T} used when the record value is {@code null}.
+   */
+  private static <T> Map<String, T> getColumnValuesInternal(
+      ISchemaMapper schemaMapper,
+      Table spannerTable,
+      SourceTable sourceTable,
+      JSONObject newValuesJson,
+      JSONObject keyValuesJson,
+      String sourceDbTimezoneOffset,
+      Map<String, Object> customTransformationResponse,
+      GenericColumnMapper<T> columnMapper,
+      Function<Object, T> customValueMapper,
+      Supplier<T> nullValueSupplier) {
+    Map<String, T> response = new LinkedHashMap<>();
 
     List<String> sourcePKs = sourceTable.primaryKeyColumns();
     Set<String> customTransformColumns = null;
@@ -90,7 +242,7 @@ public class DMLGeneratorUtils {
         continue;
       }
       if (customTransformColumns != null && customTransformColumns.contains(colName)) {
-        response.put(colName, customTransformationResponse.get(colName).toString());
+        response.put(colName, customValueMapper.apply(customTransformationResponse.get(colName)));
         continue;
       }
       String spannerColumnName = "";
@@ -103,32 +255,22 @@ public class DMLGeneratorUtils {
       if (spannerColDef == null) {
         continue;
       }
-      String columnValue = "";
+      T columnValue;
       String actualColName = spannerColDef.name();
       if (keyValuesJson.has(actualColName)) {
         if (keyValuesJson.isNull(actualColName)) {
-          response.put(colName, null);
+          response.put(colName, nullValueSupplier.get());
           continue;
         }
         columnValue =
-            columnValueMapper.getMappedColumnValue(
-                spannerColDef,
-                sourceColDef,
-                keyValuesJson,
-                sourceDbTimezoneOffset,
-                preparedStatementParameters);
+            columnMapper.map(spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
       } else if (newValuesJson.has(actualColName)) {
         if (newValuesJson.isNull(actualColName)) {
-          response.put(colName, null);
+          response.put(colName, nullValueSupplier.get());
           continue;
         }
         columnValue =
-            columnValueMapper.getMappedColumnValue(
-                spannerColDef,
-                sourceColDef,
-                newValuesJson,
-                sourceDbTimezoneOffset,
-                preparedStatementParameters);
+            columnMapper.map(spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
       } else {
         continue;
       }
@@ -139,7 +281,8 @@ public class DMLGeneratorUtils {
     return response;
   }
 
-  public static Map<String, String> getPkColumnValues(
+  /** Shared iteration over primary key source columns. See {@link #getColumnValuesInternal}. */
+  private static <T> Map<String, T> getPkColumnValuesInternal(
       ISchemaMapper schemaMapper,
       Table spannerTable,
       SourceTable sourceTable,
@@ -147,9 +290,10 @@ public class DMLGeneratorUtils {
       JSONObject keyValuesJson,
       String sourceDbTimezoneOffset,
       Map<String, Object> customTransformationResponse,
-      ColumnValueMapper columnValueMapper,
-      List<Object> preparedStatementParameters) {
-    Map<String, String> response = new java.util.LinkedHashMap<>();
+      GenericColumnMapper<T> columnMapper,
+      Function<Object, T> customValueMapper,
+      Supplier<T> nullValueSupplier) {
+    Map<String, T> response = new LinkedHashMap<>();
 
     List<String> sourcePKs = sourceTable.primaryKeyColumns();
     Set<String> customTransformColumns = null;
@@ -174,7 +318,9 @@ public class DMLGeneratorUtils {
       }
 
       if (customTransformColumns != null && customTransformColumns.contains(sourceColName)) {
-        response.put(sourceColName, customTransformationResponse.get(sourceColName).toString());
+        response.put(
+            sourceColName,
+            customValueMapper.apply(customTransformationResponse.get(sourceColName)));
         continue;
       }
 
@@ -193,32 +339,22 @@ public class DMLGeneratorUtils {
             "The spanner column definition for {} was not found in spanner schema", spannerColName);
         continue;
       }
-      String columnValue = "";
+      T columnValue;
       String actualColName = spannerColDef.name();
       if (keyValuesJson.has(actualColName)) {
         if (keyValuesJson.isNull(actualColName)) {
-          response.put(sourceColName, null);
+          response.put(sourceColName, nullValueSupplier.get());
           continue;
         }
         columnValue =
-            columnValueMapper.getMappedColumnValue(
-                spannerColDef,
-                sourceColDef,
-                keyValuesJson,
-                sourceDbTimezoneOffset,
-                preparedStatementParameters);
+            columnMapper.map(spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
       } else if (newValuesJson.has(actualColName)) {
         if (newValuesJson.isNull(actualColName)) {
-          response.put(sourceColName, null);
+          response.put(sourceColName, nullValueSupplier.get());
           continue;
         }
         columnValue =
-            columnValueMapper.getMappedColumnValue(
-                spannerColDef,
-                sourceColDef,
-                newValuesJson,
-                sourceDbTimezoneOffset,
-                preparedStatementParameters);
+            columnMapper.map(spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
       } else {
         LOG.warn("The column {} was not found in input record", actualColName);
         return null;
@@ -228,8 +364,8 @@ public class DMLGeneratorUtils {
     }
 
     if (doesGeneratedColumnExist) {
-      Map<String, String> generatedColumnValues =
-          getColumnValues(
+      Map<String, T> generatedColumnValues =
+          getColumnValuesInternal(
               schemaMapper,
               spannerTable,
               sourceTable,
@@ -237,8 +373,9 @@ public class DMLGeneratorUtils {
               keyValuesJson,
               sourceDbTimezoneOffset,
               customTransformationResponse,
-              columnValueMapper,
-              preparedStatementParameters);
+              columnMapper,
+              customValueMapper,
+              nullValueSupplier);
       response.putAll(generatedColumnValues);
     }
 

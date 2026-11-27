@@ -34,18 +34,25 @@ import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
+import com.google.cloud.teleport.v2.templates.models.ColumnBinding;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
+import com.google.cloud.teleport.v2.templates.models.PreparedStatementValue;
 import com.google.cloud.teleport.v2.templates.utils.SchemaUtils;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.GsonBuilder;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.commons.io.IOUtils;
@@ -71,9 +78,6 @@ public final class MySQLDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "INSERT";
 
-    /*The expected sql is:
-    "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
-        + " UPDATE  FirstName = 'kk', LastName = 'll'";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
@@ -83,10 +87,10 @@ public final class MySQLDMLGeneratorTest {
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertTrue(sql.contains("`FirstName` = 'kk'"));
-    assertTrue(sql.contains("`LastName` = 'll'"));
+    assertThat(bound.value("FirstName")).isEqualTo("kk");
+    assertThat(bound.value("LastName")).isEqualTo("ll");
   }
 
   @Test
@@ -102,9 +106,6 @@ public final class MySQLDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "INSERT";
 
-    /* The expected sql is:
-    "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
-        + " UPDATE  FirstName = 'kk', LastName = 'll'";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
@@ -114,10 +115,10 @@ public final class MySQLDMLGeneratorTest {
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertTrue(sql.contains("`FirstName` = 'kk'"));
-    assertTrue(sql.contains("`LastName` = 'll'"));
+    assertThat(bound.value("FirstName")).isEqualTo("kk");
+    assertThat(bound.value("LastName")).isEqualTo("ll");
   }
 
   @Test
@@ -132,9 +133,6 @@ public final class MySQLDMLGeneratorTest {
     JSONObject newValuesJson = new JSONObject(newValuesString);
     JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "INSERT";
-    /*The expected sql is:
-    "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES ('999',222,'ll') ON DUPLICATE"
-        + " KEY UPDATE  FirstName = 222, LastName = 'll'";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
@@ -144,10 +142,10 @@ public final class MySQLDMLGeneratorTest {
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertTrue(sql.contains("`FirstName` = 222"));
-    assertTrue(sql.contains("`LastName` = 'll'"));
+    assertThat(bound.value("FirstName")).isEqualTo("222");
+    assertThat(bound.value("LastName")).isEqualTo("ll");
   }
 
   @Test
@@ -163,9 +161,6 @@ public final class MySQLDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "INSERT";
 
-    /* The expected sql is:
-    "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
-        + " UPDATE  FirstName = 'kk', LastName = 'll'"; */
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
@@ -175,10 +170,10 @@ public final class MySQLDMLGeneratorTest {
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertTrue(sql.contains("`FirstName` = 'kk'"));
-    assertTrue(sql.contains("`LastName` = 'll'"));
+    assertThat(bound.value("FirstName")).isEqualTo("kk");
+    assertThat(bound.value("LastName")).isEqualTo("ll");
   }
 
   @Test
@@ -194,9 +189,6 @@ public final class MySQLDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "INSERT";
 
-    /* The expected sql is:
-    "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
-        + " UPDATE  FirstName = 'kk', LastName = 'll'";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
@@ -206,10 +198,10 @@ public final class MySQLDMLGeneratorTest {
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertTrue(sql.contains("`FirstName` = 'kk'"));
-    assertTrue(sql.contains("`LastName` = 'll'"));
+    assertThat(bound.value("FirstName")).isEqualTo("kk");
+    assertThat(bound.value("LastName")).isEqualTo("ll");
   }
 
   @Test
@@ -225,7 +217,6 @@ public final class MySQLDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"SomeRandomName\":\"999\"}");
     String modType = "INSERT";
 
-    /* The expected sql is: ""*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     assertThrows(
         InvalidDMLGenerationException.class,
@@ -252,7 +243,6 @@ public final class MySQLDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "INSERT";
 
-    /* The expected sql is: ""*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     assertThrows(
         InvalidDMLGenerationException.class,
@@ -280,9 +270,6 @@ public final class MySQLDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject(newValuesString);
     String modType = "INSERT";
 
-    /*The expected sql is:
-    INSERT INTO `resource_access`(`user_id`,`group_id`,`resource_id`) VALUES (101,5,99) ON DUPLICATE KEY UPDATE  `user_id` = 101, `group_id` = 5, `resource_id` = 99
-    */
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
@@ -293,10 +280,11 @@ public final class MySQLDMLGeneratorTest {
                 .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
     assertThat(sql.contains("ON DUPLICATE KEY UPDATE"));
-    assertTrue(sql.contains("`user_id` = 101"));
-    assertTrue(sql.contains("`group_id` = 5"));
-    assertTrue(sql.contains("`resource_id` = 99"));
+    assertThat(bound.value("user_id")).isEqualTo("101");
+    assertThat(bound.value("group_id")).isEqualTo("5");
+    assertThat(bound.value("resource_id")).isEqualTo("99");
     assertEquals(2, countInSQL(sql, "user_id"));
     assertEquals(2, countInSQL(sql, "group_id"));
     assertEquals(2, countInSQL(sql, "resource_id"));
@@ -315,10 +303,6 @@ public final class MySQLDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "INSERT";
 
-    /* The expected sql is:
-    "INSERT INTO Singers(SingerId,Bday) VALUES (999,"
-        + " CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+10:00')) ON DUPLICATE KEY"
-        + " UPDATE  Bday =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+10:00')";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
@@ -328,10 +312,12 @@ public final class MySQLDMLGeneratorTest {
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertTrue(
-        sql.contains("`Bday` =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+10:00'"));
+    assertThat(bound.placeholder("Bday")).isEqualTo("CONVERT_TZ(?, '+00:00', ?)");
+    assertThat(bound.values("Bday"))
+        .containsExactly("2023-05-18T12:01:13.088397258", "+10:00")
+        .inOrder();
   }
 
   @Test
@@ -347,9 +333,6 @@ public final class MySQLDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"FirstName\":\"kk\"}");
     String modType = "INSERT";
 
-    /* The expected sql is:
-    "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
-        + " UPDATE  FirstName = 'kk', LastName = 'll'";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
@@ -359,10 +342,10 @@ public final class MySQLDMLGeneratorTest {
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertTrue(sql.contains("`FirstName` = 'kk'"));
-    assertTrue(sql.contains("`LastName` = 'll'"));
+    assertThat(bound.value("FirstName")).isEqualTo("kk");
+    assertThat(bound.value("LastName")).isEqualTo("ll");
   }
 
   @Test
@@ -391,26 +374,6 @@ public final class MySQLDMLGeneratorTest {
     JSONObject newValuesJson = new JSONObject(newValueJsonStr);
     JSONObject keyValuesJson = new JSONObject(keysJsonStr);
 
-    /* The expected sql is:
-    "INSERT INTO"
-        + " sample_table(id,mediumint_column,tinyblob_column,datetime_column,enum_column,longtext_column,mediumblob_column,text_column,tinyint_column,timestamp_column,float_column,varbinary_column,binary_column,bigint_column,time_column,tinytext_column,set_column,longblob_column,mediumtext_column,year_column,blob_column,decimal_column,bool_column,char_column,date_column,double_column,smallint_column,varchar_column)"
-        + " VALUES (12,333,FROM_BASE64('YWJj'),"
-        + " CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'),'1','<longtext_column>',FROM_BASE64('YWJjbGFyZ2U='),'aaaaaddd',1,"
-        + " CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'),4.2,BINARY(FROM_BASE64('YWJjbGFyZ2U=')),BINARY(FROM_BASE64('YWJjbGFyZ2U=')),4444,'10:10:10','<tinytext_column>','1,2',FROM_BASE64('YWJsb25nYmxvYmM='),'<mediumtext_column>','2023',FROM_BASE64('YWJiaWdj'),444.222,false,'<char_c','2023-05-18',42.42,22,'abc')"
-        + " ON DUPLICATE KEY UPDATE  mediumint_column = 333, tinyblob_column ="
-        + " FROM_BASE64('YWJj'), datetime_column = "
-        + " CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'), enum_column = '1',"
-        + " longtext_column = '<longtext_column>', mediumblob_column ="
-        + " FROM_BASE64('YWJjbGFyZ2U='), text_column = 'aaaaaddd', tinyint_column = 1,"
-        + " timestamp_column =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'),"
-        + " float_column = 4.2, varbinary_column = BINARY(FROM_BASE64('YWJjbGFyZ2U=')),"
-        + " binary_column = BINARY(FROM_BASE64('YWJjbGFyZ2U=')), bigint_column = 4444, time_column"
-        + " = '10:10:10', tinytext_column = '<tinytext_column>', set_column = '1,2',"
-        + " longblob_column = FROM_BASE64('YWJsb25nYmxvYmM='), mediumtext_column ="
-        + " '<mediumtext_column>', year_column = '2023', blob_column = FROM_BASE64('YWJiaWdj'),"
-        + " decimal_column = 444.222, bool_column = false, char_column = '<char_c', date_column"
-        + " = '2023-05-18', double_column = 42.42, smallint_column = 22, varchar_column ="
-        + " 'abc'"; */
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
@@ -420,41 +383,44 @@ public final class MySQLDMLGeneratorTest {
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertTrue(sql.contains("`mediumint_column` = 333"));
-    assertTrue(sql.contains("`tinyblob_column` = FROM_BASE64('YWJj')"));
-    boolean datetimeFlag =
-        sql.contains(
-            "`datetime_column` =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'");
-    assertTrue(datetimeFlag);
-
-    assertTrue(sql.contains("`enum_column` = '1'"));
-    assertTrue(sql.contains("`longtext_column` = '<longtext_column>'"));
-    assertTrue(sql.contains("`mediumblob_column` = FROM_BASE64('YWJjbGFyZ2U=')"));
-    assertTrue(sql.contains("`text_column` = 'aaaaaddd'"));
-    assertTrue(sql.contains("`tinyint_column` = 1"));
-    boolean timestampFlag =
-        sql.contains(
-            "`timestamp_column` =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00')");
-    assertTrue(timestampFlag);
-
-    assertTrue(sql.contains("`float_column` = 4.2"));
-    assertTrue(sql.contains("`varbinary_column` = BINARY(FROM_BASE64('YWJjbGFyZ2U='))"));
-    assertTrue(sql.contains("`binary_column` = BINARY(FROM_BASE64('YWJjbGFyZ2U='))"));
-    assertTrue(sql.contains("`bigint_column` = 4444"));
-    assertTrue(sql.contains("`time_column` = '10:10:10'"));
-    assertTrue(sql.contains("`tinytext_column` = '<tinytext_column>'"));
-    assertTrue(sql.contains("`set_column` = '1,2'"));
-    assertTrue(sql.contains("`longblob_column` = FROM_BASE64('YWJsb25nYmxvYmM=')"));
-    assertTrue(sql.contains("`mediumtext_column` = '<mediumtext_column>'"));
-    assertTrue(sql.contains("`year_column` = '2023'"));
-    assertTrue(sql.contains("`blob_column` = FROM_BASE64('YWJiaWdj')"));
-    assertTrue(sql.contains("`decimal_column` = 444.222"));
-    assertTrue(sql.contains("`bool_column` = false"));
-    assertTrue(sql.contains("`char_column` = '<char_c'"));
-    assertTrue(sql.contains("`date_column` = '2023-05-18'"));
-    assertTrue(sql.contains("`double_column` = 42.42"));
+    assertThat(bound.value("mediumint_column")).isEqualTo("333");
+    assertThat(bound.bytes("tinyblob_column")).isEqualTo(base64("YWJj"));
+    assertThat(bound.placeholder("datetime_column")).isEqualTo("CONVERT_TZ(?, '+00:00', ?)");
+    assertThat(bound.values("datetime_column"))
+        .containsExactly("2023-05-18T12:01:13.088397258", "+00:00")
+        .inOrder();
+    assertThat(bound.value("enum_column")).isEqualTo("1");
+    assertThat(bound.value("longtext_column")).isEqualTo("<longtext_column>");
+    assertThat(bound.bytes("mediumblob_column")).isEqualTo(base64("YWJjbGFyZ2U="));
+    assertThat(bound.value("text_column")).isEqualTo("aaaaaddd");
+    assertThat(bound.value("tinyint_column")).isEqualTo("1");
+    assertThat(bound.placeholder("timestamp_column")).isEqualTo("CONVERT_TZ(?, '+00:00', ?)");
+    assertThat(bound.values("timestamp_column"))
+        .containsExactly("2023-05-18T12:01:13.088397258", "+00:00")
+        .inOrder();
+    assertThat(bound.decimal("float_column")).isEqualToIgnoringScale("4.2");
+    assertThat(bound.placeholder("varbinary_column")).isEqualTo("?");
+    assertThat(bound.bytes("varbinary_column")).isEqualTo(base64("YWJjbGFyZ2U="));
+    assertThat(bound.placeholder("binary_column")).isEqualTo("?");
+    assertThat(bound.bytes("binary_column")).isEqualTo(base64("YWJjbGFyZ2U="));
+    assertThat(bound.value("bigint_column")).isEqualTo("4444");
+    assertThat(bound.value("time_column")).isEqualTo("10:10:10");
+    assertThat(bound.value("tinytext_column")).isEqualTo("<tinytext_column>");
+    assertThat(bound.value("set_column")).isEqualTo("1,2");
+    assertThat(bound.bytes("longblob_column")).isEqualTo(base64("YWJsb25nYmxvYmM="));
+    assertThat(bound.value("mediumtext_column")).isEqualTo("<mediumtext_column>");
+    assertThat(bound.value("year_column")).isEqualTo("2023");
+    assertThat(bound.bytes("blob_column")).isEqualTo(base64("YWJiaWdj"));
+    // Spanner NUMERIC values are strings in the change stream.
+    assertThat(bound.value("decimal_column")).isEqualTo("444.222");
+    assertThat(bound.value("bool_column")).isEqualTo(false);
+    assertThat(bound.value("char_column")).isEqualTo("<char_c");
+    assertThat(bound.value("date_column")).isEqualTo("2023-05-18");
+    assertThat(bound.decimal("double_column")).isEqualToIgnoringScale("42.42");
+    assertThat(bound.value("smallint_column")).isEqualTo("22");
+    assertThat(bound.value("varchar_column")).isEqualTo("abc");
   }
 
   @Test
@@ -492,39 +458,43 @@ public final class MySQLDMLGeneratorTest {
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertTrue(sql.contains("`mediumint_column` = 333"));
-    assertTrue(sql.contains("`tinyblob_column` = FROM_BASE64('YWJj')"));
-    boolean datetimeFlag =
-        sql.contains(
-            "`datetime_column` =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00'");
-    assertTrue(datetimeFlag);
-    assertTrue(sql.contains("`enum_column` = '1'"));
-    assertTrue(sql.contains("`longtext_column` = '<longtext_column>'"));
-    assertTrue(sql.contains("`mediumblob_column` = FROM_BASE64('YWJjbGFyZ2U=')"));
-    assertTrue(sql.contains("`text_column` = 'aaaaaddd'"));
-    assertTrue(sql.contains("`tinyint_column` = 1"));
-    boolean timestampFlag =
-        sql.contains(
-            "`timestamp_column` =  CONVERT_TZ('2023-05-18T12:01:13.088397258','+00:00','+00:00')");
-    assertTrue(timestampFlag);
-    assertTrue(sql.contains("`float_column` = 4.2"));
-    assertTrue(sql.contains("`varbinary_column` = BINARY(FROM_BASE64('YWJjbGFyZ2U='))"));
-    assertTrue(sql.contains("`binary_column` = BINARY(FROM_BASE64('YWJjbGFyZ2U='))"));
-    assertTrue(sql.contains("`bigint_column` = 4444"));
-    assertTrue(sql.contains("`time_column` = '10:10:10'"));
-    assertTrue(sql.contains("`tinytext_column` = '<tinytext_column>'"));
-    assertTrue(sql.contains("`set_column` = '1,2'"));
-    assertTrue(sql.contains("`longblob_column` = FROM_BASE64('YWJsb25nYmxvYmM=')"));
-    assertTrue(sql.contains("`mediumtext_column` = '<mediumtext_column>'"));
-    assertTrue(sql.contains("`year_column` = '2023'"));
-    assertTrue(sql.contains("`blob_column` = FROM_BASE64('YWJiaWdj')"));
-    assertTrue(sql.contains("`decimal_column` = 444.222"));
-    assertTrue(sql.contains("`bool_column` = false"));
-    assertTrue(sql.contains("`char_column` = '<char_c'"));
-    assertTrue(sql.contains("`date_column` = '2023-05-18'"));
-    assertTrue(sql.contains("`double_column` = 42.42"));
+    assertThat(bound.value("mediumint_column")).isEqualTo("333");
+    assertThat(bound.bytes("tinyblob_column")).isEqualTo(base64("YWJj"));
+    assertThat(bound.placeholder("datetime_column")).isEqualTo("CONVERT_TZ(?, '+00:00', ?)");
+    assertThat(bound.values("datetime_column"))
+        .containsExactly("2023-05-18T12:01:13.088397258", "+00:00")
+        .inOrder();
+    assertThat(bound.value("enum_column")).isEqualTo("1");
+    assertThat(bound.value("longtext_column")).isEqualTo("<longtext_column>");
+    assertThat(bound.bytes("mediumblob_column")).isEqualTo(base64("YWJjbGFyZ2U="));
+    assertThat(bound.value("text_column")).isEqualTo("aaaaaddd");
+    assertThat(bound.value("tinyint_column")).isEqualTo("1");
+    assertThat(bound.placeholder("timestamp_column")).isEqualTo("CONVERT_TZ(?, '+00:00', ?)");
+    assertThat(bound.values("timestamp_column"))
+        .containsExactly("2023-05-18T12:01:13.088397258", "+00:00")
+        .inOrder();
+    assertThat(bound.decimal("float_column")).isEqualToIgnoringScale("4.2");
+    assertThat(bound.placeholder("varbinary_column")).isEqualTo("?");
+    assertThat(bound.bytes("varbinary_column")).isEqualTo(base64("YWJjbGFyZ2U="));
+    assertThat(bound.placeholder("binary_column")).isEqualTo("?");
+    assertThat(bound.bytes("binary_column")).isEqualTo(base64("YWJjbGFyZ2U="));
+    assertThat(bound.value("bigint_column")).isEqualTo("4444");
+    assertThat(bound.value("time_column")).isEqualTo("10:10:10");
+    assertThat(bound.value("tinytext_column")).isEqualTo("<tinytext_column>");
+    assertThat(bound.value("set_column")).isEqualTo("1,2");
+    assertThat(bound.bytes("longblob_column")).isEqualTo(base64("YWJsb25nYmxvYmM="));
+    assertThat(bound.value("mediumtext_column")).isEqualTo("<mediumtext_column>");
+    assertThat(bound.value("year_column")).isEqualTo("2023");
+    assertThat(bound.bytes("blob_column")).isEqualTo(base64("YWJiaWdj"));
+    assertThat(bound.decimal("decimal_column")).isEqualToIgnoringScale("444.222");
+    assertThat(bound.value("bool_column")).isEqualTo(false);
+    assertThat(bound.value("char_column")).isEqualTo("<char_c");
+    assertThat(bound.value("date_column")).isEqualTo("2023-05-18");
+    assertThat(bound.decimal("double_column")).isEqualToIgnoringScale("42.42");
+    assertThat(bound.value("smallint_column")).isEqualTo("22");
+    assertThat(bound.value("varchar_column")).isEqualTo("abc");
   }
 
   @Test
@@ -540,9 +510,6 @@ public final class MySQLDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "INSERT";
 
-    /* The expected sql is:
-    "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk',NULL) ON DUPLICATE KEY"
-        + " UPDATE  FirstName = 'kk', LastName = NULL";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
@@ -552,10 +519,10 @@ public final class MySQLDMLGeneratorTest {
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertTrue(sql.contains("`FirstName` = 'kk'"));
-    assertTrue(sql.contains("`LastName` = NULL"));
+    assertThat(bound.value("FirstName")).isEqualTo("kk");
+    assertThat(bound.value("LastName")).isNull();
   }
 
   @Test
@@ -571,8 +538,6 @@ public final class MySQLDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\",\"FirstName\":\"kk\"}");
     String modType = "DELETE";
 
-    /* The expected sql is:
-    "DELETE FROM Singers WHERE  FirstName = 'kk' AND  SingerId = 999";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
@@ -583,9 +548,10 @@ public final class MySQLDMLGeneratorTest {
                 .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertTrue(sql.contains("`FirstName` = 'kk'"));
-    assertTrue(sql.contains("`SingerId` = 999"));
+    assertThat(bound.value("FirstName")).isEqualTo("kk");
+    assertThat(bound.value("SingerId")).isEqualTo("999");
     assertTrue(sql.contains("DELETE FROM `Singers` WHERE"));
   }
 
@@ -602,9 +568,6 @@ public final class MySQLDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "INSERT";
 
-    /* The expected sql is:
-    "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'k''k','ll') ON DUPLICATE KEY"
-        + " UPDATE  FirstName = 'k''k', LastName = 'll'"; */
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
@@ -614,10 +577,10 @@ public final class MySQLDMLGeneratorTest {
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertTrue(sql.contains("`FirstName` = 'k''k'"));
-    assertTrue(sql.contains("`LastName` = 'll'"));
+    assertThat(bound.value("FirstName")).isEqualTo("k'k");
+    assertThat(bound.value("LastName")).isEqualTo("ll");
   }
 
   @Test
@@ -629,7 +592,7 @@ public final class MySQLDMLGeneratorTest {
 
     /*
     Spanner write is : CAST("\'" as BYTES) for blob and "\'" for varchar
-    Eventual insert is '' but mysql synatx escapes each ' with another '*/
+    The value is bound as a PreparedStatement parameter without any escaping.*/
 
     String tableName = "sample_table";
     String newValuesString = "{\"blob_column\":\"Jw\u003d\u003d\",\"varchar_column\":\"\u0027\",}";
@@ -637,11 +600,6 @@ public final class MySQLDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"id\":\"12\"}");
     String modType = "INSERT";
 
-    /* The expected sql is:
-    "INSERT INTO"
-        + " sample_table(id,varchar_column,blob_column)"
-        + " VALUES (12,'''',FROM_BASE64('Jw=='))"
-        + " ON DUPLICATE KEY UPDATE  varchar_column = '''', blob_column = FROM_BASE64('Jw==')";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
@@ -651,16 +609,16 @@ public final class MySQLDMLGeneratorTest {
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
-    assertTrue(sql.contains("`varchar_column` = '''"));
-    assertTrue(sql.contains("`blob_column` = FROM_BASE64('Jw==')"));
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
+    assertThat(bound.value("varchar_column")).isEqualTo("'");
+    assertThat(bound.bytes("blob_column")).isEqualTo(base64("Jw=="));
   }
 
   @Test
   public void twoSingleEscapedQuoteDML() throws Exception {
     /*
     Spanner write is : CAST("\''" as BYTES) for blob and "\'" for varchar
-    Eventual insert is '' but mysql synatx escapes each ' with another '*/
+    The value is bound as a PreparedStatement parameter without any escaping.*/
 
     String sessionFile = "src/test/resources/quotesSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
@@ -673,10 +631,6 @@ public final class MySQLDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"id\":\"12\"}");
     String modType = "INSERT";
 
-    /* The expected sql is:
-    "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES"
-        + " (12,'''''',FROM_BASE64('Jyc=')) ON DUPLICATE KEY UPDATE  varchar_column = '''''',"
-        + " blob_column = FROM_BASE64('Jyc=')";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
@@ -686,17 +640,17 @@ public final class MySQLDMLGeneratorTest {
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertTrue(sql.contains("`varchar_column` = '''''"));
-    assertTrue(sql.contains("`blob_column` = FROM_BASE64('Jyc=')"));
+    assertThat(bound.value("varchar_column")).isEqualTo("''");
+    assertThat(bound.bytes("blob_column")).isEqualTo(base64("Jyc="));
   }
 
   @Test
   public void threeEscapesAndSingleQuoteDML() throws Exception {
     /*
     Spanner write is : CAST("\\\'" as BYTES) for blob and "\\\'" for varchar
-    Eventual insert is \' but mysql synatx escapes each ' with another ' and \ with another \*/
+    Eventual insert is \' The value is bound as a PreparedStatement parameter without any escaping.*/
 
     String sessionFile = "src/test/resources/quotesSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
@@ -709,10 +663,6 @@ public final class MySQLDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"id\":\"12\"}");
     String modType = "INSERT";
 
-    /* The expected sql is:
-    "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES"
-        + " (12,'\\\\''',FROM_BASE64('XCc=')) ON DUPLICATE KEY UPDATE  varchar_column ="
-        + " '\\\\''', blob_column = FROM_BASE64('XCc=')";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
@@ -722,10 +672,10 @@ public final class MySQLDMLGeneratorTest {
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertTrue(sql.contains("`varchar_column` = '\\\\'"));
-    assertTrue(sql.contains("`blob_column` = FROM_BASE64('XCc=')"));
+    assertThat(bound.value("varchar_column")).isEqualTo("\\'");
+    assertThat(bound.bytes("blob_column")).isEqualTo(base64("XCc="));
   }
 
   @Test
@@ -746,10 +696,6 @@ public final class MySQLDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"id\":\"12\"}");
     String modType = "INSERT";
 
-    /* The expected sql is:
-    "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES (12,'"
-        + "\t',FROM_BASE64('CQ==')) ON DUPLICATE KEY UPDATE  varchar_column = '\t', blob_column"
-        + " = FROM_BASE64('CQ==')"; */
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
@@ -759,10 +705,10 @@ public final class MySQLDMLGeneratorTest {
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertTrue(sql.contains("`varchar_column` = '\t'"));
-    assertTrue(sql.contains("`blob_column` = FROM_BASE64('CQ==')"));
+    assertThat(bound.value("varchar_column")).isEqualTo("\t");
+    assertThat(bound.bytes("blob_column")).isEqualTo(base64("CQ=="));
   }
 
   @Test
@@ -783,10 +729,6 @@ public final class MySQLDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"id\":\"12\"}");
     String modType = "INSERT";
 
-    /* The expected sql is:
-    "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES"
-        + " (12,'\b',FROM_BASE64('CA==')) ON DUPLICATE KEY UPDATE  varchar_column = '\b',"
-        + " blob_column = FROM_BASE64('CA==')";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
@@ -796,10 +738,10 @@ public final class MySQLDMLGeneratorTest {
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertTrue(sql.contains("`varchar_column` = '\b'"));
-    assertTrue(sql.contains("`blob_column` = FROM_BASE64('CA==')"));
+    assertThat(bound.value("varchar_column")).isEqualTo("\b");
+    assertThat(bound.bytes("blob_column")).isEqualTo(base64("CA=="));
   }
 
   @Test
@@ -820,10 +762,6 @@ public final class MySQLDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"id\":\"12\"}");
     String modType = "INSERT";
 
-    /* The expected sql is:
-    "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES (12,'\n"
-        + "',FROM_BASE64('Cg==')) ON DUPLICATE KEY UPDATE  varchar_column = '\n"
-        + "', blob_column = FROM_BASE64('Cg==')";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
@@ -833,10 +771,10 @@ public final class MySQLDMLGeneratorTest {
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertTrue(sql.contains("`varchar_column` = '\n'"));
-    assertTrue(sql.contains("`blob_column` = FROM_BASE64('Cg==')"));
+    assertThat(bound.value("varchar_column")).isEqualTo("\n");
+    assertThat(bound.bytes("blob_column")).isEqualTo(base64("Cg=="));
   }
 
   @Test
@@ -857,10 +795,6 @@ public final class MySQLDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"id\":\"12\"}");
     String modType = "INSERT";
 
-    /* The expected sql is:
-    "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES (12,'\r"
-        + "',FROM_BASE64('DQ==')) ON DUPLICATE KEY UPDATE  varchar_column = '\r"
-        + "', blob_column = FROM_BASE64('DQ==')";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
@@ -870,10 +804,10 @@ public final class MySQLDMLGeneratorTest {
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertTrue(sql.contains("`varchar_column` = '\r'"));
-    assertTrue(sql.contains("`blob_column` = FROM_BASE64('DQ==')"));
+    assertThat(bound.value("varchar_column")).isEqualTo("\r");
+    assertThat(bound.bytes("blob_column")).isEqualTo(base64("DQ=="));
   }
 
   @Test
@@ -894,10 +828,6 @@ public final class MySQLDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"id\":\"12\"}");
     String modType = "INSERT";
 
-    /* The expected sql is:
-    "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES"
-        + " (12,'\f',FROM_BASE64('DA==')) ON DUPLICATE KEY UPDATE  varchar_column = '\f',"
-        + " blob_column = FROM_BASE64('DA==')";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
@@ -907,10 +837,10 @@ public final class MySQLDMLGeneratorTest {
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertTrue(sql.contains("`varchar_column` = '\f'"));
-    assertTrue(sql.contains("`blob_column` = FROM_BASE64('DA==')"));
+    assertThat(bound.value("varchar_column")).isEqualTo("\f");
+    assertThat(bound.bytes("blob_column")).isEqualTo(base64("DA=="));
   }
 
   @Test
@@ -931,10 +861,6 @@ public final class MySQLDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"id\":\"12\"}");
     String modType = "INSERT";
 
-    /* The expected sql is:
-    "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES"
-        + " (12,'\"',FROM_BASE64('Ig==')) ON DUPLICATE KEY UPDATE  varchar_column = '\"',"
-        + " blob_column = FROM_BASE64('Ig==')";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
@@ -944,10 +870,10 @@ public final class MySQLDMLGeneratorTest {
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertTrue(sql.contains("`varchar_column` = '\"'"));
-    assertTrue(sql.contains("`blob_column` = FROM_BASE64('Ig==')"));
+    assertThat(bound.value("varchar_column")).isEqualTo("\"");
+    assertThat(bound.bytes("blob_column")).isEqualTo(base64("Ig=="));
   }
 
   @Test
@@ -968,10 +894,6 @@ public final class MySQLDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"id\":\"12\"}");
     String modType = "INSERT";
 
-    /*The expected sql is:
-    "INSERT INTO sample_table(id,varchar_column,blob_column) VALUES"
-        + " (12,'\\\\',FROM_BASE64('XA==')) ON DUPLICATE KEY UPDATE  varchar_column = '\\\\',"
-        + " blob_column = FROM_BASE64('XA==')";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
@@ -981,10 +903,10 @@ public final class MySQLDMLGeneratorTest {
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertTrue(sql.contains("`varchar_column` = '\\\\'"));
-    assertTrue(sql.contains("`blob_column` = FROM_BASE64('XA==')"));
+    assertThat(bound.value("varchar_column")).isEqualTo("\\");
+    assertThat(bound.bytes("blob_column")).isEqualTo(base64("XA=="));
   }
 
   @Test
@@ -1000,13 +922,6 @@ public final class MySQLDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "INSERT";
 
-    /*The expected sql is:
-    "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES"
-        + " (999,'kk',BINARY(FROM_BASE64('YmlsX2NvbA=='))) ON DUPLICATE KEY UPDATE  FirstName ="
-        + " 'kk', LastName = x'62696c5f636f6c'))";
-     Base64 decode of `YmlsX2NvbA==` is `bil_col`
-     Char to Hex for `bil_col` is `62 69 6C 5F 63 6F 6C`
-        */
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
@@ -1016,9 +931,10 @@ public final class MySQLDMLGeneratorTest {
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertTrue(sql.contains("`LastName` = x'62696c5f636f6c'"));
+    assertThat(bound.placeholder("LastName")).isEqualTo("?");
+    assertThat(bound.bytes("LastName")).isEqualTo("bil_col".getBytes(StandardCharsets.UTF_8));
   }
 
   @Test
@@ -1070,10 +986,11 @@ public final class MySQLDMLGeneratorTest {
                 .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
     assertThat(sql.contains("ON DUPLICATE KEY UPDATE"));
-    assertTrue(sql.contains("`FirstName` = 'kk'"));
-    assertTrue(sql.contains("`SingerId` = NULL"));
-    assertTrue(sql.contains("`LastName` = 'll'"));
+    assertThat(bound.value("FirstName")).isEqualTo("kk");
+    assertThat(bound.value("SingerId")).isNull();
+    assertThat(bound.value("LastName")).isEqualTo("ll");
     assertEquals(2, countInSQL(sql, "FirstName"));
     assertEquals(2, countInSQL(sql, "SingerId"));
     assertEquals(2, countInSQL(sql, "LastName"));
@@ -1102,10 +1019,11 @@ public final class MySQLDMLGeneratorTest {
                 .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
     assertThat(sql.contains("ON DUPLICATE KEY UPDATE"));
-    assertTrue(sql.contains("`FirstName` = 'kk'"));
-    assertTrue(sql.contains("`SingerId` = NULL"));
-    assertTrue(sql.contains("`LastName` = 'll'"));
+    assertThat(bound.value("FirstName")).isEqualTo("kk");
+    assertThat(bound.value("SingerId")).isNull();
+    assertThat(bound.value("LastName")).isEqualTo("ll");
     assertEquals(2, countInSQL(sql, "FirstName"));
     assertEquals(2, countInSQL(sql, "SingerId"));
     assertEquals(2, countInSQL(sql, "LastName"));
@@ -1150,9 +1068,6 @@ public final class MySQLDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"FirstName\":null}");
     String modType = "INSERT";
 
-    /* The expected sql is:
-    "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,NULL,'ll') ON DUPLICATE KEY"
-        + " UPDATE  FirstName = NULL , LastName = 'll'";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
@@ -1162,9 +1077,9 @@ public final class MySQLDMLGeneratorTest {
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertTrue(sql.contains("`FirstName` = NULL"));
+    assertThat(bound.value("FirstName")).isNull();
   }
 
   @Test
@@ -1206,9 +1121,6 @@ public final class MySQLDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "UPDATE";
 
-    /*The expected sql is:
-    "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
-        + " UPDATE  FirstName = 'kk', LastName = 'll'";*/
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
@@ -1218,10 +1130,10 @@ public final class MySQLDMLGeneratorTest {
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertTrue(sql.contains("`FirstName` = 'kk'"));
-    assertTrue(sql.contains("`LastName` = 'll'"));
+    assertThat(bound.value("FirstName")).isEqualTo("kk");
+    assertThat(bound.value("LastName")).isEqualTo("ll");
   }
 
   @Test
@@ -1340,7 +1252,8 @@ public final class MySQLDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "INSERT";
     Map<String, Object> customTransformation = new HashMap<>();
-    customTransformation.put("FullName", "\'kk ll\'");
+    // Custom transformation values are bound as data, so they must not be pre-quoted.
+    customTransformation.put("FullName", "kk ll");
     customTransformation.put("SingerId", "1");
 
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
@@ -1354,24 +1267,13 @@ public final class MySQLDMLGeneratorTest {
                 .setCustomTransformationResponse(customTransformation)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
     assertThat(sql.contains("ON DUPLICATE KEY UPDATE"));
-    assertTrue(sql.contains("`FullName` = 'kk ll'"));
-    assertTrue(sql.contains("`SingerId` = 1"));
+    assertThat(bound.value("FullName")).isEqualTo("kk ll");
+    assertThat(bound.value("SingerId")).isEqualTo("1");
     assertEquals(2, countInSQL(sql, "FullName"));
     assertEquals(2, countInSQL(sql, "SingerId"));
-  }
-
-  @Test
-  public void testConvertBase64ToXHex() {
-    assertThat(MySQLDMLGenerator.convertBase64ToHex(null)).isNull();
-    assertThat(MySQLDMLGenerator.convertBase64ToHex("")).isEqualTo("x''");
-    assertThat(MySQLDMLGenerator.convertBase64ToHex("AA==")).isEqualTo("x'00'");
-    assertThat(MySQLDMLGenerator.convertBase64ToHex("R09PR0xF")).isEqualTo("x'474f4f474c45'");
-    // Invalid Base64 string.
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> MySQLDMLGenerator.convertBase64ToHex("####GOOGLE####"));
   }
 
   public long countInSQL(String sql, String targetWord) {
@@ -1397,11 +1299,6 @@ public final class MySQLDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "INSERT";
 
-    /*
-     * The expected sql is:
-     * "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES (999,'kk','ll') ON DUPLICATE KEY"
-     * + " UPDATE  FirstName = 'kk', LastName = 'll'";
-     */
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
@@ -1412,9 +1309,10 @@ public final class MySQLDMLGeneratorTest {
                 .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertTrue(sql.contains("`FirstName` = 'kk'"));
-    assertTrue(sql.contains("`LastName` = 'll'"));
+    assertThat(bound.value("FirstName")).isEqualTo("kk");
+    assertThat(bound.value("LastName")).isEqualTo("ll");
     // Verify FullName is NOT in the SQL
     // It should not be in the column list, values, or update clause.
     assertEquals(0, countInSQL(sql, "FullName"));
@@ -1517,8 +1415,9 @@ public final class MySQLDMLGeneratorTest {
                 .setSourceSchema(modifiedSourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertTrue(sql.contains("`LastName` = 'll'"));
+    assertThat(bound.value("LastName")).isEqualTo("ll");
     // Verify FirstName is NOT in the generated column updates,
     // because it's a generated PK and skipped during DML creation.
     assertEquals(0, countInSQL(sql, "FirstName"));
@@ -1537,9 +1436,11 @@ public final class MySQLDMLGeneratorTest {
 
     JSONObject json = new JSONObject("{\"bit_column\":\"SGVsbG8=\"}"); // "Hello" in base64
 
-    String res =
-        MySQLDMLGenerator.getMappedColumnValue(spannerCol, sourceCol, json, "+00:00", null);
-    assertEquals("x'48656c6c6f'", res); // "Hello" in hex is 48656c6c6f
+    ColumnBinding binding =
+        MySQLDMLGenerator.getMappedColumnBinding(spannerCol, sourceCol, json, "+00:00");
+    assertThat(binding.getPlaceholderSql()).isEqualTo("?");
+    assertThat(binding.getParams())
+        .containsExactly(PreparedStatementValue.ofBytes("Hello".getBytes(StandardCharsets.UTF_8)));
   }
 
   @Test
@@ -1649,5 +1550,295 @@ public final class MySQLDMLGeneratorTest {
     Mockito.when(sourceTable.primaryKeyColumns()).thenReturn(null); // NULL!
 
     assertThrows(InvalidDMLGenerationException.class, () -> generator.getDMLStatement(request));
+  }
+
+  @Test
+  public void sqlInjectionPayloadIsBoundAsData() {
+    String sessionFile = "src/test/resources/allMatchSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
+    String firstName = "x'); DROP TABLE Singers; --";
+    String lastName = "\\' OR 1=1 -- ";
+    JSONObject newValuesJson = new JSONObject();
+    newValuesJson.put("FirstName", firstName);
+    newValuesJson.put("LastName", lastName);
+    JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
+
+    DMLGeneratorResponse dmlGeneratorResponse =
+        new MySQLDMLGenerator()
+            .getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        "INSERT", "Singers", newValuesJson, keyValuesJson, "+00:00")
+                    .setSchemaMapper(schemaMapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(sourceSchema)
+                    .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
+
+    // Record values never appear in the SQL text; they are bound verbatim, without escaping.
+    assertThat(sql).doesNotContain("DROP");
+    assertThat(sql).doesNotContain("OR 1=1");
+    assertThat(sql).doesNotContain("'");
+    assertThat(bound.value("FirstName")).isEqualTo(firstName);
+    assertThat(bound.value("LastName")).isEqualTo(lastName);
+    assertThat(bound.value("SingerId")).isEqualTo("999");
+  }
+
+  @Test
+  public void deleteStatementIsParameterized() {
+    String sessionFile = "src/test/resources/MultiColmPKSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
+    JSONObject keyValuesJson = new JSONObject();
+    keyValuesJson.put("SingerId", "999");
+    keyValuesJson.put("FirstName", "k' OR '1'='1");
+
+    DMLGeneratorResponse dmlGeneratorResponse =
+        new MySQLDMLGenerator()
+            .getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        "DELETE", "Singers", new JSONObject(), keyValuesJson, "+00:00")
+                    .setSchemaMapper(schemaMapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(sourceSchema)
+                    .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
+
+    assertThat(sql).startsWith("DELETE FROM `Singers` WHERE ");
+    assertThat(sql).doesNotContain("'");
+    assertThat(bound.placeholder("FirstName")).isEqualTo("?");
+    assertThat(bound.value("FirstName")).isEqualTo("k' OR '1'='1");
+    assertThat(bound.value("SingerId")).isEqualTo("999");
+    assertThat(dmlGeneratorResponse.getPreparedStatementParameters()).hasSize(2);
+  }
+
+  @Test
+  public void quoteIdentifierEscapesBackticks() {
+    assertThat(MySQLDMLGenerator.quoteIdentifier("Singers")).isEqualTo("`Singers`");
+    assertThat(MySQLDMLGenerator.quoteIdentifier("a`b")).isEqualTo("`a``b`");
+    assertThat(MySQLDMLGenerator.quoteIdentifier("x`; DROP TABLE t; --"))
+        .isEqualTo("`x``; DROP TABLE t; --`");
+  }
+
+  @Test
+  public void customTransformationValuesAreBoundAsTypedData() {
+    String sessionFile = "src/test/resources/customTransformation.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+    Map<String, Object> customTransformation = new HashMap<>();
+    // SQL expressions returned by a custom transformation are treated as plain strings.
+    customTransformation.put("FullName", "CONCAT('kk', ' ', 'll')");
+    customTransformation.put("SingerId", 7L);
+
+    DMLGeneratorResponse dmlGeneratorResponse =
+        new MySQLDMLGenerator()
+            .getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        "INSERT",
+                        "Singers",
+                        new JSONObject("{\"FirstName\":\"kk\",\"LastName\":\"ll\"}"),
+                        new JSONObject("{\"SingerId\":\"999\"}"),
+                        "+00:00")
+                    .setSchemaMapper(schemaMapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(sourceSchema)
+                    .setCustomTransformationResponse(customTransformation)
+                    .build());
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
+
+    assertThat(dmlGeneratorResponse.getDmlStatement()).doesNotContain("CONCAT");
+    assertThat(bound.value("FullName")).isEqualTo("CONCAT('kk', ' ', 'll')");
+    assertThat(bound.value("SingerId")).isEqualTo(7L);
+  }
+
+  @Test
+  public void customTransformationNullValueIsBoundAsNull() {
+    String sessionFile = "src/test/resources/customTransformation.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+    Map<String, Object> customTransformation = new HashMap<>();
+    customTransformation.put("FullName", null);
+
+    DMLGeneratorResponse dmlGeneratorResponse =
+        new MySQLDMLGenerator()
+            .getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        "INSERT",
+                        "Singers",
+                        new JSONObject("{\"FirstName\":\"kk\",\"LastName\":\"ll\"}"),
+                        new JSONObject("{\"SingerId\":\"999\"}"),
+                        "+00:00")
+                    .setSchemaMapper(schemaMapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(sourceSchema)
+                    .setCustomTransformationResponse(customTransformation)
+                    .build());
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
+
+    assertThat(bound.value("FullName")).isNull();
+    assertThat(bound.value("SingerId")).isEqualTo("999");
+  }
+
+  @Test
+  public void customTransformationTimestampIsBoundAsIs() {
+    String sessionFile = "src/test/resources/timeZoneSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+    Map<String, Object> customTransformation = new HashMap<>();
+    customTransformation.put("Bday", "2024-01-01 10:00:00");
+
+    DMLGeneratorResponse dmlGeneratorResponse =
+        new MySQLDMLGenerator()
+            .getDMLStatement(
+                new DMLGeneratorRequest.Builder(
+                        "INSERT",
+                        "Singers",
+                        new JSONObject("{\"Bday\":\"2023-05-18T12:01:13.088397258Z\"}"),
+                        new JSONObject("{\"SingerId\":\"999\"}"),
+                        "+05:30")
+                    .setSchemaMapper(schemaMapper)
+                    .setDdl(ddl)
+                    .setSourceSchema(sourceSchema)
+                    .setCustomTransformationResponse(customTransformation)
+                    .build());
+    BoundDml bound = BoundDml.of(dmlGeneratorResponse);
+
+    // No timezone conversion is applied to custom transformation values.
+    assertThat(bound.placeholder("Bday")).isEqualTo("?");
+    assertThat(bound.value("Bday")).isEqualTo("2024-01-01 10:00:00");
+  }
+
+  @Test
+  public void stringToBinaryColumnUsesBinaryPlaceholder() {
+    Column spannerCol = Mockito.mock(Column.class);
+    Mockito.when(spannerCol.name()).thenReturn("varbinary_column");
+    Mockito.when(spannerCol.type()).thenReturn(Type.string());
+    SourceColumn sourceCol = Mockito.mock(SourceColumn.class);
+    Mockito.when(sourceCol.type()).thenReturn("varbinary");
+    JSONObject json = new JSONObject("{\"varbinary_column\":\"a'b\"}");
+
+    ColumnBinding binding =
+        MySQLDMLGenerator.getMappedColumnBinding(spannerCol, sourceCol, json, "+00:00");
+
+    assertThat(binding.getPlaceholderSql()).isEqualTo("BINARY(?)");
+    assertThat(binding.getParams()).containsExactly(PreparedStatementValue.ofString("a'b"));
+  }
+
+  @Test
+  public void boolToNumericColumnIsBoundAsBoolean() {
+    Column spannerCol = Mockito.mock(Column.class);
+    Mockito.when(spannerCol.name()).thenReturn("bool_column");
+    Mockito.when(spannerCol.type()).thenReturn(Type.bool());
+    SourceColumn sourceCol = Mockito.mock(SourceColumn.class);
+    Mockito.when(sourceCol.type()).thenReturn("tinyint");
+    JSONObject json = new JSONObject("{\"bool_column\":true}");
+
+    ColumnBinding binding =
+        MySQLDMLGenerator.getMappedColumnBinding(spannerCol, sourceCol, json, "+00:00");
+
+    assertThat(binding.getPlaceholderSql()).isEqualTo("?");
+    assertThat(binding.getParams()).containsExactly(PreparedStatementValue.ofBoolean(true));
+  }
+
+  private static byte[] base64(String encoded) {
+    return Base64.getDecoder().decode(encoded);
+  }
+
+  /**
+   * A parsed view of a parameterized MySQL DML statement, mapping each column in the {@code ON
+   * DUPLICATE KEY UPDATE} clause (or the {@code WHERE} clause of a {@code DELETE}) to its SQL
+   * placeholder fragment and its bound parameter values.
+   */
+  private static final class BoundDml {
+    private static final String UPSERT_MARKER = " ON DUPLICATE KEY UPDATE ";
+    private static final String DELETE_MARKER = " WHERE ";
+
+    private final Map<String, String> placeholders = new LinkedHashMap<>();
+    private final Map<String, List<PreparedStatementValue>> params = new LinkedHashMap<>();
+
+    static BoundDml of(DMLGeneratorResponse response) {
+      return new BoundDml(response.getDmlStatement(), response.getPreparedStatementParameters());
+    }
+
+    private BoundDml(String sql, List<Object> allParams) {
+      assertThat(allParams).isNotNull();
+      String[] assignments;
+      List<Object> columnParams;
+      if (sql.startsWith("DELETE FROM ")) {
+        assignments =
+            sql.substring(sql.indexOf(DELETE_MARKER) + DELETE_MARKER.length()).split(" AND (?=`)");
+        columnParams = allParams;
+      } else {
+        assertThat(sql).startsWith("INSERT INTO ");
+        assertThat(sql).contains(UPSERT_MARKER);
+        assignments =
+            sql.substring(sql.indexOf(UPSERT_MARKER) + UPSERT_MARKER.length()).split(", (?=`)");
+        // The same parameters are bound for the VALUES and the ON DUPLICATE KEY UPDATE clauses.
+        assertThat(allParams.size() % 2).isEqualTo(0);
+        int half = allParams.size() / 2;
+        columnParams = allParams.subList(0, half);
+        assertThat(allParams.subList(half, allParams.size()))
+            .containsExactlyElementsIn(columnParams)
+            .inOrder();
+      }
+      int index = 0;
+      for (String assignment : assignments) {
+        int separator = assignment.indexOf("` = ");
+        String column = assignment.substring(1, separator).replace("``", "`");
+        String placeholder = assignment.substring(separator + "` = ".length());
+        long count = placeholder.chars().filter(c -> c == '?').count();
+        List<PreparedStatementValue> values = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+          values.add((PreparedStatementValue) columnParams.get(index++));
+        }
+        placeholders.put(column, placeholder);
+        params.put(column, values);
+      }
+      assertThat(index).isEqualTo(columnParams.size());
+    }
+
+    /** The SQL fragment used for the column, e.g. {@code ?} or {@code CONVERT_TZ(?, ...)}. */
+    String placeholder(String column) {
+      assertThat(placeholders).containsKey(column);
+      return placeholders.get(column);
+    }
+
+    /** The raw Java values bound for the column, in order. */
+    List<Object> values(String column) {
+      assertThat(params).containsKey(column);
+      List<Object> values = new ArrayList<>();
+      for (PreparedStatementValue value : params.get(column)) {
+        values.add(value.getValue());
+      }
+      return values;
+    }
+
+    /** The single raw Java value bound for the column ({@code null} for SQL NULL). */
+    Object value(String column) {
+      List<Object> values = values(column);
+      assertThat(values).hasSize(1);
+      return values.get(0);
+    }
+
+    byte[] bytes(String column) {
+      Object value = value(column);
+      assertThat(value).isInstanceOf(byte[].class);
+      return (byte[]) value;
+    }
+
+    BigDecimal decimal(String column) {
+      Object value = value(column);
+      assertThat(value).isInstanceOf(BigDecimal.class);
+      return (BigDecimal) value;
+    }
   }
 }

@@ -26,19 +26,37 @@ import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.DMLGeneratorUtils;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
+import com.google.cloud.teleport.v2.templates.models.ColumnBinding;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
+import com.google.cloud.teleport.v2.templates.models.PreparedStatementValue;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableList;
+import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
 
-/** Creates DML statements. */
+/**
+ * Creates parameterized DML statements for MySQL.
+ *
+ * <p>All column values (including custom transformation values and the source database timezone
+ * offset) are bound as {@link java.sql.PreparedStatement} parameters. Only template-generated SQL
+ * and escaped identifiers are part of the SQL text.
+ */
 public class MySQLDMLGenerator implements IDMLGenerator {
+
+  /** SQL fragment converting a UTC timestamp to the source database timezone. */
+  @VisibleForTesting static final String CONVERT_TZ_PLACEHOLDER = "CONVERT_TZ(?, '+00:00', ?)";
+
+  /** SQL fragment casting a string to a binary string. */
+  @VisibleForTesting static final String BINARY_PLACEHOLDER = "BINARY(?)";
 
   public DMLGeneratorResponse getDMLStatement(DMLGeneratorRequest dmlGeneratorRequest) {
     if (dmlGeneratorRequest == null) {
@@ -85,12 +103,13 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     if (sourceTable.primaryKeyColumns() == null || sourceTable.primaryKeyColumns().size() == 0) {
       throw new InvalidDMLGenerationException(
           String.format(
-              "Cannot reverse replicate for source table %s without primary key, skipping the record.",
+              "Cannot reverse replicate for source table %s without primary key, skipping the"
+                  + " record.",
               sourceTableName));
     }
 
-    Map<String, String> pkcolumnNameValues =
-        DMLGeneratorUtils.getPkColumnValues(
+    Map<String, ColumnBinding> pkColumnBindings =
+        DMLGeneratorUtils.getPkColumnBindings(
             schemaMapper,
             spannerTable,
             sourceTable,
@@ -98,9 +117,8 @@ public class MySQLDMLGenerator implements IDMLGenerator {
             dmlGeneratorRequest.getKeyValuesJson(),
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
             dmlGeneratorRequest.getCustomTransformationResponse(),
-            MySQLDMLGenerator::getMappedColumnValue,
-            new ArrayList<>());
-    if (pkcolumnNameValues == null || pkcolumnNameValues.isEmpty()) {
+            MySQLDMLGenerator::getMappedColumnBinding);
+    if (pkColumnBindings == null || pkColumnBindings.isEmpty()) {
       throw new InvalidDMLGenerationException(
           String.format(
               "Cannot reverse replicate for table %s without primary key, skipping the record",
@@ -110,10 +128,10 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     if ("INSERT".equals(dmlGeneratorRequest.getModType())
         || "UPDATE".equals(dmlGeneratorRequest.getModType())) {
       return generateUpsertStatement(
-          spannerTable, sourceTable, dmlGeneratorRequest, pkcolumnNameValues);
+          spannerTable, sourceTable, dmlGeneratorRequest, pkColumnBindings);
 
     } else if ("DELETE".equals(dmlGeneratorRequest.getModType())) {
-      return getDeleteStatement(sourceTable.name(), pkcolumnNameValues);
+      return getDeleteStatement(sourceTable.name(), pkColumnBindings);
     } else {
       throw new InvalidDMLGenerationException(
           String.format(
@@ -122,73 +140,71 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     }
   }
 
+  /**
+   * Builds {@code INSERT INTO `t`(`c1`,...) VALUES (?,...) ON DUPLICATE KEY UPDATE `c1` = ?, ...}.
+   * The value parameters are bound twice: once for the {@code VALUES} clause and once for the
+   * {@code ON DUPLICATE KEY UPDATE} clause.
+   */
   private static DMLGeneratorResponse getUpsertStatement(
-      String tableName, Map<String, String> allColumnNameValues) {
+      String tableName, Map<String, ColumnBinding> allColumnBindings) {
+    List<String> columns = new ArrayList<>();
+    List<String> values = new ArrayList<>();
+    List<String> updates = new ArrayList<>();
+    List<PreparedStatementValue> valueParams = new ArrayList<>();
 
-    String allColumns = "";
-    String allValues = "";
-    String updateValues = "";
-
-    int index = 0;
-
-    for (Map.Entry<String, String> entry : allColumnNameValues.entrySet()) {
-      String colName = entry.getKey();
-      String colValue = entry.getValue();
-      String sqlValue = (colValue == null) ? "NULL" : colValue;
-      allColumns += "`" + colName + "`";
-      allValues += sqlValue;
-      updateValues += " `" + colName + "` = " + sqlValue;
-
-      // Add comma if not the last item in this loop
-      if (index + 1 < allColumnNameValues.size()) {
-        allColumns += ",";
-        allValues += ",";
-        updateValues += ",";
-      }
-      index++;
+    for (Map.Entry<String, ColumnBinding> entry : allColumnBindings.entrySet()) {
+      String quotedColumn = quoteIdentifier(entry.getKey());
+      ColumnBinding binding = entry.getValue();
+      columns.add(quotedColumn);
+      values.add(binding.getPlaceholderSql());
+      updates.add(quotedColumn + " = " + binding.getPlaceholderSql());
+      valueParams.addAll(binding.getParams());
     }
-    String returnVal =
-        "INSERT INTO `"
-            + tableName
-            + "`("
-            + allColumns
-            + ")"
-            + " VALUES ("
-            + allValues
-            + ") "
-            + "ON DUPLICATE KEY UPDATE "
-            + updateValues;
 
-    return new DMLGeneratorResponse(returnVal);
+    String sql =
+        "INSERT INTO "
+            + quoteIdentifier(tableName)
+            + "("
+            + String.join(",", columns)
+            + ") VALUES ("
+            + String.join(",", values)
+            + ") ON DUPLICATE KEY UPDATE "
+            + String.join(", ", updates);
+
+    List<Object> params = new ArrayList<>(valueParams.size() * 2);
+    params.addAll(valueParams); // VALUES (...)
+    params.addAll(valueParams); // ON DUPLICATE KEY UPDATE ...
+    return newResponse(sql, params);
   }
 
+  /** Builds {@code DELETE FROM `t` WHERE `pk1` = ? AND ...}. */
   private static DMLGeneratorResponse getDeleteStatement(
-      String tableName, Map<String, String> pkcolumnNameValues) {
-    String deleteValues = "";
-
-    int index = 0;
-    for (Map.Entry<String, String> entry : pkcolumnNameValues.entrySet()) {
-      String colName = entry.getKey();
-      String colValue = entry.getValue();
-
-      deleteValues += " `" + colName + "` = " + colValue;
-      if (index + 1 < pkcolumnNameValues.size()) {
-        deleteValues += " AND ";
-      }
-      index++;
+      String tableName, Map<String, ColumnBinding> pkColumnBindings) {
+    List<String> conditions = new ArrayList<>();
+    List<Object> params = new ArrayList<>();
+    for (Map.Entry<String, ColumnBinding> entry : pkColumnBindings.entrySet()) {
+      ColumnBinding binding = entry.getValue();
+      conditions.add(quoteIdentifier(entry.getKey()) + " = " + binding.getPlaceholderSql());
+      params.addAll(binding.getParams());
     }
-    String returnVal = "DELETE FROM `" + tableName + "` WHERE " + deleteValues;
+    String sql =
+        "DELETE FROM " + quoteIdentifier(tableName) + " WHERE " + String.join(" AND ", conditions);
+    return newResponse(sql, params);
+  }
 
-    return new DMLGeneratorResponse(returnVal);
+  private static DMLGeneratorResponse newResponse(String sql, List<Object> params) {
+    DMLGeneratorResponse response = new DMLGeneratorResponse(sql);
+    response.setPreparedStatementParameters(params);
+    return response;
   }
 
   private static DMLGeneratorResponse generateUpsertStatement(
       Table spannerTable,
       SourceTable sourceTable,
       DMLGeneratorRequest dmlGeneratorRequest,
-      Map<String, String> pkcolumnNameValues) {
-    Map<String, String> columnNameValues =
-        DMLGeneratorUtils.getColumnValues(
+      Map<String, ColumnBinding> pkColumnBindings) {
+    Map<String, ColumnBinding> columnBindings =
+        DMLGeneratorUtils.getColumnBindings(
             dmlGeneratorRequest.getSchemaMapper(),
             spannerTable,
             sourceTable,
@@ -196,83 +212,59 @@ public class MySQLDMLGenerator implements IDMLGenerator {
             dmlGeneratorRequest.getKeyValuesJson(),
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
             dmlGeneratorRequest.getCustomTransformationResponse(),
-            MySQLDMLGenerator::getMappedColumnValue,
-            new ArrayList<>());
-    columnNameValues.putAll(pkcolumnNameValues);
-    return getUpsertStatement(sourceTable.name(), columnNameValues);
+            MySQLDMLGenerator::getMappedColumnBinding);
+    columnBindings.putAll(pkColumnBindings);
+    return getUpsertStatement(sourceTable.name(), columnBindings);
   }
 
+  /** Quotes a MySQL identifier with backticks, escaping embedded backticks by doubling them. */
   @VisibleForTesting
-  static String getMappedColumnValue(
-      Column spannerColDef,
-      SourceColumn sourceColDef,
-      JSONObject valuesJson,
-      String sourceDbTimezoneOffset,
-      List<Object> preparedStatementParameters) {
-
-    String colInputValue = "";
-    Type colType = spannerColDef.type();
-    String colName = spannerColDef.name();
-    if (colType.getCode().equals(Type.Code.FLOAT64)
-        || colType.getCode().equals(Type.Code.FLOAT32)
-        || colType.getCode().equals(Type.Code.PG_FLOAT4)
-        || colType.getCode().equals(Type.Code.PG_FLOAT8)
-        || colType.getCode().equals(Type.Code.PG_NUMERIC)) {
-      // TODO Test and Handle NAN/Infinity.
-      colInputValue = valuesJson.getBigDecimal(colName).toString();
-    } else if (colType.getCode().equals(Type.Code.BOOL)
-        || colType.getCode().equals(Type.Code.PG_BOOL)) {
-      colInputValue = (new Boolean(valuesJson.getBoolean(colName))).toString();
-    } else if ((colType.getCode().equals(Type.Code.ARRAY)
-            && colType.getArrayElementType().getCode().equals(Type.Code.STRING))
-        || (colType.getCode().equals(Type.Code.PG_ARRAY)
-            && (colType.getArrayElementType().getCode().equals(Type.Code.PG_VARCHAR)
-                || colType.getArrayElementType().getCode().equals(Type.Code.PG_TEXT)))) {
-      colInputValue =
-          valuesJson.getJSONArray(colName).toList().stream()
-              .map(String::valueOf)
-              .collect(Collectors.joining(","));
-    } else if (colType.getCode().equals(Type.Code.BYTES)
-        || colType.getCode().equals(Type.Code.PG_BYTEA)) {
-      if (sourceColDef.type().toLowerCase().equals("bit")) {
-        colInputValue = convertBase64ToHex(valuesJson.getString(colName));
-      } else {
-        colInputValue = "FROM_BASE64('" + valuesJson.getString(colName) + "')";
-      }
-    } else {
-      colInputValue = valuesJson.getString(colName);
-    }
-    String response =
-        getColumnValueByType(
-            sourceColDef.type(), colInputValue, sourceDbTimezoneOffset, colType.toString());
-    return response;
+  static String quoteIdentifier(String identifier) {
+    return "`" + StringUtils.replace(identifier, "`", "``") + "`";
   }
 
   /**
-   * Decodes a Base64 encoded string and formats the resulting bytes into a hexadecimal string
-   * prefixed with 'x'.
-   *
-   * @param base64EncodedString The Base64 encoded string to decode.
-   * @return A string in the format x'&lt;hex representation of the bytes$gt;', or x'' if the input
-   *     is null or empty after decoding.
-   * @throws IllegalArgumentException If the input string is not a valid Base64 encoding.
+   * Maps a non-null Spanner column value to a {@link ColumnBinding} based on the Spanner column
+   * type and the MySQL source column type.
    */
   @VisibleForTesting
-  protected static String convertBase64ToHex(String base64EncodedString) {
-    String rawHex = DMLGeneratorUtils.convertBase64ToRawHex(base64EncodedString);
-    if (rawHex == null) {
-      return null;
-    }
-    return rawHex.isEmpty() ? "x''" : "x'" + rawHex + "'";
-  }
+  static ColumnBinding getMappedColumnBinding(
+      Column spannerColDef,
+      SourceColumn sourceColDef,
+      JSONObject valuesJson,
+      String sourceDbTimezoneOffset) {
+    Type colType = spannerColDef.type();
+    String colName = spannerColDef.name();
+    Type.Code code = colType.getCode();
 
-  @VisibleForTesting
-  static String getColumnValueByType(
-      String columnType, String colValue, String sourceDbTimezoneOffset, String spannerColType) {
-    String response = "";
-    String cleanedNullBytes = "";
-    String decodedString = "";
-    switch (columnType) {
+    // Spanner BYTES values are Base64 encoded in the change stream. Bind the decoded bytes for all
+    // source types (blob, binary, varbinary, bit, and string types).
+    if (code.equals(Type.Code.BYTES) || code.equals(Type.Code.PG_BYTEA)) {
+      byte[] bytes = Base64.getDecoder().decode(valuesJson.getString(colName));
+      return ColumnBinding.of(PreparedStatementValue.ofBytes(bytes));
+    }
+
+    BigDecimal decimalValue = null;
+    Boolean booleanValue = null;
+    String stringValue;
+    if (isFloatOrNumeric(code)) {
+      // TODO Test and Handle NAN/Infinity.
+      decimalValue = valuesJson.getBigDecimal(colName);
+      stringValue = decimalValue.toString();
+    } else if (code.equals(Type.Code.BOOL) || code.equals(Type.Code.PG_BOOL)) {
+      booleanValue = valuesJson.getBoolean(colName);
+      stringValue = booleanValue.toString();
+    } else if (isStringArray(colType)) {
+      stringValue =
+          valuesJson.getJSONArray(colName).toList().stream()
+              .map(String::valueOf)
+              .collect(Collectors.joining(","));
+    } else {
+      stringValue = valuesJson.getString(colName);
+    }
+
+    String sourceType = sourceColDef.type().toLowerCase(Locale.ROOT);
+    switch (sourceType) {
       case "varchar":
       case "char":
       case "text":
@@ -297,47 +289,50 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       case "mediumblob":
       case "blob":
       case "longblob":
-        response = getQuotedEscapedString(colValue, spannerColType);
-        break;
+        return ColumnBinding.of(PreparedStatementValue.ofString(removeNullBytes(stringValue)));
       case "timestamp":
       case "datetime":
-        colValue = colValue.substring(0, colValue.length() - 1); // trim the Z for mysql
-        response =
-            " CONVERT_TZ("
-                + getQuotedEscapedString(colValue, spannerColType)
-                + ",'+00:00','"
-                + sourceDbTimezoneOffset
-                + "')";
-
-        break;
+        // Trim the trailing 'Z' of the UTC timestamp for MySQL.
+        String utcTimestamp = stringValue.substring(0, stringValue.length() - 1);
+        return ColumnBinding.of(
+            CONVERT_TZ_PLACEHOLDER,
+            ImmutableList.of(
+                PreparedStatementValue.ofString(removeNullBytes(utcTimestamp)),
+                PreparedStatementValue.ofString(sourceDbTimezoneOffset)));
       case "binary":
       case "varbinary":
-        response = getBinaryString(colValue, spannerColType);
-        break;
+        return ColumnBinding.of(
+            BINARY_PLACEHOLDER,
+            ImmutableList.of(PreparedStatementValue.ofString(removeNullBytes(stringValue))));
       default:
-        response = colValue;
+        if (decimalValue != null) {
+          return ColumnBinding.of(PreparedStatementValue.ofBigDecimal(decimalValue));
+        }
+        if (booleanValue != null) {
+          return ColumnBinding.of(PreparedStatementValue.ofBoolean(booleanValue));
+        }
+        // MySQL implicitly converts the string to the column type (e.g. integer types).
+        return ColumnBinding.of(PreparedStatementValue.ofString(stringValue));
     }
-    return response;
   }
 
-  private static String escapeString(String input) {
-    String cleanedNullBytes = StringUtils.replace(input, "\u0000", "");
-    cleanedNullBytes = StringUtils.replace(cleanedNullBytes, "'", "''");
-    cleanedNullBytes = StringUtils.replace(cleanedNullBytes, "\\", "\\\\");
-    return cleanedNullBytes;
+  private static boolean isFloatOrNumeric(Type.Code code) {
+    return code.equals(Type.Code.FLOAT64)
+        || code.equals(Type.Code.FLOAT32)
+        || code.equals(Type.Code.PG_FLOAT4)
+        || code.equals(Type.Code.PG_FLOAT8)
+        || code.equals(Type.Code.PG_NUMERIC);
   }
 
-  private static String getQuotedEscapedString(String input, String spannerColType) {
-    if ("BYTES".equals(spannerColType) || "PG_BYTEA".equals(spannerColType)) {
-      return input;
-    }
-    String cleanedString = escapeString(input);
-    String response = "\'" + cleanedString + "\'";
-    return response;
+  private static boolean isStringArray(Type colType) {
+    return (colType.getCode().equals(Type.Code.ARRAY)
+            && colType.getArrayElementType().getCode().equals(Type.Code.STRING))
+        || (colType.getCode().equals(Type.Code.PG_ARRAY)
+            && (colType.getArrayElementType().getCode().equals(Type.Code.PG_VARCHAR)
+                || colType.getArrayElementType().getCode().equals(Type.Code.PG_TEXT)));
   }
 
-  private static String getBinaryString(String input, String spannerColType) {
-    String response = "BINARY(" + getQuotedEscapedString(input, spannerColType) + ")";
-    return response;
+  private static String removeNullBytes(String input) {
+    return StringUtils.replace(input, "\u0000", "");
   }
 }

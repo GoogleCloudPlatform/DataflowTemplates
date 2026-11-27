@@ -18,7 +18,12 @@ package com.google.cloud.teleport.v2.templates.dbutils.dao.source;
 import com.google.cloud.teleport.v2.spanner.migrations.connection.IConnectionHelper;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ConnectionException;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
+import com.google.cloud.teleport.v2.templates.models.PreparedStatementValue;
+import com.google.common.annotations.VisibleForTesting;
+import java.math.BigDecimal;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.sql.Statement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,11 +59,13 @@ public class JdbcDao implements IDao {
       connObj.setAutoCommit(false);
       java.util.List<Object> params = dmlGeneratorResponse.getPreparedStatementParameters();
       if (params != null && !params.isEmpty()) {
-        java.sql.PreparedStatement pstmt = connObj.prepareStatement(dmlStatement);
+        PreparedStatement pstmt = connObj.prepareStatement(dmlStatement);
         statement = pstmt;
         int paramIdx = 1;
         for (Object param : params) {
-          if (param instanceof byte[]) {
+          if (param instanceof PreparedStatementValue) {
+            bindValue(pstmt, paramIdx++, (PreparedStatementValue) param);
+          } else if (param instanceof byte[]) {
             byte[] bytes = (byte[]) param;
             pstmt.setBlob(paramIdx++, new java.io.ByteArrayInputStream(bytes), bytes.length);
           } else {
@@ -84,6 +91,28 @@ public class JdbcDao implements IDao {
       if (connObj != null) {
         connObj.close();
       }
+    }
+  }
+
+  /** Binds a typed {@link PreparedStatementValue} to the given placeholder index. */
+  @VisibleForTesting
+  static void bindValue(PreparedStatement pstmt, int index, PreparedStatementValue param)
+      throws SQLException {
+    Object value = param.getValue();
+    if (value == null) {
+      pstmt.setNull(index, param.getSqlType());
+    } else if (value instanceof byte[]) {
+      pstmt.setBytes(index, (byte[]) value);
+    } else if (value instanceof String) {
+      pstmt.setString(index, (String) value);
+    } else if (value instanceof Boolean) {
+      pstmt.setBoolean(index, (Boolean) value);
+    } else if (value instanceof BigDecimal) {
+      pstmt.setBigDecimal(index, (BigDecimal) value);
+    } else if (value instanceof Long) {
+      pstmt.setLong(index, (Long) value);
+    } else {
+      pstmt.setObject(index, value, param.getSqlType());
     }
   }
 }
