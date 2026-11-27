@@ -17,6 +17,14 @@ package com.google.cloud.teleport.v2.utils;
 
 import com.google.cloud.teleport.v2.datastream.io.CdcJdbcIO.DataSourceConfiguration;
 import com.google.cloud.teleport.v2.datastream.values.DatastreamRow;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoField;
+import java.util.Locale;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,6 +32,11 @@ import org.slf4j.LoggerFactory;
 public class DatastreamToMySQLDML extends DatastreamToDML {
 
   private static final Logger LOG = LoggerFactory.getLogger(DatastreamToMySQLDML.class);
+  private static final DateTimeFormatter TIMESTAMP_FORMATTER =
+      new DateTimeFormatterBuilder()
+          .appendPattern("uuuu-MM-dd HH:mm:ss")
+          .appendFraction(ChronoField.NANO_OF_SECOND, 0, 6, true)
+          .toFormatter(Locale.ROOT);
 
   private DatastreamToMySQLDML(DataSourceConfiguration config) {
     super(config);
@@ -68,5 +81,27 @@ public class DatastreamToMySQLDML extends DatastreamToDML {
   @Override
   public String getTargetSchemaName(DatastreamRow row) {
     return "";
+  }
+
+  @Override
+  public String cleanDataTypeValueSql(
+      String columnValue, String columnName, Map<String, String> tableSchema) {
+    String dataType = tableSchema.get(columnName);
+    if (!("TIMESTAMP".equalsIgnoreCase(dataType) || "DATETIME".equalsIgnoreCase(dataType))
+        || columnValue.length() < 2
+        || !columnValue.startsWith("'")
+        || !columnValue.endsWith("'")) {
+      return columnValue;
+    }
+    try {
+      OffsetDateTime timestamp =
+          OffsetDateTime.parse(columnValue.substring(1, columnValue.length() - 1));
+      return "'"
+          + TIMESTAMP_FORMATTER.format(timestamp.withOffsetSameInstant(ZoneOffset.UTC))
+          + "'";
+    } catch (DateTimeParseException e) {
+      // Leave local timestamp literals and invalid values to the existing sink handling.
+      return columnValue;
+    }
   }
 }
