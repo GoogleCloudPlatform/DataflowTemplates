@@ -8,14 +8,20 @@ on:
       - '**/DataStreamToSpannerOptions.java'
       - '**/SpannerToSourceDbOptions.java'
 
+permissions:
+  contents: read
+
 jobs:
   enforce-codelab-bug:
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       pull-requests: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Validate Parameter Changes and PR Description
         env:
