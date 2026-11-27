@@ -78,25 +78,34 @@ A few prerequisites must be considered before starting with reverse replication.
         - Check that the Cassandra credentials are correctly specified in the [source file](#Sample-source-File-for-Cassandra).
         - Check that the Cassandra server is up.
         - The Cassandra user configured in the [source file](#Sample-source-File-for-Cassandra) should be granted the necessary permissions to perform insert,update and delete operations, as a part of [Cassandra Role Management](https://cassandra.apache.org/doc/stable/cassandra/cql/security.html#create-role-statement).
+    - **For Spanner:**
+        - Ensure appropriate IAM permissions are granted on the destination Cloud Spanner database
+        - Check that the destination Spanner project, instance, and database are correctly specified in the [source shards file](#sample-source-shards-file-for-spanner).
+        - Ensure that the destination Spanner instance and database exist and the target schema is created.
+        - The Dataflow worker service account must have `roles/spanner.databaseUser` permissions on the destination database to perform reads, inserts, updates, and deletes.
 2. Ensure that Dataflow permissions are present.[Basic permissions](https://cloud.google.com/dataflow/docs/guides/templates/using-flex-templates#before_you_begin:~:text=Grant%20roles%20to%20your%20Compute%20Engine%20default%20service%20account.%20Run%20the%20following%20command%20once%20for%20each%20of%20the%20following%20IAM%20roles%3A%20roles/dataflow.admin%2C%20roles/dataflow.worker%2C%20roles/bigquery.dataEditor%2C%20roles/pubsub.editor%2C%20roles/storage.objectAdmin%2C%20and%20roles/artifactregistry.reader) and [Flex template permissions](https://cloud.google.com/dataflow/docs/guides/templates/configuring-flex-templates#permissions).
 3. Ensure that the port 12345 is open for communication among the Dataflow worker VMs.Please refer the Dataflow firewall [documentation](https://cloud.google.com/dataflow/docs/guides/routes-firewall#firewall_rules) for more.
 4. Ensure the compute engine service account has the following permission:
-    - roles/spanner.databaseUser
-    - roles/secretManager.secretAccessor
-    - roles/secretmanager.viewer
+    - roles/spanner.databaseUser (on source, metadata, and destination Spanner databases; note that the destination database may reside in a separate GCP project)
+    - roles/secretManager.secretAccessor (required for MySQL, PostgreSQL, and Cassandra credentials)
+    - roles/secretmanager.viewer (required for MySQL, PostgreSQL, and Cassandra credentials)
 5. Ensure the authenticated user launching reverse replication has the following permissions: (this is the user account authenticated for the Spanner Migration Tool and not the service account)
     - roles/spanner.databaseUser
     - roles/dataflow.developer
 6. Ensure that gcloud authentication is done,refer [here](https://cloud.google.com/spanner/docs/getting-started/set-up#set_up_authentication_and_authorization).
 7. Ensure that the target Spanner instance is ready.
-8. Ensure that that [session file](https://googlecloudplatform.github.io/spanner-migration-tool/reports.html#session-file-ending-in-sessionjson) is uploaded to GCS (this requires a schema conversion to be done).
+8. Schema Mapping and Session File:
+    - **For MySQL, PostgreSQL, and Cassandra:** Ensure that the [session file](https://googlecloudplatform.github.io/spanner-migration-tool/reports.html#session-file-ending-in-sessionjson) is uploaded to GCS (this requires a schema conversion to be done via Spanner Migration Tool).
+    - **For Spanner:** A session file is optional. If table and column names match 1:1 between the source and destination databases, the pipeline defaults to identity mapping. If table or column renames are needed, specify schema overrides (`tableOverrides`, `columnOverrides`, `schemaOverridesFilePath`) or a `sessionFilePath`.
 9. Configuration Files Upload
     - **For MySQL and PostgreSQL:**
       [Source shards file](#sample-source-shards-file-for-mysql-and-postgresql) already uploaded to GCS.
     - **For Cassandra:**
       [Source file](#sample-source-file-for-Cassandra) already uploaded to GCS.
+    - **For Spanner:**
+      [Source shards file](#sample-source-shards-file-for-spanner) already uploaded to GCS.
 10. Resources needed for reverse replication incur cost. Make sure to read [cost](#cost).
-11. Reverse replication uses shard identifier column per table to route the Spanner records to a given source shard.The column identified as the sharding column needs to be selected via Spanner Migration Tool when performing migration.The value of this column should be the logicalShardId value specified in the [source shard file](#sample-source-shards-file-for-mysql-and-postgresql).In the event that the shard identifier column is not an existing column,the application code needs to be changed to populate this shard identifier column when writing to Spanner. Or use a custom shard identifier plugin to supply the shard identifier. In case of single shard migrations, this step is skipped.
+11. Reverse replication uses shard identifier column per table to route the Spanner records to a given source shard. The column identified as the sharding column needs to be selected via Spanner Migration Tool when performing migration. The value of this column should be the logicalShardId value specified in the [source shard file](#sample-source-shards-file-for-mysql-and-postgresql). In the event that the shard identifier column is not an existing column, the application code needs to be changed to populate this shard identifier column when writing to Spanner. Or use a custom shard identifier plugin to supply the shard identifier. In case of single shard migrations (including all Spanner targets), this step is skipped.
 12. The reverse replication pipeline uses GCS for dead letter queue handling. Ensure that the DLQ directory exists in GCS.
 13. Create PubSub notification on the 'retry' folder of the DLQ directory. For this, create a [PubSub topic](https://cloud.google.com/pubsub/docs/create-topic), create a [PubSub subscription](https://cloud.google.com/pubsub/docs/create-subscription) for that topic. Configure [GCS notification](https://cloud.google.com/storage/docs/reporting-changes#command-line). The resulting subscription should be supplied as the dlqGcsPubSubSubscription Dataflow input parameter.
 
@@ -202,9 +211,51 @@ The file format should be as below:
     }
 ```
 
+### Sample source shards file for Spanner
+
+This file contains metadata regarding the destination Cloud Spanner database. For Spanner targets, exactly 1 shard must be specified in the configuration file (multi-database sharding across Spanner targets is not supported). Authentication is handled natively through Google Cloud IAM (using Dataflow worker credentials), so no database passwords or Secret Manager references are required.
+
+The file must be a JSON array containing a single object specifying `projectId`, `instanceId`, and `databaseId`:
+
+```json
+[
+  {
+    "projectId": "my-destination-spanner-project",
+    "instanceId": "my-destination-spanner-instance",
+    "databaseId": "my-destination-spanner-database"
+  }
+]
+```
+
 ## Launching reverse replication
 
 Currently, the reverse replication flow is launched manually. Please refer the Dataflow template [readme](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/spanner-to-sourcedb/README_Spanner_to_SourceDb.md).
+
+Specify the destination database type using the `--parameters sourceType=<mysql|postgresql|cassandra|spanner>` option (defaults to `mysql`).
+
+#### Example: Launching Spanner to Spanner Replication
+
+```shell
+export PROJECT=<my-project>
+export REGION=us-central1
+export BUCKET_NAME=<my-bucket>
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Spanner_to_SourceDb"
+
+gcloud dataflow flex-template run "spanner-to-spanner-replication" \
+  --project "$PROJECT" \
+  --region "$REGION" \
+  --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
+  --parameters "changeStreamName=<changestream-name>" \
+  --parameters "instanceId=<source-spanner-instance>" \
+  --parameters "databaseId=<source-spanner-database>" \
+  --parameters "spannerProjectId=$PROJECT" \
+  --parameters "metadataInstance=<metadata-spanner-instance>" \
+  --parameters "metadataDatabase=<metadata-spanner-database>" \
+  --parameters "sourceType=spanner" \
+  --parameters "sourceShardsFilePath=gs://$BUCKET_NAME/config/spanner-shard.json" \
+  --parameters "dlqGcsPubSubSubscription=projects/$PROJECT/subscriptions/rr-dlq-subs" \
+  --parameters "runMode=regular"
+```
 
 ## Observe, tune and troubleshoot
 
@@ -367,7 +418,8 @@ However, because the continuous reader watches the `retry/` directory indefinite
 
 The following sections list the known limitations that exist currently with the Reverse Replication flows:
 
-1. Currently MySQL, PostgreSQL and Cassandra are supported as source databases (sinks for reverse replication).
+1. Currently MySQL, PostgreSQL, Cassandra, and Cloud Spanner destination databases are supported (selected via the `sourceType` parameter: `mysql`, `postgresql`, `cassandra`, `spanner`).
+    - For Cloud Spanner targets, only single-destination replication is supported (multi-database sharding across Spanner targets is not supported).
 2. If forward migration and reverse replication are running in parallel, there is no mechanism to prevent the forward migration of data that was written to source via the reverse replication flow. The impact of this is unnecessary processing of redundant data. The best practice is to start reverse replication post cutover when forward migration has ended.
 3. Schema changes are not supported.
 4. Session file modifications to add backticks in table or column names is not supported.
