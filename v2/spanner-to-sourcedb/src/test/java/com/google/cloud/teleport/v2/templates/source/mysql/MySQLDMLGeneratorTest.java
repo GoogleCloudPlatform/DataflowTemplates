@@ -144,7 +144,7 @@ public final class MySQLDMLGeneratorTest {
                 .build());
     BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertThat(bound.value("FirstName")).isEqualTo("222");
+    assertThat(bound.value("FirstName")).isEqualTo(new BigDecimal("222"));
     assertThat(bound.value("LastName")).isEqualTo("ll");
   }
 
@@ -282,9 +282,9 @@ public final class MySQLDMLGeneratorTest {
     String sql = dmlGeneratorResponse.getDmlStatement();
     BoundDml bound = BoundDml.of(dmlGeneratorResponse);
     assertThat(sql.contains("ON DUPLICATE KEY UPDATE"));
-    assertThat(bound.value("user_id")).isEqualTo("101");
-    assertThat(bound.value("group_id")).isEqualTo("5");
-    assertThat(bound.value("resource_id")).isEqualTo("99");
+    assertThat(bound.value("user_id")).isEqualTo(101L);
+    assertThat(bound.value("group_id")).isEqualTo(5L);
+    assertThat(bound.value("resource_id")).isEqualTo(99L);
     assertEquals(2, countInSQL(sql, "user_id"));
     assertEquals(2, countInSQL(sql, "group_id"));
     assertEquals(2, countInSQL(sql, "resource_id"));
@@ -385,7 +385,7 @@ public final class MySQLDMLGeneratorTest {
                 .build());
     BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertThat(bound.value("mediumint_column")).isEqualTo("333");
+    assertThat(bound.value("mediumint_column")).isEqualTo(333L);
     assertThat(bound.bytes("tinyblob_column")).isEqualTo(base64("YWJj"));
     assertThat(bound.placeholder("datetime_column")).isEqualTo("CONVERT_TZ(?, '+00:00', ?)");
     assertThat(bound.values("datetime_column"))
@@ -395,17 +395,17 @@ public final class MySQLDMLGeneratorTest {
     assertThat(bound.value("longtext_column")).isEqualTo("<longtext_column>");
     assertThat(bound.bytes("mediumblob_column")).isEqualTo(base64("YWJjbGFyZ2U="));
     assertThat(bound.value("text_column")).isEqualTo("aaaaaddd");
-    assertThat(bound.value("tinyint_column")).isEqualTo("1");
+    assertThat(bound.value("tinyint_column")).isEqualTo(1L);
     assertThat(bound.placeholder("timestamp_column")).isEqualTo("CONVERT_TZ(?, '+00:00', ?)");
     assertThat(bound.values("timestamp_column"))
         .containsExactly("2023-05-18T12:01:13.088397258", "+00:00")
         .inOrder();
-    assertThat(bound.decimal("float_column")).isEqualToIgnoringScale("4.2");
+    assertThat(bound.value("float_column")).isEqualTo(4.2);
     assertThat(bound.placeholder("varbinary_column")).isEqualTo("?");
     assertThat(bound.bytes("varbinary_column")).isEqualTo(base64("YWJjbGFyZ2U="));
     assertThat(bound.placeholder("binary_column")).isEqualTo("?");
     assertThat(bound.bytes("binary_column")).isEqualTo(base64("YWJjbGFyZ2U="));
-    assertThat(bound.value("bigint_column")).isEqualTo("4444");
+    assertThat(bound.value("bigint_column")).isEqualTo(4444L);
     assertThat(bound.value("time_column")).isEqualTo("10:10:10");
     assertThat(bound.value("tinytext_column")).isEqualTo("<tinytext_column>");
     assertThat(bound.value("set_column")).isEqualTo("1,2");
@@ -413,13 +413,13 @@ public final class MySQLDMLGeneratorTest {
     assertThat(bound.value("mediumtext_column")).isEqualTo("<mediumtext_column>");
     assertThat(bound.value("year_column")).isEqualTo("2023");
     assertThat(bound.bytes("blob_column")).isEqualTo(base64("YWJiaWdj"));
-    // Spanner NUMERIC values are strings in the change stream.
-    assertThat(bound.value("decimal_column")).isEqualTo("444.222");
+    // Spanner NUMERIC values are strings in the change stream; they are bound as numbers.
+    assertThat(bound.decimal("decimal_column")).isEqualToIgnoringScale("444.222");
     assertThat(bound.value("bool_column")).isEqualTo(false);
     assertThat(bound.value("char_column")).isEqualTo("<char_c");
     assertThat(bound.value("date_column")).isEqualTo("2023-05-18");
-    assertThat(bound.decimal("double_column")).isEqualToIgnoringScale("42.42");
-    assertThat(bound.value("smallint_column")).isEqualTo("22");
+    assertThat(bound.value("double_column")).isEqualTo(42.42);
+    assertThat(bound.value("smallint_column")).isEqualTo(22L);
     assertThat(bound.value("varchar_column")).isEqualTo("abc");
   }
 
@@ -460,7 +460,7 @@ public final class MySQLDMLGeneratorTest {
                 .build());
     BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
-    assertThat(bound.value("mediumint_column")).isEqualTo("333");
+    assertThat(bound.value("mediumint_column")).isEqualTo(333L);
     assertThat(bound.bytes("tinyblob_column")).isEqualTo(base64("YWJj"));
     assertThat(bound.placeholder("datetime_column")).isEqualTo("CONVERT_TZ(?, '+00:00', ?)");
     assertThat(bound.values("datetime_column"))
@@ -470,17 +470,17 @@ public final class MySQLDMLGeneratorTest {
     assertThat(bound.value("longtext_column")).isEqualTo("<longtext_column>");
     assertThat(bound.bytes("mediumblob_column")).isEqualTo(base64("YWJjbGFyZ2U="));
     assertThat(bound.value("text_column")).isEqualTo("aaaaaddd");
-    assertThat(bound.value("tinyint_column")).isEqualTo("1");
+    assertThat(bound.value("tinyint_column")).isEqualTo(1L);
     assertThat(bound.placeholder("timestamp_column")).isEqualTo("CONVERT_TZ(?, '+00:00', ?)");
     assertThat(bound.values("timestamp_column"))
         .containsExactly("2023-05-18T12:01:13.088397258", "+00:00")
         .inOrder();
-    assertThat(bound.decimal("float_column")).isEqualToIgnoringScale("4.2");
+    assertThat(bound.value("float_column")).isEqualTo(4.2);
     assertThat(bound.placeholder("varbinary_column")).isEqualTo("?");
     assertThat(bound.bytes("varbinary_column")).isEqualTo(base64("YWJjbGFyZ2U="));
     assertThat(bound.placeholder("binary_column")).isEqualTo("?");
     assertThat(bound.bytes("binary_column")).isEqualTo(base64("YWJjbGFyZ2U="));
-    assertThat(bound.value("bigint_column")).isEqualTo("4444");
+    assertThat(bound.value("bigint_column")).isEqualTo(4444L);
     assertThat(bound.value("time_column")).isEqualTo("10:10:10");
     assertThat(bound.value("tinytext_column")).isEqualTo("<tinytext_column>");
     assertThat(bound.value("set_column")).isEqualTo("1,2");
@@ -492,8 +492,8 @@ public final class MySQLDMLGeneratorTest {
     assertThat(bound.value("bool_column")).isEqualTo(false);
     assertThat(bound.value("char_column")).isEqualTo("<char_c");
     assertThat(bound.value("date_column")).isEqualTo("2023-05-18");
-    assertThat(bound.decimal("double_column")).isEqualToIgnoringScale("42.42");
-    assertThat(bound.value("smallint_column")).isEqualTo("22");
+    assertThat(bound.value("double_column")).isEqualTo(42.42);
+    assertThat(bound.value("smallint_column")).isEqualTo(22L);
     assertThat(bound.value("varchar_column")).isEqualTo("abc");
   }
 
@@ -551,7 +551,7 @@ public final class MySQLDMLGeneratorTest {
     BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
     assertThat(bound.value("FirstName")).isEqualTo("kk");
-    assertThat(bound.value("SingerId")).isEqualTo("999");
+    assertThat(bound.value("SingerId")).isEqualTo(999L);
     assertTrue(sql.contains("DELETE FROM `Singers` WHERE"));
   }
 
@@ -1271,7 +1271,7 @@ public final class MySQLDMLGeneratorTest {
 
     assertThat(sql.contains("ON DUPLICATE KEY UPDATE"));
     assertThat(bound.value("FullName")).isEqualTo("kk ll");
-    assertThat(bound.value("SingerId")).isEqualTo("1");
+    assertThat(bound.value("SingerId")).isEqualTo(new BigDecimal("1"));
     assertEquals(2, countInSQL(sql, "FullName"));
     assertEquals(2, countInSQL(sql, "SingerId"));
   }
@@ -1584,7 +1584,7 @@ public final class MySQLDMLGeneratorTest {
     assertThat(sql).doesNotContain("'");
     assertThat(bound.value("FirstName")).isEqualTo(firstName);
     assertThat(bound.value("LastName")).isEqualTo(lastName);
-    assertThat(bound.value("SingerId")).isEqualTo("999");
+    assertThat(bound.value("SingerId")).isEqualTo(999L);
   }
 
   @Test
@@ -1614,7 +1614,7 @@ public final class MySQLDMLGeneratorTest {
     assertThat(sql).doesNotContain("'");
     assertThat(bound.placeholder("FirstName")).isEqualTo("?");
     assertThat(bound.value("FirstName")).isEqualTo("k' OR '1'='1");
-    assertThat(bound.value("SingerId")).isEqualTo("999");
+    assertThat(bound.value("SingerId")).isEqualTo(999L);
     assertThat(dmlGeneratorResponse.getPreparedStatementParameters()).hasSize(2);
   }
 
@@ -1684,7 +1684,7 @@ public final class MySQLDMLGeneratorTest {
     BoundDml bound = BoundDml.of(dmlGeneratorResponse);
 
     assertThat(bound.value("FullName")).isNull();
-    assertThat(bound.value("SingerId")).isEqualTo("999");
+    assertThat(bound.value("SingerId")).isEqualTo(999L);
   }
 
   @Test
@@ -1747,6 +1747,207 @@ public final class MySQLDMLGeneratorTest {
 
     assertThat(binding.getPlaceholderSql()).isEqualTo("?");
     assertThat(binding.getParams()).containsExactly(PreparedStatementValue.ofBoolean(true));
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Value binding per Spanner type -> MySQL column type. Columns that previously received unquoted
+  // literals (numeric, bit, bool) must be bound as numbers / booleans so MySQL evaluates them the
+  // same way; character, temporal and binary columns receive strings / bytes.
+  // ---------------------------------------------------------------------------------------------
+
+  private static PreparedStatementValue bindValue(
+      Type spannerType, String sourceType, String valuesJson) {
+    Column spannerCol = Mockito.mock(Column.class);
+    Mockito.when(spannerCol.name()).thenReturn("c");
+    Mockito.when(spannerCol.type()).thenReturn(spannerType);
+    SourceColumn sourceCol = Mockito.mock(SourceColumn.class);
+    Mockito.when(sourceCol.type()).thenReturn(sourceType);
+    ColumnBinding binding =
+        MySQLDMLGenerator.getMappedColumnBinding(
+            spannerCol, sourceCol, new JSONObject(valuesJson), "+00:00");
+    assertThat(binding.getPlaceholderSql()).isEqualTo("?");
+    assertThat(binding.getParams()).hasSize(1);
+    return binding.getParams().get(0);
+  }
+
+  private static PreparedStatementValue customValue(String sourceType, Object value) {
+    SourceColumn sourceCol = Mockito.mock(SourceColumn.class);
+    Mockito.when(sourceCol.type()).thenReturn(sourceType);
+    ColumnBinding binding = MySQLDMLGenerator.getCustomValueBinding(sourceCol, value);
+    assertThat(binding.getPlaceholderSql()).isEqualTo("?");
+    assertThat(binding.getParams()).hasSize(1);
+    return binding.getParams().get(0);
+  }
+
+  @Test
+  public void int64ToIntegerAndBitColumnsIsBoundAsLong() {
+    // A quoted '9223372036854775807' would be stored as 19 bytes in a BIT(64) column.
+    for (String sourceType : new String[] {"bit", "bigint", "int", "tinyint", "smallint"}) {
+      assertThat(bindValue(Type.int64(), sourceType, "{\"c\":\"9223372036854775807\"}"))
+          .isEqualTo(PreparedStatementValue.ofLong(Long.MAX_VALUE));
+    }
+    assertThat(bindValue(Type.pgInt8(), "mediumint", "{\"c\":\"-42\"}"))
+        .isEqualTo(PreparedStatementValue.ofLong(-42L));
+  }
+
+  @Test
+  public void int64ToCharacterColumnsIsBoundAsString() {
+    assertThat(bindValue(Type.int64(), "varchar", "{\"c\":\"42\"}"))
+        .isEqualTo(PreparedStatementValue.ofString("42"));
+    assertThat(bindValue(Type.int64(), "year", "{\"c\":\"2024\"}"))
+        .isEqualTo(PreparedStatementValue.ofString("2024"));
+    assertThat(bindValue(Type.int64(), "enum", "{\"c\":\"1\"}"))
+        .isEqualTo(PreparedStatementValue.ofString("1"));
+  }
+
+  @Test
+  public void floatToFloatColumnsIsBoundAsDouble() {
+    assertThat(bindValue(Type.float64(), "double", "{\"c\":1.7976931348623157E308}"))
+        .isEqualTo(PreparedStatementValue.ofDouble(Double.MAX_VALUE));
+    assertThat(bindValue(Type.float64(), "double", "{\"c\":4.9E-324}"))
+        .isEqualTo(PreparedStatementValue.ofDouble(Double.MIN_VALUE));
+    assertThat(bindValue(Type.float32(), "float", "{\"c\":3.4028235E38}"))
+        .isEqualTo(PreparedStatementValue.ofDouble(3.4028235E38));
+    assertThat(bindValue(Type.pgFloat8(), "decimal", "{\"c\":52.67}"))
+        .isEqualTo(PreparedStatementValue.ofDouble(52.67));
+    assertThat(bindValue(Type.pgFloat4(), "real", "{\"c\":1.4E-45}"))
+        .isEqualTo(PreparedStatementValue.ofDouble(1.4E-45));
+  }
+
+  @Test
+  public void floatToCharacterColumnIsBoundAsString() {
+    assertThat(bindValue(Type.float64(), "varchar", "{\"c\":4.2}"))
+        .isEqualTo(PreparedStatementValue.ofString("4.2"));
+  }
+
+  @Test
+  public void numericToDecimalAndIntegerColumnsIsBoundAsBigDecimal() {
+    assertThat(
+            bindValue(Type.numeric(), "decimal", "{\"c\":\"99999999999999999999999.999999999\"}"))
+        .isEqualTo(
+            PreparedStatementValue.ofBigDecimal(
+                new BigDecimal("99999999999999999999999.999999999")));
+    // A fractional NUMERIC is rounded by MySQL for an integer column, as for the literal 1.5.
+    assertThat(bindValue(Type.numeric(), "bigint", "{\"c\":\"1.5\"}"))
+        .isEqualTo(PreparedStatementValue.ofBigDecimal(new BigDecimal("1.5")));
+    assertThat(bindValue(Type.pgNumeric(), "bigint", "{\"c\":\"18446744073709551615\"}"))
+        .isEqualTo(PreparedStatementValue.ofBigDecimal(new BigDecimal("18446744073709551615")));
+  }
+
+  @Test
+  public void boolToNumericAndCharacterColumns() {
+    assertThat(bindValue(Type.bool(), "bit", "{\"c\":true}"))
+        .isEqualTo(PreparedStatementValue.ofBoolean(true));
+    assertThat(bindValue(Type.bool(), "tinyint", "{\"c\":false}"))
+        .isEqualTo(PreparedStatementValue.ofBoolean(false));
+    assertThat(bindValue(Type.bool(), "varchar", "{\"c\":true}"))
+        .isEqualTo(PreparedStatementValue.ofString("true"));
+  }
+
+  @Test
+  public void stringToNumericColumnsIsBoundByLiteral() {
+    // Spanner STRING mapped to a numeric / bit / bool column (type changed in SMT).
+    assertThat(bindValue(Type.string(), "bit", "{\"c\":\"5\"}"))
+        .isEqualTo(PreparedStatementValue.ofBigDecimal(new BigDecimal("5")));
+    assertThat(bindValue(Type.string(), "decimal", "{\"c\":\" 68.750000 \"}"))
+        .isEqualTo(PreparedStatementValue.ofBigDecimal(new BigDecimal("68.750000")));
+    assertThat(bindValue(Type.string(), "double", "{\"c\":\"1.7976931348623157E308\"}"))
+        .isEqualTo(PreparedStatementValue.ofDouble(Double.MAX_VALUE));
+    assertThat(bindValue(Type.string(), "tinyint", "{\"c\":\"TRUE\"}"))
+        .isEqualTo(PreparedStatementValue.ofBoolean(true));
+    assertThat(bindValue(Type.string(), "tinyint", "{\"c\":\"false\"}"))
+        .isEqualTo(PreparedStatementValue.ofBoolean(false));
+    // Anything else is bound as a string (never interpreted as SQL).
+    assertThat(bindValue(Type.string(), "int", "{\"c\":\"1; DROP TABLE t\"}"))
+        .isEqualTo(PreparedStatementValue.ofString("1; DROP TABLE t"));
+    assertThat(bindValue(Type.string(), "bit", "{\"c\":\"7fff\"}"))
+        .isEqualTo(PreparedStatementValue.ofString("7fff"));
+  }
+
+  @Test
+  public void stringToCharacterColumnsIsNotCoerced() {
+    assertThat(bindValue(Type.string(), "varchar", "{\"c\":\"123\"}"))
+        .isEqualTo(PreparedStatementValue.ofString("123"));
+    assertThat(bindValue(Type.string(), "json", "{\"c\":\"true\"}"))
+        .isEqualTo(PreparedStatementValue.ofString("true"));
+    assertThat(bindValue(Type.string(), "blob", "{\"c\":\"abc\"}"))
+        .isEqualTo(PreparedStatementValue.ofString("abc"));
+  }
+
+  @Test
+  public void bytesToAnyColumnIsBoundAsDecodedBytes() {
+    for (String sourceType : new String[] {"blob", "varchar", "bit", "int", "binary"}) {
+      assertThat(bindValue(Type.bytes(), sourceType, "{\"c\":\"YWJj\"}"))
+          .isEqualTo(PreparedStatementValue.ofBytes("abc".getBytes(StandardCharsets.UTF_8)));
+    }
+    // An empty BYTES value stays an empty (not NULL) binary string.
+    assertThat(bindValue(Type.bytes(), "blob", "{\"c\":\"\"}"))
+        .isEqualTo(PreparedStatementValue.ofBytes(new byte[0]));
+  }
+
+  @Test
+  public void temporalValuesUseConvertTz() {
+    Column spannerCol = Mockito.mock(Column.class);
+    Mockito.when(spannerCol.name()).thenReturn("c");
+    Mockito.when(spannerCol.type()).thenReturn(Type.timestamp());
+    SourceColumn sourceCol = Mockito.mock(SourceColumn.class);
+    Mockito.when(sourceCol.type()).thenReturn("DATETIME");
+    ColumnBinding binding =
+        MySQLDMLGenerator.getMappedColumnBinding(
+            spannerCol, sourceCol, new JSONObject("{\"c\":\"2024-01-01T12:34:56Z\"}"), "+05:30");
+    assertThat(binding.getPlaceholderSql()).isEqualTo("CONVERT_TZ(?, '+00:00', ?)");
+    assertThat(binding.getParams())
+        .containsExactly(
+            PreparedStatementValue.ofString("2024-01-01T12:34:56"),
+            PreparedStatementValue.ofString("+05:30"))
+        .inOrder();
+    assertThat(bindValue(Type.date(), "date", "{\"c\":\"2012-09-17\"}"))
+        .isEqualTo(PreparedStatementValue.ofString("2012-09-17"));
+  }
+
+  @Test
+  public void customValuesForNumericColumnsAreBoundByLiteral() {
+    assertThat(customValue("tinyint", "false")).isEqualTo(PreparedStatementValue.ofBoolean(false));
+    assertThat(customValue("bit", "5"))
+        .isEqualTo(PreparedStatementValue.ofBigDecimal(new BigDecimal("5")));
+    assertThat(customValue("int", "42"))
+        .isEqualTo(PreparedStatementValue.ofBigDecimal(new BigDecimal("42")));
+    assertThat(customValue("double", "1e300")).isEqualTo(PreparedStatementValue.ofDouble(1e300));
+    assertThat(customValue("int", "x'; DROP TABLE t; --"))
+        .isEqualTo(PreparedStatementValue.ofString("x'; DROP TABLE t; --"));
+  }
+
+  @Test
+  public void customValuesAreBoundWithTheirJavaType() {
+    assertThat(customValue("varchar", "42")).isEqualTo(PreparedStatementValue.ofString("42"));
+    assertThat(customValue("varchar", "'quoted'"))
+        .isEqualTo(PreparedStatementValue.ofString("'quoted'"));
+    assertThat(customValue("bit", 5L)).isEqualTo(PreparedStatementValue.ofLong(5L));
+    assertThat(customValue("double", 1e300)).isEqualTo(PreparedStatementValue.ofDouble(1e300));
+    assertThat(customValue("float", 1.1f)).isEqualTo(PreparedStatementValue.ofDouble(1.1));
+    assertThat(customValue("tinyint", Boolean.TRUE))
+        .isEqualTo(PreparedStatementValue.ofBoolean(true));
+    assertThat(customValue("decimal", new BigDecimal("1.25")))
+        .isEqualTo(PreparedStatementValue.ofBigDecimal(new BigDecimal("1.25")));
+    byte[] bytes = "blob".getBytes(StandardCharsets.UTF_8);
+    assertThat(customValue("blob", bytes)).isEqualTo(PreparedStatementValue.ofBytes(bytes));
+    // Strings for binary columns are stored as text, as quoted literals were previously.
+    assertThat(customValue("blob", "YWJj")).isEqualTo(PreparedStatementValue.ofString("YWJj"));
+    // Timestamps are bound as returned, without timezone conversion.
+    assertThat(customValue("datetime", "2024-01-01 10:00:00"))
+        .isEqualTo(PreparedStatementValue.ofString("2024-01-01 10:00:00"));
+    assertThat(customValue("int", null).isNull()).isTrue();
+  }
+
+  @Test
+  public void numericLiteralTypes() {
+    for (String type : new String[] {"int", "BIGINT", "bit", "tinyint", "decimal", "double", ""}) {
+      assertThat(MySQLDMLGenerator.isNumericLiteralType(type)).isTrue();
+    }
+    for (String type :
+        new String[] {"varchar", "TEXT", "enum", "json", "blob", "datetime", "varbinary", "year"}) {
+      assertThat(MySQLDMLGenerator.isNumericLiteralType(type)).isFalse();
+    }
   }
 
   private static byte[] base64(String encoded) {

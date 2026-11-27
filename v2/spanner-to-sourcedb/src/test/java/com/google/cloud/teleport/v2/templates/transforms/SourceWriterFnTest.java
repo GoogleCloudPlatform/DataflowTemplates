@@ -68,6 +68,7 @@ import com.google.cloud.teleport.v2.templates.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
+import java.math.BigDecimal;
 import java.sql.SQLDataException;
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.sql.SQLNonTransientConnectionException;
@@ -559,11 +560,9 @@ public class SourceWriterFnTest {
     DMLGeneratorResponse dmlResponse = argumentCaptor.getValue();
     assertTrue(dmlResponse.getDmlStatement().startsWith("INSERT INTO `parent1`(`id`) VALUES (?)"));
     // The custom transformation value is bound as data, for both VALUES and ON DUPLICATE KEY
-    // UPDATE.
-    assertEquals(
-        ImmutableList.of(
-            PreparedStatementValue.ofString("45"), PreparedStatementValue.ofString("45")),
-        dmlResponse.getPreparedStatementParameters());
+    // UPDATE. "45" is returned for an int column, so it is bound as a number.
+    PreparedStatementValue id = PreparedStatementValue.ofBigDecimal(new BigDecimal("45"));
+    assertEquals(ImmutableList.of(id, id), dmlResponse.getPreparedStatementParameters());
     verify(mockSpannerDao, atLeast(1)).updateShadowTable(any(), any());
   }
 

@@ -85,7 +85,7 @@ public final class JdbcDaoTest {
     jdbcConnectionHelper.setConnectionPoolMap(connectionPoolMap);
     when(mockConnection.prepareStatement(any())).thenReturn(mockPreparedStatement);
     byte[] bytes = new byte[] {1, 2, 3};
-    DMLGeneratorResponse response = new DMLGeneratorResponse("sql ? ? ? ? ? ?");
+    DMLGeneratorResponse response = new DMLGeneratorResponse("sql ? ? ? ? ? ? ?");
     response.setPreparedStatementParameters(
         Arrays.asList(
             PreparedStatementValue.ofString("a'b"),
@@ -93,17 +93,19 @@ public final class JdbcDaoTest {
             PreparedStatementValue.ofBoolean(true),
             PreparedStatementValue.ofBigDecimal(new BigDecimal("4.2")),
             PreparedStatementValue.ofLong(7L),
-            PreparedStatementValue.ofString(null)));
+            PreparedStatementValue.ofString(null),
+            PreparedStatementValue.ofDouble(1.7976931348623157E308)));
 
     new JdbcDao("url", "user", jdbcConnectionHelper).write(response, null);
 
-    verify(mockConnection).prepareStatement(eq("sql ? ? ? ? ? ?"));
+    verify(mockConnection).prepareStatement(eq("sql ? ? ? ? ? ? ?"));
     verify(mockPreparedStatement).setString(1, "a'b");
     verify(mockPreparedStatement).setBytes(2, bytes);
     verify(mockPreparedStatement).setBoolean(3, true);
     verify(mockPreparedStatement).setBigDecimal(4, new BigDecimal("4.2"));
     verify(mockPreparedStatement).setLong(5, 7L);
     verify(mockPreparedStatement).setNull(6, Types.VARCHAR);
+    verify(mockPreparedStatement).setDouble(7, 1.7976931348623157E308);
     verify(mockPreparedStatement).executeUpdate();
     verify(mockConnection).commit();
     verify(mockConnection, never()).createStatement();

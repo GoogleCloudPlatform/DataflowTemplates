@@ -24,7 +24,6 @@ import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Base64;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -111,6 +110,11 @@ public class CustomTransformationWithShardForLiveIT implements ISpannerMigration
     return new MigrationTransformationResponse(null, false);
   }
 
+  /**
+   * Reverse replication binds custom transformation values as data, so plain values are returned
+   * (no SQL quotes or functions): strings as is, binary values as {@code byte[]}, and temporal
+   * values in the source (MySQL) format without any timezone conversion.
+   */
   @Override
   public MigrationTransformationResponse toSourceRow(MigrationTransformationRequest request)
       throws InvalidTransformationException {
@@ -139,7 +143,7 @@ public class CustomTransformationWithShardForLiveIT implements ISpannerMigration
       BigDecimal doubleColumn = (BigDecimal) requestRow.get("double_column");
       responseRow.put("source_only_pk", sourceOnlyPk.toString());
       responseRow.put("tinyint_column", tinyIntColumn.toString());
-      responseRow.put("text_column", "\'" + requestRow.get("text_column") + " append\'");
+      responseRow.put("text_column", requestRow.get("text_column") + " append");
       responseRow.put("int_column", intColumn.toString());
       responseRow.put("bigint_column", bigIntColumn.toString());
       responseRow.put("float_column", floatColumn.add(BigDecimal.ONE).toString());
@@ -147,57 +151,39 @@ public class CustomTransformationWithShardForLiveIT implements ISpannerMigration
       Double value = Double.parseDouble((String) requestRow.get("decimal_column"));
       responseRow.put("decimal_column", String.valueOf(value - 1));
       responseRow.put("bool_column", "false");
-      responseRow.put("enum_column", "\'3\'");
-      responseRow.put(
-          "blob_column",
-          "from_base64(\'"
-              + Base64.getEncoder()
-                  .encodeToString("blob_column_appended".getBytes(StandardCharsets.UTF_8))
-              + "\')");
-      responseRow.put(
-          "binary_column",
-          "binary(from_base64(\'"
-              + Base64.getEncoder()
-                  .encodeToString("binary_column_appended".getBytes(StandardCharsets.UTF_8))
-              + "\'))");
-      responseRow.put(
-          "bit_column",
-          "binary(from_base64(\'"
-              + Base64.getEncoder().encodeToString("5".getBytes(StandardCharsets.UTF_8))
-              + "\'))");
-      responseRow.put("year_column", "\'" + yearColumn + "\'");
+      responseRow.put("enum_column", "3");
+      // Binary values are returned as byte arrays.
+      responseRow.put("blob_column", "blob_column_appended".getBytes(StandardCharsets.UTF_8));
+      responseRow.put("binary_column", "binary_column_appended".getBytes(StandardCharsets.UTF_8));
+      responseRow.put("bit_column", "5".getBytes(StandardCharsets.UTF_8));
+      responseRow.put("year_column", yearColumn.toString());
       try {
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
         SimpleDateFormat dateTimeFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX");
         dateTimeFormat.setTimeZone(TimeZone.getTimeZone("UTC")); // Ensure it handles UTC correctly
+        // The source database timezone of the test is UTC.
+        SimpleDateFormat sourceDateTimeFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        sourceDateTimeFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
         Date date = dateFormat.parse((String) requestRow.get("date_column"));
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(date);
         calendar.add(Calendar.DAY_OF_MONTH, 1);
-        responseRow.put("date_column", "\'" + dateFormat.format(calendar.getTime()) + "\'");
+        responseRow.put("date_column", dateFormat.format(calendar.getTime()));
         Date dateTime = dateTimeFormat.parse((String) requestRow.get("datetime_column"));
         calendar.setTime(dateTime);
         calendar.add(Calendar.SECOND, -1);
-        String dateTimeColumn = dateTimeFormat.format(calendar.getTime());
-        responseRow.put(
-            "datetime_column",
-            "CONVERT_TZ(\'"
-                + dateTimeColumn.substring(0, dateTimeColumn.length() - 1)
-                + "\','+00:00','+00:00')");
+        // Temporal values are bound as returned (no timezone conversion), so they are returned in
+        // the source format.
+        responseRow.put("datetime_column", sourceDateTimeFormat.format(calendar.getTime()));
         dateTime = dateTimeFormat.parse((String) requestRow.get("timestamp_column"));
         calendar.setTime(dateTime);
         calendar.add(Calendar.SECOND, -1);
-        String timestampColumn = dateTimeFormat.format(calendar.getTime());
-        responseRow.put(
-            "timestamp_column",
-            "CONVERT_TZ(\'"
-                + timestampColumn.substring(0, timestampColumn.length() - 1)
-                + "\','+00:00','+00:00')");
+        responseRow.put("timestamp_column", sourceDateTimeFormat.format(calendar.getTime()));
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss");
         LocalTime time = LocalTime.parse((String) requestRow.get("time_column"), formatter);
 
         LocalTime newTime = time.plusMinutes(10);
-        responseRow.put("time_column", "\'" + newTime.format(formatter) + "\'");
+        responseRow.put("time_column", newTime.format(formatter));
 
       } catch (Exception e) {
         throw new InvalidTransformationException(e);
@@ -215,9 +201,9 @@ public class CustomTransformationWithShardForLiveIT implements ISpannerMigration
       String lastName2 = requestRow.get("last_name2").toString();
       String firstName3 = requestRow.get("first_name3").toString();
       String lastName3 = requestRow.get("last_name3").toString();
-      responseRow.put("full_name1", "\'" + firstName1 + " " + lastName1 + "\'");
-      responseRow.put("full_name2", "\'" + firstName2 + " " + lastName2 + "\'");
-      responseRow.put("full_name3", "\'" + firstName3 + " " + lastName3 + "\'");
+      responseRow.put("full_name1", firstName1 + " " + lastName1);
+      responseRow.put("full_name2", firstName2 + " " + lastName2);
+      responseRow.put("full_name3", firstName3 + " " + lastName3);
       MigrationTransformationResponse response =
           new MigrationTransformationResponse(responseRow, false);
       return response;
@@ -226,8 +212,8 @@ public class CustomTransformationWithShardForLiveIT implements ISpannerMigration
       Map<String, Object> requestRow = request.getRequestRow();
       String name = requestRow.get("name").toString();
       String[] nameArray = name.split(" ");
-      responseRow.put("first_name", "\'" + nameArray[0] + "\'");
-      responseRow.put("last_name", "\'" + nameArray[1] + "\'");
+      responseRow.put("first_name", nameArray[0]);
+      responseRow.put("last_name", nameArray[1]);
       MigrationTransformationResponse response =
           new MigrationTransformationResponse(responseRow, false);
       return response;

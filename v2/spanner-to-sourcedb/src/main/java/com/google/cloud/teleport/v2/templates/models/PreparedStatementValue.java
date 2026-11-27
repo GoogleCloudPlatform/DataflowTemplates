@@ -26,8 +26,8 @@ import javax.annotation.Nullable;
  * A typed value to be bound to a {@link java.sql.PreparedStatement} placeholder.
  *
  * <p>The value is always one of {@code String}, {@code byte[]}, {@code Boolean}, {@code
- * BigDecimal}, {@code Long} or {@code null}. The {@link #getSqlType() SQL type} is used to bind
- * {@code null} values via {@link java.sql.PreparedStatement#setNull(int, int)}.
+ * BigDecimal}, {@code Long}, {@code Double} or {@code null}. The {@link #getSqlType() SQL type} is
+ * used to bind {@code null} values via {@link java.sql.PreparedStatement#setNull(int, int)}.
  */
 public final class PreparedStatementValue {
 
@@ -69,6 +69,12 @@ public final class PreparedStatementValue {
         : new PreparedStatementValue(value, Types.BIGINT);
   }
 
+  public static PreparedStatementValue ofDouble(@Nullable Double value) {
+    return value == null
+        ? nullValue(Types.DOUBLE)
+        : new PreparedStatementValue(value, Types.DOUBLE);
+  }
+
   public static PreparedStatementValue nullValue(int sqlType) {
     return new PreparedStatementValue(null, sqlType);
   }
@@ -101,11 +107,11 @@ public final class PreparedStatementValue {
       return ofBigDecimal(new BigDecimal((BigInteger) value));
     }
     if (value instanceof Double || value instanceof Float) {
-      double d = ((Number) value).doubleValue();
-      // NaN and Infinity cannot be represented as BigDecimal; bind their string representation.
-      return Double.isFinite(d)
-          ? ofBigDecimal(new BigDecimal(value.toString()))
-          : ofString(value.toString());
+      // Float is widened via its decimal text so that e.g. 1.1f stays 1.1 (not 1.100000023841858).
+      double d = (value instanceof Float) ? Double.parseDouble(value.toString()) : (Double) value;
+      // Bound as a double so that very large / small magnitudes keep their scientific notation.
+      // NaN and Infinity are bound as text (the database then reports the conversion error).
+      return Double.isFinite(d) ? ofDouble(d) : ofString(value.toString());
     }
     return ofString(value.toString());
   }

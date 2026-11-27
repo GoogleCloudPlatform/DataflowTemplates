@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
@@ -58,6 +58,15 @@ public class DMLGeneratorUtils {
         SourceColumn sourceColDef,
         JSONObject valuesJson,
         String sourceDbTimezoneOffset);
+  }
+
+  /**
+   * Maps a custom transformation value (possibly {@code null}) for a source column to a {@link
+   * ColumnBinding}. The value must always be bound as data, never interpreted as SQL.
+   */
+  @FunctionalInterface
+  public interface CustomValueBindingMapper {
+    ColumnBinding getCustomValueBinding(SourceColumn sourceColDef, Object customValue);
   }
 
   /** Generic per-column value mapper used by the shared column iteration logic. */
@@ -109,7 +118,7 @@ public class DMLGeneratorUtils {
         sourceDbTimezoneOffset,
         customTransformationResponse,
         toGenericMapper(columnValueMapper, preparedStatementParameters),
-        Object::toString,
+        (sourceColDef, customValue) -> customValue.toString(),
         () -> null);
   }
 
@@ -132,14 +141,14 @@ public class DMLGeneratorUtils {
         sourceDbTimezoneOffset,
         customTransformationResponse,
         toGenericMapper(columnValueMapper, preparedStatementParameters),
-        Object::toString,
+        (sourceColDef, customValue) -> customValue.toString(),
         () -> null);
   }
 
   /**
    * Returns the {@link ColumnBinding} for each non-primary-key source column, in source column
-   * order. Custom transformation values and {@code null} values are bound as data via {@link
-   * PreparedStatementValue#fromObject(Object)}; they are never interpreted as SQL.
+   * order. Custom transformation values are mapped by {@code customValueBindingMapper} and {@code
+   * null} column values are bound as SQL {@code NULL}; neither is ever interpreted as SQL.
    */
   public static Map<String, ColumnBinding> getColumnBindings(
       ISchemaMapper schemaMapper,
@@ -149,7 +158,8 @@ public class DMLGeneratorUtils {
       JSONObject keyValuesJson,
       String sourceDbTimezoneOffset,
       Map<String, Object> customTransformationResponse,
-      ColumnBindingMapper columnBindingMapper) {
+      ColumnBindingMapper columnBindingMapper,
+      CustomValueBindingMapper customValueBindingMapper) {
     return getColumnValuesInternal(
         schemaMapper,
         spannerTable,
@@ -159,7 +169,7 @@ public class DMLGeneratorUtils {
         sourceDbTimezoneOffset,
         customTransformationResponse,
         columnBindingMapper::getMappedColumnBinding,
-        DMLGeneratorUtils::customValueBinding,
+        customValueBindingMapper::getCustomValueBinding,
         DMLGeneratorUtils::nullBinding);
   }
 
@@ -176,7 +186,8 @@ public class DMLGeneratorUtils {
       JSONObject keyValuesJson,
       String sourceDbTimezoneOffset,
       Map<String, Object> customTransformationResponse,
-      ColumnBindingMapper columnBindingMapper) {
+      ColumnBindingMapper columnBindingMapper,
+      CustomValueBindingMapper customValueBindingMapper) {
     return getPkColumnValuesInternal(
         schemaMapper,
         spannerTable,
@@ -186,12 +197,8 @@ public class DMLGeneratorUtils {
         sourceDbTimezoneOffset,
         customTransformationResponse,
         columnBindingMapper::getMappedColumnBinding,
-        DMLGeneratorUtils::customValueBinding,
+        customValueBindingMapper::getCustomValueBinding,
         DMLGeneratorUtils::nullBinding);
-  }
-
-  private static ColumnBinding customValueBinding(Object customValue) {
-    return ColumnBinding.of(PreparedStatementValue.fromObject(customValue));
   }
 
   private static ColumnBinding nullBinding() {
@@ -212,7 +219,7 @@ public class DMLGeneratorUtils {
   /**
    * Shared iteration over non-primary-key source columns.
    *
-   * @param customValueMapper maps a custom transformation value for a column to {@code T}.
+   * @param customValueMapper maps a custom transformation value of a source column to {@code T}.
    * @param nullValueSupplier supplies the {@code T} used when the record value is {@code null}.
    */
   private static <T> Map<String, T> getColumnValuesInternal(
@@ -224,7 +231,7 @@ public class DMLGeneratorUtils {
       String sourceDbTimezoneOffset,
       Map<String, Object> customTransformationResponse,
       GenericColumnMapper<T> columnMapper,
-      Function<Object, T> customValueMapper,
+      BiFunction<SourceColumn, Object, T> customValueMapper,
       Supplier<T> nullValueSupplier) {
     Map<String, T> response = new LinkedHashMap<>();
 
@@ -242,7 +249,9 @@ public class DMLGeneratorUtils {
         continue;
       }
       if (customTransformColumns != null && customTransformColumns.contains(colName)) {
-        response.put(colName, customValueMapper.apply(customTransformationResponse.get(colName)));
+        response.put(
+            colName,
+            customValueMapper.apply(sourceColDef, customTransformationResponse.get(colName)));
         continue;
       }
       String spannerColumnName = "";
@@ -291,7 +300,7 @@ public class DMLGeneratorUtils {
       String sourceDbTimezoneOffset,
       Map<String, Object> customTransformationResponse,
       GenericColumnMapper<T> columnMapper,
-      Function<Object, T> customValueMapper,
+      BiFunction<SourceColumn, Object, T> customValueMapper,
       Supplier<T> nullValueSupplier) {
     Map<String, T> response = new LinkedHashMap<>();
 
@@ -320,7 +329,7 @@ public class DMLGeneratorUtils {
       if (customTransformColumns != null && customTransformColumns.contains(sourceColName)) {
         response.put(
             sourceColName,
-            customValueMapper.apply(customTransformationResponse.get(sourceColName)));
+            customValueMapper.apply(sourceColDef, customTransformationResponse.get(sourceColName)));
         continue;
       }
 

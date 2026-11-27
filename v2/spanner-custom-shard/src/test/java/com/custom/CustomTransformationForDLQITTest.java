@@ -135,6 +135,30 @@ public class CustomTransformationForDLQITTest {
   }
 
   @Test
+  public void testToSourceRow_Orders_SqlLiteralByDefault() throws Exception {
+    transformer.init("mode=bad");
+    Map<String, Object> requestRow = new HashMap<>();
+    requestRow.put("OrderSource", "WEB");
+    MigrationTransformationRequest request =
+        new MigrationTransformationRequest("Orders", requestRow, "shard1", "INSERT");
+
+    MigrationTransformationResponse response = transformer.toSourceRow(request);
+    assertEquals("'WEB_v1'", response.getResponseRow().get("LegacyOrderSystem"));
+  }
+
+  @Test
+  public void testToSourceRow_Orders_RawValues() throws Exception {
+    transformer.init("mode=semi-fixed,rawValues=true");
+    Map<String, Object> requestRow = new HashMap<>();
+    requestRow.put("OrderSource", "WEB");
+    MigrationTransformationRequest request =
+        new MigrationTransformationRequest("Orders", requestRow, "shard1", "INSERT");
+
+    MigrationTransformationResponse response = transformer.toSourceRow(request);
+    assertEquals("WEB_v1", response.getResponseRow().get("LegacyOrderSystem"));
+  }
+
+  @Test
   public void testTransformFailedSpannerMutation() throws Exception {
     MigrationTransformationResponse response = transformer.transformFailedSpannerMutation(null);
     assertNotNull(response);

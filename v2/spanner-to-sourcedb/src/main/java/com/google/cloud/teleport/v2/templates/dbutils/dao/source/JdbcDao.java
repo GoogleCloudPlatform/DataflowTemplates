@@ -111,6 +111,8 @@ public class JdbcDao implements IDao {
       pstmt.setBigDecimal(index, (BigDecimal) value);
     } else if (value instanceof Long) {
       pstmt.setLong(index, (Long) value);
+    } else if (value instanceof Double) {
+      pstmt.setDouble(index, (Double) value);
     } else {
       pstmt.setObject(index, value, param.getSqlType());
     }
