@@ -42,20 +42,20 @@ public abstract class JDBCBaseIT extends TemplateTestBase {
   protected static final String MSSQL_DRIVER = "com.microsoft.sqlserver.jdbc.SQLServerDriver";
 
   // The relative path to the JDBC drivers under Maven's `.m2/repository` directory
-  private static final String MYSQL_LOCAL_PATH = "mysql/mysql-connector-java";
+  private static final String MYSQL_LOCAL_PATH = "com/mysql/mysql-connector-j";
   private static final String POSTGRES_LOCAL_PATH = "org/postgresql/postgresql";
   private static final String ORACLE_LOCAL_PATH = "com/oracle/database/jdbc/ojdbc8";
   private static final String MSSQL_LOCAL_PATH = "com/microsoft/sqlserver/mssql-jdbc";
 
   // The name of the JDBC driver jars sans the .jar suffix
-  private static final String MYSQL_JAR_PREFIX = "mysql-connector-java";
+  private static final String MYSQL_JAR_PREFIX = "mysql-connector-j";
   private static final String POSTGRES_JAR_PREFIX = "postgresql";
   private static final String ORACLE_JAR_PREFIX = "ojdbc8";
   private static final String MSSQL_JAR_PREFIX = "mssql-jdbc";
 
   // The versions of each of the JDBC drivers to use.
   // NOTE: These versions must correspond to the versions declared in the `pom.xml` file.
-  private static final String MYSQL_VERSION = "8.0.30";
+  private static final String MYSQL_VERSION = "8.0.33";
   private static final String POSTGRES_VERSION = "42.6.1";
   private static final String ORACLE_VERSION = "23.9.0.25.07";
   private static final String MSSQL_VERSION = "13.2.1.jre11";
