@@ -53,7 +53,8 @@ import org.neo4j.importer.v1.targets.WriteMode;
 
 public class Neo4jInitSchemaFnTest {
 
-  private static final List<String> EXECUTED_STATEMENTS = Collections.synchronizedList(new ArrayList<>());
+  private static final List<String> EXECUTED_STATEMENTS =
+      Collections.synchronizedList(new ArrayList<>());
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
