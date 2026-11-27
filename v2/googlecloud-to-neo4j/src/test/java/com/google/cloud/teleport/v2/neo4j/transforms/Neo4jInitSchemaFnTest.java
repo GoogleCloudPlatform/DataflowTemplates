@@ -29,6 +29,7 @@ import com.google.cloud.teleport.v2.neo4j.database.Neo4jConnection;
 import com.google.cloud.teleport.v2.neo4j.telemetry.ReportedSourceType;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import org.apache.beam.sdk.Pipeline.PipelineExecutionException;
@@ -52,7 +53,7 @@ import org.neo4j.importer.v1.targets.WriteMode;
 
 public class Neo4jInitSchemaFnTest {
 
-  private static final List<String> EXECUTED_STATEMENTS = new ArrayList<>();
+  private static final List<String> EXECUTED_STATEMENTS = Collections.synchronizedList(new ArrayList<>());
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
