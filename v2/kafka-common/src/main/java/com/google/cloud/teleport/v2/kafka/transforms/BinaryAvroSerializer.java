@@ -15,45 +15,22 @@
  */
 package com.google.cloud.teleport.v2.kafka.transforms;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.OutputStream;
 import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericDatumWriter;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.io.DatumWriter;
 import org.apache.avro.io.Encoder;
 import org.apache.avro.io.EncoderFactory;
-import org.apache.kafka.common.errors.SerializationException;
-import org.apache.kafka.common.header.Headers;
-import org.apache.kafka.common.serialization.Serializer;
 
-public class BinaryAvroSerializer implements Serializer<GenericRecord> {
-  private Schema schema;
-
-  public BinaryAvroSerializer() {}
+public class BinaryAvroSerializer extends AbstractAvroSerializer {
+  public BinaryAvroSerializer() {
+    super(null);
+  }
 
   public BinaryAvroSerializer(Schema schema) {
-    this.schema = schema;
+    super(schema);
   }
 
   @Override
-  public byte[] serialize(String subject, Headers headers, GenericRecord record) {
-    return serialize(subject, record);
+  protected Encoder getEncoder(Schema ignored, OutputStream outputStream) {
+    return EncoderFactory.get().binaryEncoder(outputStream, null);
   }
-
-  @Override
-  public byte[] serialize(String topic, GenericRecord record) {
-    try {
-      ByteArrayOutputStream out = new ByteArrayOutputStream();
-      Encoder encoder = EncoderFactory.get().binaryEncoder(out, null);
-      DatumWriter<GenericRecord> writer = new GenericDatumWriter<GenericRecord>(this.schema);
-      writer.write(record, encoder);
-      encoder.flush();
-      return out.toByteArray();
-    } catch (IOException e) {
-      throw new SerializationException("Error serialing avro message", e.getCause());
-    }
-  }
-
-  public void close() {}
 }
