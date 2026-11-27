@@ -57,8 +57,6 @@ public class OracleSpToSrcSourceConnector implements ISpToSrcSourceConnector {
   public static final String IMPLICIT_STATEMENT_CACHE_PROP =
       "oracle.jdbc.implicitStatementCacheSize";
 
-  static final String SHORT_IMPLICIT_STATEMENT_CACHE_PROP = "implicitStatementCacheSize";
-
   /**
    * Default per-connection Oracle implicit statement cache size ({@code 100} cursors, well below
    * Oracle's standard {@code OPEN_CURSORS=300} session limit).
@@ -125,8 +123,7 @@ public class OracleSpToSrcSourceConnector implements ISpToSrcSourceConnector {
     }
     String trimmed = existingProps.trim();
     Properties parsed = JdbcConnectionHelper.parseProperties(trimmed);
-    if (parsed.containsKey(IMPLICIT_STATEMENT_CACHE_PROP)
-        || parsed.containsKey(SHORT_IMPLICIT_STATEMENT_CACHE_PROP)) {
+    if (parsed.containsKey(IMPLICIT_STATEMENT_CACHE_PROP)) {
       return existingProps;
     }
     if (trimmed.contains("&")) {

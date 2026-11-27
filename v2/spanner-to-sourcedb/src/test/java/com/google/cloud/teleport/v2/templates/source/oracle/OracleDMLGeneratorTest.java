@@ -717,12 +717,17 @@ public final class OracleDMLGeneratorTest {
                 oracleCol("ID", "NUMBER", false),
                 oracleCol("NAME", "VARCHAR2(50)", false),
                 oracleCol("QTY", "NUMBER(10)", false),
-                oracleCol("RAW_COL", "RAW(16)", false)),
+                oracleCol("RAW_COL", "RAW(16)", false),
+                // Source-only columns (not in Spanner).
+                oracleCol("LEGACY_DT", "DATE", false),
+                oracleCol("LEGACY_BF", "BINARY_FLOAT", false)),
             List.of("ID"));
     Map<String, Object> customMap = new HashMap<>();
     customMap.put("NAME", null);
     customMap.put("QTY", 42L);
     customMap.put("RAW_COL", new byte[] {0x0A, 0x0B});
+    customMap.put("LEGACY_DT", "2026-11-23");
+    customMap.put("LEGACY_BF", Float.POSITIVE_INFINITY);
 
     DMLGeneratorResponse resp =
         generator.getDMLStatement(
@@ -738,15 +743,18 @@ public final class OracleDMLGeneratorTest {
         resp.getDmlStatement()
             .contains(
                 "USING (SELECT TO_NUMBER(?) AS \"ID\", ? AS \"NAME\", TO_NUMBER(?) AS \"QTY\", "
-                    + "? AS \"RAW_COL\" FROM DUAL) s"));
+                    + "? AS \"RAW_COL\", TO_DATE(?, 'YYYY-MM-DD') AS \"LEGACY_DT\", "
+                    + "TO_BINARY_FLOAT(?) AS \"LEGACY_BF\" FROM DUAL) s"));
     List<Object> params = resp.getPreparedStatementParameters();
-    assertEquals(4, params.size());
+    assertEquals(6, params.size());
     assertEquals(new BigDecimal("1"), params.get(0));
     assertEquals(new OracleBindParameter(Types.VARCHAR, null), params.get(1));
     assertEquals(new BigDecimal("42"), params.get(2));
     OracleBindParameter rawBind = (OracleBindParameter) params.get(3);
     assertEquals(Types.VARBINARY, rawBind.sqlType());
     assertArrayEquals(new byte[] {0x0A, 0x0B}, (byte[]) rawBind.value());
+    assertEquals("2026-11-23", params.get(4));
+    assertEquals("INF", params.get(5));
   }
 
   @Test
@@ -821,7 +829,7 @@ public final class OracleDMLGeneratorTest {
         List.of(
             new BigDecimal("2"),
             new OracleBindParameter(Types.VARCHAR, null),
-            new OracleBindParameter(Types.NVARCHAR, null)),
+            new OracleBindParameter(Types.VARCHAR, null)),
         withNulls.getPreparedStatementParameters());
   }
 
@@ -889,7 +897,7 @@ public final class OracleDMLGeneratorTest {
             .put("LONG_COL", "long text")
             .put("RID_COL", "AAAR3sAAEAAAACXAAA")
             .put("DEC_COL", "12.50")
-            .put("REAL_COL", 1.5)
+            .put("REAL_COL", JSONObject.NULL)
             .put("BLOB_COL", "IA==")
             .put("RAW_COL", "")
             .put("BF_COL", "Infinity");
@@ -916,7 +924,8 @@ public final class OracleDMLGeneratorTest {
     assertEquals("long text", params.get(2));
     assertEquals("AAAR3sAAEAAAACXAAA", params.get(3));
     assertEquals(new BigDecimal("12.50"), params.get(4));
-    assertEquals(new BigDecimal("1.5"), params.get(5));
+    // NULLs of numeric columns use the same bind type as the BigDecimal values.
+    assertEquals(new OracleBindParameter(Types.NUMERIC, null), params.get(5));
     // Spanner STRING written to a BLOB / RAW column holds Base64 encoded bytes.
     OracleBindParameter blobBind = (OracleBindParameter) params.get(6);
     assertEquals(Types.BLOB, blobBind.sqlType());

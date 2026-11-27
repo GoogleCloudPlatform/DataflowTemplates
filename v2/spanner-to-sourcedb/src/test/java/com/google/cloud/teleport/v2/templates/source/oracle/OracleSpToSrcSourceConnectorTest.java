@@ -135,8 +135,6 @@ public class OracleSpToSrcSourceConnectorTest {
             "",
             "",
             "oracle.jdbc.implicitStatementCacheSize=0");
-    Shard shardShortAlias =
-        new Shard("s7", "h7", "1521", "u7", "p7", "pdb7", "", "", "implicitStatementCacheSize=50");
 
     List<Shard> shards =
         List.of(
@@ -145,8 +143,7 @@ public class OracleSpToSrcSourceConnectorTest {
             shardAmpersand,
             shardNewline,
             shardUserOverride,
-            shardDisabledCache,
-            shardShortAlias);
+            shardDisabledCache);
     connector.initConnectionHelper(shards, 50);
 
     ArgumentCaptor<ConnectionHelperRequest> captor =
@@ -169,11 +166,6 @@ public class OracleSpToSrcSourceConnectorTest {
         "0",
         JdbcConnectionHelper.parseProperties(shardDisabledCache.getConnectionProperties())
             .getProperty(OracleSpToSrcSourceConnector.IMPLICIT_STATEMENT_CACHE_PROP));
-    Properties shortAliasProps =
-        JdbcConnectionHelper.parseProperties(shardShortAlias.getConnectionProperties());
-    assertEquals("50", shortAliasProps.getProperty("implicitStatementCacheSize"));
-    assertNull(
-        shortAliasProps.getProperty(OracleSpToSrcSourceConnector.IMPLICIT_STATEMENT_CACHE_PROP));
   }
 
   @Test

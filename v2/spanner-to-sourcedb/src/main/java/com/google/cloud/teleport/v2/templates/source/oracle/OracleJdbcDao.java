@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates.source.oracle;
 import com.google.cloud.teleport.v2.spanner.migrations.connection.IConnectionHelper;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
 import java.io.StringReader;
+import java.sql.NClob;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Types;
@@ -58,7 +59,7 @@ public class OracleJdbcDao extends JdbcDao {
     int sqlType = bindParam.sqlType();
     Object value = bindParam.value();
     if (value == null) {
-      pstmt.setNull(paramIdx, sqlType);
+      bindNull(pstmt, paramIdx, sqlType);
       return;
     }
     switch (sqlType) {
@@ -84,6 +85,22 @@ public class OracleJdbcDao extends JdbcDao {
   }
 
   /**
+   * Binds a typed {@code NULL} with the same method as non-null values of the type, so that the
+   * bind type (national character set form, fixed width CHAR) of a cached statement does not change
+   * between records.
+   */
+  private static void bindNull(PreparedStatement pstmt, int paramIdx, int sqlType)
+      throws SQLException {
+    switch (sqlType) {
+      case Types.NCLOB -> pstmt.setNClob(paramIdx, (NClob) null);
+      case Types.NVARCHAR -> pstmt.setNString(paramIdx, null);
+      case Types.NCHAR -> setFixedChar(pstmt, paramIdx, null, true);
+      case Types.CHAR -> setFixedChar(pstmt, paramIdx, null, false);
+      default -> pstmt.setNull(paramIdx, sqlType);
+    }
+  }
+
+  /**
    * Binds a fixed width ({@code CHAR} / {@code NCHAR}) value with {@code setFixedCHAR}, so that
    * Oracle uses blank-padded comparison semantics (e.g. for primary keys in {@code MERGE ON} and
    * {@code DELETE WHERE}).
@@ -91,7 +108,12 @@ public class OracleJdbcDao extends JdbcDao {
   private static void setFixedChar(
       PreparedStatement pstmt, int paramIdx, String value, boolean national) throws SQLException {
     if (!pstmt.isWrapperFor(OraclePreparedStatement.class)) {
-      pstmt.setObject(paramIdx, value, national ? Types.NCHAR : Types.CHAR);
+      int sqlType = national ? Types.NCHAR : Types.CHAR;
+      if (value == null) {
+        pstmt.setNull(paramIdx, sqlType);
+      } else {
+        pstmt.setObject(paramIdx, value, sqlType);
+      }
       return;
     }
     OraclePreparedStatement oraclePstmt = pstmt.unwrap(OraclePreparedStatement.class);

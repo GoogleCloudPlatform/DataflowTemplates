@@ -36,6 +36,7 @@ import java.io.InputStream;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
+import java.sql.NClob;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Types;
@@ -115,9 +116,10 @@ public class OracleJdbcDaoTest {
     verify(mockPreparedStatement).setNull(3, Types.VARCHAR);
     verify(mockPreparedStatement).setNull(4, Types.BLOB);
     verify(mockPreparedStatement).setNull(5, Types.CLOB);
-    verify(mockPreparedStatement).setNull(6, Types.NCLOB);
+    // National character NULLs use the same methods as values (national character set form).
+    verify(mockPreparedStatement).setNClob(6, (NClob) null);
     verify(mockPreparedStatement).setNull(7, Types.VARBINARY);
-    verify(mockPreparedStatement).setNull(8, Types.NVARCHAR);
+    verify(mockPreparedStatement).setNString(8, null);
     verify(mockPreparedStatement).setNull(9, Types.NCHAR);
     verify(mockPreparedStatement)
         .setBlob(eq(10), any(InputStream.class), eq((long) blobBytes.length));
@@ -145,11 +147,14 @@ public class OracleJdbcDaoTest {
     when(mockPreparedStatement.unwrap(OraclePreparedStatement.class)).thenReturn(mockOraclePstmt);
 
     DMLGeneratorResponse response =
-        new DMLGeneratorResponse("DELETE FROM \"CHAR_PK\" WHERE \"C\" = ? AND \"NC\" = ?");
+        new DMLGeneratorResponse(
+            "DELETE FROM \"CHAR_PK\" WHERE \"C\" = ? AND \"NC\" = ? AND \"C2\" = ? AND \"NC2\" = ?");
     response.setPreparedStatementParameters(
         List.of(
             new OracleBindParameter(Types.CHAR, "padded-char"),
-            new OracleBindParameter(Types.NCHAR, "padded-nchar")));
+            new OracleBindParameter(Types.NCHAR, "padded-nchar"),
+            new OracleBindParameter(Types.CHAR, null),
+            new OracleBindParameter(Types.NCHAR, null)));
 
     dao.write(response, null);
 
@@ -157,6 +162,10 @@ public class OracleJdbcDaoTest {
     order.verify(mockOraclePstmt).setFixedCHAR(1, "padded-char");
     order.verify(mockOraclePstmt).setFormOfUse(2, OraclePreparedStatement.FORM_NCHAR);
     order.verify(mockOraclePstmt).setFixedCHAR(2, "padded-nchar");
+    // NULLs are bound with setFixedCHAR too, so the bind type does not change between records.
+    order.verify(mockOraclePstmt).setFixedCHAR(3, null);
+    order.verify(mockOraclePstmt).setFormOfUse(4, OraclePreparedStatement.FORM_NCHAR);
+    order.verify(mockOraclePstmt).setFixedCHAR(4, null);
     verify(mockPreparedStatement).executeUpdate();
     verify(mockConnection).commit();
   }

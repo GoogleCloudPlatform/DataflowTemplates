@@ -56,8 +56,9 @@ import org.slf4j.LoggerFactory;
  *
  * <p>Custom transformation outputs are also bound as returned (not written to the SQL text), so a
  * custom transformation returns plain values (e.g. {@code abc}, {@code 42}, a {@code byte[]}), not
- * SQL literals or expressions. Values use the same format as the Spanner values of the column (e.g.
- * {@code YYYY-MM-DD} for a DATE).
+ * SQL literals or expressions. Values use the same format as the Spanner values of the mapped
+ * column. For source-only columns, DATE values use {@code YYYY-MM-DD} and TIMESTAMP values use UTC
+ * {@code YYYY-MM-DDTHH:MI:SS[.FFFFFFFFF]Z}.
  */
 public class OracleDMLGenerator implements IDMLGenerator {
 
@@ -400,10 +401,11 @@ public class OracleDMLGenerator implements IDMLGenerator {
 
       if (sqlValue == null) {
         // NULL column value: same placeholder as non-null values, bound as a typed NULL.
+        String spannerType = getSpannerTypeCode(colName);
         bindParams.add(
-            new OracleBindParameter(getBindSqlType(normalizeSourceType(sourceType)), null));
-        return getColumnValueByType(
-            sourceType, sourceDbTimezoneOffset, getSpannerTypeCode(colName));
+            new OracleBindParameter(
+                getNullBindSqlType(normalizeSourceType(sourceType), spannerType), null));
+        return getColumnValueByType(sourceType, sourceDbTimezoneOffset, spannerType);
       }
       if (bindValuesByColumn.containsKey(colName)) {
         bindParams.add(bindValuesByColumn.get(colName));
@@ -414,7 +416,9 @@ public class OracleDMLGenerator implements IDMLGenerator {
             toCustomTransformationBindValue(
                 normalizeSourceType(sourceType), customTransformationResponse.get(colName)));
         return getColumnValueByType(
-            sourceType, sourceDbTimezoneOffset, getCustomTransformationSpannerType(colName));
+            sourceType,
+            sourceDbTimezoneOffset,
+            getCustomTransformationSpannerType(colName, sourceType));
       }
       throw new IllegalStateException("No bind value was recorded for column " + colName);
     }
@@ -433,28 +437,50 @@ public class OracleDMLGenerator implements IDMLGenerator {
 
     /**
      * Spanner type used to choose the SQL expression of a custom transformation value: the type of
-     * the mapped Spanner column, as for replicated values. Custom transformation values are bound
-     * as returned, so they are never hex encoded BYTES values.
+     * the mapped Spanner column, as for replicated values. Source-only DATE columns use the Spanner
+     * DATE format ({@code YYYY-MM-DD}). Custom transformation values are bound as returned, so they
+     * are never hex encoded BYTES values.
      */
-    private String getCustomTransformationSpannerType(String sourceColName) {
+    private String getCustomTransformationSpannerType(String sourceColName, String sourceType) {
+      if (getSpannerColumn(sourceColName) == null) {
+        return "date".equals(normalizeSourceType(sourceType))
+            ? "DATE"
+            : CUSTOM_TRANSFORMATION_SPANNER_TYPE;
+      }
       String spannerType = getSpannerTypeCode(sourceColName);
       return isBytesType(spannerType) ? CUSTOM_TRANSFORMATION_SPANNER_TYPE : spannerType;
     }
 
     private String getSpannerTypeCode(String sourceColName) {
+      Column spannerColDef = getSpannerColumn(sourceColName);
+      return (spannerColDef == null)
+          ? CUSTOM_TRANSFORMATION_SPANNER_TYPE
+          : spannerColDef.type().getCode().toString();
+    }
+
+    /** Returns the Spanner column of a source column, or {@code null} for source-only columns. */
+    private Column getSpannerColumn(String sourceColName) {
       try {
         String spannerColName =
             schemaMapper.getSpannerColumnName("", sourceTable.name(), sourceColName);
-        Column spannerColDef =
-            (spannerColName == null) ? null : spannerTable.column(spannerColName);
-        if (spannerColDef != null) {
-          return spannerColDef.type().getCode().toString();
-        }
+        return (spannerColName == null) ? null : spannerTable.column(spannerColName);
       } catch (NoSuchElementException e) {
         // Column is not mapped to Spanner.
+        return null;
       }
-      return CUSTOM_TRANSFORMATION_SPANNER_TYPE;
     }
+  }
+
+  /**
+   * Returns the JDBC type of a typed {@code NULL}: the same type as non-null values, so that the
+   * bind types of a cached statement do not change between records. BYTES values written to
+   * non-binary columns are bound as hex text into {@code HEXTORAW(?)} (see {@link
+   * #toBytesBindValue}), so their {@code NULL}s are bound as {@code VARCHAR}.
+   */
+  private static int getNullBindSqlType(String sourceType, String spannerColType) {
+    int sqlType = getBindSqlType(sourceType);
+    boolean isBinaryColumn = sqlType == Types.BLOB || sqlType == Types.VARBINARY;
+    return (isBytesType(spannerColType) && !isBinaryColumn) ? Types.VARCHAR : sqlType;
   }
 
   /**
@@ -497,8 +523,8 @@ public class OracleDMLGenerator implements IDMLGenerator {
   private static String getColumnInputValue(
       Type colType, String sourceType, JSONObject valuesJson, String colName) {
     if ("binary_float".equals(sourceType) || "binary_double".equals(sourceType)) {
-      // Passed as text to TO_BINARY_FLOAT / TO_BINARY_DOUBLE, which accept NaN, INF and -INF.
-      return toOracleFloatText(valuesJson.get(colName).toString());
+      // Passed as text, including NaN and Infinity (see toBindValueByType).
+      return valuesJson.get(colName).toString();
     }
     if (colType.getCode().equals(Type.Code.FLOAT64)
         || colType.getCode().equals(Type.Code.FLOAT32)
@@ -611,9 +637,11 @@ public class OracleDMLGenerator implements IDMLGenerator {
       case "timestamp with time zone":
       case "timestamp with local time zone":
       case "timestamptz":
+        return colValue;
       case "binary_float":
       case "binary_double":
-        return colValue;
+        // Text for TO_BINARY_FLOAT / TO_BINARY_DOUBLE, which accept NaN, INF and -INF.
+        return toOracleFloatText(colValue);
       default:
         // Other types: Spanner booleans become 1 / 0.
         return toNumericBoolean(colValue);
@@ -645,6 +673,10 @@ public class OracleDMLGenerator implements IDMLGenerator {
 
   /** Returns the JDBC type used to bind values (including {@code NULL}) of the Oracle type. */
   private static int getBindSqlType(String columnType) {
+    if (NUMERIC_TYPES.contains(columnType)) {
+      // Same bind type for NULLs as for the BigDecimal values.
+      return Types.NUMERIC;
+    }
     return switch (columnType) {
       case "char", "character" -> Types.CHAR;
       case "nchar", "national char", "national character" -> Types.NCHAR;
