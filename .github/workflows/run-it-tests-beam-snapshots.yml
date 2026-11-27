@@ -37,7 +37,7 @@ env:
     --add-opens java.base/java.util=ALL-UNNAMED
 
 permissions:
-  contents: write # Required to modify pom.xml and then revert it
+  contents: read
 
 jobs:
   run_it_tests_beam_snapshots:
