@@ -129,6 +129,7 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
                         CONSTRAINTS, and SHOW/DROP INDEXES. To skip reset, set 'reset_db' to false in the job
                         specification.""",
           exception);
+      throw exception;
     }
   }
 
