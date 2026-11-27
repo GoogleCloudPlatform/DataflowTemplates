@@ -17,11 +17,11 @@ package com.google.cloud.teleport.v2.templates;
 
 import com.google.api.gax.rpc.InvalidArgumentException;
 import com.google.api.services.bigquery.model.TableReference;
-import com.google.cloud.bigquery.storage.v1beta1.BigQueryStorageClient;
-import com.google.cloud.bigquery.storage.v1beta1.ReadOptions.TableReadOptions;
-import com.google.cloud.bigquery.storage.v1beta1.Storage.CreateReadSessionRequest;
-import com.google.cloud.bigquery.storage.v1beta1.Storage.ReadSession;
-import com.google.cloud.bigquery.storage.v1beta1.TableReferenceProto;
+import com.google.cloud.bigquery.storage.v1.BigQueryReadClient;
+import com.google.cloud.bigquery.storage.v1.CreateReadSessionRequest;
+import com.google.cloud.bigquery.storage.v1.DataFormat;
+import com.google.cloud.bigquery.storage.v1.ReadSession;
+import com.google.cloud.bigquery.storage.v1.ReadSession.TableReadOptions;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -84,17 +84,17 @@ public class BigQueryToParquet {
   /** File suffix for file to be written. */
   private static final String FILE_SUFFIX = ".parquet";
 
-  /** Factory to create BigQueryStorageClients. */
+  /** Factory to create BigQueryReadClients. */
   static class BigQueryStorageClientFactory {
 
     /**
-     * Creates BigQueryStorage client for use in extracting table schema.
+     * Creates BigQueryRead client for use in extracting table schema.
      *
-     * @return BigQueryStorageClient
+     * @return BigQueryReadClient
      */
-    static BigQueryStorageClient create() {
+    static BigQueryReadClient create() {
       try {
-        return BigQueryStorageClient.create();
+        return BigQueryReadClient.create();
       } catch (IOException e) {
         LOG.error("Error connecting to BigQueryStorage API: " + e.getMessage());
         throw new RuntimeException(e);
@@ -108,36 +108,48 @@ public class BigQueryToParquet {
     /**
      * Creates ReadSession for schema extraction.
      *
-     * @param client BigQueryStorage client used to create ReadSession.
+     * @param client BigQueryRead client used to create ReadSession.
      * @param options BigQueryToParquetOptions options.
      * @param tableReadOptions TableReadOptions that specify any fields in the table to filter on.
      * @return session ReadSession object that contains the schema for the export.
      */
     static ReadSession create(
-        BigQueryStorageClient client,
+        BigQueryReadClient client,
         BigQueryToParquetOptions options,
         TableReadOptions tableReadOptions) {
       String tableString = options.getTableRef();
       TableReference tableReference = BigQueryHelpers.parseTableSpec(tableString);
       BigQueryOptions bigQueryOptions = options.as(BigQueryOptions.class);
       String parentProjectId =
-          bigQueryOptions.getBigQueryProject() == null
+          Strings.isNullOrEmpty(bigQueryOptions.getBigQueryProject())
               ? bigQueryOptions.getProject()
               : bigQueryOptions.getBigQueryProject();
+      if (Strings.isNullOrEmpty(parentProjectId)) {
+        throw new IllegalArgumentException(
+            "A project ID must be specified in the pipeline options (either project or"
+                + " bigQueryProject).");
+      }
       String parentProjectIdResource = "projects/" + parentProjectId;
 
-      TableReferenceProto.TableReference storageTableRef =
-          TableReferenceProto.TableReference.newBuilder()
-              .setProjectId(tableReference.getProjectId())
-              .setDatasetId(tableReference.getDatasetId())
-              .setTableId(tableReference.getTableId())
-              .build();
+      String tableProjectId =
+          Strings.isNullOrEmpty(tableReference.getProjectId())
+              ? parentProjectId
+              : tableReference.getProjectId();
+      String tableResource =
+          String.format(
+              "projects/%s/datasets/%s/tables/%s",
+              tableProjectId, tableReference.getDatasetId(), tableReference.getTableId());
+
+      ReadSession.Builder sessionBuilder =
+          ReadSession.newBuilder()
+              .setTable(tableResource)
+              .setDataFormat(DataFormat.AVRO)
+              .setReadOptions(tableReadOptions);
 
       CreateReadSessionRequest.Builder builder =
           CreateReadSessionRequest.newBuilder()
               .setParent(parentProjectIdResource)
-              .setReadOptions(tableReadOptions)
-              .setTableReference(storageTableRef);
+              .setReadSession(sessionBuilder);
       try {
         return client.createReadSession(builder.build());
       } catch (InvalidArgumentException iae) {
@@ -262,12 +274,12 @@ public class BigQueryToParquet {
     }
 
     TableReadOptions tableReadOptions = builder.build();
-    BigQueryStorageClient client = BigQueryStorageClientFactory.create();
-    ReadSession session = ReadSessionFactory.create(client, options, tableReadOptions);
-
-    // Extract schema from ReadSession
-    Schema schema = getTableSchema(session);
-    client.close();
+    Schema schema;
+    try (BigQueryReadClient client = BigQueryStorageClientFactory.create()) {
+      ReadSession session = ReadSessionFactory.create(client, options, tableReadOptions);
+      // Extract schema from ReadSession
+      schema = getTableSchema(session);
+    }
 
     TypedRead<GenericRecord> readFromBQ =
         BigQueryIO.read(SchemaAndRecord::getRecord)
