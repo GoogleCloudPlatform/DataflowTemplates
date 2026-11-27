@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.neo4j.database;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
@@ -169,8 +170,6 @@ public class Neo4jConnectionTest {
             eq(Map.of("db", "a-database")),
             any()))
         .thenThrow(creationFailure);
-    // Recreating the database falls back to deleting data and dropping schema. The reset only
-    // fails when that fallback fails too.
     RuntimeException fallbackFailure = new RuntimeException("fallback failed");
     when(session.run(
             eq("MATCH (n) CALL { WITH n DETACH DELETE n } IN TRANSACTIONS"), anyMap(), any()))
@@ -179,7 +178,11 @@ public class Neo4jConnectionTest {
     RuntimeException thrown =
         assertThrows(RuntimeException.class, () -> neo4jConnection.resetDatabase());
 
-    assertEquals(fallbackFailure, thrown);
+    assertEquals("Fallback database reset failed", thrown.getMessage());
+    assertSame(fallbackFailure, thrown.getCause());
+    Throwable[] suppressed = thrown.getCause().getSuppressed();
+    assertEquals(1, suppressed.length);
+    assertSame(creationFailure, suppressed[0]);
   }
 
   @Test

@@ -144,8 +144,17 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
       runAutocommit(
           cypher, Map.of("db", database), databaseResetMetadata("create-replace-database"));
     } catch (Exception ex) {
-      deleteData();
-      dropSchema();
+      try {
+        LOG.warn(
+            "CREATE OR REPLACE DATABASE failed, falling back to deleting data and dropping schema",
+            ex);
+        deleteData();
+        dropSchema();
+      } catch (Exception fallbackEx) {
+        fallbackEx.addSuppressed(ex);
+        LOG.error("Fallback database reset failed", fallbackEx);
+        throw new RuntimeException("Fallback database reset failed", fallbackEx);
+      }
     }
   }
 
