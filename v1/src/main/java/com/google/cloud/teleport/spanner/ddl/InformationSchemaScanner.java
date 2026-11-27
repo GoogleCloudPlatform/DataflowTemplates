@@ -512,6 +512,11 @@ public class InformationSchemaScanner {
               ? ImmutableList.<String>builder().addAll(resultSet.getStringList(9)).build()
               : null;
 
+      ImmutableList<String> searchUnnest =
+          !resultSet.isNull(10)
+              ? ImmutableList.copyOf(resultSet.getStringList(10))
+              : null;
+
       Map<String, Index.Builder> tableIndexes =
           indexes.computeIfAbsent(tableName, k -> Maps.newTreeMap());
 
@@ -526,6 +531,7 @@ public class InformationSchemaScanner {
               .type(type)
               .partitionBy(searchPartitionBy)
               .orderBy(searchOrderBy)
+              .unnest(searchUnnest)
               .filter(filter));
     }
   }
@@ -536,7 +542,8 @@ public class InformationSchemaScanner {
       case GOOGLE_STANDARD_SQL:
         return Statement.of(
             "SELECT t.table_schema, t.table_name, t.index_name, t.parent_table_name, t.is_unique,"
-                + " t.is_null_filtered, t.filter, t.index_type, t.search_partition_by, t.search_order_by"
+                + " t.is_null_filtered, t.filter, t.index_type, t.search_partition_by, t.search_order_by,"
+                + " t.search_unnest"
                 + " FROM information_schema.indexes AS t"
                 + " WHERE t.table_schema NOT IN"
                 + " ('INFORMATION_SCHEMA', 'SPANNER_SYS') AND"
@@ -545,7 +552,8 @@ public class InformationSchemaScanner {
       case POSTGRESQL:
         return Statement.of(
             "SELECT t.table_schema, t.table_name, t.index_name, t.parent_table_name, t.is_unique,"
-                + " t.is_null_filtered, t.filter, t.index_type, t.search_partition_by, t.search_order_by"
+                + " t.is_null_filtered, t.filter, t.index_type, t.search_partition_by, t.search_order_by,"
+                + " t.search_unnest"
                 + " FROM information_schema.indexes AS t "
                 + " WHERE t.table_schema NOT IN "
                 + " ('information_schema', 'spanner_sys', 'pg_catalog')"
