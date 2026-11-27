@@ -85,7 +85,7 @@ public class SpannerToSourceDbFileOverridesSchemaMapperIT extends SpannerToSourc
       if (jobInfo == null) {
         spannerResourceManager = createSpannerDatabase(SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
-        mySQLResourceManager = MySQLResourceManager.builder(testName).build();
+        mySQLResourceManager = setUpMySQLResourceManager(testName);
         createMySQLSchema(mySQLResourceManager, MYSQL_SCHEMA_FILE_RESOURCE);
         gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadShardConfigToGcs(gcsResourceManager, mySQLResourceManager);

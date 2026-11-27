@@ -91,7 +91,7 @@ public class SpannerToMySqlDataTypesPGDialectIT extends SpannerToSourceDbITBase 
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
     spannerMetadataResourceManager = createPGDialectSpannerMetadataDatabase();
 
-    jdbcResourceManager = MySQLResourceManager.builder(testName).build();
+    jdbcResourceManager = setUpMySQLResourceManager(testName);
 
     createMySQLSchema(
         jdbcResourceManager, SpannerToMySqlDataTypesPGDialectIT.MYSQL_SCHEMA_FILE_RESOURCE);

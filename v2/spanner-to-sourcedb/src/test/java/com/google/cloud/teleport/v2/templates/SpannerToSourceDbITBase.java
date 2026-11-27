@@ -27,6 +27,9 @@ import com.google.cloud.teleport.v2.spanner.migrations.source.config.JdbcShardCo
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.oracleutils.SpannerOracleResourceManager;
 import com.google.cloud.teleport.v2.spanner.testutils.retry.SkipRerunOfGenuineFailuresRule;
+import com.google.cloud.teleport.v2.spanner.testutils.sharedcontainers.SharedCassandraServer;
+import com.google.cloud.teleport.v2.spanner.testutils.sharedcontainers.SharedContainerDatabases;
+import com.google.cloud.teleport.v2.spanner.testutils.sharedcontainers.SharedDatabaseServer;
 import com.google.cloud.teleport.v2.templates.oracle.SharedOracleReverseITContainer;
 import com.google.common.io.Resources;
 import com.google.gson.Gson;
@@ -55,6 +58,8 @@ import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MSSQLResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
+import org.apache.beam.it.jdbc.PostgresResourceManager;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
 import org.slf4j.Logger;
@@ -121,6 +126,37 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     throw new IllegalStateException(
         "Shared SQL Server container failed to start after " + MSSQL_STARTUP_ATTEMPTS + " attempts",
         lastFailure);
+  }
+
+  /** Drops the databases this test class created on shared containers once its tests are done. */
+  @ClassRule
+  public static final TestRule DROP_SHARED_DATABASES =
+      SharedContainerDatabases.dropDatabasesAfterClass();
+
+  /**
+   * Returns a MySQL resource manager for the test. By default the test gets its own database on a
+   * MySQL container shared by all tests in the JVM; with sharing turned off (see {@link
+   * SharedDatabaseServer#isEnabled()}) it gets its own container instead. Call it once per shard
+   * with a distinct {@code testId} for sharded tests.
+   */
+  protected MySQLResourceManager setUpMySQLResourceManager(String testId) {
+    return SharedContainerDatabases.mySql(getClass(), testId);
+  }
+
+  /**
+   * Returns a MySQL resource manager backed by a container of its own, for tests that change
+   * server-wide settings (e.g. {@code SET GLOBAL}).
+   */
+  protected MySQLResourceManager setUpDedicatedMySQLResourceManager(String testId) {
+    return SharedContainerDatabases.dedicatedMySql(testId);
+  }
+
+  /**
+   * Returns a PostgreSQL resource manager for the test: its own database on a PostgreSQL container
+   * shared by all tests in the JVM, or its own container with sharing turned off.
+   */
+  protected PostgresResourceManager setUpPostgreSQLResourceManager(String testId) {
+    return SharedContainerDatabases.postgres(getClass(), testId);
   }
 
   protected MSSQLResourceManager setUpMSSQLResourceManager(String testId) {
@@ -290,7 +326,14 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
      * That's why we need to take a smaller subsequence of the testId.
      */
     String uniqueId = testId.substring(0, Math.min(20, testId.length()));
-    return CassandraResourceManager.builder(uniqueId).build();
+    CassandraResourceManager.Builder builder = CassandraResourceManager.builder(uniqueId);
+    // By default the keyspace goes on a Cassandra container shared by all tests in the JVM. It is
+    // dropped by cleanupAll() either way.
+    if (SharedDatabaseServer.isEnabled()) {
+      SharedCassandraServer server = SharedCassandraServer.get();
+      builder.setHost(server.getHost()).setPort(server.getPort()).useStaticContainer();
+    }
+    return builder.build();
   }
 
   protected void createCassandraSchema(
