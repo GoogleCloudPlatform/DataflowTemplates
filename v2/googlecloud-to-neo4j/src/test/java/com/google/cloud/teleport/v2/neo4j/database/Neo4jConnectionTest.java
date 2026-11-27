@@ -16,6 +16,8 @@
 package com.google.cloud.teleport.v2.neo4j.database;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -159,31 +161,69 @@ public class Neo4jConnectionTest {
     inOrder.verify(session).run(eq("DROP INDEX `d`"), eq(Map.of()), any());
   }
 
-  private void setVersionEdition(String version, String edition) {
-    var result = mock(Result.class);
-    when(result.single())
-        .thenReturn(
-            new InternalRecord(
-                List.of("version", "edition"),
-                List.of(Values.value(version), Values.value(edition))));
-
-    when(session.run(contains("dbms.components"), anyMap())).thenReturn(result);
-  }
-
-  private void setConstraints(String... names) {
-    var result = mock(Result.class);
-    when(result.list(any())).thenReturn(Arrays.asList(names));
-
-    when(session.run(eq("SHOW CONSTRAINTS YIELD name"), anyMap(), any())).thenReturn(result);
-  }
-
-  private void setIndexes(String... names) {
-    when(result.list(any())).thenReturn(Arrays.asList(names));
+  @Test
+  public void failsWhenRecreatingDatabaseFails() {
+    setVersionEdition("5.1.0", "enterprise");
+    RuntimeException creationFailure = new RuntimeException("recreate failed");
     when(session.run(
-            eq("SHOW INDEXES YIELD name, type WHERE type <> 'LOOKUP' RETURN name"),
-            anyMap(),
+            eq("CREATE OR REPLACE DATABASE $db WAIT 60 SECONDS"),
+            eq(Map.of("db", "a-database")),
             any()))
-        .thenReturn(result);
+        .thenThrow(creationFailure);
+    RuntimeException fallbackFailure = new RuntimeException("fallback failed");
+    when(session.run(
+            eq("MATCH (n) CALL { WITH n DETACH DELETE n } IN TRANSACTIONS"), anyMap(), any()))
+        .thenThrow(fallbackFailure);
+
+    RuntimeException thrown =
+        assertThrows(RuntimeException.class, () -> neo4jConnection.resetDatabase());
+
+    assertEquals("Fallback database reset failed", thrown.getMessage());
+    assertSame(fallbackFailure, thrown.getCause());
+    Throwable[] suppressed = thrown.getCause().getSuppressed();
+    assertEquals(1, suppressed.length);
+    assertSame(creationFailure, suppressed[0]);
+  }
+
+  @Test
+  public void failsWhenDeletingDataFails() {
+    setVersionEdition("5.1.0", "community");
+    RuntimeException failure = new RuntimeException("delete failed");
+    when(session.run(
+            eq("MATCH (n) CALL { WITH n DETACH DELETE n } IN TRANSACTIONS"), anyMap(), any()))
+        .thenThrow(failure);
+
+    RuntimeException thrown =
+        assertThrows(RuntimeException.class, () -> neo4jConnection.resetDatabase());
+
+    assertEquals(failure, thrown);
+  }
+
+  @Test
+  public void failsWhenDroppingConstraintFails() {
+    setVersionEdition("5.1.0", "community");
+    setConstraints("a");
+    RuntimeException failure = new RuntimeException("drop failed");
+    when(session.run(eq("DROP CONSTRAINT `a`"), anyMap(), any())).thenThrow(failure);
+
+    RuntimeException thrown =
+        assertThrows(RuntimeException.class, () -> neo4jConnection.resetDatabase());
+
+    assertEquals(failure, thrown);
+  }
+
+  @Test
+  public void failsWhenDroppingIndexFails() {
+    setVersionEdition("5.1.0", "community");
+    setConstraints();
+    setIndexes("c");
+    RuntimeException failure = new RuntimeException("drop failed");
+    when(session.run(eq("DROP INDEX `c`"), anyMap(), any())).thenThrow(failure);
+
+    RuntimeException thrown =
+        assertThrows(RuntimeException.class, () -> neo4jConnection.resetDatabase());
+
+    assertEquals(failure, thrown);
   }
 
   @Test
@@ -211,5 +251,32 @@ public class Neo4jConnectionTest {
             new InternalRecord(
                 List.of("versions[0]", "edition"),
                 List.of(Values.value(version), Values.value(edition))));
+  }
+
+  private void setVersionEdition(String version, String edition) {
+    var result = mock(Result.class);
+    when(result.single())
+        .thenReturn(
+            new InternalRecord(
+                List.of("version", "edition"),
+                List.of(Values.value(version), Values.value(edition))));
+
+    when(session.run(contains("dbms.components"), anyMap())).thenReturn(result);
+  }
+
+  private void setConstraints(String... names) {
+    var result = mock(Result.class);
+    when(result.list(any())).thenReturn(Arrays.asList(names));
+
+    when(session.run(eq("SHOW CONSTRAINTS YIELD name"), anyMap(), any())).thenReturn(result);
+  }
+
+  private void setIndexes(String... names) {
+    when(result.list(any())).thenReturn(Arrays.asList(names));
+    when(session.run(
+            eq("SHOW INDEXES YIELD name, type WHERE type <> 'LOOKUP' RETURN name"),
+            anyMap(),
+            any()))
+        .thenReturn(result);
   }
 }
