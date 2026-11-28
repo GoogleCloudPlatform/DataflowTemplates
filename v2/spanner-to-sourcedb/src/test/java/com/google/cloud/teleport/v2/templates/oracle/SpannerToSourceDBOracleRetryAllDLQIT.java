@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates.oracle;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.ORACLE_SOURCE_TYPE;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
@@ -124,7 +125,7 @@ public class SpannerToSourceDBOracleRetryAllDLQIT extends SpannerToSourceDbITBas
             CustomTransformation.builder(
                     "input/customShard.jar", // Use relative path!
                     "com.custom.CustomTransformationForDLQIT")
-                .setCustomParameters("mode=bad")
+                .setCustomParameters("mode=bad,rawValues=true")
                 .build();
 
         gcsResourceManager.uploadArtifact("input/customShard.jar", getCustomShardJarPath());
@@ -277,8 +278,9 @@ public class SpannerToSourceDBOracleRetryAllDLQIT extends SpannerToSourceDbITBas
             CustomTransformation.builder(
                     "input/customShard.jar", "com.custom.CustomTransformationForDLQIT")
                 .setCustomParameters(
-                    "mode=semi-fixed") // This fixes one of our severe errors simulated in the
-                // transformer
+                    "mode=semi-fixed,rawValues=true") // This fixes one of our severe errors
+                // simulated in the transformer. Oracle binds custom transformation values, so the
+                // transformer returns plain values (rawValues=true).
                 .build(),
             ORACLE_SOURCE_TYPE,
             retryParams);
@@ -386,14 +388,29 @@ public class SpannerToSourceDBOracleRetryAllDLQIT extends SpannerToSourceDbITBas
     // Orders:
     // id=101 should exist (FK issue fixed by inserting parent)
     // id=102 should exist (parent was seeded originally)
+    // LegacyOrderSystem is the custom transformation output, bound as returned (no SQL quotes).
     List<Map<String, Object>> ordersRows =
-        SharedOracleReverseITContainer.runQuery(testUsername, "SELECT \"OrderId\" FROM \"Orders\"");
-    List<Integer> ordersIds =
-        ordersRows.stream().map(r -> getIntValueCaseInsensitive(r, "OrderId")).toList();
-    assertTrue("id=101 should exist", ordersIds.contains(101));
-    assertTrue("id=102 should exist", ordersIds.contains(102));
+        SharedOracleReverseITContainer.runQuery(
+            testUsername, "SELECT \"OrderId\", \"LegacyOrderSystem\" FROM \"Orders\"");
+    Map<Integer, Object> legacyOrderSystemById = new HashMap<>();
+    for (Map<String, Object> row : ordersRows) {
+      legacyOrderSystemById.put(
+          getIntValueCaseInsensitive(row, "OrderId"),
+          getValueCaseInsensitive(row, "LegacyOrderSystem"));
+    }
+    assertEquals("Website_v1", legacyOrderSystemById.get(101));
+    assertEquals("AppStore_v1", legacyOrderSystemById.get(102));
 
     LOG.info("Verified target Oracle database contents successfully");
+  }
+
+  private Object getValueCaseInsensitive(Map<String, Object> map, String key) {
+    for (String k : map.keySet()) {
+      if (k.equalsIgnoreCase(key)) {
+        return map.get(k);
+      }
+    }
+    return null;
   }
 
   private Integer getIntValueCaseInsensitive(Map<String, Object> map, String key) {

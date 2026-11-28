@@ -27,21 +27,51 @@ import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccess
 import com.google.cloud.teleport.v2.spanner.sourceddl.OracleInformationSchemaScanner;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
-import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.ISpToSrcSourceConnector;
+import com.google.common.annotations.VisibleForTesting;
 import java.sql.Connection;
 import java.util.List;
+import java.util.Properties;
 import org.apache.beam.sdk.options.PipelineOptions;
 
 public class OracleSpToSrcSourceConnector implements ISpToSrcSourceConnector {
 
   private static final String JDBC_URL_PREFIX = "jdbc:oracle:thin:@//";
 
+  /**
+   * Oracle JDBC connection property that enables per-connection implicit {@link
+   * java.sql.PreparedStatement} caching.
+   *
+   * <p>When unset in a shard's {@code connectionProperties}, {@link #initConnectionHelper} sets
+   * {@code oracle.jdbc.implicitStatementCacheSize=100} by default so repeated {@code
+   * prepareStatement(...)} calls reuse open server-side cursors without incurring per-row soft
+   * parses in Oracle's Shared Pool.
+   *
+   * <p>To override the cache size (for example, when replicating more than 50 active tables at 2
+   * statements per table, or to stay below a custom Oracle {@code OPEN_CURSORS} per-session limit)
+   * or disable caching ({@code 0}), specify {@code oracle.jdbc.implicitStatementCacheSize=<N>} in
+   * the shard's {@code connectionProperties} field inside the {@code sourceShardsFilePath} JSON
+   * configuration.
+   */
+  public static final String IMPLICIT_STATEMENT_CACHE_PROP =
+      "oracle.jdbc.implicitStatementCacheSize";
+
+  /**
+   * Default per-connection Oracle implicit statement cache size ({@code 100} cursors, well below
+   * Oracle's standard {@code OPEN_CURSORS=300} session limit).
+   */
+  public static final String DEFAULT_IMPLICIT_STATEMENT_CACHE_SIZE = "100";
+
   private final IConnectionHelper connectionHelper;
 
   public OracleSpToSrcSourceConnector() {
     this.connectionHelper = new JdbcConnectionHelper();
+  }
+
+  @VisibleForTesting
+  OracleSpToSrcSourceConnector(IConnectionHelper connectionHelper) {
+    this.connectionHelper = connectionHelper;
   }
 
   @Override
@@ -60,20 +90,49 @@ public class OracleSpToSrcSourceConnector implements ISpToSrcSourceConnector {
 
   @Override
   public IDao getDao(Shard shard) {
-    return new JdbcDao(getConnectionUrl(shard), shard.getUserName(), getConnectionHelper());
+    return new OracleJdbcDao(getConnectionUrl(shard), shard.getUserName(), getConnectionHelper());
   }
 
+  /**
+   * Initializes the per-worker HikariCP connection pool for all configured Oracle shards.
+   *
+   * <p>Applies {@code oracle.jdbc.implicitStatementCacheSize=100} by default on each shard unless
+   * {@link #IMPLICIT_STATEMENT_CACHE_PROP} is already present in {@link
+   * Shard#getConnectionProperties()}. Users can tune or disable ({@code =0}) this setting via
+   * {@code connectionProperties} in the shard JSON file.
+   */
   @Override
   public void initConnectionHelper(List<Shard> shards, int maxConnections) {
     if (!connectionHelper.isConnectionPoolInitialized()) {
       for (Shard shard : shards) {
         shard.setConnectionUrl(getConnectionUrl(shard));
+        shard.setConnectionProperties(withDefaultStatementCache(shard.getConnectionProperties()));
       }
       ConnectionHelperRequest request =
           new ConnectionHelperRequest(
               shards, null, maxConnections, "oracle.jdbc.OracleDriver", null);
       connectionHelper.init(request);
     }
+  }
+
+  static String withDefaultStatementCache(String existingProps) {
+    String defaultEntry =
+        IMPLICIT_STATEMENT_CACHE_PROP + "=" + DEFAULT_IMPLICIT_STATEMENT_CACHE_SIZE;
+    if (existingProps == null || existingProps.trim().isEmpty()) {
+      return defaultEntry;
+    }
+    String trimmed = existingProps.trim();
+    Properties parsed = JdbcConnectionHelper.parseProperties(trimmed);
+    if (parsed.containsKey(IMPLICIT_STATEMENT_CACHE_PROP)) {
+      return existingProps;
+    }
+    if (trimmed.contains("&")) {
+      return trimmed.endsWith("&") ? trimmed + defaultEntry : trimmed + "&" + defaultEntry;
+    }
+    if (trimmed.contains(";")) {
+      return trimmed.endsWith(";") ? trimmed + defaultEntry : trimmed + ";" + defaultEntry;
+    }
+    return trimmed + "\n" + defaultEntry;
   }
 
   @Override

@@ -58,12 +58,7 @@ public class JdbcDao implements IDao {
         statement = pstmt;
         int paramIdx = 1;
         for (Object param : params) {
-          if (param instanceof byte[]) {
-            byte[] bytes = (byte[]) param;
-            pstmt.setBlob(paramIdx++, new java.io.ByteArrayInputStream(bytes), bytes.length);
-          } else {
-            pstmt.setObject(paramIdx++, param);
-          }
+          bindParameter(pstmt, paramIdx++, param);
         }
         pstmt.executeUpdate();
       } else {
@@ -84,6 +79,17 @@ public class JdbcDao implements IDao {
       if (connObj != null) {
         connObj.close();
       }
+    }
+  }
+
+  /** Binds a prepared statement parameter. Sources can override this for type specific binding. */
+  protected void bindParameter(java.sql.PreparedStatement pstmt, int paramIdx, Object param)
+      throws java.sql.SQLException {
+    if (param instanceof byte[]) {
+      byte[] bytes = (byte[]) param;
+      pstmt.setBlob(paramIdx, new java.io.ByteArrayInputStream(bytes), bytes.length);
+    } else {
+      pstmt.setObject(paramIdx, param);
     }
   }
 }

@@ -28,31 +28,69 @@ import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.exceptions.InvalidDMLGenerationException;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
+import com.google.cloud.teleport.v2.templates.source.oracle.OracleJdbcDao.OracleBindParameter;
 import com.google.common.annotations.VisibleForTesting;
+import java.math.BigDecimal;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Creates DML statements for Oracle. */
+/**
+ * Creates parameterized DML statements for Oracle.
+ *
+ * <p>Column values (including {@code NULL}) are written as {@code ?} placeholders with bind values.
+ * Records of a table with the same set of columns therefore produce the same SQL text, which
+ * Oracle's implicit statement cache ({@link
+ * OracleSpToSrcSourceConnector#IMPLICIT_STATEMENT_CACHE_PROP}) can reuse.
+ *
+ * <p>Custom transformation outputs are also bound as returned (not written to the SQL text), so a
+ * custom transformation returns plain values (e.g. {@code abc}, {@code 42}, a {@code byte[]}), not
+ * SQL literals or expressions. Values use the same format as the Spanner values of the mapped
+ * column. For source-only columns, DATE values use {@code YYYY-MM-DD} and TIMESTAMP values use UTC
+ * {@code YYYY-MM-DDTHH:MI:SS[.FFFFFFFFF]Z}.
+ */
 public class OracleDMLGenerator implements IDMLGenerator {
 
   private static final Logger LOG = LoggerFactory.getLogger(OracleDMLGenerator.class);
 
-  /** Maximum characters per bind for chunked LOB values (at most 4000 bytes in UTF-8). */
-  private static final int LOB_BIND_CHUNK_CHARS = 1000;
+  /**
+   * Spanner type passed to {@link #getColumnValueByType} for custom transformation values of
+   * columns without a (non BYTES) Spanner column.
+   */
+  private static final String CUSTOM_TRANSFORMATION_SPANNER_TYPE = "STRING";
+
+  /**
+   * Numeric types, bound as {@link BigDecimal} so that the value does not depend on the session
+   * decimal character ({@code NLS_NUMERIC_CHARACTERS}).
+   */
+  private static final Set<String> NUMERIC_TYPES =
+      Set.of(
+          "number",
+          "numeric",
+          "decimal",
+          "dec",
+          "float",
+          "real",
+          "double precision",
+          "integer",
+          "smallint",
+          "int",
+          "boolean",
+          "bool");
 
   @Override
   public DMLGeneratorResponse getDMLStatement(DMLGeneratorRequest dmlGeneratorRequest) {
-    List<Object> currentParams = new ArrayList<>();
-    // Removed try-finally block
     if (dmlGeneratorRequest == null) {
       throw new InvalidDMLGenerationException(
           "DMLGeneratorRequest is null. Cannot process the request.");
@@ -101,6 +139,14 @@ public class OracleDMLGenerator implements IDMLGenerator {
               sourceTableName));
     }
 
+    ColumnBinder binder =
+        new ColumnBinder(
+            schemaMapper,
+            spannerTable,
+            sourceTable,
+            dmlGeneratorRequest.getSourceDbTimezoneOffset(),
+            dmlGeneratorRequest.getCustomTransformationResponse());
+
     Map<String, String> pkcolumnNameValues =
         DMLGeneratorUtils.getPkColumnValues(
             schemaMapper,
@@ -109,9 +155,9 @@ public class OracleDMLGenerator implements IDMLGenerator {
             dmlGeneratorRequest.getNewValuesJson(),
             dmlGeneratorRequest.getKeyValuesJson(),
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
-            dmlGeneratorRequest.getCustomTransformationResponse(),
-            OracleDMLGenerator::getMappedColumnValue,
-            currentParams);
+            binder.customTransformationColumns(),
+            binder::mapColumnValue,
+            null);
     if (pkcolumnNameValues == null || pkcolumnNameValues.isEmpty()) {
       throw new InvalidDMLGenerationException(
           String.format(
@@ -122,12 +168,10 @@ public class OracleDMLGenerator implements IDMLGenerator {
     if ("INSERT".equals(dmlGeneratorRequest.getModType())
         || "UPDATE".equals(dmlGeneratorRequest.getModType())) {
       return generateUpsertStatement(
-          spannerTable, sourceTable, dmlGeneratorRequest, pkcolumnNameValues, currentParams);
+          spannerTable, sourceTable, dmlGeneratorRequest, pkcolumnNameValues, binder);
 
     } else if ("DELETE".equals(dmlGeneratorRequest.getModType())) {
-      DMLGeneratorResponse resp = getDeleteStatement(sourceTable.name(), pkcolumnNameValues);
-      resp.setPreparedStatementParameters(currentParams);
-      return resp;
+      return getDeleteStatement(sourceTable.name(), pkcolumnNameValues, binder);
     } else {
       throw new InvalidDMLGenerationException(
           String.format(
@@ -137,30 +181,23 @@ public class OracleDMLGenerator implements IDMLGenerator {
   }
 
   private static DMLGeneratorResponse getUpsertStatement(
-      SourceTable sourceTable,
       String tableName,
       Map<String, String> allColumnNameValues,
       Map<String, String> generatedColumnValues,
-      List<String> primaryKeys) {
+      List<String> primaryKeys,
+      ColumnBinder binder) {
 
     Map<String, String> queryColumns = new LinkedHashMap<>(allColumnNameValues);
     if (generatedColumnValues != null) {
       queryColumns.putAll(generatedColumnValues);
     }
 
+    List<Object> bindParams = new ArrayList<>();
     StringBuilder usingSelect = new StringBuilder("SELECT ");
     int index = 0;
     for (Map.Entry<String, String> entry : queryColumns.entrySet()) {
       String colName = entry.getKey();
-      String colValue = entry.getValue();
-      String sqlValue = (colValue == null) ? "NULL" : colValue;
-      if ("NULL".equals(sqlValue) || "?".equals(sqlValue)) {
-        if (sourceTable != null
-            && sourceTable.column(colName) != null
-            && isCastableWithoutLength(sourceTable.column(colName).type())) {
-          sqlValue = "CAST(" + sqlValue + " AS " + sourceTable.column(colName).type() + ")";
-        }
-      }
+      String sqlValue = binder.bindColumn(colName, entry.getValue(), bindParams);
       usingSelect.append(sqlValue).append(" AS \"").append(colName).append("\"");
       if (index + 1 < queryColumns.size()) {
         usingSelect.append(", ");
@@ -207,48 +244,20 @@ public class OracleDMLGenerator implements IDMLGenerator {
         .append(insertVals)
         .append(")");
 
-    return new DMLGeneratorResponse(mergeQuery.toString());
-  }
-
-  /**
-   * Returns whether {@code CAST(NULL|? AS <type>)} is valid for the given Oracle column type as
-   * reported by the JDBC metadata. Character and RAW types are reported without their length (e.g.
-   * {@code VARCHAR2}), which makes the CAST invalid (ORA-00906), and Oracle does not support CAST
-   * to LOB types at all (ORA-00932). For those types a bare {@code NULL} / {@code ?} is used, which
-   * Oracle accepts for every column type in the MERGE source query.
-   */
-  @VisibleForTesting
-  static boolean isCastableWithoutLength(String oracleType) {
-    if (oracleType == null) {
-      return false;
-    }
-    String base = baseType(oracleType);
-    return base.equals("number")
-        || base.equals("float")
-        || base.equals("binary_float")
-        || base.equals("binary_double")
-        || base.equals("date")
-        || base.startsWith("timestamp")
-        || base.startsWith("interval");
-  }
-
-  /** Lower-cased Oracle type name without precision/length, e.g. "TIMESTAMP(6)" -> "timestamp". */
-  private static String baseType(String oracleType) {
-    String base = oracleType.toLowerCase();
-    if (base.contains("(")) {
-      base = base.substring(0, base.indexOf("(")).trim();
-    }
-    return base;
+    DMLGeneratorResponse response = new DMLGeneratorResponse(mergeQuery.toString());
+    response.setPreparedStatementParameters(bindParams);
+    return response;
   }
 
   private static DMLGeneratorResponse getDeleteStatement(
-      String tableName, Map<String, String> pkcolumnNameValues) {
+      String tableName, Map<String, String> pkcolumnNameValues, ColumnBinder binder) {
     String deleteValues = "";
+    List<Object> bindParams = new ArrayList<>();
 
     int index = 0;
     for (Map.Entry<String, String> entry : pkcolumnNameValues.entrySet()) {
       String colName = entry.getKey();
-      String colValue = entry.getValue();
+      String colValue = binder.bindColumn(colName, entry.getValue(), bindParams);
 
       deleteValues += " \"" + colName + "\" = " + colValue;
       if (index + 1 < pkcolumnNameValues.size()) {
@@ -258,7 +267,9 @@ public class OracleDMLGenerator implements IDMLGenerator {
     }
     String returnVal = "DELETE FROM \"" + tableName + "\" WHERE " + deleteValues;
 
-    return new DMLGeneratorResponse(returnVal);
+    DMLGeneratorResponse response = new DMLGeneratorResponse(returnVal);
+    response.setPreparedStatementParameters(bindParams);
+    return response;
   }
 
   private static DMLGeneratorResponse generateUpsertStatement(
@@ -266,7 +277,7 @@ public class OracleDMLGenerator implements IDMLGenerator {
       SourceTable sourceTable,
       DMLGeneratorRequest dmlGeneratorRequest,
       Map<String, String> pkcolumnNameValues,
-      List<Object> currentParams) {
+      ColumnBinder binder) {
     Map<String, String> columnNameValues =
         DMLGeneratorUtils.getColumnValues(
             dmlGeneratorRequest.getSchemaMapper(),
@@ -275,9 +286,9 @@ public class OracleDMLGenerator implements IDMLGenerator {
             dmlGeneratorRequest.getNewValuesJson(),
             dmlGeneratorRequest.getKeyValuesJson(),
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
-            dmlGeneratorRequest.getCustomTransformationResponse(),
-            OracleDMLGenerator::getMappedColumnValue,
-            currentParams);
+            binder.customTransformationColumns(),
+            binder::mapColumnValue,
+            null);
 
     Map<String, String> orderedColumnNameValues = new LinkedHashMap<>();
     orderedColumnNameValues.putAll(pkcolumnNameValues);
@@ -301,164 +312,418 @@ public class OracleDMLGenerator implements IDMLGenerator {
             && !dmlGeneratorRequest.getKeyValuesJson().isNull(spannerColName)) {
           generatedColumnValues.put(
               col.name(),
-              getMappedColumnValue(
+              binder.mapColumnValue(
                   spannerColDef,
                   col,
                   dmlGeneratorRequest.getKeyValuesJson(),
                   dmlGeneratorRequest.getSourceDbTimezoneOffset(),
-                  currentParams));
+                  null));
         } else if (dmlGeneratorRequest.getNewValuesJson().has(spannerColName)
             && !dmlGeneratorRequest.getNewValuesJson().isNull(spannerColName)) {
           generatedColumnValues.put(
               col.name(),
-              getMappedColumnValue(
+              binder.mapColumnValue(
                   spannerColDef,
                   col,
                   dmlGeneratorRequest.getNewValuesJson(),
                   dmlGeneratorRequest.getSourceDbTimezoneOffset(),
-                  currentParams));
+                  null));
         }
       }
     }
 
-    DMLGeneratorResponse resp =
-        getUpsertStatement(
-            sourceTable,
-            sourceTable.name(),
-            orderedColumnNameValues,
-            generatedColumnValues,
-            sourceTable.primaryKeyColumns());
-    resp.setPreparedStatementParameters(currentParams);
-    return resp;
+    return getUpsertStatement(
+        sourceTable.name(),
+        orderedColumnNameValues,
+        generatedColumnValues,
+        sourceTable.primaryKeyColumns(),
+        binder);
   }
 
-  @VisibleForTesting
-  static String getMappedColumnValue(
-      Column spannerColDef,
-      SourceColumn sourceColDef,
-      JSONObject valuesJson,
-      String sourceDbTimezoneOffset,
-      List<Object> preparedStatementParameters) {
+  /**
+   * Converts the column values of one DML request into SQL placeholder expressions and bind values.
+   *
+   * <p>{@link DMLGeneratorUtils} returns a {@code Map<column, SQL value>} where the SQL value is:
+   *
+   * <ul>
+   *   <li>{@code null} for a {@code NULL} column value,
+   *   <li>the placeholder returned by {@link #mapColumnValue} for any other column value, or
+   *   <li>the output of the custom transformation for a custom transformed column.
+   * </ul>
+   *
+   * <p>{@link #mapColumnValue} records each bind value by column name, and {@link #bindColumn}
+   * appends the bind values in the order the columns are written to the SQL statement.
+   */
+  private static final class ColumnBinder {
+    private final ISchemaMapper schemaMapper;
+    private final Table spannerTable;
+    private final SourceTable sourceTable;
+    private final String sourceDbTimezoneOffset;
+    private final Map<String, Object> customTransformationResponse;
 
-    String colInputValue = "";
-    Type colType = spannerColDef.type();
-    String colName = spannerColDef.name();
+    /** Bind values of the non-null columns, keyed by source column name. */
+    private final Map<String, Object> bindValuesByColumn = new HashMap<>();
+
+    ColumnBinder(
+        ISchemaMapper schemaMapper,
+        Table spannerTable,
+        SourceTable sourceTable,
+        String sourceDbTimezoneOffset,
+        Map<String, Object> customTransformationResponse) {
+      this.schemaMapper = schemaMapper;
+      this.spannerTable = spannerTable;
+      this.sourceTable = sourceTable;
+      this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
+      this.customTransformationResponse =
+          (customTransformationResponse == null) ? Map.of() : customTransformationResponse;
+    }
+
+    /** {@link DMLGeneratorUtils.ColumnValueMapper} for non-null column values. */
+    String mapColumnValue(
+        Column spannerColDef,
+        SourceColumn sourceColDef,
+        JSONObject valuesJson,
+        String sourceDbTimezoneOffset,
+        List<Object> unusedPreparedStatementParameters) {
+      bindValuesByColumn.put(
+          sourceColDef.name(), toBindValue(spannerColDef, sourceColDef, valuesJson));
+      return getColumnValueByType(
+          sourceColDef.type(), sourceDbTimezoneOffset, spannerColDef.type().getCode().toString());
+    }
 
     /**
-     * DYNAMIC PREPARED STATEMENT ROUTING: Oracle has a strict hard limit of 4,000 bytes for any
-     * single inline string literal (ORA-01704). If Spanner sends a massive payload (e.g. a large
-     * text CLOB or a large binary BLOB) and we format it as an inline literal, Oracle will
-     * violently crash.
-     *
-     * <p>To prevent this, if the exact payload size breaches ~3,500 characters, we dynamically
-     * intercept the raw pristine object before it is wrapped in SQL syntax, inject it into the
-     * PreparedStatement Java array, and natively return a '?' placeholder. Smaller payloads safely
-     * bypass this to retain blistering fast simple Statement execution.
+     * Returns the SQL expression to write for {@code colName} and appends its bind value (if any)
+     * to {@code bindParams}.
      */
-    String rawJsonStr = valuesJson.get(colName).toString();
-    if (preparedStatementParameters != null && rawJsonStr != null && rawJsonStr.length() >= 3500) {
-      if (colType.getCode().equals(Type.Code.BYTES)
-          || colType.getCode().equals(Type.Code.PG_BYTEA)) {
-        byte[] decodedBytes = Base64.getDecoder().decode(valuesJson.getString(colName));
-        preparedStatementParameters.add(decodedBytes);
-      } else {
-        String sourceBaseType = baseType(sourceColDef.type());
-        if (sourceBaseType.equals("clob") || sourceBaseType.equals("nclob")) {
-          // A single bind of a large string is sent as LONG and rejected outside LONG columns
-          // (ORA-01461), so bind it in chunks and concatenate them as a LOB.
-          return bindAsLobChunks(
-              valuesJson.getString(colName),
-              sourceBaseType.equals("nclob") ? "TO_NCLOB" : "TO_CLOB",
-              preparedStatementParameters);
-        }
-        preparedStatementParameters.add(valuesJson.getString(colName));
+    String bindColumn(String colName, String sqlValue, List<Object> bindParams) {
+      SourceColumn sourceColDef = sourceTable.column(colName);
+      String sourceType = (sourceColDef == null) ? "" : sourceColDef.type();
+
+      if (sqlValue == null) {
+        // NULL column value: same placeholder as non-null values, bound as a typed NULL.
+        String spannerType = getSpannerTypeCode(colName);
+        bindParams.add(
+            new OracleBindParameter(
+                getNullBindSqlType(normalizeSourceType(sourceType), spannerType), null));
+        return getColumnValueByType(sourceType, sourceDbTimezoneOffset, spannerType);
       }
-      return "?";
+      if (bindValuesByColumn.containsKey(colName)) {
+        bindParams.add(bindValuesByColumn.get(colName));
+        return sqlValue;
+      }
+      if (customTransformationResponse.containsKey(colName)) {
+        bindParams.add(
+            toCustomTransformationBindValue(
+                normalizeSourceType(sourceType), customTransformationResponse.get(colName)));
+        return getColumnValueByType(
+            sourceType,
+            sourceDbTimezoneOffset,
+            getCustomTransformationSpannerType(colName, sourceType));
+      }
+      throw new IllegalStateException("No bind value was recorded for column " + colName);
     }
 
-    String sourceBaseType = baseType(sourceColDef.type());
-    if (sourceBaseType.equals("binary_float") || sourceBaseType.equals("binary_double")) {
-      // Plain numeric literals are parsed by Oracle as NUMBER, which cannot hold NaN, +/-Infinity
-      // or values outside roughly 1E-130..1E126 (ORA-00904 / ORA-01426 / silent underflow to 0),
-      // so convert the textual value explicitly.
-      return (sourceBaseType.equals("binary_float") ? "TO_BINARY_FLOAT('" : "TO_BINARY_DOUBLE('")
-          + escapeString(rawJsonStr)
-          + "')";
+    /**
+     * Custom transformation map passed to {@link DMLGeneratorUtils}, which calls {@code toString()}
+     * on each value. The values are bound by {@link #bindColumn}, so {@code null} values (bound as
+     * typed {@code NULL}s) are passed as {@code "NULL"}.
+     */
+    Map<String, Object> customTransformationColumns() {
+      Map<String, Object> columns = new HashMap<>();
+      customTransformationResponse.forEach(
+          (colName, value) -> columns.put(colName, (value == null) ? "NULL" : value));
+      return columns;
     }
 
+    /**
+     * Spanner type used to choose the SQL expression of a custom transformation value: the type of
+     * the mapped Spanner column, as for replicated values. Source-only DATE columns use the Spanner
+     * DATE format ({@code YYYY-MM-DD}). Custom transformation values are bound as returned, so they
+     * are never hex encoded BYTES values.
+     */
+    private String getCustomTransformationSpannerType(String sourceColName, String sourceType) {
+      if (getSpannerColumn(sourceColName) == null) {
+        return "date".equals(normalizeSourceType(sourceType))
+            ? "DATE"
+            : CUSTOM_TRANSFORMATION_SPANNER_TYPE;
+      }
+      String spannerType = getSpannerTypeCode(sourceColName);
+      return isBytesType(spannerType) ? CUSTOM_TRANSFORMATION_SPANNER_TYPE : spannerType;
+    }
+
+    private String getSpannerTypeCode(String sourceColName) {
+      Column spannerColDef = getSpannerColumn(sourceColName);
+      return (spannerColDef == null)
+          ? CUSTOM_TRANSFORMATION_SPANNER_TYPE
+          : spannerColDef.type().getCode().toString();
+    }
+
+    /** Returns the Spanner column of a source column, or {@code null} for source-only columns. */
+    private Column getSpannerColumn(String sourceColName) {
+      try {
+        String spannerColName =
+            schemaMapper.getSpannerColumnName("", sourceTable.name(), sourceColName);
+        return (spannerColName == null) ? null : spannerTable.column(spannerColName);
+      } catch (NoSuchElementException e) {
+        // Column is not mapped to Spanner.
+        return null;
+      }
+    }
+  }
+
+  /**
+   * Returns the JDBC type of a typed {@code NULL}: the same type as non-null values, so that the
+   * bind types of a cached statement do not change between records. BYTES values written to
+   * non-binary columns are bound as hex text into {@code HEXTORAW(?)} (see {@link
+   * #toBytesBindValue}), so their {@code NULL}s are bound as {@code VARCHAR}.
+   */
+  private static int getNullBindSqlType(String sourceType, String spannerColType) {
+    int sqlType = getBindSqlType(sourceType);
+    boolean isBinaryColumn = sqlType == Types.BLOB || sqlType == Types.VARBINARY;
+    return (isBytesType(spannerColType) && !isBinaryColumn) ? Types.VARCHAR : sqlType;
+  }
+
+  /**
+   * Returns the bind value of a custom transformation output. Values are bound as returned: a
+   * {@code byte[]} (or the Base64 decoded bytes of any other value) for binary columns, and the
+   * string form of the value with the column's JDBC type for any other column.
+   */
+  private static Object toCustomTransformationBindValue(String sourceType, Object value) {
+    int sqlType = getBindSqlType(sourceType);
+    if (value == null) {
+      return new OracleBindParameter(sqlType, null);
+    }
+    if (sqlType == Types.BLOB || sqlType == Types.VARBINARY) {
+      byte[] bytes = (value instanceof byte[] b) ? b : decodeBase64(value.toString());
+      return toTypedBindValue(sqlType, bytes);
+    }
+    return toBindValueByType(sourceType, StringUtils.replace(value.toString(), "\u0000", ""));
+  }
+
+  /** Returns the bind value for a non-null column value. */
+  private static Object toBindValue(
+      Column spannerColDef, SourceColumn sourceColDef, JSONObject valuesJson) {
+    Type colType = spannerColDef.type();
+    String colName = spannerColDef.name();
+    String sourceType = normalizeSourceType(sourceColDef.type());
+
+    if (isBytesType(colType.getCode().toString())) {
+      return toBytesBindValue(sourceType, valuesJson.getString(colName));
+    }
+    String colInputValue = getColumnInputValue(colType, sourceType, valuesJson, colName);
+    int bindSqlType = getBindSqlType(sourceType);
+    if (bindSqlType == Types.BLOB || bindSqlType == Types.VARBINARY) {
+      // Non-BYTES Spanner value (e.g. STRING) written to a binary column: Base64 encoded bytes.
+      return toTypedBindValue(bindSqlType, decodeBase64(colInputValue));
+    }
+    return toBindValueByType(sourceType, StringUtils.replace(colInputValue, "\u0000", ""));
+  }
+
+  /** Converts a non-BYTES Spanner value to its string form. */
+  private static String getColumnInputValue(
+      Type colType, String sourceType, JSONObject valuesJson, String colName) {
+    if ("binary_float".equals(sourceType) || "binary_double".equals(sourceType)) {
+      // Passed as text, including NaN and Infinity (see toBindValueByType).
+      return valuesJson.get(colName).toString();
+    }
     if (colType.getCode().equals(Type.Code.FLOAT64)
         || colType.getCode().equals(Type.Code.FLOAT32)
         || colType.getCode().equals(Type.Code.PG_FLOAT4)
         || colType.getCode().equals(Type.Code.PG_FLOAT8)
         || colType.getCode().equals(Type.Code.PG_NUMERIC)) {
-      colInputValue = valuesJson.getBigDecimal(colName).toString();
-    } else if (colType.getCode().equals(Type.Code.BOOL)
-        || colType.getCode().equals(Type.Code.PG_BOOL)) {
-      colInputValue = String.valueOf(valuesJson.getBoolean(colName));
-    } else if ((colType.getCode().equals(Type.Code.ARRAY)
+      return valuesJson.getBigDecimal(colName).toString();
+    }
+    if (colType.getCode().equals(Type.Code.BOOL) || colType.getCode().equals(Type.Code.PG_BOOL)) {
+      return String.valueOf(valuesJson.getBoolean(colName));
+    }
+    if ((colType.getCode().equals(Type.Code.ARRAY)
             && colType.getArrayElementType().getCode().equals(Type.Code.STRING))
         || (colType.getCode().equals(Type.Code.PG_ARRAY)
             && (colType.getArrayElementType().getCode().equals(Type.Code.PG_VARCHAR)
                 || colType.getArrayElementType().getCode().equals(Type.Code.PG_TEXT)))) {
-
-      colInputValue =
-          valuesJson.getJSONArray(colName).toList().stream()
-              .map(String::valueOf)
-              .collect(Collectors.joining(","));
-    } else if (colType.getCode().equals(Type.Code.BYTES)
-        || colType.getCode().equals(Type.Code.PG_BYTEA)) {
-      colInputValue = convertBase64ToHex(valuesJson.getString(colName));
-    } else {
-      colInputValue = valuesJson.getString(colName);
+      return valuesJson.getJSONArray(colName).toList().stream()
+          .map(String::valueOf)
+          .collect(Collectors.joining(","));
     }
-    String response =
-        getColumnValueByType(
-            sourceColDef.type().toLowerCase(),
-            colInputValue,
-            sourceDbTimezoneOffset,
-            colType.toString());
-    return response;
+    return valuesJson.getString(colName);
   }
 
   /**
-   * Adds {@code value} to the prepared statement parameters in chunks and returns an expression
-   * concatenating them as a LOB, e.g. {@code TO_CLOB(?) || TO_CLOB(?)}. Chunks never split a
-   * surrogate pair.
+   * Converts Spanner's infinity text ({@code Infinity} / {@code -Infinity}) to the form accepted by
+   * {@code TO_BINARY_FLOAT} / {@code TO_BINARY_DOUBLE} ({@code INF} / {@code -INF}).
    */
-  @VisibleForTesting
-  static String bindAsLobChunks(String value, String lobFunction, List<Object> parameters) {
-    List<String> placeholders = new ArrayList<>();
-    int start = 0;
-    while (start < value.length()) {
-      int end = Math.min(value.length(), start + LOB_BIND_CHUNK_CHARS);
-      if (end < value.length() && Character.isHighSurrogate(value.charAt(end - 1))) {
-        end--;
-      }
-      parameters.add(value.substring(start, end));
-      placeholders.add(lobFunction + "(?)");
-      start = end;
+  private static String toOracleFloatText(String value) {
+    switch (value) {
+      case "Infinity":
+      case "+Infinity":
+        return "INF";
+      case "-Infinity":
+        return "-INF";
+      default:
+        return value;
     }
-    return String.join(" || ", placeholders);
   }
 
-  @VisibleForTesting
-  protected static String convertBase64ToHex(String base64EncodedString) {
-    String rawHex = DMLGeneratorUtils.convertBase64ToRawHex(base64EncodedString);
-    if (rawHex == null) {
-      return null;
+  /** Returns the bind value for a Base64 encoded BYTES value. */
+  private static Object toBytesBindValue(String sourceType, String base64Value) {
+    switch (sourceType) {
+      case "bytea":
+      case "blob":
+        return toTypedBindValue(Types.BLOB, decodeBase64(base64Value));
+      case "raw":
+      case "long raw":
+      case "binary":
+      case "varbinary":
+        return toTypedBindValue(Types.VARBINARY, decodeBase64(base64Value));
+      default:
+        // Character columns: bound as hex text into HEXTORAW(?) (see getColumnValueByType).
+        String rawHex = DMLGeneratorUtils.convertBase64ToRawHex(base64Value);
+        return StringUtils.isEmpty(rawHex) ? new OracleBindParameter(Types.VARCHAR, null) : rawHex;
     }
-    return rawHex.isEmpty() ? "''" : "HEXTORAW('" + rawHex + "')";
   }
 
-  private static String getColumnValueByType(
-      String columnType, String colValue, String sourceDbTimezoneOffset, String spannerColType) {
-    String response = "";
-    // TODO: Add support for array types (e.g., varchar[], integer[]) to generate valid Oracle
-    // array literals.
-    if (columnType != null && columnType.contains("(")) {
-      columnType = columnType.substring(0, columnType.indexOf("(")).trim();
+  private static byte[] decodeBase64(String base64Value) {
+    return StringUtils.isEmpty(base64Value) ? new byte[0] : Base64.getDecoder().decode(base64Value);
+  }
+
+  /**
+   * Returns the bind value for a non-null, non-BYTES column value:
+   *
+   * <ul>
+   *   <li>character and LOB types are bound with their JDBC type,
+   *   <li>numeric types are bound as {@link BigDecimal},
+   *   <li>all other types are bound as text.
+   * </ul>
+   */
+  private static Object toBindValueByType(String columnType, String colValue) {
+    if (NUMERIC_TYPES.contains(columnType)) {
+      return toNumberBindValue(colValue);
     }
     switch (columnType) {
+      case "nvarchar2":
+      case "nchar varying":
+      case "national char varying":
+      case "national character varying":
+        return toTypedBindValue(Types.NVARCHAR, colValue);
+      case "nchar":
+      case "national char":
+      case "national character":
+        // Fixed width type: bound with setFixedCHAR for blank-padded comparison.
+        return toTypedBindValue(Types.NCHAR, colValue);
+      case "nclob":
+        return toTypedBindValue(Types.NCLOB, colValue);
+      case "clob":
+        return toTypedBindValue(Types.CLOB, colValue);
+      case "char":
+      case "character":
+        // Fixed width type: bound with setFixedCHAR for blank-padded comparison.
+        return toTypedBindValue(Types.CHAR, colValue);
+      case "varchar":
+      case "varchar2":
+      case "text":
+      case "character varying":
+      case "long":
+      case "json":
+      case "jsonb":
+      case "time":
+      case "uuid":
+      case "rowid":
+      case "urowid":
+      case "interval year to month":
+      case "interval day to second":
+      case "date":
+      case "timestamp":
+      case "timestamp without time zone":
+      case "timestamp with time zone":
+      case "timestamp with local time zone":
+      case "timestamptz":
+        return colValue;
+      case "binary_float":
+      case "binary_double":
+        // Text for TO_BINARY_FLOAT / TO_BINARY_DOUBLE, which accept NaN, INF and -INF.
+        return toOracleFloatText(colValue);
+      default:
+        // Other types: Spanner booleans become 1 / 0.
+        return toNumericBoolean(colValue);
+    }
+  }
+
+  /**
+   * Returns the value as a {@link BigDecimal}, or the text itself if it is not a number (Oracle
+   * then reports the conversion error).
+   */
+  private static Object toNumberBindValue(String colValue) {
+    String number = toNumericBoolean(colValue.trim());
+    try {
+      return new BigDecimal(number);
+    } catch (NumberFormatException e) {
+      return colValue;
+    }
+  }
+
+  /** Converts Spanner booleans ({@code true} / {@code false}) to {@code 1} / {@code 0}. */
+  private static String toNumericBoolean(String colValue) {
+    if ("true".equalsIgnoreCase(colValue)) {
+      return "1";
+    } else if ("false".equalsIgnoreCase(colValue)) {
+      return "0";
+    }
+    return colValue;
+  }
+
+  /** Returns the JDBC type used to bind values (including {@code NULL}) of the Oracle type. */
+  private static int getBindSqlType(String columnType) {
+    if (NUMERIC_TYPES.contains(columnType)) {
+      // Same bind type for NULLs as for the BigDecimal values.
+      return Types.NUMERIC;
+    }
+    return switch (columnType) {
+      case "char", "character" -> Types.CHAR;
+      case "nchar", "national char", "national character" -> Types.NCHAR;
+      case "nvarchar2",
+          "nchar varying",
+          "national char varying",
+          "national character varying" -> Types.NVARCHAR;
+      case "clob" -> Types.CLOB;
+      case "nclob" -> Types.NCLOB;
+      case "bytea", "blob" -> Types.BLOB;
+      case "raw", "long raw", "binary", "varbinary" -> Types.VARBINARY;
+      default -> Types.VARCHAR;
+    };
+  }
+
+  /**
+   * Returns a typed bind value. Empty values are bound as typed {@code NULL} because Oracle stores
+   * empty strings and empty RAW values as {@code NULL}.
+   */
+  private static OracleBindParameter toTypedBindValue(int sqlType, Object value) {
+    boolean isEmpty =
+        (value instanceof String str && str.isEmpty())
+            || (value instanceof byte[] bytes && bytes.length == 0);
+    return new OracleBindParameter(sqlType, isEmpty ? null : value);
+  }
+
+  private static boolean isBytesType(String spannerColType) {
+    return "BYTES".equalsIgnoreCase(spannerColType) || "PG_BYTEA".equalsIgnoreCase(spannerColType);
+  }
+
+  /** Lower-cased Oracle type without precision/length, e.g. "TIMESTAMP(6)" -> "timestamp". */
+  @VisibleForTesting
+  static String normalizeSourceType(String columnType) {
+    if (columnType == null) {
+      return "";
+    }
+    return columnType.replaceAll("\\([^)]*\\)", "").trim().replaceAll("\\s+", " ").toLowerCase();
+  }
+
+  /**
+   * Returns the SQL expression, with a {@code ?} placeholder for the bind value, used to write a
+   * value to a column of the given Oracle type.
+   */
+  @VisibleForTesting
+  static String getColumnValueByType(
+      String columnType, String sourceDbTimezoneOffset, String spannerColType) {
+    switch (normalizeSourceType(columnType)) {
       case "nvarchar2":
       case "nclob":
       case "nchar":
@@ -467,13 +732,9 @@ public class OracleDMLGenerator implements IDMLGenerator {
       case "national char varying":
       case "national character":
       case "national character varying":
-        response = getQuotedEscapedString(colValue, spannerColType);
-        if (response.startsWith("HEXTORAW(")) {
-          response = "TO_NCLOB(UTL_RAW.CAST_TO_NVARCHAR2(" + response + "))";
-        } else {
-          response = "N" + response;
-        }
-        break;
+        return isBytesType(spannerColType)
+            ? "TO_NCLOB(UTL_RAW.CAST_TO_NVARCHAR2(HEXTORAW(?)))"
+            : "?";
       case "varchar":
       case "varchar2":
       case "clob":
@@ -481,98 +742,65 @@ public class OracleDMLGenerator implements IDMLGenerator {
       case "text":
       case "character varying":
       case "character":
+      case "long":
       case "json":
       case "jsonb":
       case "time":
       case "uuid":
-        response = getQuotedEscapedString(colValue, spannerColType);
-        break;
+        return isBytesType(spannerColType) ? "HEXTORAW(?)" : "?";
+      case "rowid":
+      case "urowid":
+        return "?";
+      case "interval year to month":
+        return "TO_YMINTERVAL(?)";
+      case "interval day to second":
+        return "TO_DSINTERVAL(?)";
       case "date":
-        if (spannerColType.equalsIgnoreCase("DATE")) {
-          response =
-              "TO_DATE(" + getQuotedEscapedString(colValue, spannerColType) + ", 'YYYY-MM-DD')";
-        } else {
-          response =
-              "FROM_TZ(TO_TIMESTAMP("
-                  + getQuotedEscapedString(colValue, spannerColType)
-                  + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF\"Z\"'), 'UTC')";
+        if ("DATE".equalsIgnoreCase(spannerColType) || "PG_DATE".equalsIgnoreCase(spannerColType)) {
+          return "TO_DATE(?, 'YYYY-MM-DD')";
         }
-        break;
-      case "timestamp":
-      case "timestamp without time zone":
+        return "FROM_TZ(TO_TIMESTAMP(?, 'YYYY-MM-DD\"T\"HH24:MI:SS.FF\"Z\"'), 'UTC')";
       case "timestamp with time zone":
       case "timestamp with local time zone":
       case "timestamptz":
+        // Time zone aware types store the exact instant, so the source offset is not applied.
+        return "FROM_TZ(TO_TIMESTAMP(?, 'YYYY-MM-DD\"T\"HH24:MI:SS.FF\"Z\"'), 'UTC')";
+      case "timestamp":
+      case "timestamp without time zone":
         if (sourceDbTimezoneOffset != null
             && !sourceDbTimezoneOffset.isEmpty()
             && !"+00:00".equals(sourceDbTimezoneOffset)
             && !"Z".equalsIgnoreCase(sourceDbTimezoneOffset)) {
-          response =
-              "CAST(FROM_TZ(TO_TIMESTAMP("
-                  + getQuotedEscapedString(colValue, spannerColType)
-                  + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF\"Z\"'), 'UTC') AT TIME ZONE '"
-                  + sourceDbTimezoneOffset
-                  + "' AS TIMESTAMP)";
-        } else {
-          response =
-              "FROM_TZ(TO_TIMESTAMP("
-                  + getQuotedEscapedString(colValue, spannerColType)
-                  + ", 'YYYY-MM-DD\"T\"HH24:MI:SS.FF\"Z\"'), 'UTC')";
+          return "CAST(FROM_TZ(TO_TIMESTAMP(?, 'YYYY-MM-DD\"T\"HH24:MI:SS.FF\"Z\"'), 'UTC') AT TIME ZONE '"
+              + sourceDbTimezoneOffset
+              + "' AS TIMESTAMP)";
         }
-        break;
+        return "FROM_TZ(TO_TIMESTAMP(?, 'YYYY-MM-DD\"T\"HH24:MI:SS.FF\"Z\"'), 'UTC')";
       case "bytea":
       case "blob":
       case "raw":
       case "binary":
       case "varbinary":
-        response = colValue;
-        break;
+        return "?";
+      case "binary_float":
+        return "TO_BINARY_FLOAT(?)";
+      case "binary_double":
+        return "TO_BINARY_DOUBLE(?)";
       case "number":
       case "numeric":
       case "decimal":
+      case "dec":
       case "float":
+      case "real":
       case "double precision":
       case "integer":
       case "smallint":
       case "int":
       case "boolean":
       case "bool":
-        if ("true".equalsIgnoreCase(colValue)) {
-          response = "1";
-        } else if ("false".equalsIgnoreCase(colValue)) {
-          response = "0";
-        } else {
-          response = colValue;
-        }
-        break;
+        return "TO_NUMBER(?)";
       default:
-        if ("true".equalsIgnoreCase(colValue)) {
-          response = "1";
-        } else if ("false".equalsIgnoreCase(colValue)) {
-          response = "0";
-        } else {
-          response = colValue;
-        }
+        return "?";
     }
-    return response;
-  }
-
-  private static String escapeString(String input) {
-    String cleanedNullBytes = StringUtils.replace(input, "\u0000", "");
-    cleanedNullBytes = StringUtils.replace(cleanedNullBytes, "'", "''");
-    // Oracle supports standard conforming strings.
-    // backslash.
-    // For standard string literals '', we just need to escape the single quote as
-    // ''
-    return cleanedNullBytes;
-  }
-
-  static String getQuotedEscapedString(String input, String spannerColType) {
-    if ("BYTES".equals(spannerColType) || "PG_BYTEA".equals(spannerColType)) {
-      return input;
-    }
-    String cleanedString = escapeString(input);
-    String response = "'" + cleanedString + "'";
-    return response;
   }
 }

@@ -38,13 +38,22 @@ import org.slf4j.LoggerFactory;
  * again and gets routed back into the DLQ.
  *
  * <p>For the Orders table, it translates the OrderSource column into a custom LegacyOrderSystem
- * column to validate standard data transformation operations.
+ * column to validate standard data transformation operations. Use {@code rawValues=true} for
+ * sources that bind custom transformation values (e.g. Oracle) to return a plain value instead of a
+ * SQL literal from {@code toSourceRow}.
  */
 public class CustomTransformationForDLQIT implements ISpannerMigrationTransformer {
 
   private static final Logger LOG = LoggerFactory.getLogger(CustomTransformationForDLQIT.class);
 
   private String mode = "bad";
+
+  /**
+   * When {@code true} (parameter {@code rawValues=true}), {@link #toSourceRow} returns plain values
+   * for sources that bind custom transformation values (e.g. Oracle). Otherwise it returns SQL
+   * literals, since the other sources write custom transformation values to the SQL as is.
+   */
+  private boolean rawValues = false;
 
   @Override
   public void init(String parameters) {
@@ -56,11 +65,13 @@ public class CustomTransformationForDLQIT implements ISpannerMigrationTransforme
         if (kv.length == 2) {
           if (kv[0].trim().equals("mode")) {
             this.mode = kv[1].trim();
+          } else if (kv[0].trim().equals("rawValues")) {
+            this.rawValues = Boolean.parseBoolean(kv[1].trim());
           }
         }
       }
     }
-    LOG.info("Mode set to {}", this.mode);
+    LOG.info("Mode set to {}, rawValues set to {}", this.mode, this.rawValues);
   }
 
   @Override
@@ -113,9 +124,9 @@ public class CustomTransformationForDLQIT implements ISpannerMigrationTransforme
     if (tableName.equalsIgnoreCase("Orders")) {
       Object sourceObj = requestRow.get("OrderSource");
       String source = (sourceObj != null) ? (String) sourceObj : "UNKNOWN_SYSTEM";
-      // Enclose in single quotes since DML generator injects custom responses directly as raw
-      // values
-      String legacySys = "'" + source + "_v1'";
+      // With rawValues the value is bound as is (e.g. Oracle). Otherwise enclose it in single
+      // quotes since the DML generator injects custom responses directly as raw values.
+      String legacySys = rawValues ? source + "_v1" : "'" + source + "_v1'";
       responseRow.put("LegacyOrderSystem", legacySys);
       return new MigrationTransformationResponse(responseRow, false);
     } else if (tableName.equalsIgnoreCase("AllDataTypes")) {
