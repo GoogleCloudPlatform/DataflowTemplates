@@ -1,0 +1,101 @@
+template:
+  name: "Iceberg_Cdc_To_Bigtable_Yaml"
+  category: "STREAMING"
+  type: "YAML"
+  display_name: "Iceberg CDC to Bigtable (YAML)"
+  description: >
+    The Iceberg CDC to Bigtable template is a streaming pipeline that
+    continuously reads row-level changes from an Iceberg table, executes a
+    user-defined mapping, and writes the resulting mutations to Bigtable. The
+    change type of each record is available to the mapping as the
+    _change_type field, and UPDATE_BEFORE records are dropped. Any errors which
+    occur in the transformation of the data are written to Cloud Storage in
+    JSON format.
+  flex_container_name: "pipeline-yaml"
+  yamlTemplateFile: "IcebergCdcToBigtable.yaml"
+  filesToCopy: >
+    {"main.py", "requirements.txt", "options/iceberg_options.yaml", "options/maptofields_options.yaml", "options/windowinto_options.yaml", "options/bigtable_options.yaml", "options/json_options.yaml"}
+  documentation: >
+    https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/iceberg-cdc-to-bigtable
+  contactInformation: "https://cloud.google.com/support"
+  requirements: {
+    "The input Iceberg table must exist and be accessible through the provided catalog.",
+    "The output Bigtable table must exist.",
+    "The Cloud Storage directory for error records must be accessible."
+  }
+  streaming: true
+  hidden: false
+
+  options_file:
+    - "iceberg_options"
+    - "maptofields_options"
+    - "windowinto_options"
+    - "bigtable_options"
+    - "json_options"
+
+  parameters:
+    - iceberg_common_options
+    - iceberg_read_options
+    - iceberg_cdc_read_options
+    - maptofields_common_options
+    - windowinto_common_options
+    - bigtable_common_options
+    - json_error_options
+
+pipeline:
+  type: composite
+  transforms:
+    - type: ReadFromIcebergCDC
+      name: ReadFromIcebergCDC
+      config:
+        table: {{ table }}
+        catalog_name: {{ catalogName }}
+        catalog_properties: {{ catalogProperties }}
+        config_properties: {{ configProperties }}
+        drop: {{ drop }}
+        filter: {{ filter }}
+        keep: {{ keep }}
+        streaming: true
+        starting_strategy: {{ startingStrategy }}
+        poll_interval_seconds: {{ pollIntervalSeconds }}
+        include_metadata_columns:
+          - _change_type
+
+    - type: Filter
+      name: DropUpdateBeforeRecords
+      input: ReadFromIcebergCDC
+      config:
+        language: python
+        keep: "_change_type != 'UPDATE_BEFORE'"
+
+    - type: WindowInto
+      name: WindowInto
+      input: DropUpdateBeforeRecords
+      config:
+        windowing: {{ windowing }}
+
+    - type: MapToFields
+      name: ConvertToBigtableMutations
+      input: WindowInto
+      config:
+        language: {{ language }}
+        fields: {{ fields }}
+        error_handling:
+          output: errors
+
+    - type: WriteToBigTable
+      name: WriteToBigtable
+      input: ConvertToBigtableMutations
+      config:
+        project: {{ projectId }}
+        instance: {{ instanceId }}
+        table: {{ tableId }}
+
+    - type: WriteToJson
+      name: WriteTransformationErrorsToDeadLetterQueue
+      input: ConvertToBigtableMutations.errors
+      config:
+        path: "{{ errorPath }}"
+
+options:
+  streaming: true
