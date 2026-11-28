@@ -33,6 +33,7 @@ template:
     - iceberg_common_options
     - iceberg_read_options
     - maptofields_common_options
+    - maptofields_udf_options
     - bigtable_common_options
     - json_error_options
 
@@ -56,6 +57,9 @@ pipeline:
       config:
         language: {{ language }}
         fields: {{ fields }}
+        append: {{ append }}
+        drop: {{ dropFields }}
+        dependencies: {{ dependencies }}
         error_handling:
           output: errors
 

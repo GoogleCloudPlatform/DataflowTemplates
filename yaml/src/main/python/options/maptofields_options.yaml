@@ -30,3 +30,27 @@ options:
 
   - name: "maptofields_write_options"
     parameters:
+
+  - name: "maptofields_udf_options"
+    parameters:
+      - order: 1
+        name: "append"
+        description: "Whether to append the created fields to the set of fields already present."
+        help: "Whether to append the created fields to the set of fields already present, outputting a union of both the new fields and the original fields for each record. Defaults to false."
+        example: "false"
+        required: false
+        type: boolean
+      - order: 2
+        name: "dropFields"
+        description: "List of fields from the original record to exclude when append is true."
+        help: "If append is true, enumerates a subset of fields from the original record that should not be kept."
+        example: '["field_to_drop_1", "field_to_drop_2"]'
+        required: false
+        type: text
+      - order: 3
+        name: "dependencies"
+        description: "Extra dependencies needed for user-defined functions."
+        help: "An optional list of extra dependencies that are needed for these UDFs. The interpretation of these strings is language-dependent."
+        example: '["pkg1==1.0.0"]'
+        required: false
+        type: text
