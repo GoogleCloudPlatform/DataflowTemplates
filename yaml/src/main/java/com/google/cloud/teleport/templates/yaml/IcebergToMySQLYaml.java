@@ -94,6 +94,16 @@ public interface IcebergToMySQLYaml {
 
   @TemplateParameter.Text(
       order = 6,
+      name = "secretManager",
+      optional = true,
+      description = "Secret manager to use for fetching secret values.",
+      helpText =
+          "Secret manager to use for fetching secret values. Available options: GoogleCloudSecretManager, GoogleCloudHsmGeneratedSecretManager.",
+      example = "GoogleCloudSecretManager")
+  String getSecretManager();
+
+  @TemplateParameter.Text(
+      order = 7,
       name = "location",
       optional = false,
       description = "The name of the table to write to.",
@@ -103,7 +113,7 @@ public interface IcebergToMySQLYaml {
   String getLocation();
 
   @TemplateParameter.Text(
-      order = 7,
+      order = 8,
       name = "writeStatement",
       optional = true,
       description = "The SQL statement to use for inserting records.",
@@ -112,7 +122,7 @@ public interface IcebergToMySQLYaml {
   String getWriteStatement();
 
   @TemplateParameter.Integer(
-      order = 8,
+      order = 9,
       name = "batchSize",
       optional = true,
       description = "The number of records to group for each write operation.",
@@ -122,7 +132,7 @@ public interface IcebergToMySQLYaml {
   Integer getBatchSize();
 
   @TemplateParameter.Boolean(
-      order = 9,
+      order = 10,
       name = "autoSharding",
       optional = true,
       description = "If true, enables using a dynamically determined number of shards to write.",
@@ -131,7 +141,7 @@ public interface IcebergToMySQLYaml {
   Boolean getAutoSharding();
 
   @TemplateParameter.Text(
-      order = 10,
+      order = 11,
       name = "table",
       optional = false,
       description = "A fully-qualified table identifier.",
@@ -141,7 +151,7 @@ public interface IcebergToMySQLYaml {
   String getTable();
 
   @TemplateParameter.Text(
-      order = 11,
+      order = 12,
       name = "catalogName",
       optional = false,
       description = "Name of the catalog containing the table.",
@@ -151,7 +161,7 @@ public interface IcebergToMySQLYaml {
   String getCatalogName();
 
   @TemplateParameter.Text(
-      order = 12,
+      order = 13,
       name = "catalogProperties",
       optional = false,
       description = "Properties used to set up the Iceberg catalog.",
@@ -161,7 +171,7 @@ public interface IcebergToMySQLYaml {
   String getCatalogProperties();
 
   @TemplateParameter.Text(
-      order = 13,
+      order = 14,
       name = "configProperties",
       optional = true,
       description = "Properties passed to the Hadoop Configuration.",
@@ -170,7 +180,7 @@ public interface IcebergToMySQLYaml {
   String getConfigProperties();
 
   @TemplateParameter.Text(
-      order = 14,
+      order = 15,
       name = "drop",
       optional = true,
       description = "A list of field names to drop from the input record before writing.",
@@ -179,7 +189,7 @@ public interface IcebergToMySQLYaml {
   String getDrop();
 
   @TemplateParameter.Text(
-      order = 15,
+      order = 16,
       name = "keep",
       optional = true,
       description = "A list of field names to keep in the input record.",
@@ -188,7 +198,7 @@ public interface IcebergToMySQLYaml {
   String getKeep();
 
   @TemplateParameter.Text(
-      order = 16,
+      order = 17,
       name = "filter",
       optional = true,
       description = "An optional filter expression to apply to the input records.",

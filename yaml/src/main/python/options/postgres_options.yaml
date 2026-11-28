@@ -43,6 +43,13 @@ options:
         example: "SELECT * FROM my_table WHERE status = 'active'"
         required: false
         type: text
+      - order: 7
+        name: "secretManager"
+        description: "Secret manager to use for fetching secret values."
+        help: "Secret manager to use for fetching secret values. Available options: GoogleCloudSecretManager, GoogleCloudHsmGeneratedSecretManager."
+        example: "GoogleCloudSecretManager"
+        required: false
+        type: text
 
   - name: "postgres_read_options"
     parameters:

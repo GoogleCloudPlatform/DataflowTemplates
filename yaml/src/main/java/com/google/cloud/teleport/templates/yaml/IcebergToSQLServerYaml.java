@@ -151,6 +151,16 @@ public interface IcebergToSQLServerYaml {
 
   @TemplateParameter.Text(
       order = 12,
+      name = "secretManager",
+      optional = true,
+      description = "Secret manager to use for fetching secret values.",
+      helpText =
+          "Secret manager to use for fetching secret values. Available options: GoogleCloudSecretManager, GoogleCloudHsmGeneratedSecretManager.",
+      example = "GoogleCloudSecretManager")
+  String getSecretManager();
+
+  @TemplateParameter.Text(
+      order = 13,
       name = "location",
       optional = false,
       description = "The name of the table to write to.",
@@ -160,7 +170,7 @@ public interface IcebergToSQLServerYaml {
   String getLocation();
 
   @TemplateParameter.Text(
-      order = 13,
+      order = 14,
       name = "query",
       optional = true,
       description = "The SQL statement to use for inserting records.",
@@ -169,7 +179,7 @@ public interface IcebergToSQLServerYaml {
   String getQuery();
 
   @TemplateParameter.Integer(
-      order = 14,
+      order = 15,
       name = "batchSize",
       optional = true,
       description = "The number of records to group for each write operation.",
@@ -179,7 +189,7 @@ public interface IcebergToSQLServerYaml {
   Integer getBatchSize();
 
   @TemplateParameter.Boolean(
-      order = 15,
+      order = 16,
       name = "autoSharding",
       optional = true,
       description = "If true, enables using a dynamically determined number of shards to write.",

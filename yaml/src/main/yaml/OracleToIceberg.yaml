@@ -38,6 +38,7 @@ pipeline:
         url: "{{ jdbcUrl }}"
         username: "{{ username }}"
         password: "{{ password }}"
+        secret_manager: {{ secretManager }}
         query: {{ readQuery }}
         connection_properties: {{ connectionProperties }}
         partition_column: {{ partitionColumn }}
