@@ -21,6 +21,8 @@ import com.google.cloud.teleport.v2.mapper.ComparisonRecordMapper;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import java.util.Objects;
+import org.apache.beam.sdk.metrics.Counter;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.values.PCollectionView;
@@ -31,6 +33,10 @@ public class SpannerHashFn extends DoFn<Struct, ComparisonRecord> {
   private final SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider;
 
   private transient ComparisonRecordMapper comparisonRecordMapper;
+
+  // Spanner rows that were hashed for comparison.
+  private final Counter recordsProcessed =
+      Metrics.counter(SpannerHashFn.class, "spanner_records_processed");
 
   public SpannerHashFn(
       PCollectionView<Ddl> ddlView, SerializableFunction<Ddl, ISchemaMapper> schemaMapperProvider) {
@@ -50,6 +56,7 @@ public class SpannerHashFn extends DoFn<Struct, ComparisonRecord> {
     ComparisonRecord comparisonRecord =
         comparisonRecordMapper.mapFrom(Objects.requireNonNull(c.element()));
     if (comparisonRecord != null) {
+      recordsProcessed.inc();
       c.output(comparisonRecord);
     }
   }
