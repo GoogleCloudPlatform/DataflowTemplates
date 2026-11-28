@@ -111,6 +111,24 @@ pipeline:
         {% if lakehouseTableProperties %}
         table_properties: {{ lakehouseTableProperties }}
         {% endif %}
+        {% if lakehouseSchemaEvolutionOptions %}
+        schema_evolution_options: {{ lakehouseSchemaEvolutionOptions }}
+        {% endif %}
+        {% if lakehouseRequiredColumns %}
+        required_columns: {{ lakehouseRequiredColumns }}
+        {% endif %}
+        {% if lakehouseIncompatibleSchemaHandling %}
+        incompatible_schema_handling: "{{ lakehouseIncompatibleSchemaHandling }}"
+        {% endif %}
+        {% if lakehouseUnverifiableFileHandling %}
+        unverifiable_file_handling: "{{ lakehouseUnverifiableFileHandling }}"
+        {% endif %}
+        {% if lakehouseManifestFileSize %}
+        manifest_file_size: {{ lakehouseManifestFileSize }}
+        {% endif %}
+        {% if lakehouseTriggeringFrequencySeconds %}
+        triggering_frequency_seconds: {{ lakehouseTriggeringFrequencySeconds }}
+        {% endif %}
         error_handling:
           output: errors
 

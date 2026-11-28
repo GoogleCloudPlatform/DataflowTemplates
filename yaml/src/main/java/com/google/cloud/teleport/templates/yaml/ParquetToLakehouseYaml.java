@@ -119,6 +119,65 @@ public interface ParquetToLakehouseYaml {
 
   @TemplateParameter.Text(
       order = 9,
+      name = "lakehouseSchemaEvolutionOptions",
+      optional = true,
+      description = "Allowed schema evolution changes when adding files.",
+      helpText =
+          "A list of allowed table schema changes (ALLOW_FIELD_ADDITION, ALLOW_FIELD_RELAXATION, ALLOW_TYPE_PROMOTION) when adding Parquet files in batch jobs.",
+      example = "[\"ALLOW_FIELD_ADDITION\"]")
+  String getLakehouseSchemaEvolutionOptions();
+
+  @TemplateParameter.Text(
+      order = 10,
+      name = "lakehouseRequiredColumns",
+      optional = true,
+      description = "Columns that must be present and non-null in added files.",
+      helpText =
+          "A list of column names (using dotted paths for nested fields) that must always be present and non-null when schema evolution is enabled.",
+      example = "[\"id\", \"address.city\"]")
+  String getLakehouseRequiredColumns();
+
+  @TemplateParameter.Text(
+      order = 11,
+      name = "lakehouseIncompatibleSchemaHandling",
+      optional = true,
+      description = "How to handle files whose schema is incompatible with the table.",
+      helpText =
+          "Behavior when a file schema cannot be made compatible with the table (FAIL_PIPELINE or ROUTE_TO_ERRORS).",
+      example = "FAIL_PIPELINE")
+  String getLakehouseIncompatibleSchemaHandling();
+
+  @TemplateParameter.Text(
+      order = 12,
+      name = "lakehouseUnverifiableFileHandling",
+      optional = true,
+      description = "How to handle files whose schema cannot be checked.",
+      helpText = "Behavior when a file schema cannot be verified (REJECT or ACCEPT).",
+      example = "REJECT")
+  String getLakehouseUnverifiableFileHandling();
+
+  @TemplateParameter.Integer(
+      order = 13,
+      name = "lakehouseManifestFileSize",
+      optional = true,
+      description = "Target size in bytes for generated Iceberg manifest files.",
+      helpText =
+          "Target size in bytes for Iceberg manifest files written when committing data files.",
+      example = "8388608")
+  Integer getLakehouseManifestFileSize();
+
+  @TemplateParameter.Integer(
+      order = 14,
+      name = "lakehouseTriggeringFrequencySeconds",
+      optional = true,
+      description = "Frequency in seconds at which snapshots are produced in streaming mode.",
+      helpText =
+          "The frequency in seconds for committing Iceberg snapshots when running in streaming mode.",
+      example = "60")
+  Integer getLakehouseTriggeringFrequencySeconds();
+
+  @TemplateParameter.Text(
+      order = 15,
       name = "lakehouseLocationPrefix",
       optional = true,
       description = "An optional location prefix for data files.",
@@ -128,7 +187,7 @@ public interface ParquetToLakehouseYaml {
   String getLakehouseLocationPrefix();
 
   @TemplateParameter.Text(
-      order = 10,
+      order = 16,
       name = "errorPath",
       optional = false,
       description = "Output path for error records.",
